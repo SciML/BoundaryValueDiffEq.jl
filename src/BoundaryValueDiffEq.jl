@@ -1,37 +1,39 @@
 module BoundaryValueDiffEq
 
-# using DiffEqBase, OrdinaryDiffEq
-# import DiffEqBase: solve
-using DifferentialEquations
+using DiffEqBase, OrdinaryDiffEq
+import DiffEqBase: solve
+# using DifferentialEquations
 using Optim
 
 abstract AbstractBVProblem{dType,bType,isinplace,F} <: DEProblem
 
 type BVProblem{dType,bType,initType,F} <: AbstractBVProblem{dType,bType,F}
   f::F
-  domin::dType
+  domain::dType
   bc::bType
   init::initType
 end
 
-function BVProblem(f,domin,bc,init=nothing)
-  BVProblem{eltype(domin),eltype(bc),eltype(init),typeof(f)}(f,domin,bc,init)
+function BVProblem(f,domain,bc,init=nothing)
+  BVProblem{eltype(domain),eltype(bc),eltype(init),typeof(f)}(f,domain,bc,init)
 end
 
-function solve(prob::BVProblem; OptSolver=LBFGS())#, ODESolver...)
+function solve(prob::BVProblem; OptSolver=LBFGS(), ODESolver=Tsit5())
   bc = prob.bc
   u0 = bc[1]
   len = length(bc[1])
-  probIt = ODEProblem(prob.f, u0, prob.domin)
+  # Convert a BVP Problem to a IVP problem.
+  probIt = ODEProblem(prob.f, u0, prob.domain)
+  # Form a root finding function.
   function loss(minimizer)
     probIt.u0 = minimizer
-    sol = DifferentialEquations.solve(probIt)#, ODESolver...)
+    sol = solve(probIt, ODESolver)
     norm(sol[end]-bc[2])
   end
   opt = optimize(loss, u0, OptSolver)
   probIt.u0 = opt.minimizer
-  @show opt.minimum
-  DifferentialEquations.solve(probIt)
+  opt.minimum
+  solve(probIt, ODESolver)
 end
 
 end # module
