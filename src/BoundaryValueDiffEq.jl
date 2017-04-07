@@ -2,23 +2,25 @@ module BoundaryValueDiffEq
 
 using DiffEqBase, OrdinaryDiffEq
 import DiffEqBase: solve
-# using DifferentialEquations
 using NLsolve
 
-abstract AbstractBVProblem{dType,bType,isinplace,F} <: DEProblem
+abstract AbstractBVProblem{dType,bF,isinplace,F} <: DEProblem
 
-type BVProblem{dType,bType,initType,F} <: AbstractBVProblem{dType,bType,F}
+type BVProblem{dType,bF,initType,F} <: AbstractBVProblem{dType,bF,F}
   f::F
   domain::dType
-  bc::bType
+  bc::bF
   init::initType
 end
 
-function BVProblem(f,domain,bc,init=nothing)
-  BVProblem{eltype(domain),eltype(bc),eltype(init),typeof(f)}(f,domain,bc,init)
+function BVProblem(f,domain,bc,init)
+  BVProblem{eltype(domain),typeof(bc),eltype(init),typeof(f)}(f,domain,bc,init)
 end
 
 include("algorithms.jl")
 include("solve.jl")
+
+export BVProblem
+export Shooting
 
 end # module
