@@ -6,12 +6,14 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
   probIt = ODEProblem(prob.f, u0, prob.domain)
   # Form a root finding function.
   loss = function (minimizer,boundary)
-    copy!(probIt.u0, minimizer)
-    sol = solve(probIt,alg.ode_alg;kwargs...)
+    uEltype = eltype(minimizer)
+    tspan = (uEltype(prob.domain[1]),uEltype(prob.domain[2]))
+    tmp_prob = ODEProblem(prob.f,minimizer,tspan)
+    sol = solve(tmp_prob,alg.ode_alg;kwargs...)
     bc(boundary,sol)
     nothing
   end
   opt = alg.nlsolve(loss, u0)
-  probIt.u0 = opt.zero
-  solve(probIt, alg.ode_alg;kwargs...)
+  sol_prob = ODEProblem(prob.f,opt.zero,prob.domain)
+  solve(sol_prob, alg.ode_alg;kwargs...)
 end
