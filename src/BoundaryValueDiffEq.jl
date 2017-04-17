@@ -2,7 +2,7 @@ module BoundaryValueDiffEq
 
 using DiffEqBase, OrdinaryDiffEq
 import DiffEqBase: solve
-using NLsolve
+import NLsolve
 
 abstract AbstractBVProblem{dType,bF,isinplace,F} <: DEProblem
 

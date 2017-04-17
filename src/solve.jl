@@ -11,7 +11,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     bc(boundary,sol)
     nothing
   end
-  opt = nlsolve(loss, u0)
+  opt = alg.nlsolve(loss, u0)
   probIt.u0 = opt.zero
   solve(probIt, alg.ode_alg;kwargs...)
 end
