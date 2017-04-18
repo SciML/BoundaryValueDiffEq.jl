@@ -18,6 +18,7 @@ function BVProblem(f,domain,bc,init)
 end
 
 include("algorithms.jl")
+include("jacobian.jl")
 include("solve.jl")
 
 export BVProblem
