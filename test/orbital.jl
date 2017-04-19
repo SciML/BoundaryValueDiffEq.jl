@@ -1,26 +1,31 @@
+# Lambert's Problem
+
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq
 using NLsolve, Sundials
 
-myu= 398600.4418E+9
-t0=86400* 2.3577475462484435E+04
-t1=86400* 2.3577522023524125E+04
-domin = (t0,t1)
-
-y0=[-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06, -5.5260776801401034E+03, 1.2118371372546346E+03, 4.8474639033861940E+03]
+y0=[-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06, -5528.612564911408, 1216.8442360202787, 4845.114446429901]
 init_val = [-4.7763169762853989E+06,-3.8386398704441520E+05,-5.3500183933132319E+06,7.0526926403748598E+06,-7.9650476230388973E+05,-1.1911128863666430E+06]
-
-function f(t, y, du)
-  r=y[1]^2+y[2]^2+y[3]^2
-
-  du[1] = y[4]
-  du[2] = y[5]
-  du[3] = y[6]
-  du[4] = -myu*y[1]/r
-  du[5] = -myu*y[2]/r
-  du[6] = -myu*y[3]/r
-
+J2=1.08262668E-3
+req=6378137
+myu=398600.4418E+9
+t0=86400*2.3577475462484435E+04
+t1=86400*2.3577522023524125E+04
+tspan = (t0,t1)
+# ODE solver
+f = function (t,y,dy)
+  r2=(y[1]^2 + y[2]^2 + y[3]^2)
+  r3=r2^(3/2)
+  w=1+1.5J2*(req*req/r2)*(1-5y[3]*y[3]/r2)
+  w2=1+1.5J2*(req*req/r2)*(3-5y[3]*y[3]/r2)
+  dy[1] = y[4]
+  dy[2] = y[5]
+  dy[3] = y[6]
+  dy[4] = -myu*y[1]*w/r3
+  dy[5] = -myu*y[2]*w/r3
+  dy[6] = -myu*y[3]*w2/r3
 end
+
 
 function bc!_generator(resid,sol,init_val)
   resid[1] = sol[1][1]   - init_val[1]
@@ -31,12 +36,26 @@ function bc!_generator(resid,sol,init_val)
   resid[6] = sol[end][3] - init_val[6]
 end
 cur_bc! = (resid,sol) -> bc!_generator(resid,sol,init_val)
-
-bvp = BVProblem(f, domin, cur_bc!, y0)
 resid_f = Array(Float64, 6)
-@time sol = solve(bvp, Shooting(DP5()),force_dtmin=true,abstol=1e-13)
-@time sol = solve(bvp, Shooting(DP5(),nlsolve=Sundials.kinsol),force_dtmin=true,abstol=1e-13)
+
+### Test the IVP Near the true solution
+### Should be small
+prob = ODEProblem(f,y0,tspan)
+sol = solve(prob,DP5(),abstol=1e-13,reltol=1e-13)
 cur_bc!(resid_f,sol)
 
-println(resid_f)
+
+### Now use the BVP solver to get closer
+bvp = BVProblem(f, tspan, cur_bc!, y0)
+@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=false,ftol=1e-13);res.zero)),force_dtmin=true,abstol=1e-13,reltol=1e-13)
+cur_bc!(resid_f,sol)
+
+@time sol = solve(bvp, Shooting(DP5()),force_dtmin=true,abstol=1e-13,reltol=1e-13)
+cur_bc!(resid_f,sol)
+@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=true,ftol=1e-13,xtol=1e-13);res.zero)),force_dtmin=true,abstol=1e-13,reltol=1e-13)
+cur_bc!(resid_f,sol)
+@time sol = solve(bvp, Shooting(DP5(),nlsolve=Sundials.kinsol),force_dtmin=true,abstol=1e-13,reltol=1e-13)
+cur_bc!(resid_f,sol)
+
 println(sol[1])
+println(sol[end])
