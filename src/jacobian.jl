@@ -33,3 +33,34 @@ function bc_jac!(bc, a, b, p, dbcda, dbcdb, dbcdp)
     ForwardDiff.jacobian!(dbcdp, fp, p)
 end
 
+#    n : int
+#        Number of equations in the ODE system.
+#    m : int
+#        Number of nodes in the mesh.
+#    k : int
+#        Number of the unknown parameters.
+
+# len = (((m - 1) * n) + length(((m-1)*n+1):(m*n+k)))*2n + (((m - 1) * n) + length(((m-1)*n+1):(m*n+k)))*k
+function construct_jacobian_indices!(i_ind, j_ind, n, m, k)
+    range1 = 1:((m - 1) * n)
+    end1   = length(range1)*2n
+    range2 = ((m-1)*n+1):(m*n+k)
+    end2   = end1+length(range2)*2n
+    end3   = end2+length(range1)*k
+    range3 = (m*n+1):(m*n+k)
+    i_ind[1:end1] = repeat(range1, inner=n, outer=2)
+    i_ind[(end1+1):end2] = repeat(range2, inner=n, outer=2)
+    i_ind[(end2+1):end3] = repeat(range1, inner=k)
+    i_ind[(end3+1):end]  = repeat(range2, inner=k)
+
+    end1j = length(range1)*n
+    end2j = end1+length(range2)*n
+    j_ind[1:end1j] = repeat(0:n-1, outer=n*(m-1)) + repeat((0:(m-2))*n, inner=n^2) + 1
+    j_ind[(end1j+1):end1] = j_ind[1:end1j] + n
+    j_ind[(end1+1):end2j] = repeat(1:n, outer=n+k)
+    j_ind[(end2j+1):end2] = j_ind[(end1+1):end2j] + (m-1)*n
+    j_ind[(end2+1):end3]  = repeat(range3, outer=(m-1)*n)
+    j_ind[(end3+1):end]   = repeat(range3, outer=n+k)
+    nothing
+end
+
