@@ -14,6 +14,6 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     nothing
   end
   opt = alg.nlsolve(loss, u0)
-  sol_prob = ODEProblem(prob.f,opt.zero,prob.domain)
+  sol_prob = ODEProblem(prob.f,opt,prob.domain)
   solve(sol_prob, alg.ode_alg;kwargs...)
 end
