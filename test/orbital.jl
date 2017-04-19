@@ -34,6 +34,7 @@ cur_bc! = (resid,sol) -> bc!_generator(resid,sol,init_val)
 
 bvp = BVProblem(f, domin, cur_bc!, y0)
 resid_f = Array(Float64, 6)
+@time sol = solve(bvp, Shooting(DP5()),force_dtmin=true,abstol=1e-13)
 @time sol = solve(bvp, Shooting(DP5(),nlsolve=Sundials.kinsol),force_dtmin=true,abstol=1e-13)
 cur_bc!(resid_f,sol)
 

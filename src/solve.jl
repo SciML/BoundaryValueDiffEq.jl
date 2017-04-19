@@ -5,12 +5,12 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
   # Convert a BVP Problem to a IVP problem.
   probIt = ODEProblem(prob.f, u0, prob.domain)
   # Form a root finding function.
-  loss = function (minimizer,boundary)
+  loss = function (minimizer,resid)
     uEltype = eltype(minimizer)
     tspan = (uEltype(prob.domain[1]),uEltype(prob.domain[2]))
     tmp_prob = ODEProblem(prob.f,minimizer,tspan)
     sol = solve(tmp_prob,alg.ode_alg;kwargs...)
-    bc(boundary,sol)
+    bc(resid,sol)
     nothing
   end
   opt = alg.nlsolve(loss, u0)
