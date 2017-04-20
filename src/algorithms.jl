@@ -5,4 +5,5 @@ immutable Shooting{T,F} <: BoundaryValueDiffEqAlgorithm
   ode_alg::T
   nlsolve::F
 end
-Shooting(ode_alg;nlsolve=NLsolve.nlsolve) = Shooting(ode_alg,nlsolve)
+DEFAULT_NLSOLVE = (loss, u0) -> (res=NLsolve.nlsolve(loss, u0);res.zero)
+Shooting(ode_alg;nlsolve=DEFAULT_NLSOLVE) = Shooting(ode_alg,nlsolve)
