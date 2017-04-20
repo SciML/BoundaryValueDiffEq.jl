@@ -1,25 +1,30 @@
+# g(x) = [x[2], -exp(x[1])]
+# y = rand(5,2)
+# mapslices(g, y, 2)
+# [ForwardDiff.jacobian(g, view(y, i, :)) for i in 1:size(y,1)]
+
 # Computing df/dy
 function fun_jac!(fun, x, y, dfdy)
     fy = z -> fun(x, z) # z is a dummy variable
-    conf = ForwardDiff.JacobianConfig{10}(y)
-    ForwardDiff.jacobian!(dfdy, fy, y, conf)
+    for i in 1:size(y,1)
+        ForwardDiff.jacobian!(view(dfdy,:,:,i), fy, view(y,i,:))
+    end
 end
 
 # Computing df/dy, df/dp
-function fun_jac(fun, x, y, p, dfdy, dfdp)
-    fp = z->fun(x, y, z) # z is a dummy variable
-    # conf = ForwardDiff.JacobianConfig{10}(p)
-    # the size of p should be small, so chunk is not needed. 
+function fun_jac!(fun, x, y, p, dfdy, dfdp)
     fun_jac!(fun, x, y, dfdy)
-    ForwardDiff.jacobian!(dfdp, fp, p) #, confp)
+    fy = z -> fun(x,z)
+    for i in 1:size(y,1)
+        fp = z->fy(y, z) # z is a dummy variable
+        ForwardDiff.jacobian!(view(dfdp,:,:,i), fp, p)
+    end
 end
 
 # Computing dbc/da, dbc/db
 function bc_jac!(bc, a, b, dbcda, dbcdb)
     fa = z -> bc(z, b)
     fb = z -> bc(a, z) # z is a dummy variable
-    # conf = ForwardDiff.JacobianConfig{10}(a) # dbcda and dbcdb are expected to be the same size.
-    # the size of a and b should be small, and chunk is not needed.
     ForwardDiff.jacobian!(dbcda, fa, a) #, conf)
     ForwardDiff.jacobian!(dbcdb, fb, b) #, conf)
 end
@@ -28,8 +33,6 @@ end
 function bc_jac!(bc, a, b, p, dbcda, dbcdb, dbcdp)
     bc_jac!(bc, a, b, dbcda, dbcdb)
     fp = z -> fun(x, y, z)
-    # conf = ForwardDiff.JacobianConfig{10}
-    # the size of p should be small, and chunk is not needed.
     ForwardDiff.jacobian!(dbcdp, fp, p)
 end
 
@@ -63,4 +66,3 @@ function construct_jacobian_indices!(i_ind, j_ind, n, m, k)
     j_ind[(end3+1):end]   = repeat(range3, outer=n+k)
     nothing
 end
-
