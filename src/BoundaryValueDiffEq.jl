@@ -11,11 +11,11 @@ type BVProblem{dType,bF,initType,F} <: AbstractBVProblem{dType,bF,F}
   domain::dType
   bc::bF
   init::initType
-  residual_prototype::initType
+  residual_size::Int
 end
 
 function BVProblem(f,domain,bc,init;residual_size=size(init,1))
-  BVProblem{eltype(domain),typeof(bc),eltype(init),typeof(f)}(f,domain,bc,init,residual_prototype)
+  BVProblem{eltype(domain),typeof(bc),eltype(init),typeof(f)}(f,domain,bc,init,residual_size)
 end
 
 include("algorithms.jl")
