@@ -4,7 +4,6 @@
     end
 end
 
-# y_m = Array{T}(m-1, n)
 @inline function eval_y_middle!(y_m, f, y, h)
     for i in 1:size(f, 1)-1
         y_m[i, :] = 1//2 * (y[i+1, :] + y[i, :]) - 1//8 * h * (f[i+1, :] - f[i, :])
@@ -19,10 +18,8 @@ end
 
 function collocation_points!(f, y_m, f_m, residual, fun!, x, y, p, h)
     eval_fun!(f, fun!, x, y, p)
-    # copy!(y_m, 1//2 * (y[2:end, :] + y[1:end-1, :]) - 1//8 * h * (f[2:end, :] - f[1:end-1, :]))
     eval_y_middle!(y_m, f, y, h)
     eval_fun!(f_m, fun!, x[1:end-1] + 1//2 * h, y_m, p)
-    # copy!(residual, y[2:end, :] - y[1:end-1, :] - h * 1//6 * (f[1:end-1, :] + f[2:end, :] + 4 * f_m))
     eval_col_residual!(residual, f, y, h, f_m)
 end
 
@@ -46,8 +43,6 @@ test_col() = begin
     p = ones(2)
     f, y_m, f_m, residual = allocate_arrays(n, m)
     collocation_points!(f, y_m, f_m, residual, fun!, x, y, p, h)
+    n,m,x,y,h,y,p,f, y_m, f_m, residual
 end
-
-# function system_jac(n, m, k, i_jac, j_jac, df_dy, df_dy_m, df_dp, df_dp_m, dbc_da, dbc_db, dbc_dp)
-
-# end
+n,m,x,y,h,y,p,f, y_m, f_m, residual = test_col()

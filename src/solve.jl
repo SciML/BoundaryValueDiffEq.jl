@@ -13,7 +13,11 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     bc(resid,sol)
     nothing
   end
-  opt = alg.nlsolve(loss, u0)
+  diffsize = prob.residual_size - size(u0,1)
+  if diffsize > 0
+    vcat(u0, zeros(eltype(u0), diffsize))
+  end
+  opt = alg.nlsolve(loss, u0)[1:end-diffsize]
   sol_prob = ODEProblem(prob.f,opt,prob.domain)
   solve(sol_prob, alg.ode_alg;kwargs...)
 end
