@@ -2,8 +2,6 @@
 function solve(prob::BVProblem, alg::Shooting; kwargs...)
   bc = prob.bc
   u0 = deepcopy(prob.u0)
-  # Convert a BVP Problem to a IVP problem.
-  probIt = ODEProblem(prob.f, u0, prob.tspan)
   # Form a root finding function.
   loss = function (minimizer,resid)
     uEltype = eltype(minimizer)
