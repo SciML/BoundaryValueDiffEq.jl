@@ -15,7 +15,7 @@ type BVProblem{dType,bF,initType,F} <: AbstractBVProblem{dType,bF,F}
 end
 
 function BVProblem(f,domain,bc,init;residual_size=size(init,1))
-  BVProblem{eltype(domain),typeof(bc),eltype(init),typeof(f)}(f,domain,bc,init,residual_size)
+    BVProblem{typeof(domain),typeof(bc),typeof(init),typeof(f)}(f,domain,bc,init,residual_size)
 end
 
 include("algorithms.jl")
