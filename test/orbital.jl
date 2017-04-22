@@ -46,7 +46,7 @@ cur_bc!(resid_f,sol)
 
 
 ### Now use the BVP solver to get closer
-bvp = BVProblem(f, tspan, cur_bc!, y0)
+bvp = BVProblem(f, cur_bc!, y0, tspan)
 @time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=false,ftol=1e-13);res.zero)),force_dtmin=true,abstol=1e-13,reltol=1e-13)
 cur_bc!(resid_f,sol)
 

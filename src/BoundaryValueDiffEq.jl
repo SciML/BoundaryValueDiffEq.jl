@@ -4,18 +4,17 @@ using DiffEqBase, OrdinaryDiffEq
 import DiffEqBase: solve
 import NLsolve
 
-abstract AbstractBVProblem{dType,bF,isinplace,F} <: DEProblem
+abstract AbstractBVProblem{uType,tType,isinplace} <: DEProblem
 
-type BVProblem{dType,bF,initType,F} <: AbstractBVProblem{dType,bF,F}
+type BVProblem{uType,tType,isinplace,F,bF} <: AbstractBVProblem{uType,tType,isinplace}
   f::F
-  domain::dType
   bc::bF
-  init::initType
-  residual_size::Int
+  u0::uType
+  tspan::Tuple{tType,tType}
 end
 
-function BVProblem(f,domain,bc,init;residual_size=size(init,1))
-    BVProblem{typeof(domain),typeof(bc),typeof(init),typeof(f)}(f,domain,bc,init,residual_size)
+function BVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
+    BVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
 end
 
 include("algorithms.jl")

@@ -13,9 +13,9 @@ function bc!(resid,sol)
   resid[2] = sol[end][1] - 1
 end
 
-domin = (0.,100.)
-init = [0.,1.]
-bvp = BVProblem(f, domin, bc!, init)
+tspan = (0.,100.)
+u0 = [0.,1.]
+bvp = BVProblem(f, bc!, u0, tspan)
 resid_f = Array(Float64, 2)
 bc!(resid_f, solve(bvp, Shooting(Tsit5())))
 @test norm(resid_f) < 1e-7
