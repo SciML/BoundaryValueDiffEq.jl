@@ -64,5 +64,5 @@ function construct_jacobian_indices!(i_ind, j_ind, n, m, k)
     j_ind[(end2j+1):end2] = j_ind[(end1+1):end2j] + (m-1)*n
     j_ind[(end2+1):end3]  = repeat(range3, outer=(m-1)*n)
     j_ind[(end3+1):end]   = repeat(range3, outer=n+k)
-    nothing
 end
+
