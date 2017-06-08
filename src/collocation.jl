@@ -5,23 +5,23 @@
 
 # ODE BVP problem system
 immutable BVPSystem{T,M,N}
-    fun!::Function
-    bc!::Function
-    x::Vector{T}
-    y::Matrix{T}
-    f::Matrix{T}
-    residual::Vector{T}
+    fun!::Function      # N -> N
+    bc!::Function       # 2 -> 2
+    x::Vector{T}        # M
+    y::Matrix{T}        # M*N
+    f::Matrix{T}        # M*N
+    residual::Matrix{T} # M*N
 end
 
 function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, N::Integer)
     M = size(x,1)
-    BVPSystem{T,M,N}(fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), Vector{T}(N))
+    BVPSystem{T,M,N}(fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), Matrix{T}(M,N))
 end
 
 # If user offers an intial guess.
 function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{T})
     M, N = size(y)
-    BVPSystem{T,M,N}(fun, bc, x, y, Matrix{T}(M,N), Vector{T}(N))
+    BVPSystem{T,M,N}(fun, bc, x, y, Matrix{T}(M,N), Matrix{T}(M,N))
 end
 
 # Auxiliary functions for evaluation
@@ -40,8 +40,8 @@ function func!(out, x, y)
 end
 
 function boundary!(residual, ua, ub)
-    residual[1] = ua[1]
-    residual[2] = ub[1]
+    residual[1, 1] = ua[1]
+    residual[end, 1] = ub[1]
 end
 
 S = BVPSystem(func!, boundary!, .5*ones(4), .5*ones(4,2));
