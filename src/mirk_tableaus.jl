@@ -3,16 +3,19 @@ immutable MIRKTableau{T<:Number}
     v::Vector{T}
     b::Vector{T}
     x::Matrix{T}
-    order::Int
+    K::Matrix{T} # Cache
 end
 
-function constructMIRK_IV{T}(::T)
+function constructMIRK_IV(T, N)
     c = [0, 1, 1//2, 3//4]
     v = [0, 1, 1//2, 27//32]
     b = [1//6, 1//6, 2//3, 0]
     x = [0      0       0 0
          0      0       0 0
          1//8   -1//8   0 0
-         3//64  -9//64  0 0]
-    MIRKTableau(c,v,b,x,3)
+         3//64  -9//64  0 0]'
+    K = Matrix{T}(N,4)
+    MIRKTableau(T.(c),T.(v),T.(b),T.(x),K)
 end
+
+constructMIRK{T}(::Type{Val{4}}, N::Integer, A::StridedVecOrMat{T}) = constructMIRK_IV(T, N)

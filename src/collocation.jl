@@ -1,10 +1,7 @@
-# N::Int
-#    Number of equations in the ODE system.
-# M::Int
-#    Number of nodes in the mesh.
-
 # ODE BVP problem system
-immutable BVPSystem{T,M,N}
+immutable BVPSystem{T}
+    M::Integer          # Number of equations in the ODE system
+    N::Integer          # Number of nodes in the mesh
     fun!::Function      # N -> N
     bc!::Function       # 2 -> 2
     x::Vector{T}        # M
@@ -13,38 +10,67 @@ immutable BVPSystem{T,M,N}
     residual::Matrix{T} # M*N
 end
 
-function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, N::Integer)
-    M = size(x,1)
-    BVPSystem{T,M,N}(fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), Matrix{T}(M,N))
+function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, M::Integer)
+    N = size(x,1)
+    BVPSystem{T}(M, N, fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), zeros(T,M,N))
 end
 
 # If user offers an intial guess.
 function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{T})
     M, N = size(y)
-    BVPSystem{T,M,N}(fun, bc, x, y, Matrix{T}(M,N), Matrix{T}(M,N))
+    BVPSystem{T}(M, N, fun, bc, x, y, Matrix{T}(M,N), zeros(T,M,N))
+end
+
+function BVPSystem{T,U}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{U})
+    G = promote_type(T,U)
+    BVPSystem(fun, bc, G.(x), G.(y))
 end
 
 # Auxiliary functions for evaluation
 @inline function eval_fun!(S::BVPSystem)
-    for i in 1:size(S.f,1)
-        S.fun!(@view(S.f[i, :]), S.x[i], @view(S.y[i,:]))
+    for i in 1:S.N
+        S.fun!(S.x[i], @view(S.y[:,i]), @view(S.f[:, i]))
     end
 end
 
-@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual, @view(S.y[1,:]), @view(S.y[end,:]))
+@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual, @view(S.y[:, 1]), @view(S.y[:, end]))
+
+function Φ!(S::BVPSystem, order::Integer)
+    M, N, residual, x, y, fun! = S.M, S.N, S.residual, S.x, S.y, S.fun!
+    TU = constructMIRK(Val{order}, M, y)
+    c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
+
+    for i in 2:N-1
+        h = x[i+1] - x[i]
+        residual[:, i] = -@view(y[:, i]) + @view(y[:, i+1])
+
+        # Update K
+        for r in 1:order
+            x_new = x[i] + c[r]*h
+            y_new = (1-v[r])*y[i] + v[r]*@view(y[:, i+1])
+            if r > 1
+                y_new += h * sum(j->X[j,r]*@view(K[:, j]), 1:r-1)
+            end
+            fun!(x_new, y_new, @view(K[:, r]))
+        end
+
+        residual[:, i] -= h * sum(j->b[j]*@view(K[:, j]), 1:order)
+    end
+    eval_bc_residual!(S)
+end
 
 # Testing function for development, please ignore.
-function func!(out, x, y)
+function func!(x, y, out)
     out[1] = y[2]
-    out[2] = -exp.(y[1])
+    out[2] = -y[1]
 end
 
 function boundary!(residual, ua, ub)
     residual[1, 1] = ua[1]
-    residual[end, 1] = ub[1]
+    residual[1, end] = ub[1]
 end
 
-S = BVPSystem(func!, boundary!, .5*ones(4), .5*ones(4,2));
+S = BVPSystem(func!, boundary!, collect(0:1//2:3), ones(2,4));
 eval_fun!(S)
 eval_bc_residual!(S)
 
