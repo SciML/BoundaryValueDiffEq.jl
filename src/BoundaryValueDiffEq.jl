@@ -2,7 +2,10 @@ __precompile__()
 
 module BoundaryValueDiffEq
 
-using DiffEqBase, OrdinaryDiffEq
+using Reexport
+@reexport using DiffEqBase
+  
+using OrdinaryDiffEq
 import DiffEqBase: solve
 import NLsolve
 
