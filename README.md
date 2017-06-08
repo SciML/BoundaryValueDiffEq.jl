@@ -7,7 +7,7 @@
 [![BoundaryValueDiffEq](http://pkg.julialang.org/badges/BoundaryValueDiffEq_0.5.svg)](http://pkg.julialang.org/?pkg=BoundaryValueDiffEq)
 [![BoundaryValueDiffEq](http://pkg.julialang.org/badges/BoundaryValueDiffEq_0.6.svg)](http://pkg.julialang.org/?pkg=BoundaryValueDiffEq)
 
-OrdinaryDiffEq.jl is a component package in the DifferentialEquations ecosystem. It holds the
+BoundaryValueDiffEq.jl is a component package in the DifferentialEquations ecosystem. It holds the
 boundary value problem solvers and utilities. While completely independent
 and usable on its own, users interested in using this
 functionality should check out [DifferentialEquations.jl](https://github.com/JuliaDiffEq/DifferentialEquations.jl).
