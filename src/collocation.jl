@@ -1,3 +1,5 @@
+using NLsolve
+
 # ODE BVP problem system
 immutable BVPSystem{T}
     M::Integer          # Number of equations in the ODE system
@@ -35,11 +37,10 @@ end
 
 @inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual, @view(S.y[:, 1]), @view(S.y[:, end]))
 
-function Φ!(S::BVPSystem, order::Integer)
-    M, N, residual, x, y, fun! = S.M, S.N, S.residual, S.x, S.y, S.fun!
+function Φ!(fun!, bc!, x, y, residual, M, N, order::Integer)
     TU = constructMIRK(Val{order}, M, y)
+    # M, N, residual, x, y, fun! = S.M, S.N, S.residual, S.x, S.y, S.fun!
     c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
-
     for i in 2:N-1
         h = x[i+1] - x[i]
         residual[:, i] = -@view(y[:, i]) + @view(y[:, i+1])
@@ -56,13 +57,13 @@ function Φ!(S::BVPSystem, order::Integer)
 
         residual[:, i] -= h * sum(j->b[j]*@view(K[:, j]), 1:order)
     end
-    eval_bc_residual!(S)
+    bc!(residual, @view(y[:, 1]), @view(y[:, end]))
 end
 
 # Testing function for development, please ignore.
 function func!(x, y, out)
     out[1] = y[2]
-    out[2] = -y[1]
+    out[2] = exp(-y[1])
 end
 
 function boundary!(residual, ua, ub)
@@ -70,19 +71,26 @@ function boundary!(residual, ua, ub)
     residual[1, end] = ub[1]
 end
 
-S = BVPSystem(func!, boundary!, collect(0:1//2:3), ones(2,4));
-eval_fun!(S)
-eval_bc_residual!(S)
+S = BVPSystem(func!, boundary!, Float64.(collect(1:5)), 2);
+# eval_fun!(S)
+# eval_bc_residual!(S)
 
 # The whole MIRK scheme
-function MIRK_scheme(S::BVPSystem, args...)
+function MIRK_scheme(S::BVPSystem, order)
     # Upper-level iteration
-    S.y = nlsolve(S.Φ!, S.y)
+    function nleq(z)
+        z = reshape(z, S.M, S.N)
+        Φ!(S.fun!, S.bc!, S.x, z, S.residual, S.M, S.N, order)
+        S.residual
+    end
+    nlsolve(not_in_place(nleq), vec(S.y))
     # Lower-levle iteration
-    continuousSolution = CMIRK(S.y)
-    eval_fun!(S)
-    residual = norm(D(continuousSolution)(S.y) - S.f)
+    # continuousSolution = CMIRK(S.y)
+    # eval_fun!(S)
+    # residual = norm(D(continuousSolution)(S.y) - S.f)
 end
+
+sol = MIRK_scheme(S)
 
 #=
 [1]: J. Kierzenka, L. F. Shampine, "A BVP Solver Based on Residual
