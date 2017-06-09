@@ -1,96 +1,65 @@
-using NLsolve
-
-# ODE BVP problem system
-immutable BVPSystem{T}
-    M::Integer          # Number of equations in the ODE system
-    N::Integer          # Number of nodes in the mesh
-    fun!::Function      # N -> N
-    bc!::Function       # 2 -> 2
-    x::Vector{T}        # M
-    y::Matrix{T}        # M*N
-    f::Matrix{T}        # M*N
-    residual::Matrix{T} # M*N
-end
-
-function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, M::Integer)
+function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, M::Integer, order)
     N = size(x,1)
-    BVPSystem{T}(M, N, fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), zeros(T,M,N))
+    BVPSystem{T}(order, M, N, fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), zeros(T,M,N))
 end
 
 # If user offers an intial guess.
-function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{T})
+function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{T}, order)
     M, N = size(y)
-    BVPSystem{T}(M, N, fun, bc, x, y, Matrix{T}(M,N), zeros(T,M,N))
+    BVPSystem{T}(order, M, N, fun, bc, x, y, Matrix{T}(M,N), zeros(T,M,N))
 end
 
-function BVPSystem{T,U}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{U})
+function BVPSystem{T,U}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{U}, order)
     G = promote_type(T,U)
-    BVPSystem(fun, bc, G.(x), G.(y))
+    BVPSystem(fun, bc, G.(x), G.(y), order)
 end
 
 # Auxiliary functions for evaluation
-@inline function eval_fun!(S::BVPSystem)
+@inline function eval_fun!{T}(S::BVPSystem{T})
     for i in 1:S.N
         S.fun!(S.x[i], @view(S.y[:,i]), @view(S.f[:, i]))
     end
 end
 
-@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual, @view(S.y[:, 1]), @view(S.y[:, end]))
+@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual, @view(S.y[:, 1]),
+                                                    @view(S.y[:, end]))
 
-function Φ!(fun!, bc!, x, y, residual, M, N, order::Integer)
-    TU = constructMIRK(Val{order}, M, y)
-    # M, N, residual, x, y, fun! = S.M, S.N, S.residual, S.x, S.y, S.fun!
+function Φ!{T}(S::BVPSystem{T})
+    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
+    TU = constructMIRK(S)
     c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
-    for i in 2:N-1
+    for i in 1:N-2
         h = x[i+1] - x[i]
-        residual[:, i] = -@view(y[:, i]) + @view(y[:, i+1])
-
         # Update K
         for r in 1:order
-            x_new = x[i] + c[r]*h
-            y_new = (1-v[r])*y[i] + v[r]*@view(y[:, i+1])
+            x_new::T = x[i] + c[r]*h
+            y_new::Vector{T} = (1-v[r])*y[i] + v[r]*@view(y[:, i+1])
             if r > 1
-                y_new += h * sum(j->X[j,r]*@view(K[:, j]), 1:r-1)
+                y_new += h * sum(j->X[r,j]*@view(K[:, j]), 1:r-1)
             end
             fun!(x_new, y_new, @view(K[:, r]))
         end
-
-        residual[:, i] -= h * sum(j->b[j]*@view(K[:, j]), 1:order)
+        # Update residual
+        residual[:, i+1] = -@view(y[:, i]) + @view(y[:, i+1]) - h * sum(j->b[j]*@view(K[:, j]), 1:order)
     end
-    bc!(residual, @view(y[:, 1]), @view(y[:, end]))
+    eval_bc_residual!(S)
 end
-
-# Testing function for development, please ignore.
-function func!(x, y, out)
-    out[1] = y[2]
-    out[2] = exp(-y[1])
-end
-
-function boundary!(residual, ua, ub)
-    residual[1, 1] = ua[1]
-    residual[1, end] = ub[1]
-end
-
-S = BVPSystem(func!, boundary!, Float64.(collect(1:5)), 2);
-# eval_fun!(S)
-# eval_bc_residual!(S)
 
 # The whole MIRK scheme
-function MIRK_scheme(S::BVPSystem, order)
+function MIRK_scheme{T}(S::BVPSystem{T})
     # Upper-level iteration
     function nleq(z)
         z = reshape(z, S.M, S.N)
-        Φ!(S.fun!, S.bc!, S.x, z, S.residual, S.M, S.N, order)
+        copy!(S.y, z)
+        Φ!(S)
         S.residual
     end
-    nlsolve(not_in_place(nleq), vec(S.y))
+    NLsolve.nlsolve(NLsolve.not_in_place(nleq), vec(S.y))
     # Lower-levle iteration
     # continuousSolution = CMIRK(S.y)
     # eval_fun!(S)
     # residual = norm(D(continuousSolution)(S.y) - S.f)
 end
-
-sol = MIRK_scheme(S)
 
 #=
 [1]: J. Kierzenka, L. F. Shampine, "A BVP Solver Based on Residual
