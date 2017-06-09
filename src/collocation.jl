@@ -33,7 +33,7 @@ function Φ!{T}(S::BVPSystem{T})
         # Update K
         for r in 1:order
             x_new::T = x[i] + c[r]*h
-            y_new::Vector{T} = (1-v[r])*y[i] + v[r]*@view(y[:, i+1])
+            y_new::Vector{T} = (one(T)-v[r])*@view(y[:, i]) + v[r]*@view(y[:, i+1])
             if r > 1
                 y_new += h * sum(j->X[r,j]*@view(K[:, j]), 1:r-1)
             end
