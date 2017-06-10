@@ -4,7 +4,7 @@ using GR
 # Testing function for development, please ignore.
 function func!(x, y, out)
     out[1] = y[2]
-    out[2] = 0
+    out[2] = -y[1]
 end
 
 function boundary!(residual, ua, ub)
@@ -19,5 +19,7 @@ S = BVPSystem(func!, boundary!, collect(linspace(0,5,n)),
 
 eval_fun!(S)
 Φ!(S)
+display(S.residual)
 MIRK_scheme(S)
-plot(S.x,S.y[1, :])
+display(S.y)
+plot(S.x, S.y[1, :])
