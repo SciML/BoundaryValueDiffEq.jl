@@ -28,7 +28,7 @@ function Φ!{T}(S::BVPSystem{T})
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
     TU = constructMIRK(S)
     c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
-    for i in 1:N-2
+    for i in 2:N-1
         h = x[i+1] - x[i]
         # Update K
         for r in 1:order
@@ -40,7 +40,7 @@ function Φ!{T}(S::BVPSystem{T})
             fun!(x_new, y_new, @view(K[:, r]))
         end
         # Update residual
-        residual[:, i+1] = -@view(y[:, i]) + @view(y[:, i+1]) - h * sum(j->b[j]*@view(K[:, j]), 1:order)
+        residual[:, i] = @view(y[:, i+1]) - @view(y[:, i]) - h * sum(j->b[j]*@view(K[:, j]), 1:order)
     end
     eval_bc_residual!(S)
 end

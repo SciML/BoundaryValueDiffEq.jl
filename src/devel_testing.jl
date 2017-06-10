@@ -1,5 +1,6 @@
 include("/home/arch/GitHub/BoundaryValueDiffEq.jl/src/BoundaryValueDiffEq.jl")
 import BoundaryValueDiffEq:BVPSystem, eval_fun!, Φ!, MIRK_scheme
+using GR
 # Testing function for development, please ignore.
 function func!(x, y, out)
     out[1] = y[2]
@@ -18,4 +19,5 @@ S = BVPSystem(func!, boundary!, collect(linspace(0,5,n)),
 
 eval_fun!(S)
 Φ!(S)
-# sol = MIRK_scheme(S)
+MIRK_scheme(S)
+plot(S.x,S.y[1, :])
