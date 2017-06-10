@@ -35,9 +35,9 @@ immutable BVPSystem{T}  # Order of the system
     order::Int          # The order of MIRK method
     M::Int              # Number of equations in the ODE system
     N::Int              # Number of nodes in the mesh
-    fun!::Function      # N -> N
+    fun!::Function      # M -> M
     bc!::Function       # 2 -> 2
-    x::Vector{T}        # M
+    x::Vector{T}        # N
     y::Matrix{T}        # M*N
     f::Matrix{T}        # M*N
     residual::Matrix{T} # M*N
