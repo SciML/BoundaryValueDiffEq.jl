@@ -20,13 +20,13 @@ function solve(prob::BVProblem, alg::MIRK; kwargs...)
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),alg.dt))
     x = collect(linspace(prob.tspan..., n+1))
     S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg.order)
-    S.y[:, 1] = prob.u0
+    S.y[1] = prob.u0
     # Upper-level iteration
     loss = function (z)
-        z = reshape(z, S.M, S.N)
+        z = nest_vector(z, S.M, S.N)
         copy!(S.y, z)
         Φ!(S)
-        S.residual
+        flatten_vector(S.residual)
     end
     alg.nlsolve(loss, S.y, S.M, S.N)
 end

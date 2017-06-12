@@ -13,9 +13,30 @@ immutable MIRK{T,F} <: BoundaryValueDiffEqAlgorithm
     dt::T
     nlsolve::F
 end
+
+# Auxiliary functions for working with vector of vectors
+function vector_alloc(T, M, N)
+    v = Vector{Vector{T}}(N)
+    for i in eachindex(v)
+        v[i] = Vector{T}(M)
+    end
+    v
+end
+
+flatten_vector{T}(V::Vector{Vector{T}}) = vcat(V...)
+
+function nest_vector{T}(v::Vector{T}, M, N)
+    V = vector_alloc(T, M, N)
+    for i in eachindex(V)
+        copy!(V[i], v[(M*(i-1))+1:(M*i)])
+    end
+    V
+end
+
 function DEFAULT_NLSOLVE_MIRK(loss, u0, M, N)
-    res = NLsolve.nlsolve(NLsolve.not_in_place(loss), vec(u0))
+    res = NLsolve.nlsolve(NLsolve.not_in_place(loss), flatten_vector(u0))
     opt = res.zero
-    reshape(opt, M, N)
+    nest_vector(opt, M, N)
 end
 MIRK(order,dt;nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,dt,nlsolve)
+

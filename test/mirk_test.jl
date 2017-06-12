@@ -12,8 +12,8 @@ function func_1!(x, y, out)
 end
 
 function boundary!(residual, ua, ub)
-    residual[1] = ua[1]-5
-    residual[2] = ub[1]
+    residual[1] = ua[1][1]-5
+    residual[2] = ub[end][1]
 end
 
 y = vcat(collect(linspace(5,0,n))', zeros(n)')

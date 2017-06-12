@@ -1,15 +1,17 @@
+# Dispatches on BVPSystem
 function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, M::Integer, order)
     N = size(x,1)
-    BVPSystem{T}(order, M, N, fun, bc, x, Matrix{T}(M,N), Matrix{T}(M,N), zeros(T,M,N))
+    BVPSystem{T}(order, M, N, fun, bc, x, vector_alloc(T, M, N), vector_alloc(T, M, N), vector_alloc(T, M, N))
 end
 
-# If user offers an intial guess.
-function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{T}, order)
+# If user offers an intial guess
+function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Vector{Vector{T}}, order)
     M, N = size(y)
-    BVPSystem{T}(order, M, N, fun, bc, x, y, Matrix{T}(M,N), zeros(T,M,N))
+    BVPSystem{T}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
 end
 
-function BVPSystem{T,U}(fun::Function, bc::Function, x::Vector{T}, y::Matrix{U}, order)
+# If the type is not homogeneous
+function BVPSystem{T,U}(fun::Function, bc::Function, x::Vector{T}, y::Vector{Vector{U}}, order)
     G = promote_type(T,U)
     BVPSystem(fun, bc, G.(x), G.(y), order)
 end
@@ -17,12 +19,11 @@ end
 # Auxiliary functions for evaluation
 @inline function eval_fun!{T}(S::BVPSystem{T})
     for i in 1:S.N
-        S.fun!(S.x[i], @view(S.y[:,i]), @view(S.f[:, i]))
+        S.fun!(S.x[i], S.y[i], S.f[i])
     end
 end
 
-@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(@view(S.residual[:,end]), @view(S.y[:, 1]),
-                                                    @view(S.y[:, end]))
+@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual[end], S.y, S.y)
 
 function Φ!{T}(S::BVPSystem{T})
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
@@ -32,33 +33,17 @@ function Φ!{T}(S::BVPSystem{T})
         h = x[i+1] - x[i]
         # Update K
         for r in 1:order
-            x_new::T = x[i] + c[r]*h
-            y_new::Vector{T} = (one(T)-v[r])*@view(y[:, i]) + v[r]*@view(y[:, i+1])
+            x_new = x[i] + c[r]*h
+            y_new = (one(T)-v[r])*y[i] + v[r]*y[i+1]
             if r > 1
                 y_new += h * sum(j->X[r,j]*@view(K[:, j]), 1:r-1)
             end
             fun!(x_new, y_new, @view(K[:, r]))
         end
         # Update residual
-        residual[:, i] = @view(y[:, i+1]) - @view(y[:, i]) - h * sum(j->b[j]*@view(K[:, j]), 1:order)
+        residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*@view(K[:, j]), 1:order)
     end
     eval_bc_residual!(S)
-end
-
-# The whole MIRK scheme
-function MIRK_scheme{T}(S::BVPSystem{T})
-    # Upper-level iteration
-    function nleq(z)
-        z = reshape(z, S.M, S.N)
-        copy!(S.y, z)
-        Φ!(S)
-        S.residual
-    end
-    NLsolve.nlsolve(NLsolve.not_in_place(nleq), vec(S.y))
-    # Lower-levle iteration
-    # continuousSolution = CMIRK(S.y)
-    # eval_fun!(S)
-    # residual = norm(D(continuousSolution)(S.y) - S.f)
 end
 
 #=

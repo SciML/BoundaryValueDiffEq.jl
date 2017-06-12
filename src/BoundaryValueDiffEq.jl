@@ -38,18 +38,19 @@ immutable BVPSystem{T}  # Order of the system
     fun!::Function      # M -> M
     bc!::Function       # 2 -> 2
     x::Vector{T}        # N
-    y::Matrix{T}        # M*N
-    f::Matrix{T}        # M*N
-    residual::Matrix{T} # M*N
+    y::Vector{Vector{T}}        # M*N
+    f::Vector{Vector{T}}        # M*N
+    residual::Vector{Vector{T}} # M*N
 end
 
 include("algorithms.jl")
-include("jacobian.jl")
-include("solve.jl")
+# include("jacobian.jl")
 include("mirk_tableaus.jl")
 include("collocation.jl")
+include("solve.jl")
 
 export BVProblem
 export Shooting
+export MIRK
 
 end # module
