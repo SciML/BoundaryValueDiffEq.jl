@@ -28,5 +28,6 @@ function solve(prob::BVProblem, alg::MIRK; kwargs...)
         Φ!(S)
         flatten_vector(S.residual)
     end
-    alg.nlsolve(loss, S.y, S.M, S.N)
+    opt = alg.nlsolve(loss, flatten_vector(S.y))
+    nest_vector(opt, S.M, S.N)
 end

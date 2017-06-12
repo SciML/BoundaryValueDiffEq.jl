@@ -9,7 +9,7 @@ using OrdinaryDiffEq
 import DiffEqBase: solve
 import NLsolve
 
-abstract AbstractBVProblem{uType,tType,isinplace} <: DEProblem
+abstract AbstractBVProblem{uType,tType,isinplace} <: AbstractODEProblem{uType,tType,isinplace}
 
 type BVProblem{uType,tType,isinplace,F,bF} <: AbstractBVProblem{uType,tType,isinplace}
   f::F

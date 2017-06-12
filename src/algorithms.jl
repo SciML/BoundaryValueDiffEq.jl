@@ -33,10 +33,9 @@ function nest_vector{T}(v::Vector{T}, M, N)
     V
 end
 
-function DEFAULT_NLSOLVE_MIRK(loss, u0, M, N)
-    res = NLsolve.nlsolve(NLsolve.not_in_place(loss), flatten_vector(u0))
+function DEFAULT_NLSOLVE_MIRK(loss, u0)
+    res = NLsolve.nlsolve(NLsolve.not_in_place(loss), u0)
     opt = res.zero
-    nest_vector(opt, M, N)
 end
-MIRK(order,dt;nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,dt,nlsolve)
+MIRK(order;dt=.2,nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,dt,nlsolve)
 
