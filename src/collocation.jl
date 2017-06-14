@@ -23,7 +23,7 @@ end
     end
 end
 
-@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual[end], S.y, S.y)
+@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual[end], S.y)
 
 function Φ!{T}(S::BVPSystem{T})
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
