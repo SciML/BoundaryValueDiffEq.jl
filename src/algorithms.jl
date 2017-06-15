@@ -1,6 +1,6 @@
 # Algorithms
-abstract AbstractBoundaryValueAlgorithm # This will eventually move to DiffEqBase.jl
-abstract BoundaryValueDiffEqAlgorithm <: AbstractBoundaryValueAlgorithm
+abstract type AbstractBoundaryValueAlgorithm end # This will eventually move to DiffEqBase.jl
+abstract type BoundaryValueDiffEqAlgorithm <: AbstractBoundaryValueAlgorithm end
 immutable Shooting{T,F} <: BoundaryValueDiffEqAlgorithm
   ode_alg::T
   nlsolve::F
