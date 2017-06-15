@@ -35,7 +35,7 @@ end
 
 function DEFAULT_NLSOLVE_MIRK(loss, u0)
     res = NLsolve.nlsolve(NLsolve.not_in_place(loss), u0)
-    opt = res.zero
+    (res.zero, res.f_converged)
 end
 MIRK(order;dt=.2,nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,dt,nlsolve)
 

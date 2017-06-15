@@ -29,5 +29,7 @@ function solve(prob::BVProblem, alg::MIRK; kwargs...)
         flatten_vector(S.residual)
     end
     opt = alg.nlsolve(loss, flatten_vector(S.y))
-    nest_vector(opt, S.M, S.N)
+    retcode = opt[2] ? :Coverage : :Diverge
+    y = nest_vector(opt[1], S.M, S.N)
+    DiffEqBase.build_solution(prob, alg, x, y, retcode = retcode)
 end
