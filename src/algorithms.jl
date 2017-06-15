@@ -18,7 +18,7 @@ end
 function vector_alloc(T, M, N)
     v = Vector{Vector{T}}(N)
     for i in eachindex(v)
-        v[i] = Vector{T}(M)
+        v[i] = zeros(T, M)
     end
     v
 end
