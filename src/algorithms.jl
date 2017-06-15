@@ -5,7 +5,7 @@ immutable Shooting{T,F} <: BoundaryValueDiffEqAlgorithm
   ode_alg::T
   nlsolve::F
 end
-DEFAULT_NLSOLVE = (loss, u0) -> (res=NLsolve.nlsolve(loss, u0);res.zero)
+DEFAULT_NLSOLVE = (loss, u0) -> (res=NLsolve.nlsolve(loss, u0);(res.zero, res.f_converged))
 Shooting(ode_alg;nlsolve=DEFAULT_NLSOLVE) = Shooting(ode_alg,nlsolve)
 
 immutable MIRK{T,F} <: BoundaryValueDiffEqAlgorithm

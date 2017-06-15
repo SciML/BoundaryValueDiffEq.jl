@@ -1,19 +1,20 @@
 # The Solve Function
 function solve(prob::BVProblem, alg::Shooting; kwargs...)
-  bc = prob.bc
-  u0 = deepcopy(prob.u0)
-  # Form a root finding function.
-  loss = function (minimizer,resid)
-    uEltype = eltype(minimizer)
-    tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
-    tmp_prob = ODEProblem(prob.f,minimizer,tspan)
-    sol = solve(tmp_prob,alg.ode_alg;kwargs...)
-    bc(resid,sol)
-    nothing
-  end
-  opt = alg.nlsolve(loss, u0)
-  sol_prob = ODEProblem(prob.f,opt,prob.tspan)
-  solve(sol_prob, alg.ode_alg;kwargs...)
+    bc = prob.bc
+    u0 = deepcopy(prob.u0)
+    # Form a root finding function.
+    loss = function (minimizer,resid)
+        uEltype = eltype(minimizer)
+        tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
+        tmp_prob = ODEProblem(prob.f,minimizer,tspan)
+        sol = solve(tmp_prob,alg.ode_alg;kwargs...)
+        bc(resid,sol)
+        nothing
+    end
+    opt = alg.nlsolve(loss, u0)
+    sol_prob = ODEProblem(prob.f,opt[1],prob.tspan)
+    sol = solve(sol_prob, alg.ode_alg;kwargs...)
+    sol.retcode = opt[2] ? :Success : :Failure
 end
 
 function solve(prob::BVProblem, alg::MIRK; kwargs...)
@@ -29,7 +30,7 @@ function solve(prob::BVProblem, alg::MIRK; kwargs...)
         flatten_vector(S.residual)
     end
     opt = alg.nlsolve(loss, flatten_vector(S.y))
-    retcode = opt[2] ? :Coverage : :Diverge
+    retcode = opt[2] ? :Success : :Failure
     y = nest_vector(opt[1], S.M, S.N)
     DiffEqBase.build_solution(prob, alg, x, y, retcode = retcode)
 end
