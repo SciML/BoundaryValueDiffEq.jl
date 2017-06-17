@@ -37,10 +37,10 @@ affineTol = 1e-9
 dts = 1./2.^(5:-1:1)
 order = 4
 
-println("MIRK")
+println("Collocation method: MIRK")
 println("Affineness Test")
 prob = probArr[1]
-solve(prob, MIRK(order), dt=0.2)
+sol = solve(prob, MIRK(order), dt=0.2)
 @test norm(diff(map(x->x[1], sol.u)) + 0.2, Inf) + abs(sol[1][1]-5) < affineTol
 
 println("Convergence Test on Linear")

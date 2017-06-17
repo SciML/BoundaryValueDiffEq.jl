@@ -2,6 +2,9 @@ using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq
 using Base.Test
 
+include("mirk_convergence_tests.jl")
+
+println("Shooting method")
 function f(t, y, du)
   (x, v) = y
   du[1] = v

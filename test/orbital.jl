@@ -36,7 +36,7 @@ function bc!_generator(resid,sol,init_val)
   resid[6] = sol[end][3] - init_val[6]
 end
 cur_bc! = (resid,sol) -> bc!_generator(resid,sol,init_val)
-resid_f = Array(Float64, 6)
+resid_f = Array{Float64}(6)
 
 ### Test the IVP Near the true solution
 ### Should be small
