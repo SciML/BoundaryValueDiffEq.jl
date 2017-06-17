@@ -15,6 +15,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol_prob = ODEProblem(prob.f,opt[1],prob.tspan)
     sol = solve(sol_prob, alg.ode_alg;kwargs...)
     sol.retcode = opt[2] ? :Success : :Failure
+    sol
 end
 
 function solve(prob::BVProblem, alg::MIRK; kwargs...)
