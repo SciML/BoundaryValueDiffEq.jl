@@ -8,10 +8,9 @@ end
 DEFAULT_NLSOLVE = (loss, u0) -> (res=NLsolve.nlsolve(loss, u0);(res.zero, res.f_converged))
 Shooting(ode_alg;nlsolve=DEFAULT_NLSOLVE) = Shooting(ode_alg,nlsolve)
 
-immutable MIRK{T,F} <: BoundaryValueDiffEqAlgorithm
+immutable MIRK{T} <: BoundaryValueDiffEqAlgorithm
     order::Int
-    dt::T
-    nlsolve::F
+    nlsolve::T
 end
 
 # Auxiliary functions for working with vector of vectors
@@ -37,5 +36,5 @@ function DEFAULT_NLSOLVE_MIRK(loss, u0)
     res = NLsolve.nlsolve(NLsolve.not_in_place(loss), u0)
     (res.zero, res.f_converged)
 end
-MIRK(order;dt=.2,nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,dt,nlsolve)
+MIRK(order;nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,nlsolve)
 

@@ -18,8 +18,8 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol
 end
 
-function solve(prob::BVProblem, alg::MIRK; kwargs...)
-    n = Int(cld((prob.tspan[2]-prob.tspan[1]),alg.dt))
+function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
+    n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
     S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg.order)
     S.y[1] = prob.u0
