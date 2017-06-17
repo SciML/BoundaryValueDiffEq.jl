@@ -16,7 +16,7 @@ end
 tspan = (0.,100.)
 u0 = [0.,1.]
 bvp = BVProblem(f, bc!, u0, tspan)
-resid_f = Array(Float64, 2)
+resid_f = Array{Float64}(2)
 bc!(resid_f, solve(bvp, Shooting(Tsit5())))
 @test norm(resid_f) < 1e-7
 
