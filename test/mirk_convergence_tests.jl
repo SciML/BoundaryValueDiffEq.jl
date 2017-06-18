@@ -1,6 +1,3 @@
-using Base.Test
-using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools
-
 # First order test
 function func_1!(x, y, du)
     du[1] = y[2]
@@ -37,7 +34,7 @@ affineTol = 1e-9
 dts = 1./2.^(5:-1:1)
 order = 4
 
-println("Collocation method: MIRK")
+println("Collocation method (MIRK)")
 println("Affineness Test")
 prob = probArr[1]
 sol = solve(prob, MIRK(order), dt=0.2)
