@@ -1,3 +1,7 @@
+using BoundaryValueDiffEq
+using DiffEqBase, DiffEqDevTools
+using Base.Test
+
 # First order test
 function func_1!(x, y, du)
     du[1] = y[2]

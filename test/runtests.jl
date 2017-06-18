@@ -1,6 +1,11 @@
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
 using Base.Test
+using NLsolve, Sundials
 
-@time @testset "Shooting Method Tests" begin include("shooting_tests.jl") end
+@time @testset "Shooting Method Tests" begin
+include("shooting_tests.jl")
+include("orbital.jl")
+end
+
 @time @testset "Collocation Method (MIRK) Tests" begin include("mirk_convergence_tests.jl") end
