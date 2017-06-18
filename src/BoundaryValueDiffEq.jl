@@ -43,6 +43,7 @@ immutable BVPSystem{T}
     residual::Vector{Vector{T}} # N{M}
 end
 
+include("vector_auxiliary.jl")
 include("algorithms.jl")
 # include("jacobian.jl")
 include("mirk_tableaus.jl")
