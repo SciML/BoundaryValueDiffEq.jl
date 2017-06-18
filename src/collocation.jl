@@ -1,19 +1,14 @@
 # Dispatches on BVPSystem
-function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, M::Integer, order)
+function BVPSystem{T}(fun, bc, x::Vector{T}, M::Integer, order)
     N = size(x,1)
-    BVPSystem{T}(order, M, N, fun, bc, x, vector_alloc(T, M, N), vector_alloc(T, M, N), vector_alloc(T, M, N))
+    y = vector_alloc(T, M, N)
+    BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
 end
 
 # If user offers an intial guess
-function BVPSystem{T}(fun::Function, bc::Function, x::Vector{T}, y::Vector{Vector{T}}, order)
+function BVPSystem{T,U<:AbstractArray}(fun, bc, x::Vector{T}, y::Vector{U}, order)
     M, N = size(y)
-    BVPSystem{T}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
-end
-
-# If the type is not homogeneous
-function BVPSystem{T,U}(fun::Function, bc::Function, x::Vector{T}, y::Vector{Vector{U}}, order)
-    G = promote_type(T,U)
-    BVPSystem(fun, bc, G.(x), G.(y), order)
+    BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
 end
 
 # Auxiliary functions for evaluation

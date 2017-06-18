@@ -7,7 +7,7 @@ function vector_alloc(T, M, N)
     v
 end
 
-flatten_vector{T}(V::Vector{Vector{T}}) = vcat(V...)
+flatten_vector{T<:AbstractArray}(V::Vector{T}) = vcat(V...)
 
 function nest_vector{T}(v::Vector{T}, M, N)
     V = vector_alloc(T, M, N)
