@@ -31,18 +31,19 @@ immutable MIRKTableau{T}
 end
 
 # ODE BVP problem system
-immutable BVPSystem{T}  # Order of the system
-    order::Int          # The order of MIRK method
-    M::Int              # Number of equations in the ODE system
-    N::Int              # Number of nodes in the mesh
-    fun!::Function      # M -> M
-    bc!::Function       # 2 -> 2
-    x::Vector{T}        # N
-    y::Vector{Vector{T}}        # M*N
-    f::Vector{Vector{T}}        # M*N
-    residual::Vector{Vector{T}} # M*N
+immutable BVPSystem{T,U<:AbstractArray}
+    order::Int                  # The order of MIRK method
+    M::Int                      # Number of equations in the ODE system
+    N::Int                      # Number of nodes in the mesh
+    fun!                        # M -> M
+    bc!                         # 2 -> 2
+    x::Vector{T}                # N
+    y::Vector{U}                # N{M}
+    f::Vector{U}                # N{M}
+    residual::Vector{U}         # N{M}
 end
 
+include("vector_auxiliary.jl")
 include("algorithms.jl")
 # include("jacobian.jl")
 include("mirk_tableaus.jl")
