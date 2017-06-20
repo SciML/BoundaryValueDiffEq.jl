@@ -31,12 +31,12 @@ function Φ!{T}(S::BVPSystem{T})
             x_new = x[i] + c[r]*h
             y_new = (one(T)-v[r])*y[i] + v[r]*y[i+1]
             if r > 1
-                y_new += h * sum(j->X[r,j]*@view(K[:, j]), 1:r-1)
+                y_new += h * sum(j->X[r,j]*K[j], 1:r-1)
             end
-            fun!(x_new, y_new, @view(K[:, r]))
+            fun!(x_new, y_new, K[r])
         end
         # Update residual
-        residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*@view(K[:, j]), 1:order)
+        residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
 end
