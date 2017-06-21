@@ -6,8 +6,8 @@ function constructMIRK_IV{T}(S::BVPSystem{T})
          0      0       0 0
          1//8   -1//8   0 0
          3//64  -9//64  0 0]
-    K = Matrix{T}(S.M,4)
-    MIRKTableau{T}(T.(c),T.(v),T.(b),T.(x),K)
+    K = vector_alloc(T, S.M, 4)
+    MIRKTableau(T.(c),T.(v),T.(b),T.(x),K)
 end
 
 constructMIRK{T}(S::BVPSystem{T}) = MIRK_dispatcher(S, Val{S.order})

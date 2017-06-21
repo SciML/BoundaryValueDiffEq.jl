@@ -22,12 +22,12 @@ function BVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
     BVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
 end
 
-immutable MIRKTableau{T}
+immutable MIRKTableau{T, U<:AbstractArray}
     c::Vector{T}
     v::Vector{T}
     b::Vector{T}
     x::Matrix{T}
-    K::Matrix{T} # Cache
+    K::Vector{U} # Cache
 end
 
 # ODE BVP problem system
