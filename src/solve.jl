@@ -25,14 +25,17 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
     S.y[1] = prob.u0
     tableau = constructMIRK(S)
     # Upper-level iteration
-    loss = function (z)
-        z = nest_vector(z, S.M, S.N)
-        copy!(S.y, z)
+    buffer = vector_alloc(eltype(S.y[1]), S.M, S.N)     # Vector of Vectors
+    vec_y = Array{eltype(S.y[1])}(S.M*S.N)              # Vector
+    loss = function (minimizer, resid)
+        nest_vector!(S.y, minimizer)
         Φ!(S, tableau)
-        flatten_vector(S.residual)
+        flatten_vector!(resid, S.residual)
+        nothing
     end
-    opt = alg.nlsolve(loss, flatten_vector(S.y))
+    flatten_vector!(vec_y, S.y)
+    opt = alg.nlsolve(loss, vec_y)
+    nest_vector!(S.y, opt[1])
     retcode = opt[2] ? :Success : :Failure
-    y = nest_vector(opt[1], S.M, S.N)
-    DiffEqBase.build_solution(prob, alg, x, y, retcode = retcode)
+    DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
