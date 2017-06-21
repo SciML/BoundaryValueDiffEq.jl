@@ -23,11 +23,12 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
     x = collect(linspace(prob.tspan..., n+1))
     S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg.order)
     S.y[1] = prob.u0
+    tableau = constructMIRK(S)
     # Upper-level iteration
     loss = function (z)
         z = nest_vector(z, S.M, S.N)
         copy!(S.y, z)
-        Φ!(S)
+        Φ!(S, tableau)
         flatten_vector(S.residual)
     end
     opt = alg.nlsolve(loss, flatten_vector(S.y))

@@ -20,9 +20,8 @@ end
 
 @inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual[end], S.y)
 
-function Φ!{T}(S::BVPSystem{T})
+function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau)
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
-    TU = constructMIRK(S)
     c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
     for i in 1:N-1
         h = x[i+1] - x[i]
