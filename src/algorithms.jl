@@ -13,9 +13,5 @@ immutable MIRK{T} <: BoundaryValueDiffEqAlgorithm
     nlsolve::T
 end
 
-function DEFAULT_NLSOLVE_MIRK(loss, u0)
-    res = NLsolve.nlsolve(NLsolve.not_in_place(loss), u0)
-    (res.zero, res.f_converged)
-end
-MIRK(order;nlsolve=DEFAULT_NLSOLVE_MIRK) = MIRK(order,nlsolve)
+MIRK(order;nlsolve=DEFAULT_NLSOLVE) = MIRK(order,nlsolve)
 
