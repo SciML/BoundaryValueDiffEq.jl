@@ -34,12 +34,16 @@ function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau)
                 for j in 1:r-1
                     inc += X[r, j] * K[j]
                 end
-                y_new += h * inc                
+                y_new += h * inc
             end
             fun!(x_new, y_new, K[r])
         end
         # Update residual
-        residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
+        slope = zero(T)
+        for j in 1:order
+            slope += b[j]*K[j]
+        end
+        residual[i] = y[i+1] - y[i] - h * slope
     end
     eval_bc_residual!(S)
 end
