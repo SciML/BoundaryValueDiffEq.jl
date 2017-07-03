@@ -13,7 +13,7 @@
 # J[r, i] = ∂f/∂yᵢ at r stage
 
 # Computing df/dy
-fun_jac(du, fun, x, yi) = ForwardDiff.jacobian((du, u)->fun(x, u, du), du, yi)
+fun_jac!(out, fun!, x, du, yi) = ForwardDiff.jacobian!(out, (du, u)->fun!(x, u, du), du, yi)
 
 # Computing Jacobian of boundary condition
 # bc_jac(bc, u, residual) = ForwardDiff.jacobian(bc, residual, u)

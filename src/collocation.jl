@@ -22,7 +22,7 @@ end
 
 function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau)
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
-    c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
+    c, v, b, X, K, D = TU.c, TU.v, TU.b, TU.x, TU.K, TU.D
     for i in 1:N-1
         h = x[i+1] - x[i]
         # Update K
@@ -37,6 +37,7 @@ function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau)
                 y_new += h * inc
             end
             fun!(x_new, y_new, K[r])
+            fun_jac!(D[r], fun!, x_new, y_new, K[r])
         end
         # Update residual
         slope = zero(T)

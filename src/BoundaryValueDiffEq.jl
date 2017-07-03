@@ -7,7 +7,7 @@ using Reexport
 
 using OrdinaryDiffEq
 import DiffEqBase: solve
-import NLsolve
+import NLsolve, ForwardDiff
 
 abstract type AbstractBVProblem{uType,tType,isinplace} <: AbstractODEProblem{uType,tType,isinplace} end
 
@@ -22,13 +22,13 @@ function BVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
     BVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
 end
 
-immutable MIRKTableau{T, U<:AbstractArray}
+immutable MIRKTableau{T, U<:AbstractArray, G<:AbstractMatrix}
     c::Vector{T}
     v::Vector{T}
     b::Vector{T}
     x::Matrix{T}
     K::Vector{U} # Cache
-    D::Vector{U} # Derivative
+    D::Vector{G} # Derivative
 end
 
 # ODE BVP problem system
@@ -46,7 +46,7 @@ end
 
 include("vector_auxiliary.jl")
 include("algorithms.jl")
-# include("jacobian.jl")
+include("jacobian.jl")
 include("mirk_tableaus.jl")
 include("collocation.jl")
 include("solve.jl")
