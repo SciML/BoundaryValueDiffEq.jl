@@ -4,7 +4,7 @@ module BoundaryValueDiffEq
 
 using Reexport
 @reexport using DiffEqBase
-  
+
 using OrdinaryDiffEq
 import DiffEqBase: solve
 import NLsolve
@@ -28,6 +28,7 @@ immutable MIRKTableau{T, U<:AbstractArray}
     b::Vector{T}
     x::Matrix{T}
     K::Vector{U} # Cache
+    D::Vector{U} # Derivative
 end
 
 # ODE BVP problem system
