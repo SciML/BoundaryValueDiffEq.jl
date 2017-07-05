@@ -21,15 +21,15 @@ end
 function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
-    S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg.order)
+    S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg_order(alg))
     S.y[1] = prob.u0
     tableau = constructMIRK(S)
+    cache = alg_cache(alg, S)
     # Upper-level iteration
-    buffer = vector_alloc(eltype(S.y[1]), S.M, S.N)     # Vector of Vectors
     vec_y = Array{eltype(S.y[1])}(S.M*S.N)              # Vector
     loss = function (minimizer, resid)
         nest_vector!(S.y, minimizer)
-        Φ!(S, tableau)
+        Φ!(S, tableau, cache)
         flatten_vector!(resid, S.residual)
         nothing
     end

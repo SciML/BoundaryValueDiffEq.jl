@@ -12,23 +12,21 @@ import NLsolve, ForwardDiff
 abstract type AbstractBVProblem{uType,tType,isinplace} <: AbstractODEProblem{uType,tType,isinplace} end
 
 type BVProblem{uType,tType,isinplace,F,bF} <: AbstractBVProblem{uType,tType,isinplace}
-  f::F
-  bc::bF
-  u0::uType
-  tspan::Tuple{tType,tType}
+    f::F
+    bc::bF
+    u0::uType
+    tspan::Tuple{tType,tType}
 end
 
 function BVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
     BVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
 end
 
-immutable MIRKTableau{T, U<:AbstractArray, G<:AbstractMatrix}
+immutable MIRKTableau{T}
     c::Vector{T}
     v::Vector{T}
     b::Vector{T}
     x::Matrix{T}
-    K::Vector{U} # Cache
-    D::Vector{G} # Derivative
 end
 
 # ODE BVP problem system
@@ -46,13 +44,15 @@ end
 
 include("vector_auxiliary.jl")
 include("algorithms.jl")
+include("alg_utils.jl")
 include("jacobian.jl")
 include("mirk_tableaus.jl")
+include("cache.jl")
 include("collocation.jl")
 include("solve.jl")
 
 export BVProblem
 export Shooting
-export MIRK
+export MIRK4
 
 end # module
