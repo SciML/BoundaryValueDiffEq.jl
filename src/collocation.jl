@@ -12,39 +12,37 @@ function BVPSystem{T,U<:AbstractArray}(fun, bc, x::Vector{T}, y::Vector{U}, orde
 end
 
 # Auxiliary functions for evaluation
-@inline function eval_fun!{T}(S::BVPSystem{T})
+@inline function eval_fun!(S::BVPSystem)
     for i in 1:S.N
         S.fun!(S.x[i], S.y[i], S.f[i])
     end
 end
 
-@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual[end], S.y)
+@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y)
 
-function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau)
+@inline function update_K!(S::BVPSystem, cache::MIRK4Cache, TU::MIRKTableau, i, h)
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
-    c, v, b, X, K, D = TU.c, TU.v, TU.b, TU.x, TU.K, TU.D
+    c, v, b, X = TU.c, TU.v, TU.b, TU.x
+    K, J = cache.K, cache.J
+    for r in 1:order
+        x_new = x[i] + c[r]*h
+        y_new = (1-v[r])*y[i] + v[r]*y[i+1]
+        if r > 1
+            y_new += h * sum(j->X[r, j]*K[j], 1:r-1)
+        end
+        fun!(x_new, y_new, K[r])
+        # fun_jac!(J[r], fun!, x_new, y_new, K[r])
+    end
+end
+
+function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
+    order, residual, N, y, x = S.order, S.residual, S.N, S.y, S.x
+    K, b = cache.K, TU.b
     for i in 1:N-1
         h = x[i+1] - x[i]
-        # Update K
-        for r in 1:order
-            x_new = x[i] + c[r]*h
-            y_new = (one(T)-v[r])*y[i] + v[r]*y[i+1]
-            if r > 1
-                inc = zero(T)
-                for j in 1:r-1
-                    inc += X[r, j] * K[j]
-                end
-                y_new += h * inc
-            end
-            fun!(x_new, y_new, K[r])
-            fun_jac!(D[r], fun!, x_new, y_new, K[r])
-        end
+        update_K!(S, cache, TU, i, h)
         # Update residual
-        slope = zero(T)
-        for j in 1:order
-            slope += b[j]*K[j]
-        end
-        residual[i] = y[i+1] - y[i] - h * slope
+        residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
 end
