@@ -2,13 +2,13 @@
 function BVPSystem{T}(fun, bc, x::Vector{T}, M::Integer, order)
     N = size(x,1)
     y = vector_alloc(T, M, N)
-    BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
+    BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # If user offers an intial guess
 function BVPSystem{T,U<:AbstractArray}(fun, bc, x::Vector{T}, y::Vector{U}, order)
     M, N = size(y)
-    BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
+    BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Auxiliary functions for evaluation
@@ -21,17 +21,24 @@ end
 @inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y)
 
 @inline function update_K!(S::BVPSystem, cache::MIRK4Cache, TU::MIRKTableau, i, h)
-    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
+    M, N, residual, x, y, fun!, order, y_new = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order, S.tmp
     c, v, b, X = TU.c, TU.v, TU.b, TU.x
-    K, J = cache.K, cache.J
-    for r in 1:order
+    K, LJ, RJ = cache.K, cache.LJ, cache.RJ
+
+    function Kᵣ!(Kr, y, y₁, r)
         x_new = x[i] + c[r]*h
-        y_new = (1-v[r])*y[i] + v[r]*y[i+1]
+        y_new = (1-v[r])*y + v[r]*y₁
         if r > 1
-            y_new += h * sum(j->X[r, j]*K[j], 1:r-1)
+          y_new += h * sum(j->X[r, j]*K[j], 1:r-1)
         end
-        fun!(x_new, y_new, K[r])
-        # fun_jac!(J[r], fun!, x_new, y_new, K[r])
+        fun!(x_new, y_new, Kr)
+    end
+
+    for r in 1:order
+        ForwardDiff.jacobian!(LJ[r], (Kr, y)->Kᵣ!(Kr, y, y[i+1], r), K[r], y[i])
+        ForwardDiff.jacobian!(LJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
+        # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
+        # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
     end
 end
 
