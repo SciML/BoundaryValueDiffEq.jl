@@ -23,7 +23,7 @@ end
 @inline function update_K!(S::BVPSystem, cache::MIRK4Cache, TU::MIRKTableau, i, h)
     M, N, residual, x, y, fun!, order, y_new = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order, S.tmp
     c, v, b, X = TU.c, TU.v, TU.b, TU.x
-    K, LJ, RJ = cache.K, cache.LJ, cache.RJ
+    K, LJ, RJ, Jacobian = cache.K, cache.LJ, cache.RJ, cache.Jacobian
 
     function Kᵣ!(Kr, y, y₁, r)
         x_new = x[i] + c[r]*h
@@ -34,12 +34,24 @@ end
         fun!(x_new, y_new, Kr)
     end
 
+    # jcg = ForwardDiff.JacobianConfig((Kr,y)->Kᵣ!(Kr, y, y[1], 1), K[1], y[i])
+
+    fill!(LJ[end], 0)
+    fill!(RJ[end], 0)
+
     for r in 1:order
+        # Kᵣ!(K[r], y[i], y[i+1], r)
         ForwardDiff.jacobian!(LJ[r], (Kr, y)->Kᵣ!(Kr, y, y[i+1], r), K[r], y[i])
-        ForwardDiff.jacobian!(LJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
+        ForwardDiff.jacobian!(RJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
+        scale!(-b[r]*h, LJ[r])
+        scale!(-b[r]*h, RJ[r])
         # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
         # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
     end
+    sum!(LJ[5], @view(LJ[1:4]))
+    sum!(RJ[5], @view(RJ[1:4]))
+    LJ[5] -= I
+    RJ[5] += I
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
