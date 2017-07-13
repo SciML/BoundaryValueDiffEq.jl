@@ -36,22 +36,33 @@ end
 
     # jcg = ForwardDiff.JacobianConfig((Kr,y)->Kᵣ!(Kr, y, y[1], 1), K[1], y[i])
 
-    fill!(LJ[end], 0)
+    fill!(LJ[end], 0) # zero the jacobian strips for each iteration
     fill!(RJ[end], 0)
-
+    # L is the left strip, and R is the right strip
+    # Lᵢ = -I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂yᵢ)
+    # Rᵢ = I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
+    # From the paper "A Runge-Kutta Type Boundary Value ODE Solver with Defect Control"
+    # by W.H. Enright and Paul Muir
     for r in 1:order
         # Kᵣ!(K[r], y[i], y[i+1], r)
+        # ∂Kᵣ/∂yᵢ
         ForwardDiff.jacobian!(LJ[r], (Kr, y)->Kᵣ!(Kr, y, y[i+1], r), K[r], y[i])
+        # ∂Kᵣ/∂y_{i+1}
         ForwardDiff.jacobian!(RJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
+        # h*bᵣ*(∂Kᵣ/∂yᵢ)
         scale!(-b[r]*h, LJ[r])
+        # hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
         scale!(-b[r]*h, RJ[r])
+        # sum them up
+        LJ[end] += LJ[r]
+        RJ[end] += RJ[r]
         # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
         # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
     end
-    sum!(LJ[5], @view(LJ[1:4]))
-    sum!(RJ[5], @view(RJ[1:4]))
-    LJ[5] -= I
-    RJ[5] += I
+    # Lᵢ = -I - ...
+    # Rᵢ = I - ...
+    LJ[end] -= I
+    RJ[end] += I
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
