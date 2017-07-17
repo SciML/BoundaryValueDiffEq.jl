@@ -25,6 +25,10 @@ end
     c, v, b, X = TU.c, TU.v, TU.b, TU.x
     K, LJ, RJ, Jacobian = cache.K, cache.LJ, cache.RJ, cache.Jacobian
 
+    indexDiag = (M*(i-1)+1):M*i
+    LJ_stripe = @view Jacobian[indexDiag, indexDiag]
+    RJ_stripe = @view Jacobian[indexDiag, indexDiag+M]
+
     function Kᵣ!(Kr, y, y₁, r)
         x_new = x[i] + c[r]*h
         y_new = (1-v[r])*y + v[r]*y₁
@@ -36,8 +40,8 @@ end
 
     # jcg = ForwardDiff.JacobianConfig((Kr,y)->Kᵣ!(Kr, y, y[1], 1), K[1], y[i])
 
-    fill!(LJ[end], 0) # zero the jacobian strips for each iteration
-    fill!(RJ[end], 0)
+    fill!(LJ_stripe, 0) # zero the jacobian strips for each iteration
+    fill!(RJ_stripe, 0)
     # L is the left strip, and R is the right strip
     # Lᵢ = -I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂yᵢ)
     # Rᵢ = I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
@@ -54,18 +58,15 @@ end
         # hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
         scale!(-b[r]*h, RJ[r])
         # sum them up
-        LJ[end] += LJ[r]
-        RJ[end] += RJ[r]
+        LJ_stripe += LJ[r]
+        RJ_stripe += RJ[r]
         # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
         # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
     end
     # Lᵢ = -I - ...
     # Rᵢ = I - ...
-    LJ[end] -= I
-    RJ[end] += I
-    indexDiag = M*(i-1)+1:M*i
-    Jacobian[indexDiag, indexDiag] = LJ
-    Jacobian[indexDiag, indexDiag+M] = LJ
+    LJ_stripe -= I
+    RJ_stripe += I
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
