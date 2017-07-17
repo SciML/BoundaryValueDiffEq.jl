@@ -63,6 +63,9 @@ end
     # Rᵢ = I - ...
     LJ[end] -= I
     RJ[end] += I
+    indexDiag = M*(i-1)+1:M*i
+    Jacobian[indexDiag, indexDiag] = LJ
+    Jacobian[indexDiag, indexDiag+M] = LJ
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
