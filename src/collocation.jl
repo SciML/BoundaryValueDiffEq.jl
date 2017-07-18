@@ -40,8 +40,6 @@ end
 
     # jcg = ForwardDiff.JacobianConfig((Kr,y)->Kᵣ!(Kr, y, y[1], 1), K[1], y[i])
 
-    fill!(LJ_stripe, 0) # zero the jacobian strips for each iteration
-    fill!(RJ_stripe, 0)
     # L is the left strip, and R is the right strip
     # Lᵢ = -I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂yᵢ)
     # Rᵢ = I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
@@ -50,7 +48,7 @@ end
     for r in 1:order
         # Kᵣ!(K[r], y[i], y[i+1], r)
         # ∂Kᵣ/∂yᵢ
-        ForwardDiff.jacobian!(LJ[r], (Kr, y)->Kᵣ!(Kr, y, y[i+1], r), K[r], y[i])
+        ForwardDiff.jacobian!(LJ[r], (Kr, y₀)->Kᵣ!(Kr, y₀, y[i+1], r), K[r], y[i])
         # ∂Kᵣ/∂y_{i+1}
         ForwardDiff.jacobian!(RJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
         # h*bᵣ*(∂Kᵣ/∂yᵢ)
