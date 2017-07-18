@@ -26,8 +26,8 @@ end
     K, LJ, RJ, Jacobian = cache.K, cache.LJ, cache.RJ, cache.Jacobian
 
     indexDiag = (M*(i-1)+1):M*i
-    LJ_stripe = @view Jacobian[indexDiag, indexDiag]
-    RJ_stripe = @view Jacobian[indexDiag, indexDiag+M]
+    # Left strip of the Jacobian is `Jacobian[indexDiag, indexDiag]`
+    # Right strip of the Jacobian is `Jacobian[indexDiag, indexDiag+M]`
 
     function Kᵣ!(Kr, y, y₁, r)
         x_new = x[i] + c[r]*h
@@ -56,15 +56,15 @@ end
         # hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
         scale!(-b[r]*h, RJ[r])
         # sum them up
-        LJ_stripe += LJ[r]
-        RJ_stripe += RJ[r]
+        Jacobian[indexDiag, indexDiag] += LJ[r]
+        Jacobian[indexDiag, indexDiag+M] += RJ[r]
         # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
         # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
     end
     # Lᵢ = -I - ...
     # Rᵢ = I - ...
-    LJ_stripe -= I
-    RJ_stripe += I
+    Jacobian[indexDiag, indexDiag] -= I
+    Jacobian[indexDiag, indexDiag+M] += I
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
@@ -77,6 +77,7 @@ function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
+    display(cache.Jacobian)
 end
 
 #=
