@@ -31,11 +31,20 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
         nest_vector!(S.y, minimizer)
         Φ!(S, tableau, cache)
         flatten_vector!(resid, S.residual)
+        # reorder the Jacobian matrix such that it is banded
+        tmp_last = resid[end]
+        for i in (length(resid)-1):-1:1
+            resid[i+1] = resid[i]
+        end
+        resid[1], resid[end] = resid[end], tmp_last
         nothing
     end
     flatten_vector!(vec_y, S.y)
-    opt = alg.nlsolve(loss, vec_y)
-    nest_vector!(S.y, opt[1])
-    retcode = opt[2] ? :Success : :Failure
-    DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
+
+    opt = alg.nlsolve(loss, vec_y; linear_solver=:Band, jac_upper=S.M, jac_lower=S.M)
+    nest_vector!(S.y, opt)
+    DiffEqBase.build_solution(prob, alg, x, S.y)
+    # nest_vector!(S.y, opt[1])
+    # retcode = opt[2] ? :Success : :Failure
+    # DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end

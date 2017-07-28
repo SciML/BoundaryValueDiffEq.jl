@@ -7,7 +7,7 @@ using Reexport
 
 using OrdinaryDiffEq
 import DiffEqBase: solve
-import NLsolve, ForwardDiff
+import NLsolve, ForwardDiff, Sundials
 
 abstract type AbstractBVProblem{uType,tType,isinplace} <: AbstractODEProblem{uType,tType,isinplace} end
 

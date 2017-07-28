@@ -46,25 +46,23 @@ end
     # From the paper "A Runge-Kutta Type Boundary Value ODE Solver with Defect Control"
     # by W.H. Enright and Paul Muir
     for r in 1:order
-        # Kᵣ!(K[r], y[i], y[i+1], r)
+        Kᵣ!(K[r], y[i], y[i+1], r)
         # ∂Kᵣ/∂yᵢ
-        ForwardDiff.jacobian!(LJ[r], (Kr, y₀)->Kᵣ!(Kr, y₀, y[i+1], r), K[r], y[i])
+        ## ForwardDiff.jacobian!(LJ[r], (Kr, y₀)->Kᵣ!(Kr, y₀, y[i+1], r), K[r], y[i])
         # ∂Kᵣ/∂y_{i+1}
-        ForwardDiff.jacobian!(RJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
+        ## ForwardDiff.jacobian!(RJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
         # h*bᵣ*(∂Kᵣ/∂yᵢ)
-        scale!(-b[r]*h, LJ[r])
+        ## scale!(-b[r]*h, LJ[r])
         # hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
-        scale!(-b[r]*h, RJ[r])
+        ## scale!(-b[r]*h, RJ[r])
         # sum them up
-        Jacobian[indexDiag, indexDiag] += LJ[r]
-        Jacobian[indexDiag, indexDiag+M] += RJ[r]
-        # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
-        # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
+        ## Jacobian[indexDiag, indexDiag] += LJ[r]
+        ## Jacobian[indexDiag, indexDiag+M] += RJ[r]
     end
     # Lᵢ = -I - ...
     # Rᵢ = I - ...
-    Jacobian[indexDiag, indexDiag] -= I
-    Jacobian[indexDiag, indexDiag+M] += I
+    ## Jacobian[indexDiag, indexDiag] -= I
+    ## Jacobian[indexDiag, indexDiag+M] += I
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
@@ -77,7 +75,6 @@ function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
-    display(cache.Jacobian)
 end
 
 #=
