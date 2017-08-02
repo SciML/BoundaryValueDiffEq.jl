@@ -31,6 +31,12 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
         nest_vector!(S.y, minimizer)
         Φ!(S, tableau, cache)
         flatten_vector!(resid, S.residual)
+        # reorder the Jacobian matrix such that it is banded
+        tmp_last = resid[end]
+        for i in (length(resid)-1):-1:1
+            resid[i+1] = resid[i]
+        end
+        resid[1], resid[end] = resid[end], tmp_last
         nothing
     end
     flatten_vector!(vec_y, S.y)
