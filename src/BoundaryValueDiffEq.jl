@@ -22,7 +22,7 @@ function BVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
     BVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
 end
 
-immutable MIRKTableau{T}
+struct MIRKTableau{T}
     c::Vector{T}
     v::Vector{T}
     b::Vector{T}
@@ -30,7 +30,7 @@ immutable MIRKTableau{T}
 end
 
 # ODE BVP problem system
-immutable BVPSystem{T,U<:AbstractArray}
+mutable struct BVPSystem{T,U<:AbstractArray}
     order::Int                  # The order of MIRK method
     M::Int                      # Number of equations in the ODE system
     N::Int                      # Number of nodes in the mesh
