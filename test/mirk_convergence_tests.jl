@@ -41,10 +41,10 @@ order = 4
 println("Collocation method (MIRK)")
 println("Affineness Test")
 prob = probArr[1]
-sol = solve(prob, MIRK4(), dt=0.2)
+sol = solve(prob, GeneralMIRK4(), dt=0.2)
 @test norm(diff(map(x->x[1], sol.u)) + 0.2, Inf) + abs(sol[1][1]-5) < affineTol
 
 println("Convergence Test on Linear")
 prob = probArr[2]
-sim = test_convergence(dts,prob,MIRK4())
+sim = test_convergence(dts,prob,GeneralMIRK4())
 @test abs(sim.𝒪est[:final]-order) < testTol

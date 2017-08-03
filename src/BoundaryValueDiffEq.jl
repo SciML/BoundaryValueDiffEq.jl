@@ -11,7 +11,7 @@ import NLsolve, ForwardDiff
 
 abstract type AbstractBVProblem{uType,tType,isinplace} <: AbstractODEProblem{uType,tType,isinplace} end
 
-type BVProblem{uType,tType,isinplace,F,bF} <: AbstractBVProblem{uType,tType,isinplace}
+struct BVProblem{uType,tType,isinplace,F,bF} <: AbstractBVProblem{uType,tType,isinplace}
     f::F
     bc::bF
     u0::uType
@@ -20,6 +20,17 @@ end
 
 function BVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
     BVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
+end
+
+struct TwoPointBVProblem{uType,tType,isinplace,F,bF} <: AbstractBVProblem{uType,tType,isinplace}
+    f::F
+    bc::bF
+    u0::uType
+    tspan::Tuple{tType,tType}
+end
+
+function TwoPointBVProblem(f,bc,u0,tspan; iip = DiffEqBase.isinplace(f,3))
+    TwoPointBVProblem{typeof(u0),eltype(tspan),iip,typeof(f),typeof(bc)}(f,bc,u0,tspan)
 end
 
 struct MIRKTableau{T}
@@ -54,6 +65,6 @@ include("solve.jl")
 
 export BVProblem
 export Shooting
-export MIRK4
+export MIRK4, GeneralMIRK4
 
 end # module

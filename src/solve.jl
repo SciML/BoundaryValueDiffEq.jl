@@ -18,7 +18,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol
 end
 
-function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
+function solve(prob::BVProblem, alg::GeneralMIRK; dt=0.0, kwargs...)
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
     S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg_order(alg))
@@ -29,14 +29,8 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
     vec_y = Array{eltype(S.y[1])}(S.M*S.N)              # Vector
     loss = function (minimizer, resid)
         nest_vector!(S.y, minimizer)
-        Φ!(S, tableau, cache)
+        general_Φ!(S, tableau, cache)
         flatten_vector!(resid, S.residual)
-        # reorder the Jacobian matrix such that it is banded
-        tmp_last = resid[end]
-        for i in (length(resid)-1):-1:1
-            resid[i+1] = resid[i]
-        end
-        resid[1], resid[end] = resid[end], tmp_last
         nothing
     end
     flatten_vector!(vec_y, S.y)
@@ -45,3 +39,4 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
     retcode = opt[2] ? :Success : :Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
+
