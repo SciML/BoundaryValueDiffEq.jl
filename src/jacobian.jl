@@ -1,19 +1,24 @@
-# The Jacobian matrix has a most bloack diagonal structure
-# [L₁ R₁ 0 ... ... ... ...
+# The Jacobian matrix has a most block diagonal structure
+# [B₀ 0  0 ... ... ... ...
+#  L₁ R₁ 0 ... ... ... ...
 #  0  L₂ R₂ 0 ... ... ...
 #  . . . . . . . . . . . .
 #  0 ... ... ... Lₙ₋₁ Rₙ₋₁
-#  0 ... ... Bₙ 0 ... ...
-#  0 ... B₁ ... 0 ... ...]
+#  0 ... ...  0 ... ... Bₙ]
 # where Bᵢ = ∂g₁/∂yᵢ, Lᵢ = ∂ϕᵢ/∂yᵢ and Rᵢ ∂ϕᵢ/∂y_{i+1}
 # Lᵢ = -I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂yᵢ)
 # Rᵢ = I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
 # where ∂Kᵣ/∂yᵢ = J[r,i] ((1-vᵣ)I + hᵢ∑(xᵣⱼ*∂Kⱼ/∂yᵢ, (j, 1, r-1)))
 # ∂Kᵣ/∂y_{i+1} = J[r,i+1] (vᵣI + hᵢ∑(xᵣⱼ*∂Kⱼ/∂y_{i+1}, (j, 1, r-1)))
 # J[r, i] = ∂f/∂yᵢ at r stage
+# This file will compute the Jacobian of the MIRK scheme
+# from the tableau and the `f(x,y,dy)`, since the residual
+# function itself is not automatic differentiable.
 
 # Computing df/dy
 fun_jac!(out, fun!, x, du, yi) = ForwardDiff.jacobian!(out, (du, u)->fun!(x, u, du), du, yi)
+
+# ∂K∂y
 
 # Computing Jacobian of boundary condition
 # bc_jac(bc, u, residual) = ForwardDiff.jacobian(bc, residual, u)

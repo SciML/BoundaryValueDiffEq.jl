@@ -18,16 +18,17 @@ end
     end
 end
 
-@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y)
+@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y)
+@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y[1], S.y[end])
 
 @inline function update_K!(S::BVPSystem, cache::MIRK4Cache, TU::MIRKTableau, i, h)
     M, N, residual, x, y, fun!, order, y_new = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order, S.tmp
     c, v, b, X = TU.c, TU.v, TU.b, TU.x
     K, LJ, RJ, Jacobian = cache.K, cache.LJ, cache.RJ, cache.Jacobian
 
-    indexDiag = (M*(i-1)+1):M*i
-    # Left strip of the Jacobian is `Jacobian[indexDiag, indexDiag]`
-    # Right strip of the Jacobian is `Jacobian[indexDiag, indexDiag+M]`
+    index = (M*(i-1)+2):(M*i+1)
+    Lindex = (M*(i-1)+1):(M*i)
+    Rindex = (M*(i-1)+1+M):(M*i+M)
 
     function Kᵣ!(Kr, y, y₁, r)
         x_new = x[i] + c[r]*h
@@ -56,20 +57,22 @@ end
         # hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
         scale!(-b[r]*h, RJ[r])
         # sum them up
-        Jacobian[indexDiag, indexDiag] += LJ[r]
-        Jacobian[indexDiag, indexDiag+M] += RJ[r]
+        Jacobian[index,Lindex] += LJ[r]
+        Jacobian[index,Rindex] += RJ[r]
         # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
         # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
     end
     # Lᵢ = -I - ...
     # Rᵢ = I - ...
-    Jacobian[indexDiag, indexDiag] -= I
-    Jacobian[indexDiag, indexDiag+M] += I
+    Jacobian[index,Lindex] -= I
+    Jacobian[index,Rindex] += I
 end
 
 function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
     order, residual, N, y, x = S.order, S.residual, S.N, S.y, S.x
     K, b = cache.K, TU.b
+    ForwardDiff.jacobian!(@view(cache.Jacobian[1:S.M, 1:S.M]),                     (x,y)->S.bc!(x,y,S.y[1]),   residual[1],   S.y[1])
+    ForwardDiff.jacobian!(@view(cache.Jacobian[(end-S.M+1):end, (end-S.M+1):end]), (x,y)->S.bc!(x,S.y[end],y), residual[end], S.y[end])
     for i in 1:N-1
         h = x[i+1] - x[i]
         update_K!(S, cache, TU, i, h)
@@ -77,6 +80,8 @@ function Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
+    cache.Jacobian |> display
+    fill!(cache.Jacobian, 0)
 end
 
 
@@ -102,7 +107,7 @@ function general_Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCac
         # Update residual
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
-    eval_bc_residual!(S)
+    general_eval_bc_residual!(S)
 end
 
 #=

@@ -14,7 +14,7 @@ Shooting(ode_alg;nlsolve=DEFAULT_NLSOLVE) = Shooting(ode_alg,nlsolve)
 struct GeneralMIRK4 <: GeneralMIRK
     nlsolve
 end
-struct MIRK4 <: GeneralMIRK
+struct MIRK4 <: MIRK
     nlsolve
 end
 GeneralMIRK4(;nlsolve=DEFAULT_NLSOLVE) = GeneralMIRK4(nlsolve)
