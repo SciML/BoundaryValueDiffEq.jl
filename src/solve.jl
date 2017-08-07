@@ -18,7 +18,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol
 end
 
-function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
+function solve(prob::TwoPointBVProblem, alg::MIRK; dt=0.0, kwargs...)
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
     S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg_order(alg))
@@ -27,22 +27,36 @@ function solve(prob::BVProblem, alg::MIRK; dt=0.0, kwargs...)
     cache = alg_cache(alg, S)
     # Upper-level iteration
     vec_y = Array{eltype(S.y[1])}(S.M*S.N)              # Vector
-    loss = function (minimizer, resid)
-        nest_vector!(S.y, minimizer)
-        Φ!(S, tableau, cache)
-        flatten_vector!(resid, S.residual)
+    reorder! = function (resid)
         # reorder the Jacobian matrix such that it is banded
         tmp_last = resid[end]
         for i in (length(resid)-1):-1:1
             resid[i+1] = resid[i]
         end
         resid[1], resid[end] = resid[end], tmp_last
+    end        
+    loss = function (minimizer, resid, jacobian)
+        nest_vector!(S.y, minimizer)
+        auto_diff_Φ!(S, tableau, cache)
+        copy!(jacobian, cache.Jacobian)
+        flatten_vector!(resid, S.residual)
+        # reorder!(resid)
+        fill!(cache.Jacobian, 0)
         nothing
     end
 
+    # code for debugging use
+    J = similar(cache.Jacobian)
+    tmp = similar(J)
+    NLsolve.DifferentiableMultivariateFunction((x,y)->loss(x,y,tmp)).g!(10*ones(vec_y), J)
+
     flatten_vector!(vec_y, S.y)
-    opt = alg.nlsolve(loss, vec_y)
+    # opt = alg.nlsolve(NLsolve.only_fg!(loss), vec_y)
+    opt = alg.nlsolve((x,y)->loss(x,y,tmp), vec_y)
     nest_vector!(S.y, opt[1])
+
+    # code for debugging use
+    display(J)
 
     retcode = opt[2] ? :Success : :Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
