@@ -1,12 +1,12 @@
 # Dispatches on BVPSystem
-function BVPSystem{T}(fun, bc, x::Vector{T}, M::Integer, order)
+function BVPSystem(fun, bc, x::Vector{T}, M::Integer, order) where T
     N = size(x,1)
     y = vector_alloc(T, M, N)
     BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # If user offers an intial guess
-function BVPSystem{T,U<:AbstractArray}(fun, bc, x::Vector{T}, y::Vector{U}, order)
+function BVPSystem(fun, bc, x::Vector{T}, y::Vector{U}, order) where {T,U<:AbstractArray}
     M, N = size(y)
     BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
@@ -105,7 +105,7 @@ end
     end
 end
 
-function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache)
+function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where T
     M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
     K, b = cache.K, TU.b
     c, v, X = TU.c, TU.v, TU.x

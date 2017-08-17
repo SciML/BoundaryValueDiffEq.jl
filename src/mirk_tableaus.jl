@@ -1,4 +1,4 @@
-function constructMIRK_IV{T,U}(S::BVPSystem{T,U})
+function constructMIRK_IV(S::BVPSystem{T,U}) where {T,U}
     c = [0, 1, 1//2, 3//4]
     v = [0, 1, 1//2, 27//32]
     b = [1//6, 1//6, 2//3, 0]

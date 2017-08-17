@@ -21,5 +21,5 @@ struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
     K::kType
 end
 
-alg_cache{T,U}(alg::Union{GeneralMIRK4,MIRK4}, S::BVPSystem{T,U}) = MIRK4GeneralCache([U(S.M) for i in 1:4])
+alg_cache(alg::Union{GeneralMIRK4,MIRK4}, S::BVPSystem{T,U}) where {T,U} = MIRK4GeneralCache([U(S.M) for i in 1:4])
 
