@@ -45,7 +45,7 @@ resid_f = Array{Float64}(6)
 # sol = solve(prob,DP5(),abstol=1e-13,reltol=1e-13)
 # cur_bc!(resid_f,sol)
 
-TestTol = 0.03
+TestTol = 0.04
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
