@@ -4,3 +4,4 @@ OrdinaryDiffEq
 NLsolve
 Sundials
 DiffEqDiffTools
+BandedMatrices
