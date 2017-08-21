@@ -21,4 +21,3 @@ function nest_vector!{T<:AbstractArray}(dest::Vector{T}, src::T)
         copy!(dest[i], src[(M*(i-1))+1:(M*i)])
     end
 end
-

@@ -2,107 +2,119 @@
 function BVPSystem{T}(fun, bc, x::Vector{T}, M::Integer, order)
     N = size(x,1)
     y = vector_alloc(T, M, N)
-    BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
+    BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # If user offers an intial guess
 function BVPSystem{T,U<:AbstractArray}(fun, bc, x::Vector{T}, y::Vector{U}, order)
     M, N = size(y)
-    BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
+    BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Auxiliary functions for evaluation
-@inline function eval_fun!{T}(S::BVPSystem{T})
+@inline function eval_fun!(S::BVPSystem)
     for i in 1:S.N
         S.fun!(S.x[i], S.y[i], S.f[i])
     end
 end
 
-@inline eval_bc_residual!{T}(S::BVPSystem{T}) = S.bc!(S.residual[end], S.y)
+@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y)
+@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y[1], S.y[end])
 
-function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau)
-    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
-    c, v, b, X, K = TU.c, TU.v, TU.b, TU.x, TU.K
+#=
+@inline function banded_update_K!(S::BVPSystem, cache::AbstractMIRKCache, TU::MIRKTableau, i, h)
+    M, N, residual, x, y, fun!, order, y_new = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order, S.tmp
+    c, v, b, X = TU.c, TU.v, TU.b, TU.x
+    ## K, LJ, RJ, Jacobian = cache.K, cache.LJ, cache.RJ, cache.Jacobian
+    K = cache.K
+
+    ## index = (M*(i-1)+2):(M*i+1)
+    ## Lindex = (M*(i-1)+1):(M*i)
+    ## Rindex = (M*(i-1)+1+M):(M*i+M)
+
+    function Kᵣ!(Kr, y, y₁, r)
+        x_new = x[i] + c[r]*h
+        y_new = (1-v[r])*y + v[r]*y₁
+        if r > 1
+          y_new += h * sum(j->X[r, j]*K[j], 1:r-1)
+        end
+        fun!(x_new, y_new, Kr)
+    end
+
+    # L is the left strip, and R is the right strip
+    # Lᵢ = -I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂yᵢ)
+    # Rᵢ = I - hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
+    # From the paper "A Runge-Kutta Type Boundary Value ODE Solver with Defect Control"
+    # by W.H. Enright and Paul Muir
+    for r in 1:order
+        Kᵣ!(K[r], y[i], y[i+1], r)
+        # ∂Kᵣ/∂yᵢ
+        ### ForwardDiff.jacobian!(LJ[r], (Kr, y₀)->Kᵣ!(Kr, y₀, y[i+1], r), K[r], y[i])
+        # ∂Kᵣ/∂y_{i+1}
+        ## ForwardDiff.jacobian!(RJ[r], (Kr, y₁)->Kᵣ!(Kr, y[i], y₁, r), K[r], y[i+1])
+        # h*bᵣ*(∂Kᵣ/∂yᵢ)
+        ## scale!(-b[r]*h, LJ[r])
+        # hᵢ*Σᵣbᵣ*(∂Kᵣ/∂y_{i+1})
+        ## scale!(-b[r]*h, RJ[r])
+        # sum them up
+        ## Jacobian[index,Lindex] += LJ[r]
+        ## Jacobian[index,Rindex] += RJ[r]
+        # fun_jac!(LJ[r], fun!, x_new, y_new, K[r])
+        # fun_jac!(RJ[r], fun!, x_new, y_new, K[r])
+    end
+    # Lᵢ = -I - ...
+    # Rᵢ = I - ...
+    ## Jacobian[index,Lindex] -= I
+    ## Jacobian[index,Rindex] += I
+end
+
+function banded_Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
+    order, residual, N, y, x = S.order, S.residual, S.N, S.y, S.x
+    K, b = cache.K, TU.b
     for i in 1:N-1
         h = x[i+1] - x[i]
-        # Update K
-        for r in 1:order
-            x_new = x[i] + c[r]*h
-            y_new = (one(T)-v[r])*y[i] + v[r]*y[i+1]
-            if r > 1
-                inc = zero(T)
-                for j in 1:r-1
-                    inc += X[r, j] * K[j]
-                end
-                y_new += h * inc                
-            end
-            fun!(x_new, y_new, K[r])
-        end
+        banded_update_K!(S, cache, TU, i, h)
         # Update residual
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
+    #=
+    ForwardDiff.jacobian!(@view(cache.Jacobian[1:S.M, 1:S.M]),                     (x,y)->S.bc!(x,y,S.y[1]),   residual[1],   S.y[1])
+    ForwardDiff.jacobian!(@view(cache.Jacobian[(end-S.M+1):end, (end-S.M+1):end]), (x,y)->S.bc!(x,S.y[end],y), residual[end], S.y[end])
+    display(cache.Jacobian)
+    =#
 end
-
-#=
-[1]: J. Kierzenka, L. F. Shampine, "A BVP Solver Based on Residual
-Control and the Maltab PSE", ACM Trans. Math. Softw., Vol. 27, Number
-3, pp. 299-316, 2001.
-
-But this implementation may don't use it.
 =#
 
-#=
-@inline function eval_y_middle!(y_m, f, y, h)
-    for i in 1:size(f, 1)-1
-        y_m[i, :] = 1//2 * (y[i+1, :] + y[i, :]) - 1//8 * h * (f[i+1, :] - f[i, :])
+@inline function update_K!(S::BVPSystem, cache::AbstractMIRKCache, TU::MIRKTableau, i, h)
+    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
+    K, b = cache.K, TU.b
+    c, v, X = TU.c, TU.v, TU.x
+
+    function Kᵣ!(Kr, y, y₁, r)
+        x_new = x[i] + c[r]*h
+        y_new = (1-v[r])*y + v[r]*y₁
+        if r > 1
+          y_new += h * sum(j->X[r, j]*K[j], 1:r-1)
+        end
+        fun!(x_new, y_new, Kr)
+    end
+
+    for r in 1:order
+        Kᵣ!(K[r], y[i], y[i+1], r)
     end
 end
 
-@inline function eval_col_residual!(residual, f, y, h, f_m)
-    for i in 1:size(f, 1)-1
-        residual[i, :] = y[i+1, :] - y[i, :] - h * 1//6 * (f[i, :] + f[i+1, :] + 4 * f_m[i])
+function Φ!{T}(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache)
+    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
+    K, b = cache.K, TU.b
+    c, v, X = TU.c, TU.v, TU.x
+    for i in 1:N-1
+        h = x[i+1] - x[i]
+        # Update K
+        update_K!(S, cache, TU, i, h)
+        # Update residual
+        residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
 end
 
-function collocation_points!(f, y_m, f_m, residual, fun!, x, y, h)
-    eval_fun!(f, fun!, x, y)
-    eval_y_middle!(y_m, f, y, h)
-    eval_fun!(f_m, fun!, x[1:end-1] + 1//2 * h, y_m)
-    eval_col_residual!(residual, f, y, h, f_m)
-end
-
-# TODO: A better allocation method needs to be done
-# i.e. what if user gives a initial evaluation of
-# the system of ODE.
-function allocate_arrays(T, n, m)
-    f = Array{T}(m,n)
-    y_m = Array{T}(m-1,n) #See [1]
-    f_m = Array{T}(m-1,n)
-    residual = Array{T}(m-1, n)
-    f, y_m, f_m, residual
-end
-
-# Just a testing function for development
-
-test_col() = begin
-    fun!(out, x, y) = begin
-       out[1] = x*y[2]
-       out[2] = x*-exp.(y[1])
-@inline function eval_fun!(f_out, fun!, x, y)
-    for i in 1:size(f_out,1)
-        fun!(view(f_out, i, :), x[i], view(y,i,:))
-    end
-end
-
-    end
-    n, m = 2,4
-    x = collect(linspace(0,1,m))
-    h = x[2]-x[1]
-    y = zeros(m,n)
-    f, y_m, f_m, residual = allocate_arrays(Float64, n, m)
-    collocation_points!(f, y_m, f_m, residual, fun!, x, y, h)
-    n,m,x,y,h,y,f, y_m, f_m, residual
-end
-n,m,x,y,h,y,f, y_m, f_m, residual = test_col()
-=#
