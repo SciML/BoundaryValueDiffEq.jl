@@ -20,7 +20,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol
 end
 
-function solve(prob::Union{BVProblem,TwoPointBVProblem}, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
+function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
     if dt<=0
         error("dt must be positive")
     end
@@ -45,11 +45,11 @@ function solve(prob::Union{BVProblem,TwoPointBVProblem}, alg::Union{GeneralMIRK,
             resid[i+1] = resid[i]
         end
         resid[1], resid[end] = resid[end], tmp_last
-    end        
+    end
     loss = function (minimizer, resid)
         nest_vector!(S.y, minimizer)
         Φ!(S, tableau, cache)
-        isa(prob, TwoPointBVProblem) ? eval_bc_residual!(S) : general_eval_bc_residual!(S)
+        isa(prob.problem_type, TwoPointBVProblem) ? eval_bc_residual!(S) : general_eval_bc_residual!(S)
         flatten_vector!(resid, S.residual)
         reorder!(resid)
         nothing
@@ -58,7 +58,7 @@ function solve(prob::Union{BVProblem,TwoPointBVProblem}, alg::Union{GeneralMIRK,
     jac_wrapper = BVPJacobianWrapper(loss, similar(vec_y), similar(vec_y))
 
     flatten_vector!(vec_y, S.y)
-    opt = isa(prob, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) # Sparse matrix is broken
+    opt = isa(prob.problem_type, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
 
     retcode = opt[2] ? :Success : :Failure
