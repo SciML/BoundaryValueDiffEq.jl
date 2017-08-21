@@ -2,6 +2,7 @@ abstract type AbstractMIRKCache end
 abstract type MIRKCache <: AbstractMIRKCache end
 abstract type GeneralMIRKCache <: AbstractMIRKCache end
 
+#=
 struct MIRK4Cache{kType,jsType,jType} <: MIRKCache
     K::kType
     LJ::Vector{jsType}    # Left strip of the Jacobian
@@ -14,10 +15,11 @@ function alg_cache{T,U}(alg::MIRK4, S::BVPSystem{T,U})
     Jacobian = zeros(T, S.M*S.N, S.M*S.N)
     MIRK4Cache([U(S.M) for i in 1:4], LJ, RJ, Jacobian)
 end
+=#
 
 struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
     K::kType
 end
 
-alg_cache{T,U}(alg::GeneralMIRK4, S::BVPSystem{T,U}) = MIRK4GeneralCache([U(S.M) for i in 1:4])
+alg_cache{T,U}(alg::Union{GeneralMIRK4,MIRK4}, S::BVPSystem{T,U}) = MIRK4GeneralCache([U(S.M) for i in 1:4])
 

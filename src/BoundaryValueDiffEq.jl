@@ -7,7 +7,7 @@ using Reexport
 
 using OrdinaryDiffEq
 import DiffEqBase: solve
-import NLsolve, ForwardDiff, BandedMatrices, Sundials
+import NLsolve, ForwardDiff, BandedMatrices, Sundials, DiffEqDiffTools
 
 abstract type AbstractBVProblem{uType,tType,isinplace} <: AbstractODEProblem{uType,tType,isinplace} end
 
@@ -60,6 +60,7 @@ include("alg_utils.jl")
 include("mirk_tableaus.jl")
 include("cache.jl")
 include("collocation.jl")
+include("jacobian.jl")
 include("solve.jl")
 
 export BVProblem, TwoPointBVProblem

@@ -3,3 +3,4 @@ DiffEqBase
 OrdinaryDiffEq
 NLsolve
 Sundials
+DiffEqDiffTools
