@@ -20,11 +20,20 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol
 end
 
-function solve(prob::TwoPointBVProblem, alg::MIRK; dt=0.0, kwargs...)
+function solve(prob::Union{BVProblem,TwoPointBVProblem}, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
+    if dt<=0
+        error("dt must be positive")
+    end
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
     S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg_order(alg))
-    S.y[1] = prob.u0
+    if isa(prob.u0, Vector{<:Number})
+        S.y[1] = prob.u0
+    elseif isa(prob.u0, Vector{<:AbstractArray})
+        copy!(S.y, prob.u0)
+    else
+        error("u0 must be a Vector or Vector of Arrays")
+    end
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
     # Upper-level iteration
@@ -40,7 +49,7 @@ function solve(prob::TwoPointBVProblem, alg::MIRK; dt=0.0, kwargs...)
     loss = function (minimizer, resid)
         nest_vector!(S.y, minimizer)
         Φ!(S, tableau, cache)
-        eval_bc_residual!(S)
+        isa(prob, TwoPointBVProblem) ? eval_bc_residual!(S) : general_eval_bc_residual!(S)
         flatten_vector!(resid, S.residual)
         reorder!(resid)
         nothing
@@ -48,23 +57,15 @@ function solve(prob::TwoPointBVProblem, alg::MIRK; dt=0.0, kwargs...)
 
     jac_wrapper = BVPJacobianWrapper(loss, similar(vec_y), similar(vec_y))
 
-    # code for debugging use
-    # J = similar(cache.Jacobian)
-    # tmp = similar(J)
-    # NLsolve.DifferentiableMultivariateFunction((x,y)->loss(x,y,tmp)).g!(10*ones(vec_y), J)
-
     flatten_vector!(vec_y, S.y)
-    # opt = alg.nlsolve(NLsolve.only_fg!(loss), vec_y)
-    opt = alg.nlsolve(ConstructDifferentiableMultivariateFunction(jac_wrapper), vec_y)
+    opt = isa(prob, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
-
-    # code for debugging use
-    # display(J)
 
     retcode = opt[2] ? :Success : :Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
 
+#=
 function solve(prob::BVProblem, alg::GeneralMIRK; dt=0.0, kwargs...)
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
@@ -87,4 +88,4 @@ function solve(prob::BVProblem, alg::GeneralMIRK; dt=0.0, kwargs...)
     retcode = opt[2] ? :Success : :Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
-
+=#
