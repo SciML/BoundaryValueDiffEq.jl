@@ -11,5 +11,3 @@ BoundaryValueDiffEq.jl is a component package in the DifferentialEquations ecosy
 boundary value problem solvers and utilities. While completely independent
 and usable on its own, users interested in using this
 functionality should check out [DifferentialEquations.jl](https://github.com/JuliaDiffEq/DifferentialEquations.jl).
-
-**NOTE: This library is a WIP**
