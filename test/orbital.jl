@@ -45,7 +45,7 @@ resid_f = Array{Float64}(6)
 # sol = solve(prob,DP5(),abstol=1e-13,reltol=1e-13)
 # cur_bc!(resid_f,sol)
 
-TestTol = 0.04
+TestTol = 0.004
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
@@ -64,4 +64,3 @@ cur_bc!(resid_f,sol)
 @time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (Sundials.kinsol(f,u0), true)),force_dtmin=true,abstol=1e-13,reltol=1e-13)
 cur_bc!(resid_f,sol)
 @test norm(resid_f, Inf) < TestTol
-

@@ -16,7 +16,11 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     opt = alg.nlsolve(loss, u0)
     sol_prob = ODEProblem(prob.f,opt[1],prob.tspan)
     sol = solve(sol_prob, alg.ode_alg;kwargs...)
-    sol.retcode = opt[2] ? :Success : :Failure
+    if sol.retcode == opt[2]
+        solution_new_retcode(sol,:Success)
+    else
+        solution_new_retcode(sol,:Failure)
+    end
     sol
 end
 
