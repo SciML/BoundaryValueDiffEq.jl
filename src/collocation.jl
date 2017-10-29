@@ -78,11 +78,9 @@ function banded_Φ!(S::BVPSystem, TU::MIRKTableau, cache::AbstractMIRKCache)
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
     eval_bc_residual!(S)
-    #=
-    ForwardDiff.jacobian!(@view(cache.Jacobian[1:S.M, 1:S.M]),                     (x,y)->S.bc!(x,y,S.y[1]),   residual[1],   S.y[1])
-    ForwardDiff.jacobian!(@view(cache.Jacobian[(end-S.M+1):end, (end-S.M+1):end]), (x,y)->S.bc!(x,S.y[end],y), residual[end], S.y[end])
-    display(cache.Jacobian)
-    =#
+    #ForwardDiff.jacobian!(@view(cache.Jacobian[1:S.M, 1:S.M]),                     (x,y)->S.bc!(x,y,S.y[1]),   residual[1],   S.y[1])
+    #ForwardDiff.jacobian!(@view(cache.Jacobian[(end-S.M+1):end, (end-S.M+1):end]), (x,y)->S.bc!(x,S.y[end],y), residual[end], S.y[end])
+    #display(cache.Jacobian)
 end
 =#
 
@@ -117,4 +115,3 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where T
         residual[i] = y[i+1] - y[i] - h * sum(j->b[j]*K[j], 1:order)
     end
 end
-
