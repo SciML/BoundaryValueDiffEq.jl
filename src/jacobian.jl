@@ -9,8 +9,7 @@ end
 (p::BVPJacobianWrapper)(u) = (resid = similar(u); p.loss(u,resid); resid)
 
 function ConstructSparseJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
-    RealOrComplex = (eltype(y) <: Complex) ? Val{:Complex} : Val{:Real}
-    jac_cache = DiffEqDiffTools.JacobianCache(Val{:central},RealOrComplex,
+    jac_cache = DiffEqDiffTools.JacobianCache(
                                   similar(y),similar(y),similar(y))
     function fg!(x::Vector, fx::Vector, gx)
         DiffEqDiffTools.finite_difference_jacobian!(gx, f!, x, jac_cache)
@@ -22,9 +21,8 @@ function ConstructSparseJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
 end
 
 function ConstructJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
-    RealOrComplex = (eltype(y) <: Complex) ? Val{:Complex} : Val{:Real}
-    jac_cache = DiffEqDiffTools.JacobianCache(Val{:central},RealOrComplex,
-                                  similar(y),similar(y),similar(y))
+    jac_cache = DiffEqDiffTools.JacobianCache(
+                                    similar(y),similar(y),similar(y))
     function fg!(x::Vector, fx::Vector, gx)
         DiffEqDiffTools.finite_difference_jacobian!(gx, f!, x, jac_cache)
         f!(fx,x)
