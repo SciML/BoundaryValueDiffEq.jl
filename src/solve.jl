@@ -59,10 +59,10 @@ function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
         nothing
     end
 
-    jac_wrapper = BVPJacobianWrapper(loss, similar(vec_y), similar(vec_y))
+    jac_wrapper = BVPJacobianWrapper(loss)
 
     flatten_vector!(vec_y, S.y)
-    opt = isa(prob.problem_type, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S), vec_y) # Sparse matrix is broken
+    opt = isa(prob.problem_type, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
 
     retcode = opt[2] ? :Success : :Failure
