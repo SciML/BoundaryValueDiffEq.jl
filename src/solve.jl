@@ -5,7 +5,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     bc = prob.bc
     u0 = deepcopy(prob.u0)
     # Form a root finding function.
-    loss = function (resid,minimizer)
+    loss = function (resid, minimizer)
         uEltype = eltype(minimizer)
         tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
         tmp_prob = ODEProblem(prob.f,minimizer,tspan)
@@ -62,7 +62,7 @@ function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
     jac_wrapper = BVPJacobianWrapper(loss)
 
     flatten_vector!(vec_y, S.y)
-    opt = isa(prob.problem_type, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
+    opt = isa(prob.problem_type, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, vec_y), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
 
     retcode = opt[2] ? :Success : :Failure

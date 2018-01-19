@@ -6,25 +6,29 @@ end
 (p::BVPJacobianWrapper)(resid,u) = p.loss(resid,u)
 (p::BVPJacobianWrapper)(u) = (resid = similar(u); p.loss(resid,u); resid)
 
-function ConstructSparseJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
-    jac_cache = DiffEqDiffTools.JacobianCache(
-                                  similar(y),similar(y),similar(y))
-    function fg!(x::Vector, fx::Vector, gx)
-        DiffEqDiffTools.finite_difference_jacobian!(gx, f!, x, jac_cache)
-        f!(fx,x)
-    end
-    g!(gx::Array, x::Vector)  = (fx = similar(x); fg!(fx, gx, x))
-    J = bzeros(eltype(S.y[1]), S.M*S.N, S.M*S.N, S.M-1, S.M-1)
-    NLsolve.OnceDifferentiable(f!.loss, g!, fg!, sparse(J))
-end
+(p::BVPJacobianWrapper)(resid,u) = p.loss(resid,u)
+
+(p::BVPJacobianWrapper)(u) = (resid = similar(u); p.loss(resid, u); resid)
 
 function ConstructJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
     jac_cache = DiffEqDiffTools.JacobianCache(
-                                    similar(y),similar(y),similar(y))
-    function fg!(fx::Vector, gx, x::Vector)
-        DiffEqDiffTools.finite_difference_jacobian!(gx, f!, x, jac_cache)
-        f!(fx,x)
+                                  similar(y),similar(y),similar(y))
+    function fj!(F::Vector, J, x::Vector)
+        DiffEqDiffTools.finite_difference_jacobian!(J, f!, x, jac_cache)
+        f!(F,x)
     end
-    g!(gx::Array, x::Vector)  = (fx = similar(x); fg!(fx, gx, x))
-    NLsolve.OnceDifferentiable(f!.loss, g!, fg!, y)
+    j!(J, x::Array)  = (F = jac_cache.fx; fj!(F, J, x))
+    J0 = bzeros(eltype(S.y[1]), S.M*S.N, S.M*S.N, S.M-1, S.M-1)
+    NLsolve.OnceDifferentiable(f!.loss, j!, fj!, jac_cache.x1, jac_cache.fx, sparse(J0))
+end
+
+function ConstructJacobian(f!::BVPJacobianWrapper, y)
+    jac_cache = DiffEqDiffTools.JacobianCache(
+                                    similar(y),similar(y),similar(y))
+    function fj!(F, J, x::Vector)
+        DiffEqDiffTools.finite_difference_jacobian!(J, f!, x, jac_cache)
+        f!(F,x)
+    end
+    j!(J::Array, x::Vector)  = (F = jac_cache.fx; fj!(F, J, x))
+    NLsolve.OnceDifferentiable(f!.loss, j!, fj!, jac_cache.x1, jac_cache.fx)
 end
