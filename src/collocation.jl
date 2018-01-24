@@ -95,7 +95,7 @@ end
         if r > 1
           y_new += h * sum(j->X[r, j]*K[j], 1:r-1)
         end
-        fun!(x_new, y_new, Kr)
+        fun!(Kr, y_new, S.p, x_new)
     end
 
     for r in 1:order

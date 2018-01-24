@@ -10,9 +10,9 @@ end
 
 # Not able to change the initial condition.
 # Hard coded solution.
-func_1!(::Type{Val{:analytic}}, u0, p, t) = [5-x,-1]
+func_1!(::Type{Val{:analytic}}, u0, p, t) = [5-t,-1]
 
-function boundary!(residual, u)
+function boundary!(residual, u, p)
     residual[1] = u[1][1]-5
     residual[2] = u[end][1]
 end
