@@ -3,35 +3,35 @@ using DiffEqBase, DiffEqDevTools
 using Base.Test
 
 # First order test
-function func_1!(x, y, du)
-    du[1] = y[2]
+function func_1!(du,u,p,t)
+    du[1] = u[2]
     du[2] = 0
 end
 
 # Not able to change the initial condition.
 # Hard coded solution.
-func_1!(::Type{Val{:analytic}}, x, y0) = [5-x,-1]
+func_1!(::Type{Val{:analytic}}, u0, p, t) = [5-x,-1]
 
 function boundary!(residual, u)
     residual[1] = u[1][1]-5
     residual[2] = u[end][1]
 end
 
-function boundary_two_point!(residual, ua, ub)
+function boundary_two_point!(residual, ua, ub, p)
     residual[1] = ua[1]-5
     residual[2] = ub[1]
 end
 
 # Second order linear test
-function func_2!(x, y, du)
-    du[1] = y[2]
-    du[2] = -y[1]
+function func_2!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = -u[1]
 end
 
 # Not able to change the initial condition.
 # Hard coded solution.
-func_2!(::Type{Val{:analytic}}, x, y) = [5*(cos(x) - cot(5)*sin(x)),
-                                         5*(-cos(x)*cot(5) - sin(x))]
+func_2!(::Type{Val{:analytic}}, u0, p, t) = [5*(cos(t) - cot(5)*sin(t)),
+                                             5*(-cos(t)*cot(5) - sin(t))]
 
 tspan = (0.,5.)
 u0 = [5.,-3.5]
@@ -66,4 +66,3 @@ println("Convergence Test on Linear")
 prob = probArr[4]
 @time sim = test_convergence(dts,prob,MIRK4())
 @test abs(sim.𝒪est[:final]-order) < testTol
-

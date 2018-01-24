@@ -14,7 +14,7 @@ t0=86400*2.3577475462484435E+04
 t1=86400*2.3577522023524125E+04
 tspan = (t0,t1)
 # ODE solver
-function orbital(t,y,dy)
+function orbital(dy,y,p,t)
   r2=(y[1]^2 + y[2]^2 + y[3]^2)
   r3=r2^(3/2)
   w=1+1.5J2*(req*req/r2)*(1-5y[3]*y[3]/r2)
@@ -36,7 +36,7 @@ function bc!_generator(resid,sol,init_val)
   resid[5] = sol[end][2] - init_val[5]
   resid[6] = sol[end][3] - init_val[6]
 end
-cur_bc! = (resid,sol) -> bc!_generator(resid,sol,init_val)
+cur_bc! = (resid,sol,p) -> bc!_generator(resid,sol,init_val)
 resid_f = Array{Float64}(6)
 
 ### Test the IVP Near the true solution
@@ -49,18 +49,15 @@ TestTol = 0.05
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
-@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=false,ftol=1e-13);(res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol)
+@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=:central,ftol=1e-13);(res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
+cur_bc!(resid_f,sol,nothing)
 @test norm(resid_f, Inf) < TestTol
 
 @time sol = solve(bvp, Shooting(DP5()),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol)
+cur_bc!(resid_f,sol,nothing)
 @test norm(resid_f, Inf) < TestTol
 
-@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=true,ftol=1e-13,xtol=1e-13);(res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol)
-@test norm(resid_f, Inf) < TestTol
-
-@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (Sundials.kinsol(f,u0), true)),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol)
+@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=true,ftol=1e-13,xtol=1e-13);
+(res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
+cur_bc!(resid_f,sol,nothing)
 @test norm(resid_f, Inf) < TestTol

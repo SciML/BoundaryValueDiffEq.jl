@@ -5,12 +5,12 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     bc = prob.bc
     u0 = deepcopy(prob.u0)
     # Form a root finding function.
-    loss = function (minimizer,resid)
+    loss = function (resid,minimizer)
         uEltype = eltype(minimizer)
         tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
         tmp_prob = ODEProblem(prob.f,minimizer,tspan)
         sol = solve(tmp_prob,alg.ode_alg;kwargs...)
-        bc(resid,sol)
+        bc(resid,sol,sol.prob.p)
         nothing
     end
     opt = alg.nlsolve(loss, u0)
@@ -30,7 +30,7 @@ function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
     end
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
     x = collect(linspace(prob.tspan..., n+1))
-    S = BVPSystem(prob.f, prob.bc, x, length(prob.u0), alg_order(alg))
+    S = BVPSystem(prob.f, prob.bc, prob.p, x, length(prob.u0), alg_order(alg))
     if isa(prob.u0, Vector{<:Number})
         S.y[1] = prob.u0
     elseif isa(prob.u0, Vector{<:AbstractArray})
@@ -50,7 +50,7 @@ function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
         end
         resid[1], resid[end] = resid[end], tmp_last
     end
-    loss = function (minimizer, resid)
+    loss = function (resid, minimizer)
         nest_vector!(S.y, minimizer)
         Φ!(S, tableau, cache)
         isa(prob.problem_type, TwoPointBVProblem) ? eval_bc_residual!(S) : general_eval_bc_residual!(S)

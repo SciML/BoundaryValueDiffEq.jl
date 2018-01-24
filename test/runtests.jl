@@ -1,7 +1,7 @@
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
 using Base.Test
-using NLsolve, Sundials
+using NLsolve
 
 @time @testset "Shooting Method Tests" begin
 include("shooting_tests.jl")

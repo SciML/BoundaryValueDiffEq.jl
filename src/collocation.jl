@@ -1,25 +1,25 @@
 # Dispatches on BVPSystem
-function BVPSystem(fun, bc, x::Vector{T}, M::Integer, order) where T
+function BVPSystem(fun, bc, p, x::Vector{T}, M::Integer, order) where T
     N = size(x,1)
     y = vector_alloc(T, M, N)
-    BVPSystem(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
+    BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # If user offers an intial guess
-function BVPSystem(fun, bc, x::Vector{T}, y::Vector{U}, order) where {T,U<:AbstractArray}
+function BVPSystem(fun, bc, p, x::Vector{T}, y::Vector{U}, order) where {T,U<:AbstractArray}
     M, N = size(y)
-    BVPSystem{T,U}(order, M, N, fun, bc, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
+    BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Auxiliary functions for evaluation
 @inline function eval_fun!(S::BVPSystem)
     for i in 1:S.N
-        S.fun!(S.x[i], S.y[i], S.f[i])
+        S.fun!(S.f[i], S.y[i], S.p, S.x[i])
     end
 end
 
-@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y)
-@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y[1], S.y[end])
+@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y, S.p)
+@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y[1], S.y[end], S.p)
 
 #=
 @inline function banded_update_K!(S::BVPSystem, cache::AbstractMIRKCache, TU::MIRKTableau, i, h)
