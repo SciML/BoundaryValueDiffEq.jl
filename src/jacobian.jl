@@ -6,10 +6,6 @@ end
 (p::BVPJacobianWrapper)(resid,u) = p.loss(resid,u)
 (p::BVPJacobianWrapper)(u) = (resid = similar(u); p.loss(resid,u); resid)
 
-(p::BVPJacobianWrapper)(resid,u) = p.loss(resid,u)
-
-(p::BVPJacobianWrapper)(u) = (resid = similar(u); p.loss(resid, u); resid)
-
 function ConstructJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
     jac_cache = DiffEqDiffTools.JacobianCache(
                                   similar(y),similar(y),similar(y))

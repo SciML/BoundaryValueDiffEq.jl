@@ -2,7 +2,7 @@
 
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq
-using NLsolve, Sundials
+using NLsolve
 using Base.Test
 
 y0=[-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06, -5528.612564911408, 1216.8442360202787, 4845.114446429901]
@@ -36,7 +36,7 @@ function bc!_generator(resid,sol,init_val)
   resid[5] = sol[end][2] - init_val[5]
   resid[6] = sol[end][3] - init_val[6]
 end
-cur_bc! = (resid,sol,p) -> bc!_generator(resid,sol,init_val)
+cur_bc! = (resid,sol,p,t) -> bc!_generator(resid,sol,init_val)
 resid_f = Array{Float64}(6)
 
 ### Test the IVP Near the true solution
@@ -50,14 +50,14 @@ TestTol = 0.05
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
 @time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=:central,ftol=1e-13);(res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol,nothing)
+cur_bc!(resid_f,sol,nothing,sol.t)
 @test norm(resid_f, Inf) < TestTol
 
 @time sol = solve(bvp, Shooting(DP5()),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol,nothing)
+cur_bc!(resid_f,sol,nothing,sol.t)
 @test norm(resid_f, Inf) < TestTol
 
 @time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=true,ftol=1e-13,xtol=1e-13);
 (res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
-cur_bc!(resid_f,sol,nothing)
+cur_bc!(resid_f,sol,nothing,sol.t)
 @test norm(resid_f, Inf) < TestTol

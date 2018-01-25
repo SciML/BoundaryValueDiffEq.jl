@@ -12,12 +12,14 @@ end
 # Hard coded solution.
 func_1!(::Type{Val{:analytic}}, u0, p, t) = [5-t,-1]
 
-function boundary!(residual, u, p)
+function boundary!(residual, u, p, t)
     residual[1] = u[1][1]-5
     residual[2] = u[end][1]
 end
 
-function boundary_two_point!(residual, ua, ub, p)
+function boundary_two_point!(residual, u, p, t)
+    ua = u[1]
+    ub = u[end]
     residual[1] = ua[1]-5
     residual[2] = ub[1]
 end

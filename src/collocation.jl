@@ -18,8 +18,8 @@ end
     end
 end
 
-@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y, S.p)
-@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y[1], S.y[end], S.p)
+@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y, S.p, S.x)
+@inline eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], (S.y[1], S.y[end]), S.p, (S.x[1], S.x[end]))
 
 #=
 @inline function banded_update_K!(S::BVPSystem, cache::AbstractMIRKCache, TU::MIRKTableau, i, h)

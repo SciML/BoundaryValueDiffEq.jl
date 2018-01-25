@@ -10,7 +10,7 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
         tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
         tmp_prob = ODEProblem(prob.f,minimizer,tspan)
         sol = solve(tmp_prob,alg.ode_alg;kwargs...)
-        bc(resid,sol,sol.prob.p)
+        bc(resid,sol,sol.prob.p,sol.t)
         nothing
     end
     opt = alg.nlsolve(loss, u0)

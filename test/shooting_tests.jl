@@ -10,7 +10,7 @@ function f(du,u,p,t)
   du[2] = -x
 end
 
-function bc!(resid,sol,p)
+function bc!(resid,sol,p,t)
   resid[1] = sol[1][1]
   resid[2] = sol[end][1] - 1
 end
@@ -20,5 +20,5 @@ u0 = [0.,1.]
 bvp = BVProblem(f, bc!, u0, tspan)
 resid_f = Array{Float64}(2)
 sol = solve(bvp, Shooting(Tsit5()))
-bc!(resid_f, sol, nothing)
+bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f) < 1e-7
