@@ -24,6 +24,30 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol
 end
 
+function solve(prob::BVProblem, alg::ParameterShooting; kwargs...)
+    bc = prob.bc
+    u0 = deepcopy(prob.u0)
+    # Form a root finding function.
+    loss = function (resid, minimizer)
+        uEltype = eltype(minimizer)
+        tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
+        tmp_prob = ODEProblem(prob.f,minimizer,tspan)
+        sol = solve(tmp_prob,alg.ode_alg;kwargs...)
+        bc(resid,sol,sol.prob.p,sol.t)
+        nothing
+    end
+    opt = alg.nlsolve(loss, prob.p)
+    sol_prob = ODEProblem(prob.f,opt[1],prob.tspan,prob.p)
+    sol = solve(sol_prob, alg.ode_alg;kwargs...)
+    if sol.retcode == opt[2]
+        solution_new_retcode(sol,:Success)
+    else
+        solution_new_retcode(sol,:Failure)
+    end
+    sol
+end
+
+
 function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
     if dt<=0
         error("dt must be positive")
