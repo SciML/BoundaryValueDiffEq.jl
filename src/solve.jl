@@ -31,13 +31,14 @@ function solve(prob::BVProblem, alg::ParameterShooting; kwargs...)
     loss = function (resid, minimizer)
         uEltype = eltype(minimizer)
         tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
-        tmp_prob = ODEProblem(prob.f,minimizer,tspan)
+        tmp_prob = ODEProblem(prob.f,u0,tspan,minimizer)
         sol = solve(tmp_prob,alg.ode_alg;kwargs...)
         bc(resid,sol,sol.prob.p,sol.t)
         nothing
     end
     opt = alg.nlsolve(loss, prob.p)
-    sol_prob = ODEProblem(prob.f,opt[1],prob.tspan,prob.p)
+    # u0 might change with new parameters...
+    sol_prob = ODEProblem(prob.f,u0,prob.tspan,opt[1])
     sol = solve(sol_prob, alg.ode_alg;kwargs...)
     if sol.retcode == opt[2]
         solution_new_retcode(sol,:Success)
