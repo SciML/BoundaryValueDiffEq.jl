@@ -14,7 +14,7 @@ function ConstructJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
         f!(F,x)
     end
     j!(J, x::Array)  = (F = jac_cache.fx; fj!(F, J, x))
-    J0 = bzeros(eltype(S.y[1]), S.M*S.N, S.M*S.N, S.M-1, S.M-1)
+    J0 = BandedMatrix(Zeros{eltype(S.y[1])}(S.M*S.N, S.M*S.N), (S.M-1, S.M-1))
     NLsolve.OnceDifferentiable(f!.loss, j!, fj!, jac_cache.x1, jac_cache.fx, sparse(J0))
 end
 
