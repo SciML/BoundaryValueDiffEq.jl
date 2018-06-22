@@ -1,6 +1,6 @@
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
-using Base.Test
+using Test
 
 println("Shooting method")
 

@@ -29,7 +29,7 @@ function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
         error("dt must be positive")
     end
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
-    x = collect(linspace(prob.tspan..., n+1))
+    x = collect(range(prob.tspan..., stop=n+1, length=50))
     S = BVPSystem(prob.f, prob.bc, prob.p, x, length(prob.u0), alg_order(alg))
     if isa(prob.u0, Vector{<:Number})
         S.y[1] = prob.u0
