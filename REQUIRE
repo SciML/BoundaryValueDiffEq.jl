@@ -1,4 +1,4 @@
-julia 0.6
+julia 0.7.0-alpha
 DiffEqBase
 Reexport
 NLsolve 0.14.0
