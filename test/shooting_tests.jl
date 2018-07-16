@@ -1,6 +1,6 @@
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
-using Base.Test
+using Test
 
 println("Shooting method")
 
@@ -18,7 +18,7 @@ end
 tspan = (0.,100.)
 u0 = [0.,1.]
 bvp = BVProblem(f, bc!, u0, tspan)
-resid_f = Array{Float64}(2)
+resid_f = Array{Float64}(undef, 2)
 sol = solve(bvp, Shooting(Tsit5()))
 bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f) < 1e-7
