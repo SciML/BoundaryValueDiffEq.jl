@@ -1,7 +1,7 @@
 using BandedMatrices
 
 # The Solve Function
-function solve(prob::BVProblem, alg::Shooting; kwargs...)
+function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     bc = prob.bc
     u0 = deepcopy(prob.u0)
     # Form a root finding function.
@@ -17,14 +17,14 @@ function solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol_prob = ODEProblem(prob.f,opt[1],prob.tspan)
     sol = solve(sol_prob, alg.ode_alg;kwargs...)
     if sol.retcode == opt[2]
-        solution_new_retcode(sol,:Success)
+        DiffEqBase.solution_new_retcode(sol,:Success)
     else
-        solution_new_retcode(sol,:Failure)
+        DiffEqBase.solution_new_retcode(sol,:Failure)
     end
     sol
 end
 
-function solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
     if dt<=0
         error("dt must be positive")
     end

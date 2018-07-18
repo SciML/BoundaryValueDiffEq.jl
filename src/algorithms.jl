@@ -19,4 +19,3 @@ struct MIRK4 <: MIRK
 end
 GeneralMIRK4(;nlsolve=DEFAULT_NLSOLVE) = GeneralMIRK4(nlsolve)
 MIRK4(;nlsolve=DEFAULT_NLSOLVE) = MIRK4(nlsolve)
-
