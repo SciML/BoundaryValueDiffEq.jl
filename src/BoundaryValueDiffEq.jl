@@ -2,7 +2,7 @@
 
 module BoundaryValueDiffEq
 
-using Reexport
+using Reexport, LinearAlgebra, SparseArrays
 @reexport using DiffEqBase
 
 import DiffEqBase: solve

@@ -1,6 +1,5 @@
 using BoundaryValueDiffEq
-using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
-using Base.Test
+using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools, Test
 using NLsolve
 
 @time @testset "Shooting Method Tests" begin

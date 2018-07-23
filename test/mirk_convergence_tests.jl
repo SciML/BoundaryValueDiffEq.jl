@@ -1,6 +1,5 @@
 using BoundaryValueDiffEq
-using DiffEqBase, DiffEqDevTools
-using Base.Test
+using DiffEqBase, DiffEqDevTools, Test
 
 # First order test
 function func_1!(du,u,p,t)
