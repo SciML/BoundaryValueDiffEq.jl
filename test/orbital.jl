@@ -2,7 +2,8 @@
 
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq
-using NLsolve, Test
+using NLsolve
+using Test
 
 y0=[-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06, -5528.612564911408, 1216.8442360202787, 4845.114446429901]
 init_val = [-4.7763169762853989E+06,-3.8386398704441520E+05,-5.3500183933132319E+06,7.0526926403748598E+06,-7.9650476230388973E+05,-1.1911128863666430E+06]
@@ -36,7 +37,7 @@ function bc!_generator(resid,sol,init_val)
   resid[6] = sol[end][3] - init_val[6]
 end
 cur_bc! = (resid,sol,p,t) -> bc!_generator(resid,sol,init_val)
-resid_f = Array{Float64}(6)
+resid_f = Array{Float64}(undef, 6)
 
 ### Test the IVP Near the true solution
 ### Should be small
