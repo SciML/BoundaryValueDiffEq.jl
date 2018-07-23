@@ -1,6 +1,6 @@
 using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
-using Test
+using Test, LinearAlgebra
 
 println("Shooting method")
 

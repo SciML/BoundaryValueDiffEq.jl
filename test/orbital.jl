@@ -1,7 +1,7 @@
 # Lambert's Problem
 
 using BoundaryValueDiffEq
-using DiffEqBase, OrdinaryDiffEq
+using DiffEqBase, OrdinaryDiffEq, LinearAlgebra
 using NLsolve
 using Test
 

@@ -18,6 +18,6 @@ end
 function nest_vector!(dest::Vector{T}, src::T) where T<:AbstractArray
     M = length(dest[1])
     for i in eachindex(dest)
-        copy!(dest[i], src[(M*(i-1))+1:(M*i)])
+        copyto!(dest[i], src[(M*(i-1))+1:(M*i)])
     end
 end

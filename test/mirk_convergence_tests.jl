@@ -44,7 +44,7 @@ probArr = [BVProblem(func_1!, boundary!, u0, tspan),
 
 testTol = 0.2
 affineTol = 1e-6
-dts = 1./2.^(5:-1:1)
+dts = (1/2) .^ (5:-1:1)
 order = 4
 
 println("Collocation method (GeneralMIRK)")
