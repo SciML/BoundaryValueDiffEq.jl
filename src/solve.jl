@@ -7,7 +7,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     # Form a root finding function.
     loss = function (resid, minimizer)
         uEltype = eltype(minimizer)
-        tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
+        tspan = (convert(uEltype,prob.tspan[1]),convert(uEltype,prob.tspan[2]))
         tmp_prob = ODEProblem(prob.f,minimizer,tspan)
         sol = solve(tmp_prob,alg.ode_alg;kwargs...)
         bc(resid,sol,sol.prob.p,sol.t)
@@ -41,7 +41,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
     # Upper-level iteration
-    vec_y = Array{eltype(S.y[1])}(S.M*S.N)              # Vector
+    vec_y = Array{eltype(S.y[1])}(undef, S.M*S.N)              # Vector
     reorder! = function (resid)
         # reorder the Jacobian matrix such that it is banded
         tmp_last = resid[end]

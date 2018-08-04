@@ -2,7 +2,7 @@
 function BVPSystem(fun, bc, p, x::Vector{T}, M::Integer, order) where T
     N = size(x,1)
     y = vector_alloc(T, M, N)
-    BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
+    BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(undef, M))
 end
 
 # If user offers an intial guess
