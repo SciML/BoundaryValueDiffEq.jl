@@ -1,6 +1,6 @@
 # Auxiliary functions for working with vector of vectors
 function vector_alloc(T, M, N)
-    v = Vector{Vector{T}}(N)
+    v = Vector{Vector{T}}(undef, N)
     for i in eachindex(v)
         v[i] = zeros(T, M)
     end

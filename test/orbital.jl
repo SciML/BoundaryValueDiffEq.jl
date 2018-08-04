@@ -57,7 +57,7 @@ cur_bc!(resid_f,sol,nothing,sol.t)
 cur_bc!(resid_f,sol,nothing,sol.t)
 @test norm(resid_f, Inf) < TestTol
 
-@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=true,ftol=1e-13,xtol=1e-13);
+@time sol = solve(bvp, Shooting(DP5(),nlsolve=(f,u0) -> (res=NLsolve.nlsolve(f,u0,autodiff=:forward,ftol=1e-13,xtol=1e-13);
 (res.zero, res.f_converged))),force_dtmin=true,abstol=1e-13,reltol=1e-13)
 cur_bc!(resid_f,sol,nothing,sol.t)
 @test norm(resid_f, Inf) < TestTol
