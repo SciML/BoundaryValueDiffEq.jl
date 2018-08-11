@@ -13,7 +13,7 @@ end
 function alg_cache{T,U}(alg::MIRK4, S::BVPSystem{T,U})
     LJ, RJ = [[similar(S.y[1], S.M, S.M) for i in 1:4] for j in 1:2]
     Jacobian = zeros(T, S.M*S.N, S.M*S.N)
-    MIRK4Cache([U(S.M) for i in 1:4], LJ, RJ, Jacobian)
+    MIRK4Cache([U(undef, S.M) for i in 1:4], LJ, RJ, Jacobian)
 end
 =#
 
