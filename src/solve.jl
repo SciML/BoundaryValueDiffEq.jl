@@ -8,13 +8,13 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     loss = function (resid, minimizer)
         uEltype = eltype(minimizer)
         tspan = (convert(uEltype,prob.tspan[1]),convert(uEltype,prob.tspan[2]))
-        tmp_prob = ODEProblem(prob.f,minimizer,tspan)
+        tmp_prob = remake(prob,u0=minimizer)
         sol = solve(tmp_prob,alg.ode_alg;kwargs...)
         bc(resid,sol,sol.prob.p,sol.t)
         nothing
     end
     opt = alg.nlsolve(loss, u0)
-    sol_prob = ODEProblem(prob.f,opt[1],prob.tspan)
+    sol_prob = remake(prob,u0=opt[1])
     sol = solve(sol_prob, alg.ode_alg;kwargs...)
     if sol.retcode == opt[2]
         DiffEqBase.solution_new_retcode(sol,:Success)
