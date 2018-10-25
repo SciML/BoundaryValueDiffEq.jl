@@ -7,7 +7,6 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     # Form a root finding function.
     loss = function (resid, minimizer)
         uEltype = eltype(minimizer)
-        tspan = (convert(uEltype,prob.tspan[1]),convert(uEltype,prob.tspan[2]))
         tmp_prob = remake(prob,u0=minimizer)
         sol = solve(tmp_prob,alg.ode_alg;kwargs...)
         bc(resid,sol,sol.prob.p,sol.t)
