@@ -31,7 +31,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.
     x = collect(range(prob.tspan[1], stop=prob.tspan[2], length=n))
     S = BVPSystem(prob.f, prob.bc, prob.p, x, length(prob.u0), alg_order(alg))
     if isa(prob.u0, Vector{<:Number})
-        S.y[1] = prob.u0
+        copyto!.(S.y, (prob.u0,))
     elseif isa(prob.u0, Vector{<:AbstractArray})
         copyto!(S.y, prob.u0)
     else
