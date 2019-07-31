@@ -20,5 +20,5 @@ DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[target]
+[targets]
 test = ["DiffEqDevTools", "OrdinaryDiffEq", "Test"]
