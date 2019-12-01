@@ -28,7 +28,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.
         error("dt must be positive")
     end
     n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
-    x = collect(range(prob.tspan[1], stop=prob.tspan[2], length=n))
+    x = collect(range(prob.tspan[1], stop=prob.tspan[2], length=n+1))
     S = BVPSystem(prob.f, prob.bc, prob.p, x, length(prob.u0), alg_order(alg))
     if isa(prob.u0, Vector{<:Number})
         copyto!.(S.y, (prob.u0,))
