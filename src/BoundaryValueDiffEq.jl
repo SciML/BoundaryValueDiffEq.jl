@@ -4,7 +4,7 @@ using Reexport, LinearAlgebra, SparseArrays
 @reexport using DiffEqBase
 
 import DiffEqBase: solve
-import NLsolve, ForwardDiff, BandedMatrices, DiffEqDiffTools
+import NLsolve, ForwardDiff, BandedMatrices, FiniteDiff
 
 struct MIRKTableau{T}
     c::Vector{T}
