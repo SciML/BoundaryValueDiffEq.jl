@@ -13,7 +13,7 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-BandedMatrices = "0.14"
+BandedMatrices = "0.14, 0.15"
 DiffEqBase = "6.5"
 FiniteDiff = "2"
 ForwardDiff = "0.10"
