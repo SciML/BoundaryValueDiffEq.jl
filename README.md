@@ -1,7 +1,7 @@
 # BoundaryValueDiffEq
 
 [![Join the chat at https://gitter.im/JuliaDiffEq/Lobby](https://badges.gitter.im/JuliaDiffEq/Lobby.svg)](https://gitter.im/JuliaDiffEq/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/JuliaDiffEq/BoundaryValueDiffEq.jl.svg?branch=master)](https://travis-ci.org/JuliaDiffEq/BoundaryValueDiffEq.jl)
+[![Build Status](https://travis-ci.org/SciML/BoundaryValueDiffEq.jl.svg?branch=master)](https://travis-ci.org/SciML/BoundaryValueDiffEq.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/u92rsawjhddsku58?svg=true)](https://ci.appveyor.com/project/ChrisRackauckas/boundaryvaluediffeq-jl)
 [![Coverage Status](https://coveralls.io/repos/github/JuliaDiffEq/BoundaryValueDiffEq.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaDiffEq/BoundaryValueDiffEq.jl?branch=master)
 [![codecov](https://codecov.io/gh/JuliaDiffEq/BoundaryValueDiffEq.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaDiffEq/BoundaryValueDiffEq.jl)
