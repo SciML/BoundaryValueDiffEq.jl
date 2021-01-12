@@ -1,16 +1,15 @@
 # Dispatches on BVPSystem
-function BVPSystem(fun, bc, p, x, M::Integer, order)
-    T = eltype(x)
+function BVPSystem(fun, bc, p, x, M::Integer, u0, order ) 
+    Y = eltype(u0)
     N = size(x,1)
-    y = vector_alloc(T, M, N)
-    BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(undef, M))
+    y = vector_alloc(Y, M, N)
+    BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(Y, M, N), vector_alloc(Y, M, N))
 end
-
 # If user offers an intial guess
 function BVPSystem(fun, bc, p, x, y, order)
     T, U = eltype(x), eltype(y)
     M, N = size(y)
-    BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
+    BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N))
 end
 
 # Auxiliary functions for evaluation

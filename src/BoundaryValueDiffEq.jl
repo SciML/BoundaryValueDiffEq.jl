@@ -25,7 +25,7 @@ mutable struct BVPSystem{T,U<:AbstractArray,P}
     y::Vector{U}                # N{M}
     f::Vector{U}                # N{M}
     residual::Vector{U}         # N{M}
-    tmp::Vector{T}
+    #tmp::Vector{T}
 end
 
 include("vector_auxiliary.jl")
