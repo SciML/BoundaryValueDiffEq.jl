@@ -1,12 +1,14 @@
 # Dispatches on BVPSystem
-function BVPSystem(fun, bc, p, x::Vector{T}, M::Integer, order) where T
+function BVPSystem(fun, bc, p, x, M::Integer, order)
+    T = eltype(x)
     N = size(x,1)
     y = vector_alloc(T, M, N)
     BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(undef, M))
 end
 
 # If user offers an intial guess
-function BVPSystem(fun, bc, p, x::Vector{T}, y::Vector{U}, order) where {T,U<:AbstractArray}
+function BVPSystem(fun, bc, p, x, y, order)
+    T, U = eltype(x), eltype(y)
     M, N = size(y)
     BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
 end

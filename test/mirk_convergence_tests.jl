@@ -32,8 +32,6 @@ end
 
 # Not able to change the initial condition.
 # Hard coded solution.
-func_2!(::Type{Val{:analytic}}, u0, p, t) = [5*(cos(t) - cot(5)*sin(t)),
-                                             5*(-cos(t)*cot(5) - sin(t))]
 func_2 = ODEFunction(func_2!, analytic=(u0, p, t) -> [5*(cos(t) - cot(5)*sin(t)),
                                                       5*(-cos(t)*cot(5) - sin(t))])
 tspan = (0.,5.)
@@ -69,3 +67,23 @@ println("Convergence Test on Linear")
 prob = probArr[4]
 @time sim = test_convergence(dts,prob,MIRK4())
 @test abs(sim.𝒪est[:final]-order) < testTol
+
+using StaticArrays
+tspan = (0.0,pi/2)
+function simplependulum!(du,u,p,t)
+    g = 9.81
+    L = 1.0
+    θ  = u[1]
+    dθ = u[2]
+    du[1] = dθ
+    du[2] = -(g/L)*sin(θ)
+end
+
+function bc1!(residual, u, p, t)
+    residual[1] = u[end÷2][1] + pi/2 # the solution at the middle of the time span should be -pi/2
+    residual[2] = u[end][1] - pi/2 # the solution at the end of the time span should be pi/2
+end
+
+u0 = MVector{2}([pi/2,pi/2])
+bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
+@test_nowarn solve(bvp1, GeneralMIRK4(), dt=0.05)
