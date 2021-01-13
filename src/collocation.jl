@@ -13,6 +13,7 @@ function BVPSystem(fun, bc, p, x, y, order)
     BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(U, M, N), vector_alloc(U, M, N), typeof(x)(M))
 end
 
+# Dispatch aware of eltype(x) != eltype(prob.u0)
 function BVPSystem(prob::BVProblem, x, order)
     U = eltype(prob.u0)
     M = length(prob.u0)
