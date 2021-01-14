@@ -10,7 +10,16 @@ end
 function BVPSystem(fun, bc, p, x, y, order)
     T, U = eltype(x), eltype(y)
     M, N = size(y)
-    BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), eltype(y)(M))
+    BVPSystem{T,U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M,  N), eltype(y)(M))
+end
+
+# Dispatch aware of eltype(x) != eltype(prob.u0)
+function BVPSystem(prob::BVProblem, x, order)
+    T = eltype(prob.u0)
+    M = length(prob.u0)
+    N = size(x,1)
+    y = vector_alloc(T, M, N)
+    BVPSystem(order, M, N, prob.f, prob.bc, prob.p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N), typeof(x)(undef,M))
 end
 
 # Auxiliary functions for evaluation
