@@ -14,12 +14,12 @@ struct MIRKTableau{T}
 end
 
 # ODE BVP problem system
-mutable struct BVPSystem{T,U<:AbstractArray,P}
+mutable struct BVPSystem{T, U <: AbstractArray, P}
     order::Int                  # The order of MIRK method
     M::Int                      # Number of equations in the ODE system
     N::Int                      # Number of nodes in the mesh
-    fun!                        # M -> M
-    bc!                         # 2 -> 2
+    fun!::Any                        # M -> M
+    bc!::Any                         # 2 -> 2
     p::P
     x::Vector{T}                # N
     y::Vector{U}                # N{M}

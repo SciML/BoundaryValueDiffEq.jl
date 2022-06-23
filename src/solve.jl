@@ -7,28 +7,29 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     # Form a root finding function.
     loss = function (resid, minimizer)
         uEltype = eltype(minimizer)
-        tmp_prob = remake(prob,u0=minimizer)
-        sol = solve(tmp_prob,alg.ode_alg;kwargs...)
-        bc(resid,sol,sol.prob.p,sol.t)
+        tmp_prob = remake(prob, u0 = minimizer)
+        sol = solve(tmp_prob, alg.ode_alg; kwargs...)
+        bc(resid, sol, sol.prob.p, sol.t)
         nothing
     end
     opt = alg.nlsolve(loss, u0)
-    sol_prob = remake(prob,u0=opt[1])
-    sol = solve(sol_prob, alg.ode_alg;kwargs...)
+    sol_prob = remake(prob, u0 = opt[1])
+    sol = solve(sol_prob, alg.ode_alg; kwargs...)
     if sol.retcode == opt[2]
-        DiffEqBase.solution_new_retcode(sol,:Success)
+        DiffEqBase.solution_new_retcode(sol, :Success)
     else
-        DiffEqBase.solution_new_retcode(sol,:Failure)
+        DiffEqBase.solution_new_retcode(sol, :Failure)
     end
     sol
 end
 
-function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.0, kwargs...)
-    if dt<=0
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
+                            kwargs...)
+    if dt <= 0
         error("dt must be positive")
     end
-    n = Int(cld((prob.tspan[2]-prob.tspan[1]),dt))
-    x = collect(range(prob.tspan[1], stop=prob.tspan[2], length=n+1))
+    n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
+    x = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     S = BVPSystem(prob, x, alg_order(alg))
     if isa(prob.u0, AbstractVector{<:Number})
         copyto!.(S.y, (prob.u0,))
@@ -40,19 +41,20 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
     # Upper-level iteration
-    vec_y = Array{eltype(S.y[1])}(undef, S.M*S.N)              # Vector
+    vec_y = Array{eltype(S.y[1])}(undef, S.M * S.N)              # Vector
     reorder! = function (resid)
         # reorder the Jacobian matrix such that it is banded
         tmp_last = resid[end]
-        for i in (length(resid)-1):-1:1
-            resid[i+1] = resid[i]
+        for i in (length(resid) - 1):-1:1
+            resid[i + 1] = resid[i]
         end
         resid[1], resid[end] = resid[end], tmp_last
     end
     loss = function (resid, minimizer)
         nest_vector!(S.y, minimizer)
         Φ!(S, tableau, cache)
-        isa(prob.problem_type, TwoPointBVProblem) ? eval_bc_residual!(S) : general_eval_bc_residual!(S)
+        isa(prob.problem_type, TwoPointBVProblem) ? eval_bc_residual!(S) :
+        general_eval_bc_residual!(S)
         flatten_vector!(resid, S.residual)
         reorder!(resid)
         nothing
@@ -61,7 +63,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK,MIRK}; dt=0.
     jac_wrapper = BVPJacobianWrapper(loss)
 
     flatten_vector!(vec_y, S.y)
-    opt = isa(prob.problem_type, TwoPointBVProblem) ? alg.nlsolve(ConstructJacobian(jac_wrapper, vec_y), vec_y) : alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
+    opt = isa(prob.problem_type, TwoPointBVProblem) ?
+          alg.nlsolve(ConstructJacobian(jac_wrapper, vec_y), vec_y) :
+          alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
 
     retcode = opt[2] ? :Success : :Failure
