@@ -4,7 +4,10 @@ using Reexport, LinearAlgebra, SparseArrays
 @reexport using DiffEqBase
 
 import DiffEqBase: solve
-import NLsolve, ForwardDiff, BandedMatrices, FiniteDiff
+using NLsolve: NLsolve
+using ForwardDiff: ForwardDiff
+using BandedMatrices: BandedMatrices
+using FiniteDiff: FiniteDiff
 
 struct MIRKTableau{T}
     c::Vector{T}
@@ -18,8 +21,8 @@ mutable struct BVPSystem{T,U<:AbstractArray,P}
     order::Int                  # The order of MIRK method
     M::Int                      # Number of equations in the ODE system
     N::Int                      # Number of nodes in the mesh
-    fun!                        # M -> M
-    bc!                         # 2 -> 2
+    fun!::Any                        # M -> M
+    bc!::Any                         # 2 -> 2
     p::P
     x::Vector{T}                # N
     y::Vector{U}                # N{M}

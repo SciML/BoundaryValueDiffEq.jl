@@ -5,17 +5,17 @@ abstract type GeneralMIRK <: BoundaryValueDiffEqAlgorithm end
 abstract type MIRK <: BoundaryValueDiffEqAlgorithm end
 
 struct Shooting{T,F} <: BoundaryValueDiffEqAlgorithm
-  ode_alg::T
-  nlsolve::F
+    ode_alg::T
+    nlsolve::F
 end
-DEFAULT_NLSOLVE = (loss, u0) -> (res=NLsolve.nlsolve(loss, u0);(res.zero, res.f_converged))
-Shooting(ode_alg;nlsolve=DEFAULT_NLSOLVE) = Shooting(ode_alg,nlsolve)
+DEFAULT_NLSOLVE = (loss, u0) -> (res = NLsolve.nlsolve(loss, u0); (res.zero, res.f_converged))
+Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE) = Shooting(ode_alg, nlsolve)
 
 struct GeneralMIRK4 <: GeneralMIRK
-    nlsolve
+    nlsolve::Any
 end
 struct MIRK4 <: MIRK
-    nlsolve
+    nlsolve::Any
 end
-GeneralMIRK4(;nlsolve=DEFAULT_NLSOLVE) = GeneralMIRK4(nlsolve)
-MIRK4(;nlsolve=DEFAULT_NLSOLVE) = MIRK4(nlsolve)
+GeneralMIRK4(; nlsolve = DEFAULT_NLSOLVE) = GeneralMIRK4(nlsolve)
+MIRK4(; nlsolve = DEFAULT_NLSOLVE) = MIRK4(nlsolve)
