@@ -1,6 +1,5 @@
 # Algorithms
-abstract type AbstractBoundaryValueAlgorithm end # This will eventually move to DiffEqBase.jl
-abstract type BoundaryValueDiffEqAlgorithm <: AbstractBoundaryValueAlgorithm end
+abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type GeneralMIRK <: BoundaryValueDiffEqAlgorithm end
 abstract type MIRK <: BoundaryValueDiffEqAlgorithm end
 
