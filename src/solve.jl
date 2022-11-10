@@ -16,9 +16,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol_prob = remake(prob, u0 = opt[1])
     sol = solve(sol_prob, alg.ode_alg; kwargs...)
     if sol.retcode == opt[2]
-        DiffEqBase.solution_new_retcode(sol, :Success)
+        DiffEqBase.solution_new_retcode(sol, ReturnCode.Success)
     else
-        DiffEqBase.solution_new_retcode(sol, :Failure)
+        DiffEqBase.solution_new_retcode(sol, ReturnCode.Failure)
     end
     sol
 end
@@ -68,7 +68,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
           alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
 
-    retcode = opt[2] ? :Success : :Failure
+    retcode = opt[2] ? ReturnCode.Success : ReturnCode.Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
 
@@ -92,7 +92,7 @@ function solve(prob::BVProblem, alg::GeneralMIRK; dt=0.0, kwargs...)
     flatten_vector!(vec_y, S.y)
     opt = alg.nlsolve(loss, vec_y)
     nest_vector!(S.y, opt[1])
-    retcode = opt[2] ? :Success : :Failure
+    retcode = opt[2] ? ReturnCode.Success : ReturnCode.Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
 =#
