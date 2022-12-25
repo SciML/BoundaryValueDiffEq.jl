@@ -62,8 +62,6 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
           alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
 
-    @show opt
-
     retcode = opt[2] ? ReturnCode.Success : ReturnCode.Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
 end
