@@ -7,7 +7,7 @@ function vector_alloc(T, M, N)
     v
 end
 
-function vector_alloc(u0::AbstractArray{T}, x) where T <: AbstractArray
+function vector_alloc(u0::AbstractArray{T}, x) where {T <: AbstractArray}
     @assert length(u0) == length(x)
     deepcopy(u0)
 end

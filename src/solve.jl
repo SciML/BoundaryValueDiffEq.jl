@@ -31,7 +31,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     x = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     S = BVPSystem(prob, x, alg_order(alg))
-  
+
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
     # Upper-level iteration
