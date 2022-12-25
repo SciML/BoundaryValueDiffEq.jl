@@ -18,7 +18,7 @@ end
 # Dispatch aware of eltype(x) != eltype(prob.u0)
 function BVPSystem(prob::BVProblem, x, order)
     y = vector_alloc(prob.u0, x)
-    M = length(prob.u0[1])
+    M = length(y[1])
     N = size(x, 1)
     BVPSystem(order, M, N, prob.f, prob.bc, prob.p, x, y, deepcopy(y),
               deepcopy(y), typeof(x)(undef, M))
