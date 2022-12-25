@@ -31,13 +31,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     x = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     S = BVPSystem(prob, x, alg_order(alg))
-    if isa(prob.u0, AbstractVector{<:Number})
-        copyto!.(S.y, (prob.u0,))
-    elseif isa(prob.u0, AbstractVector{<:AbstractArray})
-        copyto!(S.y, prob.u0)
-    else
-        error("u0 must be a Vector or Vector of Arrays")
-    end
+
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
     # Upper-level iteration

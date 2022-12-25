@@ -22,5 +22,5 @@ struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
 end
 
 function alg_cache(alg::Union{GeneralMIRK4, MIRK4}, S::BVPSystem{T, U}) where {T, U}
-    MIRK4GeneralCache([U(undef, S.M) for i in 1:4])
+    MIRK4GeneralCache([similar(S.y[1]) for i in 1:4])
 end

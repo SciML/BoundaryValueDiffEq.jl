@@ -7,7 +7,17 @@ function vector_alloc(T, M, N)
     v
 end
 
-function flatten_vector!(dest::T, src::Vector{T}) where {T <: AbstractArray}
+function vector_alloc(u0::AbstractArray{T}, x) where {T <: AbstractArray}
+    @assert length(u0) == length(x)
+    deepcopy(u0)
+end
+
+function vector_alloc(u0, x)
+    [copy(u0) for i in eachindex(x)]
+end
+
+function flatten_vector!(dest::T,
+                         src::Vector{T2}) where {T <: AbstractArray, T2 <: AbstractArray}
     N = length(src)
     M = length(src[1])
     for i in eachindex(src)
@@ -15,7 +25,8 @@ function flatten_vector!(dest::T, src::Vector{T}) where {T <: AbstractArray}
     end
 end
 
-function nest_vector!(dest::Vector{T}, src::T) where {T <: AbstractArray}
+function nest_vector!(dest::Vector{T},
+                      src::T2) where {T <: AbstractArray, T2 <: AbstractArray}
     M = length(dest[1])
     for i in eachindex(dest)
         copyto!(dest[i], src[((M * (i - 1)) + 1):(M * i)])

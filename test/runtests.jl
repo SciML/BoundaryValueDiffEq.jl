@@ -7,6 +7,7 @@ using NLsolve
     include("shooting_tests.jl")
     include("orbital.jl")
     include("ensemble.jl")
+    include("vectorofvector_initials.jl")
 end
 
 @time @testset "Collocation Method (MIRK) Tests" begin include("mirk_convergence_tests.jl") end
