@@ -31,13 +31,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     x = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     S = BVPSystem(prob, x, alg_order(alg))
-    if isa(prob.u0, AbstractVector{<:Number})
-        copyto!.(S.y, (prob.u0,))
-    elseif isa(prob.u0, AbstractVector{<:AbstractArray})
-        copyto!(S.y, prob.u0)
-    else
-        error("u0 must be a Vector or Vector of Arrays")
-    end
+  
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
     # Upper-level iteration
@@ -67,6 +61,8 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
           alg.nlsolve(ConstructJacobian(jac_wrapper, vec_y), vec_y) :
           alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
     nest_vector!(S.y, opt[1])
+
+    @show opt
 
     retcode = opt[2] ? ReturnCode.Success : ReturnCode.Failure
     DiffEqBase.build_solution(prob, alg, x, S.y, retcode = retcode)
