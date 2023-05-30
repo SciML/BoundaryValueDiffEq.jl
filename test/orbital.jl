@@ -1,8 +1,7 @@
 # Lambert's Problem
 
 using BoundaryValueDiffEq
-using DiffEqBase, OrdinaryDiffEq, LinearAlgebra
-using NLsolve
+using DiffEqBase, OrdinaryDiffEq, LinearAlgebra, NonlinearSolve
 using Test
 
 y0 = [
@@ -62,13 +61,8 @@ TestTol = 0.05
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
-@time sol = solve(bvp,
-                  Shooting(DP5(),
-                           nlsolve = (f, u0) -> (res = NLsolve.nlsolve(f, u0,
-                                                                       autodiff = :central,
-                                                                       ftol = 1e-13);
-                                                 (res.zero,
-                                                  res.f_converged))),
+nlsolve = TrustRegion(; autodiff = Val(false), diff_type = Val(:central))
+@time sol = solve(bvp, Shooting(DP5(); nlsolve),
                   force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
@@ -77,13 +71,8 @@ cur_bc!(resid_f, sol, nothing, sol.t)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
 
-@time sol = solve(bvp,
-                  Shooting(DP5(),
-                           nlsolve = (f, u0) -> (res = NLsolve.nlsolve(f, u0,
-                                                                       autodiff = :forward,
-                                                                       ftol = 1e-13,
-                                                                       xtol = 1e-13);
-                                                 (res.zero, res.f_converged))),
+nlsolve = TrustRegion(; autodiff = Val(false), diff_type = Val(:forward))
+@time sol = solve(bvp, Shooting(DP5(); nlsolve),
                   force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol

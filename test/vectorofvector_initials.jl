@@ -61,5 +61,5 @@ end
 
 #This is the part of the code that has problems
 bvp1 = TwoPointBVProblem(TC!, bc_po!, sol.u, tspan)
-sol6 = solve(bvp1, GeneralMIRK4(), dt = 0.5)
+sol6 = solve(bvp1, GeneralMIRK4(; nlsolve); dt = 0.5)
 @test SciMLBase.successful_retcode(sol6.retcode)

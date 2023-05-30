@@ -37,10 +37,12 @@ func_2 = ODEFunction(func_2!,
                          5 * (-cos(t) * cot(5) - sin(t))])
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
-probArr = [BVProblem(func_1, boundary!, u0, tspan),
+probArr = [
+    BVProblem(func_1, boundary!, u0, tspan),
     BVProblem(func_2, boundary!, u0, tspan),
     TwoPointBVProblem(func_1, boundary_two_point!, u0, tspan),
-    TwoPointBVProblem(func_2, boundary_two_point!, u0, tspan)]
+    TwoPointBVProblem(func_2, boundary_two_point!, u0, tspan),
+]
 
 testTol = 0.2
 affineTol = 1e-2
@@ -53,12 +55,12 @@ prob = probArr[1]
 # GeneralMIRK4
 
 @time sol = solve(prob, GeneralMIRK4(), dt = 0.2)
-@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
 
 # GeneralMIRK6
 
 @time sol = solve(prob, GeneralMIRK6(), dt = 0.2)
-@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+@test norm(diff(map(first, sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
 
 println("Convergence Test on Linear")
 prob = probArr[2]

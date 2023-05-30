@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEq"
 uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
-version = "2.11.0"
+version = "3.0.0"
 
 [deps]
 BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
@@ -8,27 +8,32 @@ DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
+NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 
 [compat]
 BandedMatrices = "0.14, 0.15, 0.16, 0.17"
 DiffEqBase = "6.94.2"
 FiniteDiff = "2"
 ForwardDiff = "0.10"
-NLsolve = "4.2"
+NonlinearSolve = "1"
 Reexport = "0.2, 1.0"
 SciMLBase = "1.70"
+Setfield = "1"
+TruncatedStacktraces = "1"
 julia = "1.6"
 
 [extras]
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
+NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["StaticArrays", "Random", "DiffEqDevTools", "OrdinaryDiffEq", "Test"]
+test = ["StaticArrays", "Random", "DiffEqDevTools", "OrdinaryDiffEq", "Test", "NonlinearSolve"]

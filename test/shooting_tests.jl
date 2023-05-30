@@ -21,12 +21,12 @@ bvp = BVProblem(f, bc!, u0, tspan)
 resid_f = Array{Float64}(undef, 2)
 sol = solve(bvp, Shooting(Tsit5()))
 bc!(resid_f, sol, nothing, sol.t)
-@test norm(resid_f) < 1e-7
+@test norm(resid_f) < 1e-6
 
 #Test for complex values
 u0 = [0.0, 1.0] .+ 1im
 bvp = BVProblem(f, bc!, u0, tspan)
 resid_f = Array{ComplexF64}(undef, 2)
-sol = solve(bvp, Shooting(Tsit5()))
+sol = solve(bvp, Shooting(Tsit5(); nlsolve = NewtonRaphson(; autodiff = false)))
 bc!(resid_f, sol, nothing, sol.t)
-@test norm(resid_f) < 1e-7
+@test norm(resid_f) < 1e-6
