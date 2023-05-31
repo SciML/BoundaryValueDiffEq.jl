@@ -65,7 +65,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
             alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
         nest_vector!(S.y, opt[1])
 
-        #k_discrete = copy(cache.K)
+        k_discrete = zeros(n, len)
 
         if opt[2] == ReturnCode.Success
             info = 0
@@ -130,9 +130,11 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     DiffEqBase.build_solution(prob, alg, mesh, Y, retcode = retcode)
 end
 
-#=
+"""
+    interp_eval(mesh, Y, t, k_discrete, k_interp)
+
 After we construct an interpolant, we use interp_eval to evaluate it.
-=#
+"""
 function interp_eval(mesh, Y, t, k_discrete, k_interp)
     # EXPORTS: z, z_prime
     i = interval(mesh, t)
@@ -148,6 +150,11 @@ function interval(mesh, t)
     return i
 end
 
+"""
+    mesh_selector(mesh_current, defect, tol, n, len, alg)
+
+Generate new mesh based on the defect.
+"""
 function mesh_selector(mesh_current, defect, tol, n, len, alg)
     #exports: mesh_new, Nsub_star, info
 
@@ -205,12 +212,11 @@ function mesh_selector(mesh_current, defect, tol, n, len, alg)
     return mesh_new, Nsub_star, info
 end
 
-```
+"""
     redistribute(mesh_current, n, Nsub_star, s_hat)
 
-Generate a new mesh 
-
-```
+Generate a new mesh.
+"""
 function redistribute(mesh_current, n, Nsub_star, s_hat)
     mesh_new = zeros(Float64, Nsub_star+1)
     sum = 0.0
@@ -240,13 +246,13 @@ function redistribute(mesh_current, n, Nsub_star, s_hat)
     return mesh_new
 end
 
-```
+"""
     half_mesh(mesh_current, n)
 
 The input mesh_current has length of n+1
 
 Divide the original subinterval into two equal length subinterval.
-```
+"""
 function half_mesh(mesh_current, n)
     mesh_new = zeros(Float64, 2*n+1)
     mesh_new[1] = mesh_current[1]
@@ -263,13 +269,13 @@ function idamax(x)
     return id
 end
 
-```
+"""
     defect_estimate(prob, Y, alg, n, dt, mesh, k_discrete)
 
 defect_estimate use the discrete solution approximation Y, plus stages of 
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct 
 an interpolant
-```
+"""
 function defect_estimate(prob, Y, alg, n, dt, len, mesh, k_discrete)
     # Initialization
     defect = zeros(n, len)
@@ -347,13 +353,13 @@ function setup_coeff(alg)
 end
 
 
-```
-    interp_setup()
+"""
+    interp_setup
 
 interp_setup prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
-```
-function interp_setup(tim1, hi, yim1, yi, s, s_star, x_star, v_star, c_star, ki_discrete, f, len)
+"""
+function interp_setup(tim1, hi, y_left, y_right, s, s_star, x_star, v_star, c_star, ki_discrete, f, len)
     # EXPORTS: ki_interp
     ki_interp = zeros(Float64, (s_star-s)*len)
     for r=1:s_star-s
@@ -365,8 +371,8 @@ function interp_setup(tim1, hi, yim1, yi, s, s_star, x_star, v_star, c_star, ki_
             new_stages .= new_stages .+ x_star[(j+s-1)*(s_star-s)+r] .* ki_interp[(j-1)*len+1]
         end
         new_stages .= new_stages .* hi
-        new_stages .= new_stages .+ (1-v_star[r]) .* yim1
-        new_stages .= new_stages .+ v_star[r] .* yi
+        new_stages .= new_stages .+ (1-v_star[r]) .* y_left
+        new_stages .= new_stages .+ v_star[r] .* y_right
 
         temp = copy(ki_interp[:, r])
         f(temp, new_stages, prob.p, tim1+c_star[r])
@@ -375,14 +381,14 @@ function interp_setup(tim1, hi, yim1, yi, s, s_star, x_star, v_star, c_star, ki_
     return ki_interp
 end
 
-```
-    sum_stages()
+"""
+    sum_stages(weights, weights_prime, ki_discrete, ki_interp, len, dt, y)
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 
 Here, ki_discrete is a matrix stored with discrete RK stages in the ith interval, ki_discrete has legnth of s*neqns
 Here, ki_interp is a matrix stored with interpolation coefficients in the ith interval, ki_interp has length of (s_star-s)*neqns
-```
+"""
 function sum_stages(weights, weights_prime, ki_discrete, ki_interp, len, dt, y)
     # EXPORTS: z, z_prime
     for i=1:s
@@ -398,11 +404,11 @@ function sum_stages(weights, weights_prime, ki_discrete, ki_interp, len, dt, y)
     return z, z_prime
 end
 
-```
+"""
     interp_weights(tau, alg)
 
 interp_weights: solver-specified interpolation weights and its first derivative
-```
+"""
 function interp_weights(tau, alg)
     if alg_order(alg) == 4
         t2 = tau*tau
