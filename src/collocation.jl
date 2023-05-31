@@ -45,7 +45,7 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
         # Update K
         for r in 1:order
             x_new = x[i] + c[r] * h
-            y_new = (1 - v[r]) * y[i] + v[r] * y[i+1]
+            y_new = (1 - v[r]) * y[i] + v[r] * y[i + 1]
             if r > 1
                 y_new += h * sum(j -> X[r, j] * K[j], 1:(r - 1))
             end
