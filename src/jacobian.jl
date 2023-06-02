@@ -17,14 +17,3 @@ function _construct_nonlinear_problem_with_jacobian(f!::BVPJacobianWrapper, S::B
     nlf = NonlinearFunction{true}(f!.loss; jac = jac!, jac_prototype = sparse(J0))
     return NonlinearProblem(nlf, y, p)
 end
-
-# function _construct_nonlinear_function_with_jacobian(f!::BVPJacobianWrapper, y)
-#     jac_cache = FiniteDiff.JacobianCache(similar(y), similar(y), similar(y))
-#     function jac!(J, x, p)
-#         F = jac_cache.fx
-#         _f!(F, x) = f!(F, x, p)
-#         FiniteDiff.finite_difference_jacobian!(J, _f!, x, jac_cache)
-#         return nothing
-#     end
-#     return NonlinearFunction{true}(f!.loss; jac = jac!)
-# end

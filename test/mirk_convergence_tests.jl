@@ -46,7 +46,7 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = (1 / 2) .^ (5:-1:1)
+dts = (1 / 2) .^ (5:-1:2)
 
 println("Collocation method (GeneralMIRK)")
 println("Affineness Test")
