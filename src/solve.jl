@@ -89,13 +89,15 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
             end
         end
 
+        s, s_star, _, _, _, _ = setup_coeff(alg)
+
         if info == 0
             println("Newton interation was successful")
             if defect_norm > tol
                 mesh_new, Nsub_star, info = mesh_selector(mesh, defect, tol, n, len, alg)
                 if info == 0
                     for i in 0:Nsub_star
-                        Y = interp_eval(mesh_new, Y, mesh_new[i + 1], k_discrete, k_interp)
+                        Y = interp_eval(mesh_new, Y, mesh_new[i + 1], dt, len, s, s_star, k_discrete, k_interp)
                     end
                     mesh = copy(mesh_new)
                     n = copy(Nsub_star)
@@ -123,6 +125,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     end
 
     retcode = ReturnCode.Success
+    # 
     if info == 0
         retcode = ReturnCode.Success
     elseif info == -4
@@ -138,7 +141,7 @@ end
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-function interp_eval(mesh, Y, t, k_discrete, k_interp)
+function interp_eval(mesh, Y, t, dt, len, s, s_star, k_discrete, k_interp)
     # EXPORTS: z, z_prime
     i = interval(mesh, t)
     tau = (t - mesh[i]) / dt
@@ -158,10 +161,11 @@ end
 
 Generate new mesh based on the defect.
 """
-function mesh_selector(mesh_current, defect, tol, n, len, alg::Union{GeneralMIRK, MIRK})
+function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64, alg::Union{GeneralMIRK, MIRK})
     #exports: mesh_new, Nsub_star, info
 
-    MxNsub = 3000 #FIXME: Need users to manually specify
+    #TODO: Need users to manually specify, here, we set it as 3000 by default.
+    MxNsub = 3000
 
     safety_factor = 1.3
     rho = 1.0
@@ -227,7 +231,7 @@ function redistribute(mesh_current::Vector, n::Int64, Nsub_star::Int64, s_hat)
     mesh_new = zeros(Float64, Nsub_star + 1)
     sum = 0.0
     for k in 1:n
-        sum = sum + s_hat[k] * (mesh_current[k + 1] - mesh_current[k])
+        sum += s_hat[k] * (mesh_current[k + 1] - mesh_current[k])
     end
     zeta = sum / Nsub_star
     k::Int64 = 1
@@ -240,12 +244,12 @@ function redistribute(mesh_current::Vector, n::Int64, Nsub_star::Int64, s_hat)
         if (integral + next_piece) > zeta
             mesh_new[i + 2] = (zeta - integral) / s_hat[k] + t
             t = mesh_new[i + 2]
-            i = i + 1
+            i += 1
             integral = 0
         else
-            integral = integral + next_piece
+            integral += next_piece
             t = mesh_current[k + 1]
-            k = k + 1
+            k += 1
         end
     end
     mesh_new[Nsub_star + 1] = mesh_current[n + 1]
@@ -305,7 +309,7 @@ function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::I
         # Sample point 1
         z, z_prime = sum_stages(weights_1, weights_1_prime, k_discrete, k_interp, len, dt,
                                 Y, s, s_star)
-        prob.f(f_sample_1, z, prob.p, x[i] + tau_star * dt)
+        prob.f(f_sample_1, z, prob.p, mesh[i] + tau_star * dt)
         z_prime .= z_prime .- f_1
         def_1 = copy(z_prime)
         for j in 1:len
@@ -316,7 +320,7 @@ function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::I
         # Sample point 2
         z, z_prime = sum_stages(weights_2, weights_2_prime, k_discrete, k_interp, len, dt,
                                 Y, s, s_star)
-        prob.f(f_sample_2, z, prob.p, x[i] + (1.0 - tau_star) * dt)
+        prob.f(f_sample_2, z, prob.p, mesh[i] + (1.0 - tau_star) * dt)
         z_prime .= z_prime .- f_2
         def_2 .= copy(z_prime)
         for j in 1:len
@@ -368,7 +372,7 @@ end
 interp_setup prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-function interp_setup(tim1, hi, y_left, y_right, s, s_star, x_star, v_star, c_star,
+function interp_setup(tim1, dt, y_left, y_right, s, s_star, x_star, v_star, c_star,
                       ki_discrete, prob, len)
     # EXPORTS: ki_interp
     ki_interp = zeros(Float64, (s_star - s) * len)
@@ -383,7 +387,7 @@ function interp_setup(tim1, hi, y_left, y_right, s, s_star, x_star, v_star, c_st
                           x_star[(j + s - 1) * (s_star - s) + r] .*
                           ki_interp[(j - 1) * len + 1]
         end
-        new_stages .= new_stages .* hi
+        new_stages .= new_stages .* dt
         new_stages .= new_stages .+ (1 - v_star[r]) .* y_left
         new_stages .= new_stages .+ v_star[r] .* y_right
 
