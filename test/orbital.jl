@@ -63,7 +63,7 @@ TestTol = 0.05
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
 nlsolve = TrustRegion(; autodiff = Val(false), diff_type = Val(:central))
 @time sol = solve(bvp, Shooting(DP5(); nlsolve),
-                  force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
+    force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
 
@@ -73,6 +73,6 @@ cur_bc!(resid_f, sol, nothing, sol.t)
 
 nlsolve = TrustRegion(; autodiff = Val(false), diff_type = Val(:forward))
 @time sol = solve(bvp, Shooting(DP5(); nlsolve),
-                  force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
+    force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol

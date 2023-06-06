@@ -4,7 +4,7 @@ function BVPSystem(fun, bc, p, x, M::Integer, order)
     N = size(x, 1)
     y = vector_alloc(T, M, N)
     BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N),
-              eltype(y)(undef, M))
+        eltype(y)(undef, M))
 end
 
 # If user offers an intial guess
@@ -12,7 +12,7 @@ function BVPSystem(fun, bc, p, x, y, order)
     T, U = eltype(x), eltype(y)
     M, N = size(y)
     BVPSystem{T, U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N),
-                    vector_alloc(T, M, N), eltype(y)(M))
+        vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Dispatch aware of eltype(x) != eltype(prob.u0)
@@ -21,7 +21,7 @@ function BVPSystem(prob::BVProblem, x, order)
     M = length(y[1])
     N = size(x, 1)
     BVPSystem(order, M, N, prob.f, prob.bc, prob.p, x, y, deepcopy(y),
-              deepcopy(y), typeof(x)(undef, M))
+        deepcopy(y), typeof(x)(undef, M))
 end
 
 # Auxiliary functions for evaluation
