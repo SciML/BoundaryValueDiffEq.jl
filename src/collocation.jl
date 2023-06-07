@@ -4,7 +4,7 @@ function BVPSystem(fun, bc, p, x, M::Integer, order)
     N = size(x, 1)
     y = vector_alloc(T, M, N)
     BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N),
-              eltype(y)(undef, M))
+        eltype(y)(undef, M))
 end
 
 # If user offers an intial guess
@@ -12,7 +12,7 @@ function BVPSystem(fun, bc, p, x, y, order)
     T, U = eltype(x), eltype(y)
     M, N = size(y)
     BVPSystem{T, U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N),
-                    vector_alloc(T, M, N), eltype(y)(M))
+        vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Dispatch aware of eltype(x) != eltype(prob.u0)
@@ -21,7 +21,7 @@ function BVPSystem(prob::BVProblem, x, order)
     M = length(y[1])
     N = size(x, 1)
     BVPSystem(order, M, N, prob.f, prob.bc, prob.p, x, y, deepcopy(y),
-              deepcopy(y), typeof(x)(undef, M))
+        deepcopy(y), typeof(x)(undef, M))
 end
 
 # Auxiliary functions for evaluation
@@ -50,7 +50,7 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
                 y_new += h * sum(j -> X[r, j] * K[j], 1:(r - 1))
             end
             fun!(K[r], y_new, S.p, x_new)
-            cache.k_discrete[i, ((r-1)*M + 1):((r-1)*M + M)] = K[r]
+            cache.k_discrete[i, ((r - 1) * M + 1):((r - 1) * M + M)] = K[r]
         end
         # Update residual
         residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * K[j], 1:order)
