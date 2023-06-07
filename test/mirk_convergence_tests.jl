@@ -44,8 +44,9 @@ probArr = [
     TwoPointBVProblem(func_2, boundary_two_point!, u0, tspan),
 ]
 
+testTol = 0.2
 affineTol = 1e-2
-dts = (1 / 2) .^ (5:-1:2)
+dts = (1 / 2) .^ (5:-1:1)
 
 println("Collocation method (GeneralMIRK)")
 println("Affineness Test")
@@ -66,13 +67,13 @@ prob = probArr[2]
 
 # GeneralMIRK4
 
-@time sim = test_convergence([0.03125, 0.125, 0.25, 0.5], prob, GeneralMIRK4());
-@test sim.𝒪est[:final]≈4 atol=0.25
+@time sim = test_convergence(dts, prob, GeneralMIRK4(); abstol = 1e-13, reltol = 1e-13);
+@test sim.𝒪est[:final]≈4 atol=testTol
 
 # GeneralMIRK6
 
-@time sim = test_convergence((1 / 2) .^ (5:-1:1), prob, GeneralMIRK6());
-@test_broken sim.𝒪est[:final]≈6 atol=0.25
+@time sim = test_convergence(dts, prob, GeneralMIRK6(); abstol = 1e-13, reltol = 1e-13);
+@test sim.𝒪est[:final]≈6 atol=testTol
 
 println("Collocation method (MIRK)")
 println("Affineness Test")
@@ -93,13 +94,13 @@ prob = probArr[4]
 
 # MIRK4
 
-@time sim = test_convergence([0.03125, 0.125, 0.25, 0.5], prob, MIRK4());
-@test sim.𝒪est[:final]≈4 atol=0.25
+@time sim = test_convergence(dts, prob, MIRK4(); abstol = 1e-13, reltol = 1e-13);
+@test sim.𝒪est[:final]≈4 atol=testTol
 
 # MIRK6
 
-@time sim = test_convergence((1 / 2) .^ (5:-1:1), prob, MIRK6());
-@test sim.𝒪est[:final]≈6 atol=0.25
+@time sim = test_convergence(dts, prob, MIRK6(); abstol = 1e-13, reltol = 1e-13);
+@test sim.𝒪est[:final]≈6 atol=testTol
 
 using StaticArrays
 tspan = (0.0, pi / 2)
