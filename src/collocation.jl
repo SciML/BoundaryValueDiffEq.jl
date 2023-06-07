@@ -50,6 +50,7 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
                 y_new += h * sum(j -> X[r, j] * K[j], 1:(r - 1))
             end
             fun!(K[r], y_new, S.p, x_new)
+            cache.k_discrete[i, ((r-1)*M + 1):((r-1)*M + M)] = K[r]
         end
         # Update residual
         residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * K[j], 1:order)

@@ -17,12 +17,13 @@ function alg_cache{T,U}(alg::MIRK4, S::BVPSystem{T,U})
 end
 =#
 
-struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
+mutable struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
     K::kType
+    k_discrete::AbstractArray
 end
 
 function alg_cache(alg::Union{GeneralMIRK4, MIRK4}, S::BVPSystem{T, U}) where {T, U}
-    MIRK4GeneralCache([similar(S.y[1]) for i in 1:4])
+    MIRK4GeneralCache([similar(S.y[1]) for i in 1:4], zeros(S.N, S.order*S.M))
 end
 
 struct MIRK6GeneralCache{kType} <: GeneralMIRKCache
