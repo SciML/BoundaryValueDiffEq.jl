@@ -26,6 +26,7 @@ myu = 398600.4418E+9
 t0 = 86400 * 2.3577475462484435E+04
 t1 = 86400 * 2.3577522023524125E+04
 tspan = (t0, t1)
+
 # ODE solver
 function orbital(dy, y, p, t)
     r2 = (y[1]^2 + y[2]^2 + y[3]^2)
@@ -52,27 +53,34 @@ cur_bc! = (resid, sol, p, t) -> bc!_generator(resid, sol, init_val)
 resid_f = Array{Float64}(undef, 6)
 
 ### Test the IVP Near the true solution
-### Should be small
-# prob = ODEProblem(f,y0,tspan)
-# sol = solve(prob,DP5(),abstol=1e-13,reltol=1e-13)
-# cur_bc!(resid_f,sol)
 
 TestTol = 0.05
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
-nlsolve = TrustRegion(; autodiff = Val(false), diff_type = Val(:central))
-@time sol = solve(bvp, Shooting(DP5(); nlsolve),
-    force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
+nlsolve = NewtonRaphson(; autodiff = Val(false), diff_type = Val(:central))
+@time sol = solve(bvp,
+    Shooting(DP5(); nlsolve),
+    force_dtmin = true,
+    abstol = 1e-13,
+    reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
 
-@time sol = solve(bvp, Shooting(DP5()), force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
+nlsolve = NewtonRaphson(; autodiff = Val(false), diff_type = Val(:forward))
+@time sol = solve(bvp,
+    Shooting(DP5(); nlsolve),
+    force_dtmin = true,
+    abstol = 1e-13,
+    reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
 
-nlsolve = TrustRegion(; autodiff = Val(false), diff_type = Val(:forward))
-@time sol = solve(bvp, Shooting(DP5(); nlsolve),
-    force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
+nlsolve = NewtonRaphson(; autodiff = Val(true))
+@time sol = solve(bvp,
+    Shooting(DP5(); nlsolve),
+    force_dtmin = true,
+    abstol = 1e-13,
+    reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
