@@ -10,4 +10,6 @@ using NLsolve
     include("vectorofvector_initials.jl")
 end
 
-@time @testset "Collocation Method (MIRK) Tests" begin include("mirk_convergence_tests.jl") end
+@time @testset "Collocation Method (MIRK) Tests" begin
+    include("mirk_convergence_tests.jl")
+end
