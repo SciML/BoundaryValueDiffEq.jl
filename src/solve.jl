@@ -34,9 +34,10 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     defect_threshold = 0.1
     info = 0
     defect_norm = 10
-    len = length(prob.u0)
+    MxNsub = 3000
     while info == 0 && defect_norm > tol
         S = BVPSystem(prob, mesh, alg_order(alg))
+        len = S.M
         tableau = constructMIRK(S)
         cache = alg_cache(alg, S)
         # Upper-level iteration
@@ -67,7 +68,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
               alg.nlsolve(ConstructJacobian(jac_wrapper, S, vec_y), vec_y) # Sparse matrix is broken
         nest_vector!(S.y, opt[1])
 
-        k_discrete = zeros(n, len)
+        k_discrete = copy(cache.k_discrete)
 
         if opt[2] == ReturnCode.Success
             info = 0
@@ -77,7 +78,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
 
         # Change the original solution Vector{Vector{Float64}} to a matrix
         # has size of (number of subintervals, length of equation)
-        Y = transpose(reduce(hcat, S.y))
+        global Y = transpose(reduce(hcat, S.y))
 
         if info == 0
             defect, defect_norm, k_interp = defect_estimate(prob, Y, alg, n, dt, len, mesh,
@@ -89,18 +90,23 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
             end
         end
 
-        s, s_star, _, _, _, _ = setup_coeff(alg)
+        s, s_star = setup_coeff(alg)
 
         if info == 0
             println("Newton interation was successful")
             if defect_norm > tol
                 mesh_new, Nsub_star, info = mesh_selector(mesh, defect, tol, n, len, alg)
                 if info == 0
+                    z, z_prime = zeros(len), zeros(len)
+                    new_Y = zeros(Nsub_star + 1, len)
                     for i in 0:Nsub_star
-                        Y = interp_eval(mesh_new, Y, mesh_new[i + 1], dt, len, s, s_star, k_discrete, k_interp)
+                        z, z_prime = interp_eval(mesh, Y, alg, mesh_new[i + 1], dt, len, s,
+                                                 s_star, k_discrete, k_interp)
+                        new_Y[i + 1, :] = z
                     end
                     mesh = copy(mesh_new)
                     n = copy(Nsub_star)
+                    Y = copy(new_Y)
                 end
             end
 
@@ -141,18 +147,22 @@ end
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-function interp_eval(mesh, Y, t, dt, len, s, s_star, k_discrete, k_interp)
+function interp_eval(mesh, Y, alg, t, dt, len, s, s_star, k_discrete, k_interp)
     # EXPORTS: z, z_prime
     i = interval(mesh, t)
-    tau = (t - mesh[i]) / dt
+    hi = mesh[i + 1] - mesh[i]
+    tau = (t - mesh[i]) / hi
     weights, weights_prime = interp_weights(tau, alg)
-    z, z_prime = sum_stages(weights, weights_prime, k_discrete, k_interp, len, dt, Y, s, s_star)
+    z, z_prime = sum_stages(weights, weights_prime,
+                            k_discrete[i, :],
+                            k_interp[i, :],
+                            len, dt, Y[i, :], s, s_star)
     return z, z_prime
 end
 
 function interval(mesh, t)
     ind = findfirst(x -> x > t, mesh)
-    i = copy(ind)
+    i::Int64 = copy(ind)
     return i
 end
 
@@ -161,14 +171,15 @@ end
 
 Generate new mesh based on the defect.
 """
-function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64, alg::Union{GeneralMIRK, MIRK})
+function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64,
+                       alg::Union{GeneralMIRK, MIRK})
     #exports: mesh_new, Nsub_star, info
 
     #TODO: Need users to manually specify, here, we set it as 3000 by default.
     MxNsub = 3000
 
     safety_factor = 1.3
-    rho = 1.0
+    rho = 1.0 # Set rho=1 means mesh distribution will take place everytime.
     upper_new_mesh = 4.0
     lower_new_mesh = 0.5
     r1 = 0.0
@@ -178,9 +189,8 @@ function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64, 
     p = alg_order(alg)
     s_hat = zeros(Float64, n)
     for i in 1:n
-        offset::Int64 = (i - 1) * len
-        h = mesh[i + 1] - mesh[i]
-        norm = abs(defect[offset, idamax(defect[offset, :])])
+        h = mesh_current[i + 1] - mesh_current[i]
+        norm = abs(defect[i, idamax(defect[i, :])])
         s_hat[i] = (norm / tol)^(1.0 / (p + 1)) / h
         if s_hat[i] * h > r1
             r1 = s_hat[i] * h
@@ -188,13 +198,13 @@ function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64, 
         r2 = r2 + s_hat[i] * h
     end
     r3 = r2 / n
-    n_predict::Int64 = (safety_factor * r2) + 1
+    n_predict::Int64 = round(Int, (safety_factor * r2) + 1)
     if abs((n_predict - n) / n) < 0.1
-        n_predict = 1.1 * n
+        n_predict = round(Int, 1.1 * n)
     end
 
     if r1 <= rho * r3
-        Nsub_star = 2 * n
+        Nsub_star::Int64 = 2 * n
         if Nsub_star > MxNsub # Need to determine the too large threshold
             println("New mesh would be too large")
             info = -1
@@ -237,7 +247,7 @@ function redistribute(mesh_current::Vector, n::Int64, Nsub_star::Int64, s_hat)
     k::Int64 = 1
     i::Int64 = 0
     mesh_new[1] = mesh_current[1]
-    t = mesh_current[0]
+    t = mesh_current[1]
     integral::Float64 = 0.0
     while k <= n
         next_piece = s_hat[k] * (mesh_current[k + 1] - t)
@@ -286,14 +296,15 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct 
 an interpolant
 """
-function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::Int64, dt, len::Int64, mesh::Vector, k_discrete)
+function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::Int64, dt,
+                         len::Int64, mesh::Vector, k_discrete)
     # Initialization
     defect = zeros(n, len)
     s, s_star, tau_star, x_star, v_star, c_star = setup_coeff(alg)
 
-    f_sample_1, f_sample_2 = zeros(len), zeros(len)
-    def_1, def_2 = zeros(len), zeros(len)
-    temp_1, temp_2 = zeros(len), zeros(len)
+    f_sample_1, f_sample_2 = zeros(Float64, len), zeros(Float64, len)
+    def_1, def_2 = zeros(Float64, len), zeros(Float64, len)
+    temp_1, temp_2 = zeros(Float64, len), zeros(Float64, len)
     estimate_1, estimate_2 = zeros(Float64), zeros(Float64)
 
     # Evaluate at the first sample point
@@ -301,30 +312,34 @@ function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::I
     # Evaluate at the second sample point
     weights_2, weights_2_prime = interp_weights(1.0 - tau_star, alg)
 
-    k_interp = zeros(Float64)
+    #k_interp stores the extra stages for each subintervals,
+    #hence the size of k_interp is n x (len*(s_star-s))
+    k_interp = zeros(n, len * (s_star - s))
     for i in 1:n
-        k_interp = interp_setup(mesh[i], dt, Y[i, :], Y[i + 1, :], s, s_star, x_star,
-                                v_star, c_star, k_discrete[i, :], prob, len)
+        k_interp[i, :] = interp_setup(mesh[i], dt, Y[i, :], Y[i + 1, :], s, s_star, x_star,
+                                      v_star, c_star, k_discrete[i, :], prob, len)
 
         # Sample point 1
-        z, z_prime = sum_stages(weights_1, weights_1_prime, k_discrete, k_interp, len, dt,
-                                Y, s, s_star)
+        z, z_prime = sum_stages(weights_1, weights_1_prime, k_discrete[i, :],
+                                k_interp[i, :], len, dt,
+                                Y[i, :], s, s_star)
         prob.f(f_sample_1, z, prob.p, mesh[i] + tau_star * dt)
-        z_prime .= z_prime .- f_1
+        z_prime .= z_prime .- f_sample_1
         def_1 = copy(z_prime)
         for j in 1:len
-            temp_1[j] = def_1[j] / (abs(f_1[j]) + 1.0)
+            temp_1[j] = def_1[j] / (abs(f_sample_1[j]) + 1.0)
         end
         estimate_1 = maximum(abs.(temp_1))
 
         # Sample point 2
-        z, z_prime = sum_stages(weights_2, weights_2_prime, k_discrete, k_interp, len, dt,
-                                Y, s, s_star)
+        z, z_prime = sum_stages(weights_2, weights_2_prime, k_discrete[i, :],
+                                k_interp[i, :], len, dt,
+                                Y[i, :], s, s_star)
         prob.f(f_sample_2, z, prob.p, mesh[i] + (1.0 - tau_star) * dt)
-        z_prime .= z_prime .- f_2
+        z_prime .= z_prime .- f_sample_2
         def_2 .= copy(z_prime)
         for j in 1:len
-            temp_2[j] = def_2[j] / (abs(f_2[j]) + 1.0)
+            temp_2[j] = def_2[j] / (abs(f_sample_2[j]) + 1.0)
         end
         estimate_2 = maximum(abs.(temp_2))
 
@@ -373,19 +388,20 @@ interp_setup prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
 function interp_setup(tim1, dt, y_left, y_right, s, s_star, x_star, v_star, c_star,
-                      ki_discrete, prob, len)
+                      ki_discrete, prob::BVProblem, len)
     # EXPORTS: ki_interp
     ki_interp = zeros(Float64, (s_star - s) * len)
     for r in 1:(s_star - s)
         new_stages = zeros(Float64, len)
         for j in 1:s
             new_stages .= new_stages .+
-                          x_star[j * (s_star - s) + r] .* ki_discrete[(j - 1) * len + 1]
+                          x_star[j * (s_star - s) + r] .*
+                          ki_discrete[((j - 1) * len + 1):((j - 1) * len + len)]
         end
         for j in 1:(r - 1)
             new_stages .= new_stages .+
                           x_star[(j + s - 1) * (s_star - s) + r] .*
-                          ki_interp[(j - 1) * len + 1]
+                          ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
         end
         new_stages .= new_stages .* dt
         new_stages .= new_stages .+ (1 - v_star[r]) .* y_left
@@ -409,13 +425,17 @@ Here, ki_interp is a matrix stored with interpolation coefficients in the ith in
 function sum_stages(weights, weights_prime, ki_discrete, ki_interp, len, dt, y, s, s_star)
     # EXPORTS: z, z_prime
     z, z_prime = zeros(len), zeros(len)
+    ki_discrete = ki_discrete[:]
     for i in 1:s
-        z .= z .+ weights[i] .* ki_discrete[i, :]
-        z_prime .= z_prime .+ weights_prime[i] .* ki_discrete[i, :]
+        z .= z .+ weights[i] .* ki_discrete[((i - 1) * len + 1):((i - 1) * len + len)]
+        z_prime .= z_prime .+
+                   weights_prime[i] .*
+                   ki_discrete[((i - 1) * len + 1):((i - 1) * len + len)]
     end
     for j in 1:(s_star - s)
-        z .= z .+ weights[s + j] .* ki_interp[j, :]
-        z_prime .= z_prime .+ weights_prime[j] .* ki_interp[j, :]
+        z .= z .+ weights[s + j] .* ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
+        z_prime .= z_prime .+
+                   weights_prime[j] .* ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
     end
     z = z .* dt
     z = z .* y
