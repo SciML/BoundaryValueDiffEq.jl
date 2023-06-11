@@ -8,8 +8,8 @@ struct Shooting{T, F} <: BoundaryValueDiffEqAlgorithm
     nlsolve::F
 end
 DEFAULT_NLSOLVE = (loss, u0) -> (res = NLsolve.nlsolve(loss, u0);
-(res.zero,
-    res.f_converged))
+                                 (res.zero,
+                                  res.f_converged))
 Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE) = Shooting(ode_alg, nlsolve)
 
 """

@@ -33,8 +33,8 @@ end
 # Not able to change the initial condition.
 # Hard coded solution.
 func_2 = ODEFunction(func_2!,
-    analytic = (u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)),
-        5 * (-cos(t) * cot(5) - sin(t))])
+                     analytic = (u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)),
+                         5 * (-cos(t) * cot(5) - sin(t))])
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
 probArr = [BVProblem(func_1, boundary!, u0, tspan),
