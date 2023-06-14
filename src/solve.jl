@@ -314,7 +314,7 @@ function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::I
     # Evaluate at the second sample point
     weights_2, weights_2_prime = interp_weights(1.0 - tau_star, alg)
 
-    k_interp = zeros(Float64)
+    k_interp = zeros(Float64, n, (s_star - s) * len)
     for i in 1:n
         k_interp[i, :] = interp_setup(mesh[i], dt, Y[i, :], Y[i + 1, :], s, s_star, x_star,
                                       v_star, c_star, k_discrete[i, :], prob, len)
