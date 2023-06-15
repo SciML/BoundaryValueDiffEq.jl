@@ -1,28 +1,19 @@
-import FiniteDiff, NLsolve
-
 mutable struct BVPJacobianWrapper{LossType} <: Function
     loss::LossType
 end
-(p::BVPJacobianWrapper)(resid, u) = p.loss(resid, u)
-(p::BVPJacobianWrapper)(u) = (resid = similar(u); p.loss(resid, u); resid)
+(jw::BVPJacobianWrapper)(resid, u, p) = jw.loss(resid, u, p)
+(jw::BVPJacobianWrapper)(u, p) = (resid = similar(u); jw.loss(resid, u, p); resid)
 
-function ConstructJacobian(f!::BVPJacobianWrapper, S::BVPSystem, y)
+function _construct_nonlinear_problem_with_jacobian(f!::BVPJacobianWrapper, S::BVPSystem,
+    y, p)
     jac_cache = FiniteDiff.JacobianCache(similar(y), similar(y), similar(y))
-    function fj!(F, J, x)
-        FiniteDiff.finite_difference_jacobian!(J, f!, x, jac_cache)
-        f!(F, x)
+    function jac!(J, x, p)
+        F = jac_cache.fx
+        _f!(F, x) = f!(F, x, p)
+        FiniteDiff.finite_difference_jacobian!(J, _f!, x, jac_cache)
+        return nothing
     end
-    j!(J, x) = (F = jac_cache.fx; fj!(F, J, x))
-    J0 = BandedMatrix(Zeros{eltype(S.y[1])}(S.M * S.N, S.M * S.N), (S.M - 1, S.M - 1))
-    NLsolve.OnceDifferentiable(f!.loss, j!, fj!, jac_cache.x1, jac_cache.fx, sparse(J0))
-end
-
-function ConstructJacobian(f!::BVPJacobianWrapper, y)
-    jac_cache = FiniteDiff.JacobianCache(similar(y), similar(y), similar(y))
-    function fj!(F, J, x)
-        FiniteDiff.finite_difference_jacobian!(J, f!, x, jac_cache)
-        f!(F, x)
-    end
-    j!(J, x) = (F = jac_cache.fx; fj!(F, J, x))
-    NLsolve.OnceDifferentiable(f!.loss, j!, fj!, jac_cache.x1, jac_cache.fx)
+    J0 = BandedMatrix(Zeros{eltype(first(S.y))}(S.M * S.N, S.M * S.N), (S.M - 1, S.M - 1))
+    nlf = NonlinearFunction{true}(f!.loss; jac = jac!, jac_prototype = sparse(J0))
+    return NonlinearProblem(nlf, y, p)
 end
