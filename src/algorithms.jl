@@ -1,5 +1,5 @@
-const DEFAULT_NLSOLVE_SHOOTING = TrustRegion(; autodiff = Val(false))
-const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = Val(false))
+const DEFAULT_NLSOLVE_SHOOTING = TrustRegion(; autodiff = Val(true))
+const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = Val(true))
 
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
