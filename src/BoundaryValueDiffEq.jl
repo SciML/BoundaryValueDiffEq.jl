@@ -8,16 +8,22 @@ import ForwardDiff, BandedMatrices, FiniteDiff
 
 import TruncatedStacktraces: @truncate_stacktrace
 
-struct MIRKTableau{T, cType, vType, bType, xType}
+struct MIRKTableau{T, cType, vType, bType, xType, sType, starType, tauType}
     c::cType
     v::vType
     b::bType
     x::xType
+    """Discrete stages of MIRK formula"""
+    s::sType
+    """Number of stages to form the interpolant"""
+    s_star::starType
+    """Defect sampling point"""
+    tau::tauType
 end
 
-function MIRKTableau(c, v, b, x)
-    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x)
-    return MIRKTableau{eltype(c), typeof(c), typeof(v), typeof(b), typeof(x)}(c, v, b, x)
+function MIRKTableau(c, v, b, x, s, s_star, tau)
+    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x) == eltype(s) == eltype(s_star) == eltype(tau)
+    return MIRKTableau{eltype(c), typeof(c), typeof(v), typeof(b), typeof(x), typeof(s), typeof(s_star), typeof(tau)}(c, v, b, x, s, s_star, tau)
 end
 
 @truncate_stacktrace MIRKTableau 1

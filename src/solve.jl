@@ -26,7 +26,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     info = 0
     defect_norm = 10
     MxNsub = 3000
-    while info == 0 && defect_norm > tol
+    while info == 0 && defect_norm > abstol
         S = BVPSystem(prob, mesh, alg_order(alg))
         len = S.M
         tableau = constructMIRK(S)
@@ -76,7 +76,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         global Y = transpose(reduce(hcat, S.y))
 
         if info == 0
-            defect, defect_norm, k_interp = defect_estimate(prob, Y, alg, n, dt, len, mesh,
+            defect, defect_norm, k_interp = defect_estimate(prob, Y, alg, n, len, mesh,
                                                             k_discrete)
             if defect_norm > defect_threshold
                 info = 4
@@ -90,8 +90,10 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
 
         if info == 0
             println("Newton interation was successful")
-            if defect_norm > tol
-                mesh_new, Nsub_star, info = mesh_selector(mesh, defect, tol, n, len, alg)
+            if defect_norm > abstol
+                println("User defined tolerance ", tol, "has not been satisfied")
+                println("We construct a new mesh to equidistribute the defect")
+                mesh_new, Nsub_star, info = mesh_selector(mesh, defect, abstol, n, len, alg)
                 if info == 0
                     z, z_prime = zeros(len), zeros(len)
                     new_Y = zeros(Nsub_star + 1, len)
@@ -105,7 +107,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 end
             end
 
-            if (info == 0) && (defect_norm < tol)
+            if (info == 0) && (defect_norm < abstol)
                 println("Succesful computation, the user defined tolerance has been satisfied")
             end
         else
@@ -120,7 +122,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 n = copy(Nsub_star)
                 println("New mesh will be of size ", n) # Next computation would be based on length n mesh
                 info = 0 # Force a restart
-                defect_norm = 2 * tol
+                defect_norm = 2 * abstol
             end
         end
     end
@@ -159,11 +161,11 @@ function interval(mesh, t)
 end
 
 """
-    mesh_selector(mesh_current, defect, tol, n, len, alg)
+    mesh_selector(mesh_current, defect, abstol, n, len, alg)
 
 Generate new mesh based on the defect.
 """
-function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64,
+function mesh_selector(mesh_current::Vector, defect, abstol, n::Int64, len::Int64,
                        alg::Union{GeneralMIRK, MIRK})
     #exports: mesh_new, Nsub_star, info
 
@@ -180,10 +182,11 @@ function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64,
     info = 0
     p = alg_order(alg)
     s_hat = zeros(Float64, n)
+    mesh_new = Any
     for i in 1:n
         h = mesh_current[i + 1] - mesh_current[i]
         norm = abs(defect[i, idamax(defect[i, :])])
-        s_hat[i] = (norm / tol)^(1.0 / (p + 1)) / h
+        s_hat[i] = (norm / abstol)^(1.0 / (p + 1)) / h
         if s_hat[i] * h > r1
             r1 = s_hat[i] * h
         end
@@ -216,6 +219,7 @@ function mesh_selector(mesh_current::Vector, defect, tol, n::Int64, len::Int64,
             # Mesh redistribution fails
             println("New mesh would be too large")
             info = -1
+            mesh_new = None
         else
             println("Mesh redistributing")
             mesh_new = redistribute(mesh_current, n, Nsub_star, s_hat)
@@ -291,8 +295,8 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct 
 an interpolant
 """
-function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::Int64, dt,
-                         len::Int64, mesh::Vector, k_discrete)
+function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::Int64,
+    len::Int64, mesh::Vector, k_discrete)
     # Initialization
     defect = zeros(n, len)
     s, s_star, tau_star, x_star, v_star, c_star = setup_coeff(alg)
@@ -309,6 +313,8 @@ function defect_estimate(prob::BVProblem, Y, alg::Union{GeneralMIRK, MIRK}, n::I
 
     k_interp = zeros(Float64, n, (s_star - s) * len)
     for i in 1:n
+        dt = mesh[i+1] - mesh[i]
+
         k_interp[i, :] = interp_setup(mesh[i], dt, Y[i, :], Y[i + 1, :], s, s_star, x_star,
                                       v_star, c_star, k_discrete[i, :], prob, len)
 
@@ -357,7 +363,7 @@ function setup_coeff(alg::Union{GeneralMIRK, MIRK})
         return s, s_star, tau_star, x_star, v_star, c_star
     elseif alg_order(alg) == 6
         tau_star = 0.7156
-        s = 3
+        s = 5
         s_star = 9
         c_star = [7 / 16, 3 / 8, 9 / 16, 1 / 8]
         v_star = [7 / 16, 3 / 8, 9 / 16, 1 / 8]
