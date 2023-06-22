@@ -91,7 +91,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         if info == 0
             println("Newton interation was successful")
             if defect_norm > abstol
-                println("User defined tolerance ", tol, "has not been satisfied")
+                println("User defined tolerance ", abstol, "has not been satisfied")
                 println("We construct a new mesh to equidistribute the defect")
                 mesh_new, Nsub_star, info = mesh_selector(mesh, defect, abstol, n, len, alg)
                 if info == 0
@@ -135,7 +135,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     else
         retcode = ReturnCode.Failure
     end
-   return DiffEqBase.build_solution(prob, alg, x, S.y; opt.retcode)
+   return DiffEqBase.build_solution(prob, alg, mesh, Y; retcode)
 end
 
 """
@@ -146,18 +146,23 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 function interp_eval(mesh, Y, alg, t, dt, len, s, s_star, k_discrete, k_interp)
     # EXPORTS: z, z_prime
     i = interval(mesh, t)
-    hi = mesh[i + 1] - mesh[i]
-    tau = (t - mesh[i]) / hi
+    tau = (t - mesh[i]) / dt
     weights, weights_prime = interp_weights(tau, alg)
-    z, z_prime = sum_stages(weights, weights_prime, k_discrete, k_interp, len, dt, Y, s,
+    z, z_prime = sum_stages(weights, weights_prime, k_discrete[i, :], k_interp[i, :], len, dt, Y[i, :], s,
                             s_star)
     return z, z_prime
 end
 
 function interval(mesh, t)
-    ind = findfirst(x -> x > t, mesh)
-    i::Int64 = copy(ind)
-    return i
+    if t == mesh[1]
+        return 1
+    elseif t == mesh[end]
+        return length(mesh)-1
+    else
+        ind = findfirst(x -> x >= t, mesh)
+        i::Int64 = copy(ind)
+        return i-1
+    end
 end
 
 """
@@ -219,7 +224,7 @@ function mesh_selector(mesh_current::Vector, defect, abstol, n::Int64, len::Int6
             # Mesh redistribution fails
             println("New mesh would be too large")
             info = -1
-            mesh_new = None
+            mesh_new = Nothing
         else
             println("Mesh redistributing")
             mesh_new = redistribute(mesh_current, n, Nsub_star, s_hat)
