@@ -9,20 +9,20 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         return nothing
     end
     opt = solve(NonlinearProblem(NonlinearFunction{true}(loss!), u0, prob.p), alg.nlsolve;
-        kwargs...)
+                kwargs...)
     sol_prob = ODEProblem{iip}(prob.f, opt.u, prob.tspan, prob.p)
     sol = solve(sol_prob, alg.ode_alg; kwargs...)
     return DiffEqBase.solution_new_retcode(sol,
-        sol.retcode == opt.retcode ? ReturnCode.Success :
-        ReturnCode.Failure)
+                                           sol.retcode == opt.retcode ? ReturnCode.Success :
+                                           ReturnCode.Failure)
 end
 
 function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
-    kwargs...)
+                            kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     x = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
-    S = BVPSystem(prob, x, alg_order(alg))
+    S = BVPSystem(prob, x, alg)
 
     tableau = constructMIRK(S)
     cache = alg_cache(alg, S)
