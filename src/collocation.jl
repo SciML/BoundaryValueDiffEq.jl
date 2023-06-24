@@ -1,27 +1,34 @@
 # Dispatches on BVPSystem
-function BVPSystem(fun, bc, p, x, M::Integer, order)
+function BVPSystem(fun, bc, p, x, M::Integer, alg::Union{GeneralMIRK, MIRK})
     T = eltype(x)
     N = size(x, 1)
     y = vector_alloc(T, M, N)
-    BVPSystem(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N), vector_alloc(T, M, N),
-        eltype(y)(undef, M))
+    order = alg_order(alg)
+    s = alg_stage(alg)
+    BVPSystem(order, M, N, fun, bc, p, s, x, y, vector_alloc(T, M, N),
+              vector_alloc(T, M, N),
+              eltype(y)(undef, M))
 end
 
 # If user offers an intial guess
-function BVPSystem(fun, bc, p, x, y, order)
+function BVPSystem(fun, bc, p, x, y, alg::Union{GeneralMIRK, MIRK})
     T, U = eltype(x), eltype(y)
     M, N = size(y)
-    BVPSystem{T, U}(order, M, N, fun, bc, p, x, y, vector_alloc(T, M, N),
-        vector_alloc(T, M, N), eltype(y)(M))
+    order = alg_order(alg)
+    s = alg_stage(alg)
+    BVPSystem{T, U}(order, M, N, fun, bc, p, s, x, y, vector_alloc(T, M, N),
+                    vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Dispatch aware of eltype(x) != eltype(prob.u0)
-function BVPSystem(prob::BVProblem, x, order)
+function BVPSystem(prob::BVProblem, x, alg::Union{GeneralMIRK, MIRK})
     y = vector_alloc(prob.u0, x)
     M = length(y[1])
     N = size(x, 1)
-    BVPSystem(order, M, N, prob.f, prob.bc, prob.p, x, y, deepcopy(y),
-        deepcopy(y), typeof(x)(undef, M))
+    order = alg_order(alg)
+    s = alg_stage(alg)
+    BVPSystem(order, M, N, prob.f, prob.bc, prob.p, s, x, y, deepcopy(y),
+              deepcopy(y), typeof(x)(undef, M))
 end
 
 # Auxiliary functions for evaluation
@@ -100,7 +107,7 @@ end
 =#
 
 @inline function update_K!(S::BVPSystem, cache::AbstractMIRKCache, TU::MIRKTableau, i, h)
-    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
+    M, N, residual, x, y, fun!, s = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.s
     K, b = cache.K, TU.b
     c, v, X = TU.c, TU.v, TU.x
 
@@ -108,18 +115,18 @@ end
         x_new = x[i] + c[r] * h
         y_new = (1 - v[r]) * y + v[r] * y₁
         if r > 1
-            y_new += h * sum(j -> X[r, j] * K[j], 1:(r - 1))
+            y_new += h * sum(j -> X[r, j] * K[j], 1:r)
         end
         fun!(Kr, y_new, S.p, x_new)
     end
 
-    for r in 1:order
+    for r in 1:s
         Kᵣ!(K[r], y[i], y[i + 1], r)
     end
 end
 
 function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {T}
-    M, N, residual, x, y, fun!, order = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.order
+    M, N, residual, x, y, fun!, s = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.s
     K, b = cache.K, TU.b
     c, v, X = TU.c, TU.v, TU.x
     for i in 1:(N - 1)
@@ -127,6 +134,6 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
         # Update K
         update_K!(S, cache, TU, i, h)
         # Update residual
-        residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * K[j], 1:order)
+        residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * K[j], 1:s)
     end
 end
