@@ -60,27 +60,27 @@ TestTol = 0.05
 bvp = BVProblem(orbital, cur_bc!, y0, tspan)
 nlsolve = NewtonRaphson(; autodiff = Val(false), diff_type = Val(:central))
 @time sol = solve(bvp,
-    Shooting(DP5(); nlsolve),
-    force_dtmin = true,
-    abstol = 1e-13,
-    reltol = 1e-13)
+                  Shooting(DP5(); nlsolve),
+                  force_dtmin = true,
+                  abstol = 1e-13,
+                  reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
 
 nlsolve = NewtonRaphson(; autodiff = Val(false), diff_type = Val(:forward))
 @time sol = solve(bvp,
-    Shooting(DP5(); nlsolve),
-    force_dtmin = true,
-    abstol = 1e-13,
-    reltol = 1e-13)
+                  Shooting(DP5(); nlsolve),
+                  force_dtmin = true,
+                  abstol = 1e-13,
+                  reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol
 
 nlsolve = NewtonRaphson(; autodiff = Val(true))
 @time sol = solve(bvp,
-    Shooting(DP5(); nlsolve),
-    force_dtmin = true,
-    abstol = 1e-13,
-    reltol = 1e-13)
+                  Shooting(DP5(); nlsolve),
+                  force_dtmin = true,
+                  abstol = 1e-13,
+                  reltol = 1e-13)
 cur_bc!(resid_f, sol, nothing, sol.t)
 @test norm(resid_f, Inf) < TestTol

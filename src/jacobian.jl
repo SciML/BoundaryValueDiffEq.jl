@@ -5,7 +5,7 @@ end
 (jw::BVPJacobianWrapper)(u, p) = (resid = similar(u); jw.loss(resid, u, p); resid)
 
 function _construct_nonlinear_problem_with_jacobian(f!::BVPJacobianWrapper, S::BVPSystem,
-    y, p)
+                                                    y, p)
     jac_cache = FiniteDiff.JacobianCache(similar(y), similar(y), similar(y))
     function jac!(J, x, p)
         F = jac_cache.fx

@@ -9,12 +9,12 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         return nothing
     end
     opt = solve(NonlinearProblem(NonlinearFunction{true}(loss!), u0, prob.p), alg.nlsolve;
-        kwargs...)
+                kwargs...)
     sol_prob = ODEProblem{iip}(prob.f, opt.u, prob.tspan, prob.p)
     sol = solve(sol_prob, alg.ode_alg; kwargs...)
     return DiffEqBase.solution_new_retcode(sol,
-        sol.retcode == opt.retcode ? ReturnCode.Success :
-        ReturnCode.Failure)
+                                           sol.retcode == opt.retcode ? ReturnCode.Success :
+                                           ReturnCode.Failure)
 end
 
 function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0, abstol = 1e-6,
