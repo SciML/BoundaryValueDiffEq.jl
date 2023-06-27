@@ -50,11 +50,11 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
     for i in 1:(N - 1)
         h = x[i + 1] - x[i]
         # Update K
-        for r in 1:order
+        for r in 1:s
             x_new = x[i] + c[r] * h
             y_new = (1 - v[r]) * y[i] + v[r] * y[i + 1]
             if r > 1
-                y_new += h * sum(j -> X[r, j] * K[j], 1:(r - 1))
+                y_new += h * sum(j -> X[r, j] * K[j], 1:r)
             end
             fun!(K[r], y_new, S.p, x_new)
             cache.k_discrete[i, ((r - 1) * M + 1):((r - 1) * M + M)] = K[r]

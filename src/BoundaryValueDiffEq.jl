@@ -22,14 +22,14 @@ struct MIRKTableau{T, cType, vType, bType, xType, sType, starType, tauType}
 end
 
 function MIRKTableau(c, v, b, x, s, s_star, tau)
-    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x) == eltype(s) == eltype(s_star) == eltype(tau)
+    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x) == eltype(tau)
     return MIRKTableau{eltype(c), typeof(c), typeof(v), typeof(b), typeof(x), typeof(s), typeof(s_star), typeof(tau)}(c, v, b, x, s, s_star, tau)
 end
 
 @truncate_stacktrace MIRKTableau 1
 
 # ODE BVP problem system
-struct BVPSystem{T, U <: AbstractArray, P, F, B, S}
+mutable struct BVPSystem{T, U <: AbstractArray, P, F, B, S}
     order::Int                  # The order of MIRK method
     M::Int                      # Number of equations in the ODE system
     N::Int                      # Number of nodes in the mesh
