@@ -312,7 +312,7 @@ function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{Gene
     # Evaluate at the second sample point
     weights_2, weights_2_prime = interp_weights(1.0 - tau_star, alg)
 
-    k_interp = zeros(Float64, n, s_star - s * len)
+    k_interp = zeros(Float64, n, (s_star - s) * len)
     for i in 1:n
         dt = mesh[i+1] - mesh[i]
 
@@ -443,7 +443,7 @@ function sum_stages(S::BVPSystem, TU::MIRKTableau, weights, weights_prime, ki_di
                    weights_prime[j] .* ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
     end
     z = z .* dt
-    z = z .* y
+    z = z .+ y
     return z, z_prime
 end
 
