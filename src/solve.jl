@@ -28,7 +28,6 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     MxNsub = 3000
     while info == 0 && defect_norm > abstol
         global S = BVPSystem(prob, mesh, alg)
-        len = S.M
         tableau = constructMIRK(S)
         cache = alg_cache(alg, S)
         # Upper-level iteration
@@ -87,7 +86,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 mesh_new, Nsub_star, info = mesh_selector(S, alg, defect, abstol)
                 println("New mesh size would be: ", Nsub_star)
                 if info == 0
-                    z, z_prime = zeros(len), zeros(len)
+                    z, z_prime = zeros(S.M), zeros(S.M)
                     new_Y = [zeros(Float64, S.M) for i in 1:(Nsub_star + 1)]
                     for i in 0:Nsub_star
                         z, z_prime = interp_eval(S, cache, alg, tableau, mesh_new[i + 1], k_interp)
@@ -351,33 +350,6 @@ function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{Gene
     defect_norm = maximum(abs.(defect))
     return defect, defect_norm, k_interp
 end
-function setup_coeff(alg::Union{GeneralMIRK, MIRK})
-    if alg_order(alg) == 4
-        tau_star = 0.226
-        s = 3
-        s_star = 4
-        x_star = [3 / 64, -9 / 64, 0.0, 0.0]
-        v_star = 27.0 / 32.0
-        c_star = 3.0 / 4.0
-        return s, s_star, tau_star, x_star, v_star, c_star
-    elseif alg_order(alg) == 6
-        tau_star = 0.7156
-        s = 5
-        s_star = 9
-        c_star = [7 / 16, 3 / 8, 9 / 16, 1 / 8]
-        v_star = [7 / 16, 3 / 8, 9 / 16, 1 / 8]
-        x_star = [1547 / 32768, 83 / 1536, 1225 / 32768, 233 / 3456,
-            -1225 / 32768, -13 / 384, -1547 / 32768, -19 / 1152,
-            749 / 4096, 283 / 1536, 287 / 2048, 0,
-            -287 / 2048, -167 / 1536, -749 / 4096, 0,
-            -861 / 16384, -49 / 512, 861 / 16384, 0,
-            0, 0, 0, -5 / 72,
-            0, 0, 0, 7 / 72,
-            0, 0, 0, -17 / 216,
-            0, 0, 0, 0]
-        return s, s_star, tau_star, x_star, v_star, c_star
-    end
-end
 
 """
     interp_setup
@@ -396,7 +368,7 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
         for j in 1:s
             new_stages .= new_stages .+
                           x_star[j * (s_star - s) + r] .*
-                          ki_discrete[((j - 1) * len + 1):((j - 1) * len + len)]
+                          ki_discrete[j]
         end
         for j in 1:(r - 1)
             new_stages .= new_stages .+
@@ -430,12 +402,12 @@ function sum_stages(S::BVPSystem, TU::MIRKTableau, weights, weights_prime, ki_di
     s, s_star = TU.s, TU.s_star
     # EXPORTS: z, z_prime
     z, z_prime = zeros(len), zeros(len)
-    ki_discrete = ki_discrete[:]
+    #ki_discrete = ki_discrete[:]
     for i in 1:s
-        z .= z .+ weights[i] .* ki_discrete[((i - 1) * len + 1):((i - 1) * len + len)]
+        z .= z .+ weights[i] .* ki_discrete[i]
         z_prime .= z_prime .+
                    weights_prime[i] .*
-                   ki_discrete[((i - 1) * len + 1):((i - 1) * len + len)]
+                   ki_discrete[i]
     end
     for j in 1:(s_star - s)
         z .= z .+ weights[s + j] .* ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
@@ -519,3 +491,34 @@ function interp_weights(tau, alg::Union{GeneralMIRK, MIRK})
         return w, wp
     end
 end
+
+
+#=
+function setup_coeff(alg::Union{GeneralMIRK, MIRK})
+    if alg_order(alg) == 4
+        tau_star = 0.226
+        s = 3
+        s_star = 4
+        x_star = [3 / 64, -9 / 64, 0.0, 0.0]
+        v_star = 27.0 / 32.0
+        c_star = 3.0 / 4.0
+        return s, s_star, tau_star, x_star, v_star, c_star
+    elseif alg_order(alg) == 6
+        tau_star = 0.7156
+        s = 5
+        s_star = 9
+        c_star = [7 / 16, 3 / 8, 9 / 16, 1 / 8]
+        v_star = [7 / 16, 3 / 8, 9 / 16, 1 / 8]
+        x_star = [1547 / 32768, 83 / 1536, 1225 / 32768, 233 / 3456,
+            -1225 / 32768, -13 / 384, -1547 / 32768, -19 / 1152,
+            749 / 4096, 283 / 1536, 287 / 2048, 0,
+            -287 / 2048, -167 / 1536, -749 / 4096, 0,
+            -861 / 16384, -49 / 512, 861 / 16384, 0,
+            0, 0, 0, -5 / 72,
+            0, 0, 0, 7 / 72,
+            0, 0, 0, -17 / 216,
+            0, 0, 0, 0]
+        return s, s_star, tau_star, x_star, v_star, c_star
+    end
+end
+=#
