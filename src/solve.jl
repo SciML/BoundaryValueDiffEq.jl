@@ -311,7 +311,7 @@ function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{Gene
     # Evaluate at the second sample point
     weights_2, weights_2_prime = interp_weights(1.0 - tau_star, alg)
 
-    k_interp = zeros(Float64, n, (s_star - s) * len)
+    k_interp = similar([S.y[1]], S.N-1, (s_star - s))
     for i in 1:n
         dt = mesh[i+1] - mesh[i]
 
@@ -362,7 +362,7 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
     #TODO: Temporary, only debuging
     s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[end, :]
     # EXPORTS: ki_interp
-    ki_interp = zeros(Float64, (s_star - s) * len)
+    ki_interp = similar([zeros(Float64, len)], s_star - s)
     for r in 1:(s_star - s)
         new_stages = zeros(Float64, len)
         for j in 1:s
@@ -373,17 +373,15 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
         for j in 1:(r - 1)
             new_stages .= new_stages .+
                           x_star[(j + s - 1) * (s_star - s) + r] .*
-                          ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
+                          ki_interp[j]
         end
         new_stages .= new_stages .* dt
-        #new_stages .= new_stages .+ (1 - v_star[r]) .* y_left
-        #new_stages .= new_stages .+ v_star[r] .* y_right
         new_stages .= new_stages .+ (1 - v_star) .* y_left
         new_stages .= new_stages .+ v_star .* y_right
 
-        temp = copy(ki_interp[:, r])
+        temp = zeros(Float64, len)
         f(temp, new_stages, p, tim1 + c_star[r])
-        ki_interp[:, r] = temp
+        ki_interp[r] = temp
     end
     return ki_interp
 end
@@ -410,9 +408,9 @@ function sum_stages(S::BVPSystem, TU::MIRKTableau, weights, weights_prime, ki_di
                    ki_discrete[i]
     end
     for j in 1:(s_star - s)
-        z .= z .+ weights[s + j] .* ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
+        z .= z .+ weights[s + j] .* ki_interp[j]
         z_prime .= z_prime .+
-                   weights_prime[j] .* ki_interp[((j - 1) * len + 1):((j - 1) * len + len)]
+                   weights_prime[j] .* ki_interp[j]
     end
     z = z .* dt
     z = z .+ y
