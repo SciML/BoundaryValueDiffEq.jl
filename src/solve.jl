@@ -17,7 +17,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
                                            ReturnCode.Failure)
 end
 
-function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0, abstol = 1e-6,
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
                             kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
@@ -26,8 +26,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     info = 0
     defect_norm = 10
     MxNsub = 3000
+    abstol = 1e-6
+    S = BVPSystem(prob, mesh, alg)
     while info == 0 && defect_norm > abstol
-        global S = BVPSystem(prob, mesh, alg)
         tableau = constructMIRK(S)
         cache = alg_cache(alg, S)
         # Upper-level iteration
@@ -95,6 +96,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                     S.x = copy(mesh_new)
                     S.N = copy(Nsub_star)+1
                     S.y = copy(new_Y)
+                    S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 end
             end
 
@@ -111,6 +113,8 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 Nsub_star = 2 * n
                 S.x = copy(mesh_new)
                 S.N = copy(Nsub_star)+1
+                S.y = vector_alloc(eltype(S.x), S.M, S.N)
+                S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 println("New mesh will be of size ", S.N) # Next computation would be based on length n mesh
                 info = 0 # Force a restart
                 defect_norm = 2 * abstol
@@ -360,14 +364,14 @@ Here, the ki_interp is the stages in one subinterval.
 function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[end, :]
+    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[1:s, 1:s]
     # EXPORTS: ki_interp
     ki_interp = similar([zeros(Float64, len)], s_star - s)
     for r in 1:(s_star - s)
         new_stages = zeros(Float64, len)
         for j in 1:s
             new_stages .= new_stages .+
-                          x_star[j * (s_star - s) + r] .*
+                          x_star[j, 1] .*
                           ki_discrete[j]
         end
         for j in 1:(r - 1)
@@ -380,7 +384,7 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
         new_stages .= new_stages .+ v_star .* y_right
 
         temp = zeros(Float64, len)
-        f(temp, new_stages, p, tim1 + c_star[r])
+        f(temp, new_stages, p, tim1 + c_star)
         ki_interp[r] = temp
     end
     return ki_interp
@@ -403,14 +407,11 @@ function sum_stages(S::BVPSystem, TU::MIRKTableau, weights, weights_prime, ki_di
     #ki_discrete = ki_discrete[:]
     for i in 1:s
         z .= z .+ weights[i] .* ki_discrete[i]
-        z_prime .= z_prime .+
-                   weights_prime[i] .*
-                   ki_discrete[i]
+        z_prime .= z_prime .+ weights_prime[i] .* ki_discrete[i]
     end
     for j in 1:(s_star - s)
         z .= z .+ weights[s + j] .* ki_interp[j]
-        z_prime .= z_prime .+
-                   weights_prime[j] .* ki_interp[j]
+        z_prime .= z_prime .+ weights_prime[s + j] .* ki_interp[j]
     end
     z = z .* dt
     z = z .+ y
