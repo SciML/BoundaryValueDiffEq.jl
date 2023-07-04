@@ -364,7 +364,7 @@ Here, the ki_interp is the stages in one subinterval.
 function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[1:s, 1:s]
+    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[1:TU.s, 1:TU.s]
     # EXPORTS: ki_interp
     ki_interp = similar([zeros(Float64, len)], s_star - s)
     for r in 1:(s_star - s)
