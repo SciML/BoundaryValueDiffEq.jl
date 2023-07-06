@@ -17,7 +17,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
                                            ReturnCode.Failure)
 end
 
-function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0, abstol = 1e-3,
                             kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
@@ -26,8 +26,8 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     info = 0
     defect_norm = 10
     MxNsub = 3000
-    abstol = 1e-6
     S = BVPSystem(prob, mesh, alg)
+    initial_guess = false
     while info == 0 && defect_norm > abstol
         tableau = constructMIRK(S)
         cache = alg_cache(alg, S)
@@ -55,8 +55,22 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
             reorder!(resid)
             return nothing
         end
+
+        function loss_with_initial_guess!(resid, u, p)
+            @set! S.p = p
+            Φ!(S, tableau, cache)
+            if isa(prob.problem_type, TwoPointBVProblem)
+                eval_bc_residual!(S)
+            else
+                general_eval_bc_residual!(S)
+            end
+            flatten_vector!(resid, S.residual)
+            reorder!(resid)
+            return nothing
+        end
     
-        jac_wrapper = BVPJacobianWrapper(loss!)
+        jac_wrapper = initial_guess ? BVPJacobianWrapper(loss_with_initial_guess!) : BVPJacobianWrapper(loss!)
+        initial_guess = false
 
         flatten_vector!(vec_y, S.y)
         nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec_y, prob.p)
@@ -71,9 +85,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
 
         if info == 0
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, tableau)
+            println("Defect norm is ", defect_norm)
             if defect_norm > defect_threshold
                 info = 4
-                println("Defect norm is ", defect_norm)
                 println("Newton iteration was successful, but")
                 println("the defect is greater than 10%, the solution is not acceptable")
             end
@@ -96,6 +110,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                     S.x = copy(mesh_new)
                     S.N = copy(Nsub_star)+1
                     S.y = copy(new_Y)
+                    initial_guess = true
                     S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 end
             end
@@ -350,7 +365,6 @@ function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{Gene
             defect[i, :] = temp_2
         end
     end
-    #defect = 0.001 .* defect
     defect_norm = maximum(abs.(defect))
     return defect, defect_norm, k_interp
 end
@@ -364,7 +378,7 @@ Here, the ki_interp is the stages in one subinterval.
 function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[1:TU.s, 1:TU.s]
+    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[end, :] # Here the last row is acually the interpolation coefficients
     # EXPORTS: ki_interp
     ki_interp = similar([zeros(Float64, len)], s_star - s)
     for r in 1:(s_star - s)
@@ -384,7 +398,7 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
         new_stages .= new_stages .+ v_star .* y_right
 
         temp = zeros(Float64, len)
-        f(temp, new_stages, p, tim1 + c_star)
+        f(temp, new_stages, p, tim1 + c_star * dt)
         ki_interp[r] = temp
     end
     return ki_interp

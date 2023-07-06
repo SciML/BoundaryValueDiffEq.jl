@@ -45,9 +45,8 @@ end
 
 function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {T}
     M, N, residual, x, y, fun!, s = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.s
-    #k_discrete = cache.k_discrete
     c, v, X, b = TU.c, TU.v, TU.x, TU.b
-    K = [zeros(M) for i in 1:s]
+    K = similar([zeros(Float64, S.M)], S.s)
     for i in 1:(N - 1)
         h = x[i + 1] - x[i]
         # Update K
@@ -57,11 +56,12 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
             if r > 1
                 y_new += h * sum(j -> X[r, j] * K[j], 1:(r-1))
             end
-            fun!(K[r], y_new, S.p, x_new)
-            cache.k_discrete[i, r] = K[r]
+            temp = zeros(Float64, M)
+            fun!(temp, y_new, S.p, x_new)
+            K[r] = temp[:]
         end
-        #
         # Update residual
-        residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * cache.k_discrete[i, j], 1:s)
+        residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * K[j], 1:s)
+        cache.k_discrete[i, :] = K[:]
     end
 end
