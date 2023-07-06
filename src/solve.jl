@@ -378,14 +378,15 @@ Here, the ki_interp is the stages in one subinterval.
 function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[end], TU.v[end], TU.x[end, :] # Here the last row is acually the interpolation coefficients
+    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[(TU.s+1):TU.s_star], TU.v[(TU.s+1):TU.s_star], TU.x[(TU.s+1):TU.s_star, :] # Here the last row is acually the interpolation coefficients
+    x_star = x_star[:]
     # EXPORTS: ki_interp
     ki_interp = similar([zeros(Float64, len)], s_star - s)
     for r in 1:(s_star - s)
         new_stages = zeros(Float64, len)
         for j in 1:s
             new_stages .= new_stages .+
-                          x_star[j, 1] .*
+                          x_star[(j-1)*(s_star-s)+r] .*
                           ki_discrete[j]
         end
         for j in 1:(r - 1)
@@ -394,11 +395,11 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
                           ki_interp[j]
         end
         new_stages .= new_stages .* dt
-        new_stages .= new_stages .+ (1 - v_star) .* y_left
-        new_stages .= new_stages .+ v_star .* y_right
+        new_stages .= new_stages .+ (1 - v_star[r]) .* y_left
+        new_stages .= new_stages .+ v_star[r] .* y_right
 
         temp = zeros(Float64, len)
-        f(temp, new_stages, p, tim1 + c_star * dt)
+        f(temp, new_stages, p, tim1 + c_star[r] * dt)
         ki_interp[r] = temp
     end
     return ki_interp
