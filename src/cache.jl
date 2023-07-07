@@ -26,7 +26,7 @@ end
 @truncate_stacktrace MIRK4GeneralCache
 
 function alg_cache(alg::Union{GeneralMIRK4, MIRK4}, S::BVPSystem{T, U}) where {T, U}
-    MIRK4GeneralCache(similar([S.y[1]], S.N-1, S.s))
+    MIRK4GeneralCache(similar([S.y[1]], S.N - 1, S.s))
 end
 
 mutable struct MIRK6GeneralCache{kType} <: GeneralMIRKCache
@@ -38,5 +38,5 @@ end
 @truncate_stacktrace MIRK6GeneralCache
 
 function alg_cache(alg::Union{GeneralMIRK6, MIRK6}, S::BVPSystem{T, U}) where {T, U}
-    MIRK6GeneralCache(similar([S.y[1]], S.N-1, S.s))
+    MIRK6GeneralCache(similar([S.y[1]], S.N - 1, S.s))
 end

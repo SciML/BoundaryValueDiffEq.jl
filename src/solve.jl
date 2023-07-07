@@ -9,16 +9,17 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         return nothing
     end
     opt = solve(NonlinearProblem(NonlinearFunction{true}(loss!), u0, prob.p), alg.nlsolve;
-                kwargs...)
+        kwargs...)
     sol_prob = ODEProblem{iip}(prob.f, opt.u, prob.tspan, prob.p)
     sol = solve(sol_prob, alg.ode_alg; kwargs...)
     return DiffEqBase.solution_new_retcode(sol,
-                                           sol.retcode == opt.retcode ? ReturnCode.Success :
-                                           ReturnCode.Failure)
+        sol.retcode == opt.retcode ? ReturnCode.Success :
+        ReturnCode.Failure)
 end
 
-function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0, abstol = 1e-3,
-                            kwargs...)
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
+    abstol = 1e-3,
+    kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
@@ -68,8 +69,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
             reorder!(resid)
             return nothing
         end
-    
-        jac_wrapper = initial_guess ? BVPJacobianWrapper(loss_with_initial_guess!) : BVPJacobianWrapper(loss!)
+
+        jac_wrapper = initial_guess ? BVPJacobianWrapper(loss_with_initial_guess!) :
+                      BVPJacobianWrapper(loss!)
         initial_guess = false
 
         flatten_vector!(vec_y, S.y)
@@ -104,11 +106,16 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                     z, z_prime = zeros(S.M), zeros(S.M)
                     new_Y = [zeros(Float64, S.M) for i in 1:(Nsub_star + 1)]
                     for i in 0:Nsub_star
-                        z, z_prime = interp_eval(S, cache, alg, tableau, mesh_new[i + 1], k_interp)
+                        z, z_prime = interp_eval(S,
+                            cache,
+                            alg,
+                            tableau,
+                            mesh_new[i + 1],
+                            k_interp)
                         new_Y[i + 1] = z
                     end
                     S.x = copy(mesh_new)
-                    S.N = copy(Nsub_star)+1
+                    S.N = copy(Nsub_star) + 1
                     S.y = copy(new_Y)
                     initial_guess = true
                     S.residual = vector_alloc(eltype(S.x), S.M, S.N)
@@ -120,14 +127,14 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
             end
         else
             println("Cannot obtain a solution for the current mesh")
-            if 2 * n > MxNsub
+            if 2 * (S.N - 1) > MxNsub
                 println("New mesh would be too large")
                 info = -1
             else
-                mesh_new = half_mesh(mesh, n)
-                Nsub_star = 2 * n
+                mesh_new = half_mesh(S.x, S.N - 1)
+                Nsub_star = 2 * (S.N - 1)
                 S.x = copy(mesh_new)
-                S.N = copy(Nsub_star)+1
+                S.N = copy(Nsub_star) + 1
                 S.y = vector_alloc(eltype(S.x), S.M, S.N)
                 S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 println("New mesh will be of size ", S.N) # Next computation would be based on length n mesh
@@ -153,15 +160,26 @@ end
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-function interp_eval(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{GeneralMIRK, MIRK}, TU::MIRKTableau, t, k_interp)
+function interp_eval(S::BVPSystem,
+    cache::AbstractMIRKCache,
+    alg::Union{GeneralMIRK, MIRK},
+    TU::MIRKTableau,
+    t,
+    k_interp)
     mesh, Y = S.x, S.y
     k_discrete = cache.k_discrete
     # EXPORTS: z, z_prime
     i = interval(mesh, t)
-    dt = mesh[i+1]-mesh[i]
+    dt = mesh[i + 1] - mesh[i]
     tau = (t - mesh[i]) / dt
     weights, weights_prime = interp_weights(tau, alg)
-    z, z_prime = sum_stages(S, TU, weights, weights_prime, k_discrete[i, :], k_interp[i, :], Y[i])
+    z, z_prime = sum_stages(S,
+        TU,
+        weights,
+        weights_prime,
+        k_discrete[i, :],
+        k_interp[i, :],
+        Y[i])
     return z, z_prime
 end
 
@@ -169,11 +187,11 @@ function interval(mesh, t)
     if t == mesh[1]
         return 1
     elseif t == mesh[end]
-        return length(mesh)-1
+        return length(mesh) - 1
     else
         ind = findfirst(x -> x >= t, mesh)
         i::Int64 = copy(ind)
-        return i-1
+        return i - 1
     end
 end
 
@@ -184,7 +202,7 @@ Generate new mesh based on the defect.
 """
 function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abstol)
     #exports: mesh_new, Nsub_star, info
-    mesh_current, n = S.x, S.N-1
+    mesh_current, n = S.x, S.N - 1
 
     #TODO: Need users to manually specify, here, we set it as 3000 by default.
     MxNsub = 3000
@@ -251,9 +269,9 @@ end
 Generate a new mesh.
 """
 function redistribute(mesh_current::Vector,
-                      n::Int64,
-                      Nsub_star::Int64,
-                      s_hat::Vector{Float64})
+    n::Int64,
+    Nsub_star::Int64,
+    s_hat::Vector{Float64})
     mesh_new = zeros(Float64, Nsub_star + 1)
     sum = 0.0
     for k in 1:n
@@ -312,8 +330,17 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct 
 an interpolant
 """
-function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{GeneralMIRK, MIRK}, TU::MIRKTableau)
-    n, len, Y, p, k_discrete, mesh, f = S.N-1, S.M, S.y, S.p, cache.k_discrete, S.x, S.fun!
+function defect_estimate(S::BVPSystem,
+    cache::AbstractMIRKCache,
+    alg::Union{GeneralMIRK, MIRK},
+    TU::MIRKTableau)
+    n, len, Y, p, k_discrete, mesh, f = S.N - 1,
+    S.M,
+    S.y,
+    S.p,
+    cache.k_discrete,
+    S.x,
+    S.fun!
     s, s_star, tau_star = TU.s, TU.s_star, TU.tau
 
     # Initialization
@@ -330,15 +357,15 @@ function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{Gene
     # Evaluate at the second sample point
     weights_2, weights_2_prime = interp_weights(1.0 - tau_star, alg)
 
-    k_interp = similar([S.y[1]], S.N-1, (s_star - s))
+    k_interp = similar([S.y[1]], S.N - 1, (s_star - s))
     for i in 1:n
-        dt = mesh[i+1] - mesh[i]
+        dt = mesh[i + 1] - mesh[i]
 
         k_interp[i, :] = interp_setup(S, mesh[i], dt, Y[i], Y[i + 1], TU, k_discrete[i, :])
 
         # Sample point 1
         z, z_prime = sum_stages(S, TU, weights_1, weights_1_prime, k_discrete[i, :],
-                                k_interp[i, :], Y[i])
+            k_interp[i, :], Y[i])
         f(f_sample_1, z, p, mesh[i] + tau_star * dt)
         z_prime .= z_prime .- f_sample_1
         def_1 = copy(z_prime)
@@ -349,7 +376,7 @@ function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{Gene
 
         # Sample point 2
         z, z_prime = sum_stages(S, TU, weights_2, weights_2_prime, k_discrete[i, :],
-                                k_interp[i, :], Y[i])
+            k_interp[i, :], Y[i])
         f(f_sample_2, z, p, mesh[i] + (1.0 - tau_star) * dt)
         z_prime .= z_prime .- f_sample_2
         def_2 .= copy(z_prime)
@@ -378,7 +405,11 @@ Here, the ki_interp is the stages in one subinterval.
 function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = TU.s, TU.s_star, TU.c[(TU.s+1):TU.s_star], TU.v[(TU.s+1):TU.s_star], TU.x[(TU.s+1):TU.s_star, :] # Here the last row is acually the interpolation coefficients
+    s, s_star, c_star, v_star, x_star = TU.s,
+    TU.s_star,
+    TU.c[(TU.s + 1):(TU.s_star)],
+    TU.v[(TU.s + 1):(TU.s_star)],
+    TU.x[(TU.s + 1):(TU.s_star), :] # Here the last row is acually the interpolation coefficients
     x_star = x_star[:]
     # EXPORTS: ki_interp
     ki_interp = similar([zeros(Float64, len)], s_star - s)
@@ -386,7 +417,7 @@ function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, 
         new_stages = zeros(Float64, len)
         for j in 1:s
             new_stages .= new_stages .+
-                          x_star[(j-1)*(s_star-s)+r] .*
+                          x_star[(j - 1) * (s_star - s) + r] .*
                           ki_discrete[j]
         end
         for j in 1:(r - 1)
@@ -413,9 +444,15 @@ sum_stages add the discrete solution, RK method stages and extra stages to const
 Here, ki_discrete is a matrix stored with discrete RK stages in the ith interval, ki_discrete has legnth of s*neqns
 Here, ki_interp is a matrix stored with interpolation coefficients in the ith interval, ki_interp has length of (s_star-s)*neqns
 """
-function sum_stages(S::BVPSystem, TU::MIRKTableau, weights, weights_prime, ki_discrete, ki_interp, y)
+function sum_stages(S::BVPSystem,
+    TU::MIRKTableau,
+    weights,
+    weights_prime,
+    ki_discrete,
+    ki_interp,
+    y)
     len, mesh = S.M, S.x
-    dt = mesh[end]-mesh[end-1]
+    dt = mesh[end] - mesh[end - 1]
     s, s_star = TU.s, TU.s_star
     # EXPORTS: z, z_prime
     z, z_prime = zeros(len), zeros(len)
@@ -505,7 +542,6 @@ function interp_weights(tau, alg::Union{GeneralMIRK, MIRK})
         return w, wp
     end
 end
-
 
 #=
 function setup_coeff(alg::Union{GeneralMIRK, MIRK})

@@ -23,7 +23,22 @@ end
 
 function MIRKTableau(c, v, b, x, s, s_star, tau)
     @assert eltype(c) == eltype(v) == eltype(b) == eltype(x) == eltype(tau)
-    return MIRKTableau{eltype(c), typeof(c), typeof(v), typeof(b), typeof(x), typeof(s), typeof(s_star), typeof(tau)}(c, v, b, x, s, s_star, tau)
+    return MIRKTableau{
+        eltype(c),
+        typeof(c),
+        typeof(v),
+        typeof(b),
+        typeof(x),
+        typeof(s),
+        typeof(s_star),
+        typeof(tau),
+    }(c,
+        v,
+        b,
+        x,
+        s,
+        s_star,
+        tau)
 end
 
 @truncate_stacktrace MIRKTableau 1
