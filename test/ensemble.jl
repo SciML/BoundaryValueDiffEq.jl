@@ -20,3 +20,5 @@ p = [rand()]
 bvp = BVProblem(ode!, bc!, initial_guess, tspan, p)
 ensemble_prob = EnsembleProblem(bvp, prob_func = prob_func)
 @test_nowarn sim = solve(ensemble_prob, GeneralMIRK4(), trajectories = 10, dt = 0.1)
+@test_nowarn sim = solve(ensemble_prob, GeneralMIRK5(), trajectories = 10, dt = 0.1)
+@test_nowarn sim = solve(ensemble_prob, GeneralMIRK5(), trajectories = 10, dt = 0.1)

@@ -48,7 +48,7 @@ include("jacobian.jl")
 include("solve.jl")
 
 export Shooting
-export GeneralMIRK4, GeneralMIRK6
-export MIRK4, MIRK6
+export GeneralMIRK4, GeneralMIRK5, GeneralMIRK6
+export MIRK4, MIRK5, MIRK6
 
 end

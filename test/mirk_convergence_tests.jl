@@ -33,8 +33,8 @@ end
 # Not able to change the initial condition.
 # Hard coded solution.
 func_2 = ODEFunction(func_2!,
-                     analytic = (u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)),
-                         5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)),
+        5 * (-cos(t) * cot(5) - sin(t))])
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
 probArr = [
@@ -57,6 +57,11 @@ prob = probArr[1]
 @time sol = solve(prob, GeneralMIRK4(), dt = 0.2)
 @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
 
+# GeneralMIRK5
+
+@time sol = solve(prob, GeneralMIRK5(), dt = 0.2)
+@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+
 # GeneralMIRK6
 
 @time sol = solve(prob, GeneralMIRK6(), dt = 0.2)
@@ -69,6 +74,11 @@ prob = probArr[2]
 
 @time sim = test_convergence(dts, prob, GeneralMIRK4(); abstol = 1e-13, reltol = 1e-13);
 @test sim.𝒪est[:final]≈4 atol=testTol
+
+# GeneralMIRK5
+
+@time sim = test_convergence(dts, prob, GeneralMIRK5(); abstol = 1e-13, reltol = 1e-13);
+@test sim.𝒪est[:final]≈5 atol=testTol
 
 # GeneralMIRK6
 
@@ -84,6 +94,11 @@ prob = probArr[3]
 @time sol = solve(prob, MIRK4(), dt = 0.2)
 @test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
 
+# MIRK5
+
+@time sol = solve(prob, MIRK5(), dt = 0.2)
+@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
+
 # MIRK6
 
 @time sol = solve(prob, MIRK6(), dt = 0.2)
@@ -96,6 +111,11 @@ prob = probArr[4]
 
 @time sim = test_convergence(dts, prob, MIRK4(); abstol = 1e-13, reltol = 1e-13);
 @test sim.𝒪est[:final]≈4 atol=testTol
+
+# MIRK5
+
+@time sim = test_convergence(dts, prob, MIRK5(); abstol = 1e-13, reltol = 1e-13);
+@test sim.𝒪est[:final]≈5 atol=testTol
 
 # MIRK6
 
@@ -121,4 +141,5 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
 @test_nowarn solve(bvp1, GeneralMIRK4(), dt = 0.05)
+@test_nowarn solve(bvp1, GeneralMIRK5(), dt = 0.05)
 @test_nowarn solve(bvp1, GeneralMIRK6(), dt = 0.05)
