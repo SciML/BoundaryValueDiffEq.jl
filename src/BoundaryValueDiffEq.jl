@@ -67,6 +67,7 @@ include("cache.jl")
 include("collocation.jl")
 include("jacobian.jl")
 include("solve.jl")
+include("adaptivity.jl")
 
 export Shooting
 export GeneralMIRK4, GeneralMIRK6
