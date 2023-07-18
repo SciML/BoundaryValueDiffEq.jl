@@ -115,23 +115,17 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                     S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 end
             end
-
-            if (info == ReturnCode.Success) && (defect_norm < abstol)
-                #println("Succesful computation, the user defined tolerance has been satisfied")
-            end
         else
             #println("Cannot obtain a solution for the current mesh")
             if 2 * (S.N - 1) > MxNsub
                 #println("New mesh would be too large")
                 info = ReturnCode.Failure
             else
-                mesh_new = half_mesh(S.x, S.N - 1)
-                Nsub_star = 2 * (S.N - 1)
+                mesh_new = half_mesh(S.x)
                 S.x = copy(mesh_new)
-                S.N = copy(Nsub_star) + 1
+                S.N = length(mesh_new)
                 S.y = vector_alloc(eltype(S.x), S.M, S.N)
                 S.residual = vector_alloc(eltype(S.x), S.M, S.N)
-                #println("New mesh will be of size ", S.N) # Next computation would be based on length n mesh
                 info = ReturnCode.Success # Force a restart
                 defect_norm = 2 * abstol
             end

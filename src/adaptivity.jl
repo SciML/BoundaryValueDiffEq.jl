@@ -83,7 +83,7 @@ function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abst
             info = ReturnCode.Failure
         else
             #println("Half the current mesh")
-            mesh_new = half_mesh(mesh_current, n)
+            mesh_new = half_mesh(mesh_current)
         end
     else
         Nsub_star = copy(n_predict)
@@ -144,13 +144,14 @@ function redistribute(mesh_current::Vector,
 end
 
 """
-    half_mesh(mesh_current, n)
+    half_mesh(mesh_current)
 
 The input mesh_current has length of n+1
 
 Divide the original subinterval into two equal length subinterval.
 """
-function half_mesh(mesh_current::Vector, n::Int64)
+function half_mesh(mesh_current::Vector)
+    n = length(mesh_current) - 1
     mesh_new = zeros(Float64, 2 * n + 1)
     mesh_new[1] = mesh_current[1]
     for i in 1:n
