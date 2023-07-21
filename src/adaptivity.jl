@@ -71,13 +71,13 @@ function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abst
         r2 = r2 + s_hat[i] * h
     end
     r3 = r2 / n
-    n_predict::Int64 = round(Int, (safety_factor * r2) + 1)
+    n_predict::Int = round(Int, (safety_factor * r2) + 1)
     if abs((n_predict - n) / n) < 0.1
         n_predict = round(Int, 1.1 * n)
     end
 
     if r1 <= rho * r3
-        Nsub_star::Int64 = 2 * n
+        Nsub_star = 2 * n
         if Nsub_star > MxNsub # Need to determine the too large threshold
             #("New mesh would be too large")
             info = ReturnCode.Failure
@@ -115,7 +115,7 @@ function redistribute(mesh_current::Vector,
     n::Int64,
     Nsub_star::Int64,
     s_hat::Vector{Float64})
-    mesh_new = zeros(Float64, Nsub_star + 1)
+    mesh_new = zeros(eltype(mesh_current), Nsub_star + 1)
     sum = 0.0
     for k in 1:n
         sum += s_hat[k] * (mesh_current[k + 1] - mesh_current[k])
@@ -125,7 +125,7 @@ function redistribute(mesh_current::Vector,
     i::Int64 = 0
     mesh_new[1] = mesh_current[1]
     t = mesh_current[1]
-    integral::Float64 = 0.0
+    integral = 0.0
     while k <= n
         next_piece = s_hat[k] * (mesh_current[k + 1] - t)
         if (integral + next_piece) > zeta
@@ -188,7 +188,7 @@ function defect_estimate(S::BVPSystem,
     s, s_star, tau_star = TU.s, TU.s_star, TU.tau
 
     # Initialization
-    defect = zeros(n, len)
+    defect = zeros(Float64, n, len)
     #s, s_star, tau_star, x_star, v_star, c_star = setup_coeff(alg)
 
     f_sample_1, f_sample_2 = zeros(Float64, len), zeros(Float64, len)
@@ -342,46 +342,48 @@ function interp_weights(tau, alg::Union{GeneralMIRK, MIRK})
 
     elseif alg_order(alg) == 6
         w = [
-            tau - 28607 / 7434 * tau^2 - 166210 / 33453 * tau^3 + 334780 / 11151 * tau^4 -
-            1911296 / 55755 * tau^5 + 406528 / 33453 * tau^6,
-            777 / 590 * tau^2 - 2534158 / 234171 * tau^3 + 2088580 / 78057 * tau^4 -
-            10479104 / 390285 * tau^5 + 11328512 / 1170855 * tau^6,
-            -1008 / 59 * tau^2 + 222176 / 1593 * tau^3 - 180032 / 531 * tau^4 +
-            876544 / 2655 * tau^5 - 180224 / 1593 * tau^6,
-            -1008 / 59 * tau^2 + 222176 / 1593 * tau^3 - 180032 / 531 * tau^4 +
-            876544 / 2655 * tau^5 - 180224 / 1593 * tau^6,
-            -378 / 59 * tau^2 + 27772 / 531 * tau^3 - 22504 / 177 * tau^4 +
-            109568 / 885 * tau^5 - 22528 / 531 * tau^6,
-            -95232 / 413 * tau^2 + 62384128 / 33453 * tau^3 - 49429504 / 11151 * tau^4 +
-            46759936 / 11151 * tau^5 - 46661632 / 33453 * tau^6,
-            896 / 5 * tau^2 - 4352 / 3 * tau^3 + 3456 * tau^4 - 16384 / 5 * tau^5 +
-            16384 / 15 * tau^6,
-            50176 / 531 * tau^2 - 179554304 / 234171 * tau^3 + 143363072 / 78057 * tau^4 -
-            136675328 / 78057 * tau^5 + 137363456 / 234171 * tau^6,
-            16384 / 441 * tau^3 - 16384 / 147 * tau^4 + 16384 / 147 * tau^5 -
-            16384 / 441 * tau^6]
+            tau - 28607 // 7434 * tau^2 - 166210 // 33453 * tau^3 +
+            334780 // 11151 * tau^4 -
+            1911296 // 55755 * tau^5 + 406528 // 33453 * tau^6,
+            777 // 590 * tau^2 - 2534158 // 234171 * tau^3 + 2088580 // 78057 * tau^4 -
+            10479104 // 390285 * tau^5 + 11328512 // 1170855 * tau^6,
+            -1008 // 59 * tau^2 + 222176 // 1593 * tau^3 - 180032 // 531 * tau^4 +
+            876544 // 2655 * tau^5 - 180224 // 1593 * tau^6,
+            -1008 // 59 * tau^2 + 222176 // 1593 * tau^3 - 180032 // 531 * tau^4 +
+            876544 // 2655 * tau^5 - 180224 // 1593 * tau^6,
+            -378 // 59 * tau^2 + 27772 // 531 * tau^3 - 22504 // 177 * tau^4 +
+            109568 // 885 * tau^5 - 22528 // 531 * tau^6,
+            -95232 // 413 * tau^2 + 62384128 // 33453 * tau^3 - 49429504 // 11151 * tau^4 +
+            46759936 // 11151 * tau^5 - 46661632 // 33453 * tau^6,
+            896 // 5 * tau^2 - 4352 // 3 * tau^3 + 3456 * tau^4 - 16384 // 5 * tau^5 +
+            16384 // 15 * tau^6,
+            50176 // 531 * tau^2 - 179554304 // 234171 * tau^3 +
+            143363072 // 78057 * tau^4 -
+            136675328 // 78057 * tau^5 + 137363456 // 234171 * tau^6,
+            16384 // 441 * tau^3 - 16384 // 147 * tau^4 + 16384 // 147 * tau^5 -
+            16384 // 441 * tau^6]
 
         #     Derivative polynomials.
 
         wp = [
-            1 - 28607 / 3717 * tau - 166210 / 11151 * tau^2 + 1339120 / 11151 * tau^3 -
-            1911296 / 11151 * tau^4 + 813056 / 11151 * tau^5,
-            777 / 295 * tau - 2534158 / 78057 * tau^2 + 8354320 / 78057 * tau^3 -
-            10479104 / 78057 * tau^4 + 22657024 / 390285 * tau^5,
-            -2016 / 59 * tau + 222176 / 531 * tau^2 - 720128 / 531 * tau^3 +
-            876544 / 531 * tau^4 - 360448 / 531 * tau^5,
-            -2016 / 59 * tau + 222176 / 531 * tau^2 - 720128 / 531 * tau^3 +
-            876544 / 531 * tau^4 - 360448 / 531 * tau^5,
-            -756 / 59 * tau + 27772 / 177 * tau^2 - 90016 / 177 * tau^3 +
-            109568 / 177 * tau^4 - 45056 / 177 * tau^5,
-            -190464 / 413 * tau + 62384128 / 11151 * tau^2 - 197718016 / 11151 * tau^3 +
-            233799680 / 11151 * tau^4 - 93323264 / 11151 * tau^5,
-            1792 / 5 * tau - 4352 * tau^2 + 13824 * tau^3 - 16384 * tau^4 +
-            32768 / 5 * tau^5,
-            100352 / 531 * tau - 179554304 / 78057 * tau^2 + 573452288 / 78057 * tau^3 -
-            683376640 / 78057 * tau^4 + 274726912 / 78057 * tau^5,
-            16384 / 147 * tau^2 - 65536 / 147 * tau^3 + 81920 / 147 * tau^4 -
-            32768 / 147 * tau^5]
+            1 - 28607 // 3717 * tau - 166210 // 11151 * tau^2 + 1339120 // 11151 * tau^3 -
+            1911296 // 11151 * tau^4 + 813056 // 11151 * tau^5,
+            777 // 295 * tau - 2534158 // 78057 * tau^2 + 8354320 // 78057 * tau^3 -
+            10479104 // 78057 * tau^4 + 22657024 // 390285 * tau^5,
+            -2016 // 59 * tau + 222176 // 531 * tau^2 - 720128 // 531 * tau^3 +
+            876544 // 531 * tau^4 - 360448 // 531 * tau^5,
+            -2016 // 59 * tau + 222176 // 531 * tau^2 - 720128 // 531 * tau^3 +
+            876544 // 531 * tau^4 - 360448 // 531 * tau^5,
+            -756 // 59 * tau + 27772 // 177 * tau^2 - 90016 // 177 * tau^3 +
+            109568 // 177 * tau^4 - 45056 // 177 * tau^5,
+            -190464 // 413 * tau + 62384128 // 11151 * tau^2 - 197718016 // 11151 * tau^3 +
+            233799680 // 11151 * tau^4 - 93323264 // 11151 * tau^5,
+            1792 // 5 * tau - 4352 * tau^2 + 13824 * tau^3 - 16384 * tau^4 +
+            32768 // 5 * tau^5,
+            100352 // 531 * tau - 179554304 // 78057 * tau^2 + 573452288 // 78057 * tau^3 -
+            683376640 // 78057 * tau^4 + 274726912 // 78057 * tau^5,
+            16384 // 147 * tau^2 - 65536 // 147 * tau^3 + 81920 // 147 * tau^4 -
+            32768 // 147 * tau^5]
 
         return w, wp
     end
