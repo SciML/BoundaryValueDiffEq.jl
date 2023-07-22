@@ -23,6 +23,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
+    # Initialization
     defect_threshold = 0.1
     info = ReturnCode.Success
     defect_norm = 10
@@ -78,6 +79,8 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec_y, prob.p)
         opt = solve(nlprob, alg.nlsolve; kwargs...)
         nest_vector!(S.y, opt.u)
+
+        info = opt.retcode
 
         if info == ReturnCode.Success
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, tableau)

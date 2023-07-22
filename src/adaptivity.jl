@@ -109,7 +109,7 @@ end
 """
     redistribute(mesh_current, n, Nsub_star, s_hat)
 
-Generate a new mesh.
+Generate a new mesh based on the .
 """
 function redistribute(mesh_current::Vector,
     n::Int64,
