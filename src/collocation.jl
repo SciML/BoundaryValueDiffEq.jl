@@ -6,8 +6,8 @@ function BVPSystem(fun, bc, p, x, M::Integer, alg::Union{GeneralMIRK, MIRK})
     order = alg_order(alg)
     s = alg_stage(alg)
     BVPSystem(order, M, N, fun, bc, p, s, x, y, vector_alloc(T, M, N),
-              vector_alloc(T, M, N),
-              eltype(y)(undef, M))
+        vector_alloc(T, M, N),
+        eltype(y)(undef, M))
 end
 
 # If user offers an intial guess
@@ -17,7 +17,7 @@ function BVPSystem(fun, bc, p, x, y, alg::Union{GeneralMIRK, MIRK})
     order = alg_order(alg)
     s = alg_stage(alg)
     BVPSystem{T, U}(order, M, N, fun, bc, p, s, x, y, vector_alloc(T, M, N),
-                    vector_alloc(T, M, N), eltype(y)(M))
+        vector_alloc(T, M, N), eltype(y)(M))
 end
 
 # Dispatch aware of eltype(x) != eltype(prob.u0)
@@ -28,7 +28,7 @@ function BVPSystem(prob::BVProblem, x, alg::Union{GeneralMIRK, MIRK})
     order = alg_order(alg)
     s = alg_stage(alg)
     BVPSystem(order, M, N, prob.f, prob.bc, prob.p, s, x, y, deepcopy(y),
-              deepcopy(y), typeof(x)(undef, M))
+        deepcopy(y), typeof(x)(undef, M))
 end
 
 # Auxiliary functions for evaluation
