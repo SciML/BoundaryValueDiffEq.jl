@@ -84,19 +84,15 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
 
         if info == ReturnCode.Success
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, tableau)
-            #println("Defect norm is ", defect_norm)
+            # The defect is greater than 10%, the solution is not acceptable
             if defect_norm > defect_threshold
                 info = ReturnCode.Failure
-                #println("Newton iteration was successful, but")
-                #println("the defect is greater than 10%, the solution is not acceptable")
             end
         end
 
         if info == ReturnCode.Success
-            #println("Newton interation was successful")
             if defect_norm > abstol
-                #println("User defined tolerance ", abstol, " has not been satisfied")
-                #println("We construct a new mesh to equidistribute the defect")
+                # We construct a new mesh to equidistribute the defect
                 mesh_new, Nsub_star, info = mesh_selector(S, alg, defect, abstol)
                 #println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
@@ -119,9 +115,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 end
             end
         else
-            #println("Cannot obtain a solution for the current mesh")
+            #  We cannot obtain a solution for the current mesh
             if 2 * (S.N - 1) > MxNsub
-                #println("New mesh would be too large")
+                # New mesh would be too large
                 info = ReturnCode.Failure
             else
                 mesh_new = half_mesh(S.x)
