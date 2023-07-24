@@ -17,32 +17,34 @@ function alg_cache{T,U}(alg::MIRK4, S::BVPSystem{T,U})
 end
 =#
 
-struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
-    K::kType
+mutable struct MIRK4GeneralCache{kType} <: GeneralMIRKCache
+    #k_discrete stores discrete stages for each subinterval,
+    #hence the size of k_discrete is n * (len*s)
+    k_discrete::kType
 end
 
 @truncate_stacktrace MIRK4GeneralCache
 
 function alg_cache(alg::Union{GeneralMIRK4, MIRK4}, S::BVPSystem{T, U}) where {T, U}
-    MIRK4GeneralCache([similar(S.y[1]) for i in 1:(S.s)])
+    MIRK4GeneralCache(similar([S.y[1]], S.N - 1, S.s))
 end
 
-struct MIRK5GeneralCache{kType} <: GeneralMIRKCache
-    K::kType
+mutable struct MIRK5GeneralCache{kType} <: GeneralMIRKCache
+    k_discrete::kType
 end
 
 @truncate_stacktrace MIRK5GeneralCache
 
 function alg_cache(alg::Union{GeneralMIRK5, MIRK5}, S::BVPSystem{T, U}) where {T, U}
-    MIRK5GeneralCache([similar(S.y[1]) for i in 1:(S.s)])
+    MIRK5GeneralCache(similar([S.y[1]], S.N - 1, S.s))
 end
 
-struct MIRK6GeneralCache{kType} <: GeneralMIRKCache
-    K::kType
+mutable struct MIRK6GeneralCache{kType} <: GeneralMIRKCache
+    k_discrete::kType
 end
 
 @truncate_stacktrace MIRK6GeneralCache
 
 function alg_cache(alg::Union{GeneralMIRK6, MIRK6}, S::BVPSystem{T, U}) where {T, U}
-    MIRK6GeneralCache([similar(S.y[1]) for i in 1:(S.s)])
+    MIRK6GeneralCache(similar([S.y[1]], S.N - 1, S.s))
 end

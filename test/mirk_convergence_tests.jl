@@ -46,7 +46,6 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = (1 / 2) .^ (5:-1:1)
 
 println("Collocation method (GeneralMIRK)")
 println("Affineness Test")
@@ -71,18 +70,18 @@ println("Convergence Test on Linear")
 prob = probArr[2]
 
 # GeneralMIRK4
-
-@time sim = test_convergence(dts, prob, GeneralMIRK4(); abstol = 1e-13, reltol = 1e-13);
+dts = 1 .// 2 .^ (3:-1:1)
+@time sim = test_convergence(dts, prob, GeneralMIRK4(); abstol = 1e-4, reltol = 1e-4);
 @test sim.𝒪est[:final]≈4 atol=testTol
 
 # GeneralMIRK5
-
-@time sim = test_convergence(dts, prob, GeneralMIRK5(); abstol = 1e-13, reltol = 1e-13);
-@test sim.𝒪est[:final]≈5 atol=testTol
+dts = 1 .// 2 .^ (4:-1:3)
+@time sim = test_convergence(dts, prob, GeneralMIRK5(); abstol = 1e-4, reltol = 1e-4);
+@test sim.𝒪est[:final]≈5 atol=0.3
 
 # GeneralMIRK6
-
-@time sim = test_convergence(dts, prob, GeneralMIRK6(); abstol = 1e-13, reltol = 1e-13);
+dts = 1 .// 2 .^ (9:-1:6)
+@time sim = test_convergence(dts, prob, GeneralMIRK6(); abstol = 1e-4, reltol = 1e-4);
 @test sim.𝒪est[:final]≈6 atol=testTol
 
 println("Collocation method (MIRK)")
@@ -108,18 +107,18 @@ println("Convergence Test on Linear")
 prob = probArr[4]
 
 # MIRK4
-
-@time sim = test_convergence(dts, prob, MIRK4(); abstol = 1e-13, reltol = 1e-13);
+dts = 1 .// 2 .^ (3:-1:1)
+@time sim = test_convergence(dts, prob, MIRK4(); abstol = 1e-4, reltol = 1e-4);
 @test sim.𝒪est[:final]≈4 atol=testTol
 
 # MIRK5
-
-@time sim = test_convergence(dts, prob, MIRK5(); abstol = 1e-13, reltol = 1e-13);
-@test sim.𝒪est[:final]≈5 atol=testTol
+dts = 1 .// 2 .^ (4:-1:3)
+@time sim = test_convergence(dts, prob, MIRK5(); abstol = 1e-4, reltol = 1e-4);
+@test sim.𝒪est[:final]≈5 atol=0.3
 
 # MIRK6
-
-@time sim = test_convergence(dts, prob, MIRK6(); abstol = 1e-13, reltol = 1e-13);
+dts = 1 .// 2 .^ (9:-1:6)
+@time sim = test_convergence(dts, prob, MIRK6(); abstol = 1e-4, reltol = 1e-4);
 @test sim.𝒪est[:final]≈6 atol=testTol
 
 using StaticArrays

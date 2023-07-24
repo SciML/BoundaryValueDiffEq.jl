@@ -6,7 +6,10 @@ function constructMIRK_IV(S::BVPSystem{T, U}) where {T, U}
         0 0 0 0
         1//8 -1//8 0 0
         3//64 -9//64 0 0]
-    MIRKTableau(T.(c), T.(v), T.(b), T.(x))
+    s = 3
+    s_star = 4
+    tau = 0.226
+    MIRKTableau(T.(c), T.(v), T.(b), T.(x), Int64(s), Int64(s_star), T(tau))
 end
 
 MIRK_dispatcher(S::BVPSystem, ::Type{Val{4}}) = constructMIRK_IV(S)
@@ -21,7 +24,10 @@ function constructMIRK_V(S::BVPSystem{T, U}) where {T, U}
         21//1000 63//5000 -252//625 0 0 0
         14//1125 -74//875 -128//3375 104//945 0 0
         1//2 4508233//1958887 48720832//2518569 -27646420//17629983 -11517095//559682 0]
-    MIRKTableau(T.(c), T.(v), T.(b), T.(x))
+    s = 4
+    s_star = 6
+    tau = 0.3
+    MIRKTableau(T.(c), T.(v), T.(b), T.(x), Int64(s), Int64(s_star), T(tau))
 end
 
 MIRK_dispatcher(S::BVPSystem, ::Type{Val{5}}) = constructMIRK_V(S)
@@ -39,7 +45,10 @@ function constructMIRK_VI(S::BVPSystem{T, U}) where {T, U}
         83//1536 -13//384 283//1536 -167//1536 -49//512 0 0 0 0
         1225//32768 -1547//32768 287//2048 -749//4096 861//16384 0 0 0 0
         233//3456 -19//1152 0 0 0 -5//72 7//72 -17//216 0]
-    MIRKTableau(T.(c), T.(v), T.(b), T.(x))
+    s = 5
+    s_star = 9
+    tau = 0.7156
+    MIRKTableau(T.(c), T.(v), T.(b), T.(x), Int64(s), Int64(s_star), T(tau))
 end
 
 constructMIRK(S::BVPSystem) = MIRK_dispatcher(S, Val{S.order})

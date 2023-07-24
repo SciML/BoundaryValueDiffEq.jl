@@ -15,6 +15,7 @@ alg_stage(alg::MIRK6) = 5
 SciMLBase.isautodifferentiable(::BoundaryValueDiffEqAlgorithm) = true
 SciMLBase.allows_arbitrary_number_types(::BoundaryValueDiffEqAlgorithm) = true
 SciMLBase.allowscomplex(alg::BoundaryValueDiffEqAlgorithm) = true
+
 function SciMLBase.isadaptive(alg::Union{
     GeneralMIRK4,
     GeneralMIRK5,
@@ -23,5 +24,5 @@ function SciMLBase.isadaptive(alg::Union{
     MIRK5,
     MIRK6,
 })
-    false
+    true
 end
