@@ -8,40 +8,56 @@ import ForwardDiff, BandedMatrices, FiniteDiff
 
 import TruncatedStacktraces: @truncate_stacktrace
 
-struct MIRKTableau{T, cType, vType, bType, xType, sType, starType, tauType}
+struct MIRKTableau{sType, cType, vType, bType, xType}
+    """Discrete stages of MIRK formula"""
+    s::sType
     c::cType
     v::vType
     b::bType
     x::xType
-    """Discrete stages of MIRK formula"""
-    s::sType
-    """Number of stages to form the interpolant"""
-    s_star::starType
-    """Defect sampling point"""
-    tau::tauType
 end
 
-function MIRKTableau(c, v, b, x, s, s_star, tau)
-    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x) == eltype(tau)
+function MIRKTableau(s, c, v, b, x)
+    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x)
     return MIRKTableau{
-        eltype(c),
+        typeof(s),
         typeof(c),
         typeof(v),
         typeof(b),
         typeof(x),
-        typeof(s),
-        typeof(s_star),
-        typeof(tau),
-    }(c,
+    }(s,
+        c,
         v,
         b,
-        x,
-        s,
-        s_star,
-        tau)
+        x)
 end
 
 @truncate_stacktrace MIRKTableau 1
+
+struct MIRKInterpTableau{s, c, v, x, τ}
+    s_star::s
+    c_star::c
+    v_star::v
+    x_star::x
+    τ_star::τ
+end
+
+function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star)
+    @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
+    return MIRKInterpTableau{
+        typeof(s_star),
+        typeof(c_star),
+        typeof(v_star),
+        typeof(x_star),
+        typeof(τ_star),
+    }(s_star,
+        c_star,
+        v_star,
+        x_star,
+        τ_star)
+end
+
+@truncate_stacktrace MIRKInterpTableau 1
 
 # ODE BVP problem system
 mutable struct BVPSystem{T, U <: AbstractArray, P, F, B, S}

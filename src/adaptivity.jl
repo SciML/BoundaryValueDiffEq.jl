@@ -6,7 +6,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 function interp_eval(S::BVPSystem,
     cache::AbstractMIRKCache,
     alg::Union{GeneralMIRK, MIRK},
-    TU::MIRKTableau,
+    ITU::MIRKInterpTableau,
     t,
     k_interp)
     mesh, Y = S.x, S.y
@@ -17,7 +17,7 @@ function interp_eval(S::BVPSystem,
     tau = (t - mesh[i]) / dt
     weights, weights_prime = interp_weights(tau, alg)
     z, z_prime = sum_stages(S,
-        TU,
+        ITU,
         weights,
         weights_prime,
         k_discrete[i, :],
@@ -100,21 +100,21 @@ function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abst
             mesh_new = Nothing
         else
             #println("Mesh redistributing")
-            mesh_new = redistribute(mesh_current, n, Nsub_star, s_hat)
+            mesh_new = redistribute(mesh_current, Nsub_star, s_hat)
         end
     end
     return mesh_new, Nsub_star, info
 end
 
 """
-    redistribute(mesh_current, n, Nsub_star, s_hat)
+    redistribute(mesh_current, Nsub_star, s_hat)
 
 Generate a new mesh based on the .
 """
 function redistribute(mesh_current::Vector,
-    n::Int64,
     Nsub_star::Int64,
     s_hat::Vector{Float64})
+    n = length(mesh_current)
     mesh_new = zeros(eltype(mesh_current), Nsub_star + 1)
     sum = 0.0
     for k in 1:n
@@ -177,7 +177,7 @@ an interpolant
 function defect_estimate(S::BVPSystem,
     cache::AbstractMIRKCache,
     alg::Union{GeneralMIRK, MIRK},
-    TU::MIRKTableau)
+    ITU::MIRKInterpTableau)
     n, len, Y, p, k_discrete, mesh, f = S.N - 1,
     S.M,
     S.y,
@@ -185,7 +185,7 @@ function defect_estimate(S::BVPSystem,
     cache.k_discrete,
     S.x,
     S.fun!
-    s, s_star, tau_star = TU.s, TU.s_star, TU.tau
+    s, s_star, tau_star = S.s, ITU.s_star, ITU.τ_star
 
     # Initialization
     defect = zeros(Float64, n, len)
@@ -205,10 +205,10 @@ function defect_estimate(S::BVPSystem,
     for i in 1:n
         dt = mesh[i + 1] - mesh[i]
 
-        k_interp[i, :] = interp_setup(S, mesh[i], dt, Y[i], Y[i + 1], TU, k_discrete[i, :])
+        k_interp[i, :] = interp_setup(S, mesh[i], dt, Y[i], Y[i + 1], ITU, k_discrete[i, :])
 
         # Sample point 1
-        z, z_prime = sum_stages(S, TU, weights_1, weights_1_prime, k_discrete[i, :],
+        z, z_prime = sum_stages(S, ITU, weights_1, weights_1_prime, k_discrete[i, :],
             k_interp[i, :], Y[i])
         f(f_sample_1, z, p, mesh[i] + tau_star * dt)
         z_prime .= z_prime .- f_sample_1
@@ -219,7 +219,7 @@ function defect_estimate(S::BVPSystem,
         estimate_1 = maximum(abs.(temp_1))
 
         # Sample point 2
-        z, z_prime = sum_stages(S, TU, weights_2, weights_2_prime, k_discrete[i, :],
+        z, z_prime = sum_stages(S, ITU, weights_2, weights_2_prime, k_discrete[i, :],
             k_interp[i, :], Y[i])
         f(f_sample_2, z, p, mesh[i] + (1.0 - tau_star) * dt)
         z_prime .= z_prime .- f_sample_2
@@ -246,14 +246,20 @@ end
 interp_setup prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-function interp_setup(S::BVPSystem, tim1, dt, y_left, y_right, TU::MIRKTableau, ki_discrete)
+function interp_setup(S::BVPSystem,
+    tim1,
+    dt,
+    y_left,
+    y_right,
+    ITU::MIRKInterpTableau,
+    ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = TU.s,
-    TU.s_star,
-    TU.c[(TU.s + 1):(TU.s_star)],
-    TU.v[(TU.s + 1):(TU.s_star)],
-    TU.x[(TU.s + 1):(TU.s_star), :] # Here the last row is acually the interpolation coefficients
+    s, s_star, c_star, v_star, x_star = S.s,
+    ITU.s_star,
+    ITU.c_star,
+    ITU.v_star,
+    ITU.x_star
     x_star = x_star[:]
     # EXPORTS: ki_interp
     ki_interp = similar([zeros(Float64, len)], s_star - s)
@@ -289,7 +295,7 @@ Here, ki_discrete is a matrix stored with discrete RK stages in the ith interval
 Here, ki_interp is a matrix stored with interpolation coefficients in the ith interval, ki_interp has length of (s_star-s)*neqns
 """
 function sum_stages(S::BVPSystem,
-    TU::MIRKTableau,
+    ITU::MIRKInterpTableau,
     weights,
     weights_prime,
     ki_discrete,
@@ -297,7 +303,7 @@ function sum_stages(S::BVPSystem,
     y)
     len, mesh = S.M, S.x
     dt = mesh[end] - mesh[end - 1]
-    s, s_star = TU.s, TU.s_star
+    s, s_star = S.s, ITU.s_star
     # EXPORTS: z, z_prime
     z, z_prime = zeros(len), zeros(len)
     #ki_discrete = ki_discrete[:]

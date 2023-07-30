@@ -31,7 +31,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     S = BVPSystem(prob, mesh, alg)
     initial_guess = false
     while info == ReturnCode.Success && defect_norm > abstol
-        tableau = constructMIRK(S)
+        TU, ITU = constructMIRK(S)
         cache = alg_cache(alg, S)
         # Upper-level iteration
         vec_y = Array{eltype(first(S.y))}(undef, S.M * S.N)              # Vector
@@ -47,7 +47,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         function loss!(resid, u0, p)
             nest_vector!(S.y, u0)
             @set! S.p = p
-            Φ!(S, tableau, cache)
+            Φ!(S, TU, cache)
             if isa(prob.problem_type, TwoPointBVProblem)
                 eval_bc_residual!(S)
             else
@@ -60,7 +60,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
 
         function loss_with_initial_guess!(resid, u, p)
             @set! S.p = p
-            Φ!(S, tableau, cache)
+            Φ!(S, TU, cache)
             if isa(prob.problem_type, TwoPointBVProblem)
                 eval_bc_residual!(S)
             else
@@ -83,7 +83,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         info = opt.retcode
 
         if info == ReturnCode.Success
-            defect, defect_norm, k_interp = defect_estimate(S, cache, alg, tableau)
+            defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU)
             # The defect is greater than 10%, the solution is not acceptable
             if defect_norm > defect_threshold
                 info = ReturnCode.Failure
@@ -102,7 +102,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                         z, z_prime = interp_eval(S,
                             cache,
                             alg,
-                            tableau,
+                            ITU,
                             mesh_new[i + 1],
                             k_interp)
                         new_Y[i + 1] = z
