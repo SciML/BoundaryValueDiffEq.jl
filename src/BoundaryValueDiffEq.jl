@@ -52,7 +52,7 @@ end
 @truncate_stacktrace MIRKInterpTableau 1
 
 # ODE BVP problem system
-mutable struct BVPSystem{T, U <: AbstractArray, P, F, B, S}
+struct BVPSystem{T, U <: AbstractArray, P, F, B, S}
     order::Int                  # The order of MIRK method
     M::Int                      # Number of equations in the ODE system
     N::Int                      # Number of nodes in the mesh

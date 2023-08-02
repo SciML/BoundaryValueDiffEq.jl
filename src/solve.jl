@@ -17,36 +17,45 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         ReturnCode.Failure)
 end
 
-function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
-    abstol = 1e-3,
-    kwargs...)
+function __mirk_reorder!(resid)
+    # reorder the Jacobian matrix such that it is banded
+    tmp_last = resid[end]
+    idxs = (lastindex(resid) - 1):-1:1
+    resid[idxs .+ 1] .= resid[idxs]
+    resid[firstindex(resid)], resid[end] = resid[end], tmp_last
+    return nothing
+end
+
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK})
+    # FIXME: Revert for Cthulhu
+    # ; dt = 0.0,
+    # abstol = 1e-3,
+    # kwargs...)
+
+    dt = 0.2
+    abstol = 1e-3
+    kwargs = (;)
+
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    T = eltype(prob.u0)
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     # Initialization
-    defect_threshold = 0.1
-    info = ReturnCode.Success
-    defect_norm = 10
+    defect_threshold = T(0.1)
+    info::ReturnCode.T = ReturnCode.Success
+    defect_norm = T(10)
     MxNsub = 3000
     S = BVPSystem(prob, mesh, alg)
     initial_guess = false
-    while info == ReturnCode.Success && defect_norm > abstol
+    # while info == ReturnCode.Success && defect_norm > abstol
         TU, ITU = constructMIRK(S)
         cache = alg_cache(alg, S)
         # Upper-level iteration
         vec_y = Array{eltype(first(S.y))}(undef, S.M * S.N)              # Vector
-        function reorder!(resid)
-            # reorder the Jacobian matrix such that it is banded
-            tmp_last = resid[end]
-            for i in (length(resid) - 1):-1:1
-                resid[i + 1] = resid[i]
-            end
-            resid[1], resid[end] = resid[end], tmp_last
-            return nothing
-        end
+
         function loss!(resid, u0, p)
             nest_vector!(S.y, u0)
-            @set! S.p = p
+            S.p .= p
             Φ!(S, TU, cache)
             if isa(prob.problem_type, TwoPointBVProblem)
                 eval_bc_residual!(S)
@@ -54,12 +63,12 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 general_eval_bc_residual!(S)
             end
             flatten_vector!(resid, S.residual)
-            reorder!(resid)
+            __mirk_reorder!(resid)
             return nothing
         end
 
         function loss_with_initial_guess!(resid, u, p)
-            @set! S.p = p
+            S.p .= p
             Φ!(S, TU, cache)
             if isa(prob.problem_type, TwoPointBVProblem)
                 eval_bc_residual!(S)
@@ -67,7 +76,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 general_eval_bc_residual!(S)
             end
             flatten_vector!(resid, S.residual)
-            reorder!(resid)
+            __mirk_reorder!(resid)
             return nothing
         end
 
@@ -107,29 +116,30 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                             k_interp)
                         new_Y[i + 1] = z
                     end
-                    S.x = copy(mesh_new)
-                    S.N = copy(Nsub_star) + 1
-                    S.y = copy(new_Y)
+                    S = BVPSystem(S.order, S.M, Nsub_star + 1, S.fun!, S.bc!, S.p, S.s, copy(mesh_new), copy(new_Y), S.f, vector_alloc(eltype(mesh_new), S.M, Nsub_star + 1), S.tmp)
+                    # @set! S.x = copy(mesh_new)
+                    # @set! S.N = copy(Nsub_star) + 1
+                    # @set! S.y = copy(new_Y)
                     initial_guess = true
-                    S.residual = vector_alloc(eltype(S.x), S.M, S.N)
+                    # S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 end
             end
-        else
-            #  We cannot obtain a solution for the current mesh
-            if 2 * (S.N - 1) > MxNsub
-                # New mesh would be too large
-                info = ReturnCode.Failure
-            else
-                mesh_new = half_mesh(S.x)
-                S.x = copy(mesh_new)
-                S.N = length(mesh_new)
-                S.y = vector_alloc(eltype(S.x), S.M, S.N)
-                S.residual = vector_alloc(eltype(S.x), S.M, S.N)
-                info = ReturnCode.Success # Force a restart
-                defect_norm = 2 * abstol
-            end
+        # else
+        #     #  We cannot obtain a solution for the current mesh
+        #     if 2 * (S.N - 1) > MxNsub
+        #         # New mesh would be too large
+        #         info = ReturnCode.Failure
+        #     else
+        #         mesh_new = half_mesh(S.x)
+        #         @set! S.x = copy(mesh_new)
+        #         @set! S.N = length(mesh_new)
+        #         @set! S.y = vector_alloc(eltype(S.x), S.M, S.N)
+        #         @set! S.residual = vector_alloc(eltype(S.x), S.M, S.N)
+        #         info = ReturnCode.Success # Force a restart
+        #         defect_norm = 2 * abstol
+        #     end
         end
-    end
+    # end
 
     return DiffEqBase.build_solution(prob, alg, S.x, S.y; info)
 end
