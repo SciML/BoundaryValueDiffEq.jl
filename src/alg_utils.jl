@@ -1,13 +1,17 @@
+alg_order(alg::GeneralMIRK3) = 3
 alg_order(alg::GeneralMIRK4) = 4
 alg_order(alg::GeneralMIRK5) = 5
 alg_order(alg::GeneralMIRK6) = 6
+alg_order(alg::MIRK3) = 3
 alg_order(alg::MIRK4) = 4
 alg_order(alg::MIRK5) = 5
 alg_order(alg::MIRK6) = 6
 
+alg_stage(alg::GeneralMIRK3) = 2
 alg_stage(alg::GeneralMIRK4) = 3
 alg_stage(alg::GeneralMIRK5) = 4
 alg_stage(alg::GeneralMIRK6) = 5
+alg_stage(alg::MIRK3) = 2
 alg_stage(alg::MIRK4) = 3
 alg_stage(alg::MIRK5) = 4
 alg_stage(alg::MIRK6) = 5

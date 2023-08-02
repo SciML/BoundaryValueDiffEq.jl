@@ -1,7 +1,29 @@
 constructMIRK(S::BVPSystem) = MIRK_dispatcher(S, Val{S.order})
+MIRK_dispatcher(S::BVPSystem, ::Type{Val{3}}) = constructMIRK3(S)
 MIRK_dispatcher(S::BVPSystem, ::Type{Val{4}}) = constructMIRK4(S)
 MIRK_dispatcher(S::BVPSystem, ::Type{Val{5}}) = constructMIRK5(S)
 MIRK_dispatcher(S::BVPSystem, ::Type{Val{6}}) = constructMIRK6(S)
+
+function constructMIRK3(S::BVPSystem{T, U}) where {T, U}
+    # RK coefficients tableau
+    s = 2
+    c = [0, 2 // 3]
+    v = [0, 4 // 9]
+    b = [1 // 4, 3 // 4]
+    x = [0 1
+        2//9 0]
+
+    # Interpolant tableau
+    s_star = 3
+    c_star = [1]
+    v_star = [1]
+    x_star = [0, 0, 0]
+    τ_star = 0.25
+
+    TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
+    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    return TU, ITU
+end
 
 function constructMIRK4(S::BVPSystem{T, U}) where {T, U}
     # RK coefficients tableau

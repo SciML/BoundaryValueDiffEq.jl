@@ -117,7 +117,7 @@ function redistribute(mesh_current::Vector,
     n = length(mesh_current)
     mesh_new = zeros(eltype(mesh_current), Nsub_star + 1)
     sum = 0.0
-    for k in 1:n
+    for k in 1:(n - 1)
         sum += s_hat[k] * (mesh_current[k + 1] - mesh_current[k])
     end
     zeta = sum / Nsub_star
@@ -126,7 +126,7 @@ function redistribute(mesh_current::Vector,
     mesh_new[1] = mesh_current[1]
     t = mesh_current[1]
     integral = 0.0
-    while k <= n
+    while k <= (n - 1)
         next_piece = s_hat[k] * (mesh_current[k + 1] - t)
         if (integral + next_piece) > zeta
             mesh_new[i + 2] = (zeta - integral) / s_hat[k] + t
@@ -139,7 +139,7 @@ function redistribute(mesh_current::Vector,
             k += 1
         end
     end
-    mesh_new[Nsub_star + 1] = mesh_current[n + 1]
+    mesh_new[Nsub_star + 1] = mesh_current[n]
     return mesh_new
 end
 
@@ -326,7 +326,18 @@ end
 interp_weights: solver-specified interpolation weights and its first derivative
 """
 function interp_weights(tau, alg::Union{GeneralMIRK, MIRK})
-    if alg_order(alg) == 4
+    if alg_order(alg) == 3
+        w = [tau / 4.0 * (2.0 * tau^2 - 5.0 * tau + 4.0),
+            -3.0 / 4.0 * tau^2 * (2.0 * tau - 3.0),
+            tau^2 * (tau - 1.0)]
+
+        #     Derivative polynomials.
+
+        wp = [3.0 / 2.0 * (tau - 2.0 / 3.0) * (tau - 1.0),
+            -9.0 / 2.0 * tau * (tau - 1.0),
+            3.0 * tau * (tau - 2.0 / 3.0)]
+        return w, wp
+    elseif alg_order(alg) == 4
         t2 = tau * tau
         tm1 = tau - 1.0
         t4m3 = tau * 4.0 - 3.0
@@ -354,6 +365,8 @@ function interp_weights(tau, alg::Union{GeneralMIRK, MIRK})
             -25 / 1134 * tau^2 * (-390.0 + 1045.0 * tau - 1020.0 * tau^2 + 328.0 * tau^3),
             -25 / 5184 * tau^2 * (390.0 + 255.0 * tau - 1680.0 * tau^2 + 2072.0 * tau^3),
             279841 / 168480 * tau^2 * (-6.0 + 21.0 * tau - 24.0 * tau^2 + 8.0 * tau^3)]
+
+        #     Derivative polynomials.
 
         wp = [
             1.0 - 13985 // 1872 * tau + 143041 // 7488 * tau^2 - 2371 // 117 * tau^3 +
