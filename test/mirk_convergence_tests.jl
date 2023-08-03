@@ -162,7 +162,7 @@ end
 
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
-@test_nowarn solve(bvp1, GeneralMIRK3(), dt = 0.05)
+@test_nowarn solve(bvp1, GeneralMIRK3(), dt = 0.005)
 @test_nowarn solve(bvp1, GeneralMIRK4(), dt = 0.05)
 @test_nowarn solve(bvp1, GeneralMIRK5(), dt = 0.05)
 @test_nowarn solve(bvp1, GeneralMIRK6(), dt = 0.05)

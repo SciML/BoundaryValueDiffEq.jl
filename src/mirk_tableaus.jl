@@ -10,7 +10,7 @@ function constructMIRK3(S::BVPSystem{T, U}) where {T, U}
     c = [0, 2 // 3]
     v = [0, 4 // 9]
     b = [1 // 4, 3 // 4]
-    x = [0 1
+    x = [0 0
         2//9 0]
 
     # Interpolant tableau
