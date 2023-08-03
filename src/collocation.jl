@@ -38,17 +38,19 @@ end
     end
 end
 
-@inline general_eval_bc_residual!(S::BVPSystem) = S.bc!(S.residual[end], S.y, S.p, S.x)
-@inline function eval_bc_residual!(S::BVPSystem)
+@inline function eval_bc_residual!(::SciMLBase.StandardBVProblem, S::BVPSystem)
+    S.bc!(S.residual[end], S.y, S.p, S.x)
+end
+@inline function eval_bc_residual!(::TwoPointBVProblem, S::BVPSystem)
     S.bc!(S.residual[end], (S.y[1], S.y[end]), S.p, (S.x[1], S.x[end]))
 end
 
-function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {T}
+@views function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {T}
     M, N, residual, x, y, fun!, s = S.M, S.N, S.residual, S.x, S.y, S.fun!, S.s
     c, v, X, b = TU.c, TU.v, TU.x, TU.b
-    K = similar([zeros(Float64, S.M)], S.s)
-    temp = zeros(Float64, S.M)
+    temp = similar(first(y), S.M)
     for i in 1:(N - 1)
+        K = cache.k_discrete[i, :]
         h = x[i + 1] - x[i]
         # Update K
         ## Separete out the first iteration: If the loop is not unrolled then we pay
@@ -68,6 +70,5 @@ function Φ!(S::BVPSystem{T}, TU::MIRKTableau, cache::AbstractMIRKCache) where {
 
         # Update residual
         residual[i] = y[i + 1] - y[i] - h * sum(j -> b[j] * K[j], 1:s)
-        cache.k_discrete[i, :] = K[:]
     end
 end
