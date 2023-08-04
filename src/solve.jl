@@ -111,5 +111,5 @@ function DiffEqBase.__solve(prob::BVProblem,
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, S.x, S.y; retcode=info)
+    return DiffEqBase.build_solution(prob, alg, S.x, S.y; retcode = info)
 end

@@ -1,10 +1,13 @@
 module BoundaryValueDiffEq
 
-using ArrayInterface, BandedMatrices, LinearAlgebra, Reexport, Setfield, SparseArrays
+using LinearAlgebra, Reexport, Setfield, SparseArrays
 @reexport using DiffEqBase, NonlinearSolve
 
+import ArrayInterface: matrix_colors
+import BandedMatrices: BandedMatrix
 import DiffEqBase: solve
-import ForwardDiff, BandedMatrices, FiniteDiff
+import FiniteDiff: JacobianCache, finite_difference_jacobian!
+import ForwardDiff
 
 import TruncatedStacktraces: @truncate_stacktrace
 
