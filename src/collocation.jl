@@ -57,6 +57,7 @@ end
         ## a conditional at every iteration
         x_new = x[i] + c[1] * h
         y_new = (1 - v[1]) * y[i] + v[1] * y[i + 1]
+        fill!(temp, 0)
         fun!(temp, y_new, S.p, x_new)
         K[1] = copy(temp)
 
@@ -64,6 +65,7 @@ end
             x_new = x[i] + c[r] * h
             y_new = (1 - v[r]) * y[i] + v[r] * y[i + 1]
             y_new += h * sum(j -> X[r, j] * K[j], 1:(r - 1))
+            fill!(temp, 0)
             fun!(temp, y_new, S.p, x_new)
             K[r] = copy(temp)
         end
