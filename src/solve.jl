@@ -20,7 +20,7 @@ end
 function __mirk_reorder!(resid)
     # reorder the Jacobian matrix such that it is banded
     tmp_last = resid[end]
-    idxs = (lastindex(resid) - 1):-1:1
+    idxs = (lastindex(resid) - 1):-1:firstindex(resid)
     resid[idxs .+ 1] .= resid[idxs]
     resid[firstindex(resid)], resid[end] = resid[end], tmp_last
     return nothing
