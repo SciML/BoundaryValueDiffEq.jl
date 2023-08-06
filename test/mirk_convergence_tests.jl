@@ -54,6 +54,11 @@ println("Collocation method (GeneralMIRK)")
 println("Affineness Test")
 prob = probArr[1]
 
+# GeneralMIRK3
+
+@time sol = solve(prob, GeneralMIRK3(), dt = 0.2)
+@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+
 # GeneralMIRK4
 
 @time sol = solve(prob, GeneralMIRK4(), dt = 0.2)
@@ -71,6 +76,11 @@ prob = probArr[1]
 
 println("Convergence Test on Linear")
 prob = probArr[2]
+
+# GeneralMIRK3
+
+@time sim = test_convergence(dts2, prob, GeneralMIRK3(); abstol = 1e-3, reltol = 1e-3);
+@test sim.𝒪est[:final]≈3 atol=testTol
 
 # GeneralMIRK4
 
@@ -91,6 +101,11 @@ println("Collocation method (MIRK)")
 println("Affineness Test")
 prob = probArr[3]
 
+# MIRK3
+
+@time sol = solve(prob, MIRK3(), dt = 0.2)
+@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
+
 # MIRK4
 
 @time sol = solve(prob, MIRK4(), dt = 0.2)
@@ -108,6 +123,11 @@ prob = probArr[3]
 
 println("Convergence Test on Linear")
 prob = probArr[4]
+
+# MIRK3
+
+@time sim = test_convergence(dts2, prob, MIRK3(); abstol = 1e-3, reltol = 1e-3);
+@test sim.𝒪est[:final]≈3 atol=testTol
 
 # MIRK4
 
@@ -142,6 +162,7 @@ end
 
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
+@test_nowarn solve(bvp1, GeneralMIRK3(), dt = 0.005)
 @test_nowarn solve(bvp1, GeneralMIRK4(), dt = 0.05)
 @test_nowarn solve(bvp1, GeneralMIRK5(), dt = 0.05)
 @test_nowarn solve(bvp1, GeneralMIRK6(), dt = 0.05)
