@@ -49,8 +49,8 @@ probArr = [BVProblem(func_1, boundary!, u0, tspan),
 testTol = 0.2
 affineTol = 1e-2
 dts1 = 1 .// 2 .^ (3:-1:1)
-dts2 = 1 .// 2 .^ (6:-1:3)
-dts3 = 1 .// 2 .^ (10:-1:6)
+dts2 = 1 .// 2 .^ (4:-1:1)
+dts3 = 1 .// 2 .^ (6:-1:1)
 
 @testset "Affineness" begin
     @info "Collocation method (GeneralMIRK)"
@@ -96,17 +96,14 @@ using StaticArrays
 
 tspan = (0.0, π / 2)
 function simplependulum!(du, u, p, t)
-    g = 9.81
-    L = 1.0
-    θ = u[1]
-    dθ = u[2]
+    g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
     du[1] = dθ
     du[2] = -(g / L) * sin(θ)
 end
 
 function bc1!(residual, u, p, t)
-    residual[1] = u[end ÷ 2][1] + pi / 2 # the solution at the middle of the time span should be -pi/2
-    residual[2] = u[end][1] - pi / 2 # the solution at the end of the time span should be pi/2
+    residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
+    residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
 end
 
 u0 = MVector{2}([pi / 2, pi / 2])

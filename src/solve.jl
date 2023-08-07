@@ -42,11 +42,8 @@ function construct_MIRK_loss_function(S::BVPSystem,
     return loss!
 end
 
-function DiffEqBase.__solve(prob::BVProblem,
-    alg::Union{GeneralMIRK, MIRK};
-    dt = 0.0,
-    abstol = 1e-3,
-    kwargs...)
+function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
+    abstol = 1e-3, adaptive::Bool = true, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     T = eltype(prob.u0)
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
@@ -74,6 +71,8 @@ function DiffEqBase.__solve(prob::BVProblem,
         nest_vector!(S.y, opt.u)
 
         info = opt.retcode
+
+        !adaptive && break
 
         if info == ReturnCode.Success
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU)
