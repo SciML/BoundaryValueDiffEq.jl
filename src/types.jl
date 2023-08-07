@@ -9,11 +9,7 @@ struct MIRKTableau{sType, cType, vType, bType, xType}
 
     function MIRKTableau(s, c, v, b, x)
         @assert eltype(c) == eltype(v) == eltype(b) == eltype(x)
-        return new{typeof(s),
-            typeof(c),
-            typeof(v),
-            typeof(b),
-            typeof(x)}(s, c, v, b, x)
+        return new{typeof(s), typeof(c), typeof(v), typeof(b), typeof(x)}(s, c, v, b, x)
     end
 end
 
@@ -28,15 +24,9 @@ struct MIRKInterpTableau{s, c, v, x, τ}
 
     function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star)
         @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
-        return new{typeof(s_star),
-            typeof(c_star),
-            typeof(v_star),
-            typeof(x_star),
+        return new{typeof(s_star), typeof(c_star), typeof(v_star), typeof(x_star),
             typeof(τ_star)}(s_star,
-            c_star,
-            v_star,
-            x_star,
-            τ_star)
+            c_star, v_star, x_star, τ_star)
     end
 end
 
@@ -44,7 +34,10 @@ end
 
 # ODE BVP problem system
 ## NOTE: We might want to decouple this type from MIRK sometime later
-struct BVPSystem{F <: Function, B <: Function, tType <: AbstractVector}
+mutable struct BVPSystem{
+    F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFunction},
+    tType <: AbstractVector,
+}
     order::Int                  # The order of MIRK method
     stage::Int                  # The state of MIRK method
     M::Int                      # Number of equations in the ODE system

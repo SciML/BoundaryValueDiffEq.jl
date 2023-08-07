@@ -27,7 +27,6 @@ Base.@kwdef struct GeneralMIRK3{N} <: GeneralMIRK
     nlsolve::N = DEFAULT_NLSOLVE_MIRK
 end
 
-
 """
 @article{Enright1996RungeKuttaSW,
   title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},

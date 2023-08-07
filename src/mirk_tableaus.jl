@@ -1,8 +1,7 @@
-constructMIRK(S::BVPSystem) = constructMIRK(S, Val(S.order))
-constructMIRK(S::BVPSystem, ::Val{3}) = constructMIRK3(S)
-constructMIRK(S::BVPSystem, ::Val{4}) = constructMIRK4(S)
-constructMIRK(S::BVPSystem, ::Val{5}) = constructMIRK5(S)
-constructMIRK(S::BVPSystem, ::Val{6}) = constructMIRK6(S)
+for order in (3, 4, 5, 6), alg in ((Symbol("GeneralMIRK$(order)"), Symbol("MIRK$(order)")))
+    f = Symbol("constructMIRK$(order)")
+    @eval constructMIRK(::$(alg), S::BVPSystem) = $(f)(S)
+end
 
 function constructMIRK3(S::BVPSystem)
     T = eltype(S)

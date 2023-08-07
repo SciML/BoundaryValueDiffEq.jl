@@ -45,7 +45,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
 
     y = __initial_state_from_prob(prob, mesh)
     while info == ReturnCode.Success && defect_norm > abstol
-        TU, ITU = constructMIRK(S)
+        TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S)
 
         loss! = construct_MIRK_loss_function(S, prob, TU, cache, mesh)
@@ -74,8 +74,12 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 mesh_dt = diff(mesh)
                 # println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
-                    y = mapreduce(m -> first(interp_eval(S, cache, alg, ITU, m, k_interp)),
-                        hcat, mesh)
+                    y__ = similar(y, S.M, Nsub_star)
+                    for (i, m) in enumerate(mesh)
+                        y__[:, i] .= first(interp_eval(S, cache, alg, ITU, m, k_interp,
+                            mesh, y, mesh_dt))
+                    end
+                    y = y__
                     S = BVPSystem(prob, mesh, alg)
                 end
             end
