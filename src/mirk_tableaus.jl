@@ -1,4 +1,5 @@
-for order in (3, 4, 5, 6), alg in ((Symbol("GeneralMIRK$(order)"), Symbol("MIRK$(order)")))
+for order in (3, 4, 5, 6)
+    alg = Symbol("MIRK$(order)")
     f = Symbol("constructMIRK$(order)")
     @eval constructMIRK(::$(alg), S::BVPSystem) = $(f)(S)
 end

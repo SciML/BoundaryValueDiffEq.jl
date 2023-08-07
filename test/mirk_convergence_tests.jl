@@ -1,9 +1,8 @@
 using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools, LinearAlgebra, Test
 
-for general in (true, false), order in (3, 4, 5, 6)
-    s₁ = Symbol("GeneralMIRK$(order)")
-    s₂ = Symbol("MIRK$(order)")
-    @eval mirk_solver(::Val{$general}, ::Val{$order}) = $(general ? s₁ : s₂)()
+for order in (3, 4, 5, 6)
+    s = Symbol("MIRK$(order)")
+    @eval mirk_solver(::Val{$order}) = $(s)()
 end
 
 # First order test
@@ -50,39 +49,26 @@ testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
+@info "Collocation method (MIRK)"
+
 @testset "Affineness" begin
-    @info "Collocation method (GeneralMIRK)"
-    prob = probArr[1]
-
-    @testset "GeneralMIRK$order" for order in (3, 4, 5, 6)
-        @time sol = solve(prob, mirk_solver(Val(true), Val(order)), dt = 0.2)
-        @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-    end
-
-    @info "Collocation method (MIRK)"
-    prob = probArr[3]
-
-    @testset "MIRK$order" for order in (3, 4, 5, 6)
-        @time sol = solve(prob, mirk_solver(Val(false), Val(order)), dt = 0.2)
-        @test norm(diff(first.(sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
+    @testset "Problem: $i" for i in (1, 3)
+        prob = probArr[i]
+        @testset "MIRK$order" for order in (3, 4, 5, 6)
+            @time sol = solve(prob, mirk_solver(Val(order)), dt = 0.2)
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+        end
     end
 end
 
 @testset "Convergence on Linear" begin
-    @info "Collocation method (GeneralMIRK)"
-    prob = probArr[2]
-    @testset "GeneralMIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
-        @time sim = test_convergence(dts, prob, mirk_solver(Val(true), Val(order));
-            abstol = 1e-8, reltol = 1e-8)
-        @test sim.𝒪est[:final]≈order atol=testTol
-    end
-
-    @info "Collocation method (MIRK)"
-    prob = probArr[4]
-    @testset "MIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
-        @time sim = test_convergence(dts, prob, mirk_solver(Val(false), Val(order));
-            abstol = 1e-8, reltol = 1e-8)
-        @test sim.𝒪est[:final]≈order atol=testTol
+    @testset "Problem: $i" for i in (2, 4)
+        prob = probArr[i]
+        @testset "MIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
+            @time sim = test_convergence(dts, prob, mirk_solver(Val(order));
+                abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
     end
 end
 
@@ -103,7 +89,7 @@ end
 
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
-@test_nowarn solve(bvp1, GeneralMIRK3(), dt = 0.005)
-@test_nowarn solve(bvp1, GeneralMIRK4(), dt = 0.05)
-@test_nowarn solve(bvp1, GeneralMIRK5(), dt = 0.05)
-@test_nowarn solve(bvp1, GeneralMIRK6(), dt = 0.05)
+@test_nowarn solve(bvp1, MIRK3(); dt = 0.005)
+@test_nowarn solve(bvp1, MIRK4(); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK5(); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK6(); dt = 0.05)

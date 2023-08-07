@@ -22,7 +22,6 @@ include("solve.jl")
 include("adaptivity.jl")
 
 export Shooting
-export GeneralMIRK3, GeneralMIRK4, GeneralMIRK5, GeneralMIRK6
 export MIRK3, MIRK4, MIRK5, MIRK6
 
 end

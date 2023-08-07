@@ -1,4 +1,4 @@
-function BVPSystem(prob::BVProblem, mesh, alg::Union{GeneralMIRK, MIRK})
+function BVPSystem(prob::BVProblem, mesh, alg::AbstractMIRK)
     return BVPSystem(alg_order(alg), alg_stage(alg), length(prob.u0), length(mesh),
         prob.f, prob.bc, similar(prob.u0, length(prob.u0)))
 end

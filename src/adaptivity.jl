@@ -1,11 +1,11 @@
 """
     interp_eval(S::BVPSystem, cache::AbstractMIRKCache,
-        alg::Union{GeneralMIRK, MIRK}, ITU::MIRKInterpTableau, t, k_interp, mesh, y, dt_)
+        alg::AbstractMIRK, ITU::MIRKInterpTableau, t, k_interp, mesh, y, dt_)
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
 @views function interp_eval(S::BVPSystem, cache::AbstractMIRKCache,
-    alg::Union{GeneralMIRK, MIRK}, ITU::MIRKInterpTableau, t, k_interp, mesh, y, dt_)
+    alg::AbstractMIRK, ITU::MIRKInterpTableau, t, k_interp, mesh, y, dt_)
     @unpack k_discrete = cache
     i = interval(mesh, t)
     dt = dt_[i]
@@ -28,11 +28,11 @@ function interval(mesh, t)
 end
 
 """
-    mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abstol)
+    mesh_selector(S::BVPSystem, alg::AbstractMIRK, defect, abstol)
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect,
+@views function mesh_selector(S::BVPSystem, alg::AbstractMIRK, defect,
     abstol, mesh, dt)
     T = eltype(S)
     #exports: mesh_new, Nsub_star, info
@@ -140,7 +140,7 @@ end
 amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
 
 """
-    defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{GeneralMIRK, MIRK},
+    defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::AbstractMIRK,
         ITU::MIRKInterpTableau)
 
 defect_estimate use the discrete solution approximation Y, plus stages of 
@@ -148,7 +148,7 @@ the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
 @views function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache,
-    alg::Union{GeneralMIRK, MIRK}, ITU::MIRKInterpTableau, y, p, mesh, dt)
+    alg::AbstractMIRK, ITU::MIRKInterpTableau, y, p, mesh, dt)
     @unpack M, N, stage, f! = S
     @unpack k_discrete = cache
     T = eltype(y)
@@ -212,7 +212,7 @@ Here, the ki_interp is the stages in one subinterval.
         sum!(new_stages_, reshape(x_star[idx₁], 1, :) .* k_discrete[:, 1:stage, :])
         if r > 1
             sum!(new_stages_, reshape(x_star[idx₂], 1, :) .* k_interp[:, 1:(r - 1), :];
-                init=false)
+                init = false)
         end
         new_stages .= new_stages .* dt .+
                       (1 - v_star[r]) .* y[:, 1:(N - 1)] .+ v_star[r] .* y[:, 2:N]
@@ -258,7 +258,8 @@ Here, ki_interp is a matrix stored with interpolation coefficients in the ith in
     return z, z′
 end
 
-for order in (3, 4, 5, 6), alg in (Symbol("GeneralMIRK$(order)"), Symbol("MIRK$(order)"))
+for order in (3, 4, 5, 6)
+    alg = Symbol("MIRK$(order)")
     @eval begin
         """
             interp_weights(τ, alg)
