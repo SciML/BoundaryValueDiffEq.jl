@@ -70,7 +70,7 @@ function DiffEqBase.__solve(prob::BVProblem,
 
         flatten_vector!(vec_y, S.y)
         nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec_y, prob.p)
-        opt = solve(nlprob, alg.nlsolve; kwargs...)
+        opt = solve(nlprob, alg.nlsolve; abstol, kwargs...)
         nest_vector!(S.y, opt.u)
 
         info = opt.retcode

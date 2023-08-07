@@ -1,6 +1,10 @@
-using BoundaryValueDiffEq
-using DiffEqBase, DiffEqDevTools, LinearAlgebra
-using Test
+using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools, LinearAlgebra, Test
+
+for general in (true, false), order in (3, 4, 5, 6)
+    s₁ = Symbol("GeneralMIRK$(order)")
+    s₂ = Symbol("MIRK$(order)")
+    @eval mirk_solver(::Val{$general}, ::Val{$order}) = $(general ? s₁ : s₂)()
+end
 
 # First order test
 function func_1!(du, u, p, t)
@@ -37,115 +41,60 @@ func_2 = ODEFunction(func_2!,
         5 * (-cos(t) * cot(5) - sin(t))])
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
-probArr = [
-    BVProblem(func_1, boundary!, u0, tspan),
+probArr = [BVProblem(func_1, boundary!, u0, tspan),
     BVProblem(func_2, boundary!, u0, tspan),
     TwoPointBVProblem(func_1, boundary_two_point!, u0, tspan),
-    TwoPointBVProblem(func_2, boundary_two_point!, u0, tspan),
-]
+    TwoPointBVProblem(func_2, boundary_two_point!, u0, tspan)]
 
 testTol = 0.2
 affineTol = 1e-2
 dts1 = 1 .// 2 .^ (3:-1:1)
-dts2 = 1 .// 2 .^ (4:-1:3)
-dts3 = 1 .// 2 .^ (9:-1:6)
+dts2 = 1 .// 2 .^ (6:-1:3)
+dts3 = 1 .// 2 .^ (10:-1:6)
 
-println("Collocation method (GeneralMIRK)")
-println("Affineness Test")
-prob = probArr[1]
+@testset "Affineness" begin
+    @info "Collocation method (GeneralMIRK)"
+    prob = probArr[1]
 
-# GeneralMIRK3
+    @testset "GeneralMIRK$order" for order in (3, 4, 5, 6)
+        @time sol = solve(prob, mirk_solver(Val(true), Val(order)), dt = 0.2)
+        @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+    end
 
-@time sol = solve(prob, GeneralMIRK3(), dt = 0.2)
-@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+    @info "Collocation method (MIRK)"
+    prob = probArr[3]
 
-# GeneralMIRK4
+    @testset "MIRK$order" for order in (3, 4, 5, 6)
+        @time sol = solve(prob, mirk_solver(Val(false), Val(order)), dt = 0.2)
+        @test norm(diff(first.(sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
+    end
+end
 
-@time sol = solve(prob, GeneralMIRK4(), dt = 0.2)
-@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+@testset "Convergence on Linear" begin
+    abstols = [1e-3, 1e-4, 1e-6, 1e-8]
+    reltols = [1e-3, 1e-4, 1e-6, 1e-8]
+    dts = [dts2, dts1, dts2, dts3]
+    @info "Collocation method (GeneralMIRK)"
+    prob = probArr[2]
+    @testset "GeneralMIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
+        @time sim = test_convergence(dts[i], prob, mirk_solver(Val(true), Val(order));
+            abstol = abstols[i], reltol = reltols[i])
+        @test sim.𝒪est[:final]≈order atol=testTol
+    end
 
-# GeneralMIRK5
+    @info "Collocation method (MIRK)"
+    prob = probArr[4]
+    @testset "MIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
+        @time sim = test_convergence(dts[i], prob, mirk_solver(Val(false), Val(order));
+            abstol = abstols[i], reltol = reltols[i])
+        @test sim.𝒪est[:final]≈order atol=testTol
+    end
+end
 
-@time sol = solve(prob, GeneralMIRK5(), dt = 0.2)
-@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-
-# GeneralMIRK6
-
-@time sol = solve(prob, GeneralMIRK6(), dt = 0.2)
-@test norm(diff(map(first, sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-
-println("Convergence Test on Linear")
-prob = probArr[2]
-
-# GeneralMIRK3
-
-@time sim = test_convergence(dts2, prob, GeneralMIRK3(); abstol = 1e-3, reltol = 1e-3);
-@test sim.𝒪est[:final]≈3 atol=testTol
-
-# GeneralMIRK4
-
-@time sim = test_convergence(dts1, prob, GeneralMIRK4(); abstol = 1e-4, reltol = 1e-4);
-@test sim.𝒪est[:final]≈4 atol=testTol
-
-# GeneralMIRK5
-
-@time sim = test_convergence(dts2, prob, GeneralMIRK5(); abstol = 1e-4, reltol = 1e-4);
-@test sim.𝒪est[:final]≈5 atol=0.3
-
-# GeneralMIRK6
-
-@time sim = test_convergence(dts3, prob, GeneralMIRK6(); abstol = 1e-4, reltol = 1e-4);
-@test sim.𝒪est[:final]≈6 atol=testTol
-
-println("Collocation method (MIRK)")
-println("Affineness Test")
-prob = probArr[3]
-
-# MIRK3
-
-@time sol = solve(prob, MIRK3(), dt = 0.2)
-@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
-
-# MIRK4
-
-@time sol = solve(prob, MIRK4(), dt = 0.2)
-@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
-
-# MIRK5
-
-@time sol = solve(prob, MIRK5(), dt = 0.2)
-@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
-
-# MIRK6
-
-@time sol = solve(prob, MIRK6(), dt = 0.2)
-@test norm(diff(map(x -> x[1], sol.u)) .+ 0.2, Inf) .+ abs(sol[1][1] - 5) < affineTol
-
-println("Convergence Test on Linear")
-prob = probArr[4]
-
-# MIRK3
-
-@time sim = test_convergence(dts2, prob, MIRK3(); abstol = 1e-3, reltol = 1e-3);
-@test sim.𝒪est[:final]≈3 atol=testTol
-
-# MIRK4
-
-@time sim = test_convergence(dts1, prob, MIRK4(); abstol = 1e-4, reltol = 1e-4);
-@test sim.𝒪est[:final]≈4 atol=testTol
-
-# MIRK5
-
-@time sim = test_convergence(dts2, prob, MIRK5(); abstol = 1e-4, reltol = 1e-4);
-@test sim.𝒪est[:final]≈5 atol=0.3
-
-# MIRK6
-
-@time sim = test_convergence(dts3, prob, MIRK6(); abstol = 1e-4, reltol = 1e-4);
-@test sim.𝒪est[:final]≈6 atol=testTol
-
+# Simple Pendulum
 using StaticArrays
-tspan = (0.0, pi / 2)
+
+tspan = (0.0, π / 2)
 function simplependulum!(du, u, p, t)
     g = 9.81
     L = 1.0
