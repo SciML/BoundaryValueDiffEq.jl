@@ -1,10 +1,13 @@
 module BoundaryValueDiffEq
 
-using BandedMatrices, LinearAlgebra, Reexport, Setfield, SparseArrays
+using LinearAlgebra, Reexport, Setfield, SparseArrays
 @reexport using DiffEqBase, NonlinearSolve
 
+import ArrayInterface: matrix_colors
+import BandedMatrices: BandedMatrix
 import DiffEqBase: solve
-import ForwardDiff, BandedMatrices, FiniteDiff
+import FiniteDiff: JacobianCache, finite_difference_jacobian!
+import ForwardDiff
 
 import TruncatedStacktraces: @truncate_stacktrace
 
@@ -15,21 +18,15 @@ struct MIRKTableau{sType, cType, vType, bType, xType}
     v::vType
     b::bType
     x::xType
-end
 
-function MIRKTableau(s, c, v, b, x)
-    @assert eltype(c) == eltype(v) == eltype(b) == eltype(x)
-    return MIRKTableau{
-        typeof(s),
-        typeof(c),
-        typeof(v),
-        typeof(b),
-        typeof(x),
-    }(s,
-        c,
-        v,
-        b,
-        x)
+    function MIRKTableau(s, c, v, b, x)
+        @assert eltype(c) == eltype(v) == eltype(b) == eltype(x)
+        return new{typeof(s),
+            typeof(c),
+            typeof(v),
+            typeof(b),
+            typeof(x)}(s, c, v, b, x)
+    end
 end
 
 @truncate_stacktrace MIRKTableau 1
@@ -40,21 +37,19 @@ struct MIRKInterpTableau{s, c, v, x, τ}
     v_star::v
     x_star::x
     τ_star::τ
-end
 
-function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star)
-    @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
-    return MIRKInterpTableau{
-        typeof(s_star),
-        typeof(c_star),
-        typeof(v_star),
-        typeof(x_star),
-        typeof(τ_star),
-    }(s_star,
-        c_star,
-        v_star,
-        x_star,
-        τ_star)
+    function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star)
+        @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
+        return new{typeof(s_star),
+            typeof(c_star),
+            typeof(v_star),
+            typeof(x_star),
+            typeof(τ_star)}(s_star,
+            c_star,
+            v_star,
+            x_star,
+            τ_star)
+    end
 end
 
 @truncate_stacktrace MIRKInterpTableau 1

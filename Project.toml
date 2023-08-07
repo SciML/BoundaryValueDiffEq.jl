@@ -3,6 +3,7 @@ uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
 version = "3.0.0"
 
 [deps]
+ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
@@ -16,6 +17,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 
 [compat]
+ArrayInterface = "7"
 BandedMatrices = "0.14, 0.15, 0.16, 0.17"
 DiffEqBase = "6.94.2"
 FiniteDiff = "2"

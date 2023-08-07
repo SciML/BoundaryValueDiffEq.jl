@@ -12,9 +12,7 @@ function vector_alloc(u0::AbstractArray{T}, x) where {T <: AbstractArray}
     deepcopy(u0)
 end
 
-function vector_alloc(u0, x)
-    [copy(u0) for i in eachindex(x)]
-end
+vector_alloc(u0, x) = [copy(u0) for _ in eachindex(x)]
 
 function flatten_vector!(dest::T,
     src::Vector{T2}) where {T <: AbstractArray, T2 <: AbstractArray}

@@ -1,10 +1,10 @@
-constructMIRK(S::BVPSystem) = MIRK_dispatcher(S, Val{S.order})
-MIRK_dispatcher(S::BVPSystem, ::Type{Val{3}}) = constructMIRK3(S)
-MIRK_dispatcher(S::BVPSystem, ::Type{Val{4}}) = constructMIRK4(S)
-MIRK_dispatcher(S::BVPSystem, ::Type{Val{5}}) = constructMIRK5(S)
-MIRK_dispatcher(S::BVPSystem, ::Type{Val{6}}) = constructMIRK6(S)
+constructMIRK(S::BVPSystem) = constructMIRK(S, Val(S.order))
+constructMIRK(S::BVPSystem, ::Val{3}) = constructMIRK3(S)
+constructMIRK(S::BVPSystem, ::Val{4}) = constructMIRK4(S)
+constructMIRK(S::BVPSystem, ::Val{5}) = constructMIRK5(S)
+constructMIRK(S::BVPSystem, ::Val{6}) = constructMIRK6(S)
 
-function constructMIRK3(S::BVPSystem{T, U}) where {T, U}
+function constructMIRK3(::BVPSystem{T}) where {T}
     # RK coefficients tableau
     s = 2
     c = [0, 2 // 3]
@@ -25,7 +25,7 @@ function constructMIRK3(S::BVPSystem{T, U}) where {T, U}
     return TU, ITU
 end
 
-function constructMIRK4(S::BVPSystem{T, U}) where {T, U}
+function constructMIRK4(::BVPSystem{T}) where {T}
     # RK coefficients tableau
     s = 3
     c = [0, 1, 1 // 2, 3 // 4]
@@ -42,12 +42,12 @@ function constructMIRK4(S::BVPSystem{T, U}) where {T, U}
     x_star = [3 // 64, -9 // 64, 0, 0]
     τ_star = 0.226
 
-    TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
+    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
     return TU, ITU
 end
 
-function constructMIRK5(S::BVPSystem{T, U}) where {T, U}
+function constructMIRK5(::BVPSystem{T}) where {T}
     # RK coefficients tableau
     s = 4
     c = [0, 1, 3 // 4, 3 // 10]
@@ -66,12 +66,12 @@ function constructMIRK5(S::BVPSystem{T, U}) where {T, U}
         1//2 4508233//1958887 48720832//2518569 -27646420//17629983 -11517095//559682 0]
     τ_star = 0.3
 
-    TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
+    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
     return TU, ITU
 end
 
-function constructMIRK6(S::BVPSystem{T, U}) where {T, U}
+function constructMIRK6(::BVPSystem{T}) where {T}
     # RK coefficients tableau
     s = 5
     c = [0, 1, 1 // 4, 3 // 4, 1 // 2]
@@ -93,7 +93,7 @@ function constructMIRK6(S::BVPSystem{T, U}) where {T, U}
         233//3456 -19//1152 0 0 0 -5//72 7//72 -17//216 0]
     τ_star = 0.7156
 
-    TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
+    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
     return TU, ITU
 end

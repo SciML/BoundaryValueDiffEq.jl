@@ -17,100 +17,80 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         ReturnCode.Failure)
 end
 
+function __mirk_reorder!(resid)
+    # reorder the Jacobian matrix such that it is banded
+    tmp_last = resid[end]
+    idxs = (lastindex(resid) - 1):-1:firstindex(resid)
+    resid[idxs .+ 1] .= resid[idxs]
+    resid[firstindex(resid)], resid[end] = resid[end], tmp_last
+    return nothing
+end
+
+function construct_MIRK_loss_function(S::BVPSystem,
+    prob::BVProblem,
+    TU,
+    cache)
+    function loss!(resid, u, p)
+        nest_vector!(S.y, u)
+        S.p = p
+        Φ!(S, TU, cache)
+        eval_bc_residual!(prob.problem_type, S)
+        flatten_vector!(resid, S.residual)
+        __mirk_reorder!(resid)
+        return nothing
+    end
+    return loss!
+end
+
 function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt = 0.0,
-    abstol = 1e-3,
-    kwargs...)
+    abstol = 1e-3, adaptive::Bool = true, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    T = eltype(prob.u0)
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
+
     # Initialization
-    defect_threshold = 0.1
-    info = ReturnCode.Success
-    defect_norm = 10
+    defect_threshold = T(0.1)
+    info::ReturnCode.T = ReturnCode.Success
+    defect_norm = 2 * abstol
     MxNsub = 3000
     S = BVPSystem(prob, mesh, alg)
-    initial_guess = false
+
     while info == ReturnCode.Success && defect_norm > abstol
         TU, ITU = constructMIRK(S)
         cache = alg_cache(alg, S)
         # Upper-level iteration
-        vec_y = Array{eltype(first(S.y))}(undef, S.M * S.N)              # Vector
-        function reorder!(resid)
-            # reorder the Jacobian matrix such that it is banded
-            tmp_last = resid[end]
-            for i in (length(resid) - 1):-1:1
-                resid[i + 1] = resid[i]
-            end
-            resid[1], resid[end] = resid[end], tmp_last
-            return nothing
-        end
-        function loss!(resid, u0, p)
-            nest_vector!(S.y, u0)
-            @set! S.p = p
-            Φ!(S, TU, cache)
-            if isa(prob.problem_type, TwoPointBVProblem)
-                eval_bc_residual!(S)
-            else
-                general_eval_bc_residual!(S)
-            end
-            flatten_vector!(resid, S.residual)
-            reorder!(resid)
-            return nothing
-        end
+        vec_y = similar(first(S.y), S.M * S.N)
 
-        function loss_with_initial_guess!(resid, u, p)
-            @set! S.p = p
-            Φ!(S, TU, cache)
-            if isa(prob.problem_type, TwoPointBVProblem)
-                eval_bc_residual!(S)
-            else
-                general_eval_bc_residual!(S)
-            end
-            flatten_vector!(resid, S.residual)
-            reorder!(resid)
-            return nothing
-        end
-
-        jac_wrapper = initial_guess ? BVPJacobianWrapper(loss_with_initial_guess!) :
-                      BVPJacobianWrapper(loss!)
-        initial_guess = false
+        loss! = construct_MIRK_loss_function(S, prob, TU, cache)
+        jac_wrapper = BVPJacobianWrapper(loss!)
 
         flatten_vector!(vec_y, S.y)
         nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec_y, prob.p)
-        opt = solve(nlprob, alg.nlsolve; kwargs...)
+        opt = solve(nlprob, alg.nlsolve; abstol, kwargs...)
         nest_vector!(S.y, opt.u)
 
         info = opt.retcode
 
+        !adaptive && break
+
         if info == ReturnCode.Success
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU)
             # The defect is greater than 10%, the solution is not acceptable
-            if defect_norm > defect_threshold
-                info = ReturnCode.Failure
-            end
+            defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
 
         if info == ReturnCode.Success
             if defect_norm > abstol
                 # We construct a new mesh to equidistribute the defect
                 mesh_new, Nsub_star, info = mesh_selector(S, alg, defect, abstol)
-                #println("New mesh size would be: ", Nsub_star)
+                # println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
-                    z, z_prime = zeros(S.M), zeros(S.M)
-                    new_Y = [zeros(Float64, S.M) for i in 1:(Nsub_star + 1)]
-                    for i in 0:Nsub_star
-                        z, z_prime = interp_eval(S,
-                            cache,
-                            alg,
-                            ITU,
-                            mesh_new[i + 1],
-                            k_interp)
-                        new_Y[i + 1] = z
-                    end
-                    S.x = copy(mesh_new)
-                    S.N = copy(Nsub_star) + 1
-                    S.y = copy(new_Y)
-                    initial_guess = true
+                    new_Y = map(m -> first(interp_eval(S, cache, alg, ITU, m, k_interp)),
+                        mesh_new)
+                    S.x = mesh_new
+                    S.N = length(S.x)
+                    S.y = new_Y
                     S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 end
             end
@@ -120,9 +100,8 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 # New mesh would be too large
                 info = ReturnCode.Failure
             else
-                mesh_new = half_mesh(S.x)
-                S.x = copy(mesh_new)
-                S.N = length(mesh_new)
+                S.x = half_mesh(S.x)
+                S.N = length(S.x)
                 S.y = vector_alloc(eltype(S.x), S.M, S.N)
                 S.residual = vector_alloc(eltype(S.x), S.M, S.N)
                 info = ReturnCode.Success # Force a restart
@@ -131,5 +110,5 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, S.x, S.y; info)
+    return DiffEqBase.build_solution(prob, alg, S.x, S.y; retcode = info)
 end

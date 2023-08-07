@@ -3,7 +3,7 @@
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-function interp_eval(S::BVPSystem,
+@views function interp_eval(S::BVPSystem,
     cache::AbstractMIRKCache,
     alg::Union{GeneralMIRK, MIRK},
     ITU::MIRKInterpTableau,
@@ -26,80 +26,77 @@ function interp_eval(S::BVPSystem,
     return z, z_prime
 end
 
+"""
+    interval(mesh, t)
+
+Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
+"""
 function interval(mesh, t)
-    if t == mesh[1]
-        return 1
-    elseif t == mesh[end]
-        return length(mesh) - 1
-    else
-        ind = findfirst(x -> x >= t, mesh)
-        i::Int64 = copy(ind)
-        return i - 1
-    end
+    t == first(mesh) && return 1
+    t == last(mesh) && return length(mesh) - 1
+    return searchsortedfirst(mesh, t) - 1
 end
 
 """
-    mesh_selector(mesh_current, defect, abstol, n, len, alg)
+    mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abstol)
 
 Generate new mesh based on the defect.
 """
-function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect, abstol)
+@views function mesh_selector(S::BVPSystem{T},
+    alg::Union{GeneralMIRK, MIRK},
+    defect,
+    abstol) where {T}
     #exports: mesh_new, Nsub_star, info
     mesh_current, n = S.x, S.N - 1
 
     #TODO: Need users to manually specify, here, we set it as 3000 by default.
     MxNsub = 3000
 
-    safety_factor = 1.3
-    rho = 1.0 # Set rho=1 means mesh distribution will take place everytime.
-    upper_new_mesh = 4.0
-    lower_new_mesh = 0.5
-    r1 = 0.0
-    r2 = 0.0
+    safety_factor = T(1.3)
+    rho = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
+    r1 = T(0.0)
+    r2 = T(0.0)
     Nsub_star = 0
+    Nsub_star_ub = 4 * n
+    Nsub_star_lb = n ÷ 2
+
     info = ReturnCode.Success
     p = alg_order(alg)
-    s_hat = zeros(Float64, n)
-    mesh_new = Any
-    for i in 1:n
+    s_hat = similar(S.x, n)
+
+    for i in eachindex(s_hat)
         h = mesh_current[i + 1] - mesh_current[i]
-        norm = abs(defect[i, idamax(defect[i, :])])
-        s_hat[i] = (norm / abstol)^(1.0 / (p + 1)) / h
-        if s_hat[i] * h > r1
-            r1 = s_hat[i] * h
-        end
-        r2 = r2 + s_hat[i] * h
-    end
-    r3 = r2 / n
-    n_predict::Int = round(Int, (safety_factor * r2) + 1)
-    if abs((n_predict - n) / n) < 0.1
-        n_predict = round(Int, 1.1 * n)
+        norm = amax(defect[i, :])
+        s_hat[i] = (norm / abstol)^(T(1) / (p + 1))
+        r1 = max(s_hat[i], r1)
+        r2 += s_hat[i]
+        s_hat[i] /= h
     end
 
-    if r1 <= rho * r3
+    r3 = r2 / n
+    n_predict = round(Int, (safety_factor * r2) + 1)
+    n_ = T(0.1) * n
+    n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
+
+    if r1 ≤ rho * r3
         Nsub_star = 2 * n
         if Nsub_star > MxNsub # Need to determine the too large threshold
-            #("New mesh would be too large")
+            # println("New mesh would be too large")
             info = ReturnCode.Failure
+            mesh_new = mesh_current  ## Return the current mesh to preserve type stability
         else
-            #println("Half the current mesh")
+            # println("Half the current mesh")
             mesh_new = half_mesh(mesh_current)
         end
     else
-        Nsub_star = copy(n_predict)
-        if Nsub_star > upper_new_mesh * n
-            Nsub_star = upper_new_mesh * n
-        end
-        if Nsub_star < lower_new_mesh * n
-            Nsub_star = lower_new_mesh * n
-        end
+        Nsub_star = clamp(n_predict, Nsub_star_lb, Nsub_star_ub)
         if Nsub_star > MxNsub
             # Mesh redistribution fails
-            #println("New mesh would be too large")
+            # println("New mesh would be too large")
             info = ReturnCode.Failure
-            mesh_new = Nothing
+            mesh_new = mesh_current  ## Return the current mesh to preserve type stability
         else
-            #println("Mesh redistributing")
+            # println("Mesh redistributing")
             mesh_new = redistribute(mesh_current, Nsub_star, s_hat)
         end
     end
@@ -111,30 +108,28 @@ end
 
 Generate a new mesh based on the .
 """
-function redistribute(mesh_current::Vector,
-    Nsub_star::Int64,
-    s_hat::Vector{Float64})
+function redistribute(mesh_current::AbstractVector,
+    Nsub_star::Int,
+    s_hat::AbstractVector)
     n = length(mesh_current)
-    mesh_new = zeros(eltype(mesh_current), Nsub_star + 1)
-    sum = 0.0
-    for k in 1:(n - 1)
-        sum += s_hat[k] * (mesh_current[k + 1] - mesh_current[k])
-    end
-    zeta = sum / Nsub_star
-    k::Int64 = 1
-    i::Int64 = 0
+    mesh_new = similar(mesh_current, Nsub_star + 1)
+    ζ = sum(k -> s_hat[k] * (mesh_current[k + 1] - mesh_current[k]), 1:(n - 1)) / Nsub_star
+    T = typeof(ζ)
+    k = 1
+    i = 0
     mesh_new[1] = mesh_current[1]
     t = mesh_current[1]
-    integral = 0.0
-    while k <= (n - 1)
+    integral = T(0)
+    while k ≤ n - 1
         next_piece = s_hat[k] * (mesh_current[k + 1] - t)
-        if (integral + next_piece) > zeta
-            mesh_new[i + 2] = (zeta - integral) / s_hat[k] + t
+        _int_next = integral + next_piece
+        if _int_next > ζ
+            mesh_new[i + 2] = (ζ - integral) / s_hat[k] + t
             t = mesh_new[i + 2]
             i += 1
-            integral = 0
+            integral = T(0)
         else
-            integral += next_piece
+            integral = _int_next
             t = mesh_current[k + 1]
             k += 1
         end
@@ -150,25 +145,23 @@ The input mesh_current has length of n+1
 
 Divide the original subinterval into two equal length subinterval.
 """
-function half_mesh(mesh_current::Vector)
+@views function half_mesh(mesh_current::AbstractVector{T}) where {T}
     n = length(mesh_current) - 1
-    mesh_new = zeros(Float64, 2 * n + 1)
-    mesh_new[1] = mesh_current[1]
-    for i in 1:n
-        mesh_new[2 * i + 1] = mesh_current[i + 1]
-        mesh_new[2 * i] = (mesh_current[i + 1] + mesh_current[i]) / 2.0
+    mesh_new = similar(mesh_current, 2n + 1)
+    mesh_new[begin] = mesh_current[begin]
+    for i in eachindex(mesh_current)[begin:(end - 1)]
+        mesh_new[2i + 1] = mesh_current[i + 1]
+        mesh_new[2i] = (mesh_current[i + 1] + mesh_current[i]) / T(2)
     end
     return mesh_new
 end
 
-function idamax(x)
-    x = abs.(x)
-    _, id = findmax(x)
-    return id
-end
+idamax(x) = last(findmax(abs, x))
+amax(x) = first(findmax(abs, x))
 
 """
-    defect_estimate(prob, Y, alg, n, dt, mesh, k_discrete)
+    defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{GeneralMIRK, MIRK},
+        ITU::MIRKInterpTableau)
 
 defect_estimate use the discrete solution approximation Y, plus stages of 
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct 
@@ -178,21 +171,16 @@ function defect_estimate(S::BVPSystem,
     cache::AbstractMIRKCache,
     alg::Union{GeneralMIRK, MIRK},
     ITU::MIRKInterpTableau)
-    n, len, Y, p, k_discrete, mesh, f = S.N - 1,
-    S.M,
-    S.y,
-    S.p,
-    cache.k_discrete,
-    S.x,
-    S.fun!
+    n, len, Y, p = S.N - 1, S.M, S.y, S.p
+    k_discrete, mesh, f = cache.k_discrete, S.x, S.fun!
     s, s_star, tau_star = S.s, ITU.s_star, ITU.τ_star
+    T = eltype(first(Y))
 
     # Initialization
-    defect = zeros(Float64, n, len)
+    defect = similar(first(Y), n, len)
     #s, s_star, tau_star, x_star, v_star, c_star = setup_coeff(alg)
 
     f_sample_1, f_sample_2 = zeros(Float64, len), zeros(Float64, len)
-    def_1, def_2 = zeros(Float64, len), zeros(Float64, len)
     temp_1, temp_2 = zeros(Float64, len), zeros(Float64, len)
     estimate_1, estimate_2 = zeros(Float64), zeros(Float64)
 
@@ -211,32 +199,20 @@ function defect_estimate(S::BVPSystem,
         z, z_prime = sum_stages(S, ITU, weights_1, weights_1_prime, k_discrete[i, :],
             k_interp[i, :], Y[i])
         f(f_sample_1, z, p, mesh[i] + tau_star * dt)
-        z_prime .= z_prime .- f_sample_1
-        def_1 = copy(z_prime)
-        for j in 1:len
-            temp_1[j] = def_1[j] / (abs(f_sample_1[j]) + 1.0)
-        end
-        estimate_1 = maximum(abs.(temp_1))
+        temp_1 .= (z_prime .- f_sample_1) ./ (abs.(f_sample_1) .+ 1.0)
+        estimate_1 = maximum(abs, temp_1)
 
         # Sample point 2
         z, z_prime = sum_stages(S, ITU, weights_2, weights_2_prime, k_discrete[i, :],
             k_interp[i, :], Y[i])
         f(f_sample_2, z, p, mesh[i] + (1.0 - tau_star) * dt)
-        z_prime .= z_prime .- f_sample_2
-        def_2 .= copy(z_prime)
-        for j in 1:len
-            temp_2[j] = def_2[j] / (abs(f_sample_2[j]) + 1.0)
-        end
-        estimate_2 = maximum(abs.(temp_2))
+        temp_2 .= (z_prime .- f_sample_2) ./ (abs.(f_sample_2) .+ 1.0)
+        estimate_2 = maximum(abs, temp_2)
 
         # Compare defect estimates for the above two sample points
-        if estimate_1 > estimate_2
-            defect[i, :] = temp_1
-        else
-            defect[i, :] = temp_2
-        end
+        defect[i, :] .= estimate_1 > estimate_2 ? temp_1 : temp_2
     end
-    defect_norm = maximum(abs.(defect))
+    defect_norm = maximum(abs, defect)
     return defect, defect_norm, k_interp
 end
 
@@ -255,33 +231,25 @@ function interp_setup(S::BVPSystem,
     ki_discrete)
     len, f, p = S.M, S.fun!, S.p
     #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star, x_star = S.s,
-    ITU.s_star,
-    ITU.c_star,
-    ITU.v_star,
-    ITU.x_star
-    x_star = x_star[:]
+    s, s_star, c_star, v_star = S.s, ITU.s_star, ITU.c_star, ITU.v_star
+    x_star = ITU.x_star
     # EXPORTS: ki_interp
-    ki_interp = similar([zeros(Float64, len)], s_star - s)
+    ki_interp = similar(ki_discrete, s_star - s)
+    new_stages = similar(first(ki_discrete), len)
+    temp = similar(new_stages, len)
     for r in 1:(s_star - s)
-        new_stages = zeros(Float64, len)
+        fill!(new_stages, 0)
         for j in 1:s
-            new_stages .= new_stages .+
-                          x_star[(j - 1) * (s_star - s) + r] .*
-                          ki_discrete[j]
+            new_stages .+= x_star[(j - 1) * (s_star - s) + r] .* ki_discrete[j]
         end
         for j in 1:(r - 1)
-            new_stages .= new_stages .+
-                          x_star[(j + s - 1) * (s_star - s) + r] .*
-                          ki_interp[j]
+            new_stages .+= x_star[(j + s - 1) * (s_star - s) + r] .* ki_interp[j]
         end
-        new_stages .= new_stages .* dt
-        new_stages .= new_stages .+ (1 - v_star[r]) .* y_left
-        new_stages .= new_stages .+ v_star[r] .* y_right
+        @. new_stages = new_stages * dt + (1 - v_star[r]) * y_left + v_star[r] * y_right
 
-        temp = zeros(Float64, len)
         f(temp, new_stages, p, tim1 + c_star[r] * dt)
-        ki_interp[r] = temp
+
+        ki_interp[r] = copy(temp)
     end
     return ki_interp
 end
@@ -298,25 +266,29 @@ function sum_stages(S::BVPSystem,
     ITU::MIRKInterpTableau,
     weights,
     weights_prime,
-    ki_discrete,
-    ki_interp,
-    y)
+    ki_discrete::AbstractVector{T1},
+    ki_interp::AbstractVector{T2},
+    y) where {T1, T2}
     len, mesh = S.M, S.x
     dt = mesh[end] - mesh[end - 1]
     s, s_star = S.s, ITU.s_star
-    # EXPORTS: z, z_prime
-    z, z_prime = zeros(len), zeros(len)
-    #ki_discrete = ki_discrete[:]
+    elType_z = promote_type(eltype(weights), eltype(T1), eltype(T2))
+    elType_zprime = promote_type(eltype(weights_prime), eltype(T1), eltype(T2))
+    z = similar(first(ki_discrete), elType_z)
+    fill!(z, 0)
+    z_prime = similar(first(ki_discrete), elType_zprime)
+    fill!(z_prime, 0)
+
     for i in 1:s
-        z .= z .+ weights[i] .* ki_discrete[i]
-        z_prime .= z_prime .+ weights_prime[i] .* ki_discrete[i]
+        z .+= weights[i] .* ki_discrete[i]
+        z_prime .+= weights_prime[i] .* ki_discrete[i]
     end
-    for j in 1:(s_star - s)
-        z .= z .+ weights[s + j] .* ki_interp[j]
-        z_prime .= z_prime .+ weights_prime[s + j] .* ki_interp[j]
+    for i in 1:(s_star - s)
+        z .+= weights[i + s] .* ki_interp[i]
+        z_prime .+= weights_prime[i + s] .* ki_interp[i]
     end
-    z = z .* dt
-    z = z .+ y
+    @. z = z * dt + y
+
     return z, z_prime
 end
 
