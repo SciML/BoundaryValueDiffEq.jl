@@ -4,7 +4,9 @@ constructMIRK(S::BVPSystem, ::Val{4}) = constructMIRK4(S)
 constructMIRK(S::BVPSystem, ::Val{5}) = constructMIRK5(S)
 constructMIRK(S::BVPSystem, ::Val{6}) = constructMIRK6(S)
 
-function constructMIRK3(::BVPSystem{T}) where {T}
+function constructMIRK3(S::BVPSystem)
+    T = eltype(S)
+
     # RK coefficients tableau
     s = 2
     c = [0, 2 // 3]
@@ -25,7 +27,9 @@ function constructMIRK3(::BVPSystem{T}) where {T}
     return TU, ITU
 end
 
-function constructMIRK4(::BVPSystem{T}) where {T}
+function constructMIRK4(S::BVPSystem)
+    T = eltype(S)
+
     # RK coefficients tableau
     s = 3
     c = [0, 1, 1 // 2, 3 // 4]
@@ -47,7 +51,9 @@ function constructMIRK4(::BVPSystem{T}) where {T}
     return TU, ITU
 end
 
-function constructMIRK5(::BVPSystem{T}) where {T}
+function constructMIRK5(S::BVPSystem)
+    T = eltype(S)
+
     # RK coefficients tableau
     s = 4
     c = [0, 1, 3 // 4, 3 // 10]
@@ -71,7 +77,9 @@ function constructMIRK5(::BVPSystem{T}) where {T}
     return TU, ITU
 end
 
-function constructMIRK6(::BVPSystem{T}) where {T}
+function constructMIRK6(S::BVPSystem)
+    T = eltype(S)
+
     # RK coefficients tableau
     s = 5
     c = [0, 1, 1 // 4, 3 // 4, 1 // 2]

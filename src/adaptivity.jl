@@ -3,27 +3,16 @@
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-@views function interp_eval(S::BVPSystem,
-    cache::AbstractMIRKCache,
-    alg::Union{GeneralMIRK, MIRK},
-    ITU::MIRKInterpTableau,
-    t,
-    k_interp)
-    mesh, Y = S.x, S.y
-    k_discrete = cache.k_discrete
-    # EXPORTS: z, z_prime
+@views function interp_eval(S::BVPSystem, cache::AbstractMIRKCache,
+    alg::Union{GeneralMIRK, MIRK}, ITU::MIRKInterpTableau, t, k_interp, mesh, y, dt_)
+    @unpack k_discrete = cache
     i = interval(mesh, t)
-    dt = mesh[i + 1] - mesh[i]
-    tau = (t - mesh[i]) / dt
-    weights, weights_prime = interp_weights(tau, alg)
-    z, z_prime = sum_stages(S,
-        ITU,
-        weights,
-        weights_prime,
-        k_discrete[i, :],
-        k_interp[i, :],
-        Y[i])
-    return z, z_prime
+    dt = dt_[i]
+    τ = (t - mesh[i]) / dt
+    w, w′ = interp_weights(τ, alg)
+    z, z′ = sum_stages(S, ITU, w, w′, k_discrete[:, :, i:i], k_interp[:, :, i:i],
+        mesh[i:(i + 1)], y[:, i:i], dt_[i:i])
+    return dropdims(z, dims = 2), dropdims(z′, dims = 2)
 end
 
 """
@@ -42,51 +31,45 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector(S::BVPSystem{T},
-    alg::Union{GeneralMIRK, MIRK},
-    defect,
-    abstol) where {T}
+@views function mesh_selector(S::BVPSystem, alg::Union{GeneralMIRK, MIRK}, defect,
+    abstol, mesh, dt)
+    T = eltype(S)
     #exports: mesh_new, Nsub_star, info
-    mesh_current, n = S.x, S.N - 1
+    @unpack M, N = S
 
     #TODO: Need users to manually specify, here, we set it as 3000 by default.
     MxNsub = 3000
 
     safety_factor = T(1.3)
-    rho = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
-    r1 = T(0.0)
-    r2 = T(0.0)
+    ρ = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
     Nsub_star = 0
-    Nsub_star_ub = 4 * n
-    Nsub_star_lb = n ÷ 2
+    Nsub_star_ub = 4 * (N - 1)
+    Nsub_star_lb = N ÷ 2
 
     info = ReturnCode.Success
-    p = alg_order(alg)
-    s_hat = similar(S.x, n)
+    order = alg_order(alg)
+    ŝ = similar(defect, N - 1)
 
-    for i in eachindex(s_hat)
-        h = mesh_current[i + 1] - mesh_current[i]
-        norm = amax(defect[i, :])
-        s_hat[i] = (norm / abstol)^(T(1) / (p + 1))
-        r1 = max(s_hat[i], r1)
-        r2 += s_hat[i]
-        s_hat[i] /= h
-    end
+    ŝ = vec(amax(defect; dims = 1))
+    ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
+    r₁ = maximum(ŝ)
+    r₂ = sum(ŝ)
+    r₃ = r₂ / (N - 1)
 
-    r3 = r2 / n
-    n_predict = round(Int, (safety_factor * r2) + 1)
+    n_predict = round(Int, (safety_factor * r₂) + 1)
+    n = N - 1
     n_ = T(0.1) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
-    if r1 ≤ rho * r3
-        Nsub_star = 2 * n
+    if r₁ ≤ ρ * r₂
+        Nsub_star = 2 * (N - 1)
         if Nsub_star > MxNsub # Need to determine the too large threshold
             # println("New mesh would be too large")
             info = ReturnCode.Failure
-            mesh_new = mesh_current  ## Return the current mesh to preserve type stability
+            mesh_new = mesh  ## Return the current mesh to preserve type stability
         else
             # println("Half the current mesh")
-            mesh_new = half_mesh(mesh_current)
+            mesh_new = half_mesh(mesh)
         end
     else
         Nsub_star = clamp(n_predict, Nsub_star_lb, Nsub_star_ub)
@@ -94,70 +77,66 @@ Generate new mesh based on the defect.
             # Mesh redistribution fails
             # println("New mesh would be too large")
             info = ReturnCode.Failure
-            mesh_new = mesh_current  ## Return the current mesh to preserve type stability
+            mesh_new = mesh  ## Return the current mesh to preserve type stability
         else
             # println("Mesh redistributing")
-            mesh_new = redistribute(mesh_current, Nsub_star, s_hat)
+            ŝ ./= dt
+            mesh_new = redistribute(mesh, Nsub_star, ŝ, dt)
         end
     end
     return mesh_new, Nsub_star, info
 end
 
 """
-    redistribute(mesh_current, Nsub_star, s_hat)
+    redistribute(mesh, Nsub_star, s_hat)
 
 Generate a new mesh based on the .
 """
-function redistribute(mesh_current::AbstractVector,
-    Nsub_star::Int,
-    s_hat::AbstractVector)
-    n = length(mesh_current)
-    mesh_new = similar(mesh_current, Nsub_star + 1)
-    ζ = sum(k -> s_hat[k] * (mesh_current[k + 1] - mesh_current[k]), 1:(n - 1)) / Nsub_star
-    T = typeof(ζ)
-    k = 1
-    i = 0
-    mesh_new[1] = mesh_current[1]
-    t = mesh_current[1]
+function redistribute(mesh, Nsub_star::Int, ŝ::AbstractVector{T}, dt) where {T}
+    N = length(mesh)
+    ζ = sum(ŝ .* dt) / Nsub_star
+    k, i = 1, 0
+    mesh_new = similar(mesh, Nsub_star + 1)
+    mesh_new[1] = mesh[1]
+    t = mesh[1]
     integral = T(0)
-    while k ≤ n - 1
-        next_piece = s_hat[k] * (mesh_current[k + 1] - t)
+    while k ≤ N - 1
+        next_piece = ŝ[k] * (mesh[k + 1] - t)
         _int_next = integral + next_piece
         if _int_next > ζ
-            mesh_new[i + 2] = (ζ - integral) / s_hat[k] + t
+            mesh_new[i + 2] = (ζ - integral) / ŝ[k] + t
             t = mesh_new[i + 2]
             i += 1
             integral = T(0)
         else
             integral = _int_next
-            t = mesh_current[k + 1]
+            t = mesh[k + 1]
             k += 1
         end
     end
-    mesh_new[Nsub_star + 1] = mesh_current[n]
+    mesh_new[end] = mesh[end]
     return mesh_new
 end
 
 """
-    half_mesh(mesh_current)
+    half_mesh(mesh)
 
-The input mesh_current has length of n+1
+The input mesh has length of n+1
 
 Divide the original subinterval into two equal length subinterval.
 """
-@views function half_mesh(mesh_current::AbstractVector{T}) where {T}
-    n = length(mesh_current) - 1
-    mesh_new = similar(mesh_current, 2n + 1)
-    mesh_new[begin] = mesh_current[begin]
-    for i in eachindex(mesh_current)[begin:(end - 1)]
-        mesh_new[2i + 1] = mesh_current[i + 1]
-        mesh_new[2i] = (mesh_current[i + 1] + mesh_current[i]) / T(2)
+@views function half_mesh(mesh::AbstractVector{T}) where {T}
+    n = length(mesh) - 1
+    mesh_new = similar(mesh, 2n + 1)
+    mesh_new[begin] = mesh[begin]
+    for i in eachindex(mesh)[begin:(end - 1)]
+        mesh_new[2i + 1] = mesh[i + 1]
+        mesh_new[2i] = (mesh[i + 1] + mesh[i]) / T(2)
     end
     return mesh_new
 end
 
-idamax(x) = last(findmax(abs, x))
-amax(x) = first(findmax(abs, x))
+amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
 
 """
     defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::Union{GeneralMIRK, MIRK},
@@ -167,52 +146,44 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct 
 an interpolant
 """
-function defect_estimate(S::BVPSystem,
-    cache::AbstractMIRKCache,
-    alg::Union{GeneralMIRK, MIRK},
-    ITU::MIRKInterpTableau)
-    n, len, Y, p = S.N - 1, S.M, S.y, S.p
-    k_discrete, mesh, f = cache.k_discrete, S.x, S.fun!
-    s, s_star, tau_star = S.s, ITU.s_star, ITU.τ_star
-    T = eltype(first(Y))
-
-    # Initialization
-    defect = similar(first(Y), n, len)
-    #s, s_star, tau_star, x_star, v_star, c_star = setup_coeff(alg)
-
-    f_sample_1, f_sample_2 = zeros(Float64, len), zeros(Float64, len)
-    temp_1, temp_2 = zeros(Float64, len), zeros(Float64, len)
-    estimate_1, estimate_2 = zeros(Float64), zeros(Float64)
+@views function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache,
+    alg::Union{GeneralMIRK, MIRK}, ITU::MIRKInterpTableau, y, p, mesh, dt)
+    @unpack M, N, stage, f! = S
+    @unpack k_discrete = cache
+    T = eltype(y)
+    @unpack s_star, τ_star = ITU
 
     # Evaluate at the first sample point
-    weights_1, weights_1_prime = interp_weights(tau_star, alg)
+    w₁, w₁′ = interp_weights(τ_star, alg)
     # Evaluate at the second sample point
-    weights_2, weights_2_prime = interp_weights(1.0 - tau_star, alg)
+    w₂, w₂′ = interp_weights(T(1) - τ_star, alg)
 
-    k_interp = similar([S.y[1]], S.N - 1, (s_star - s))
-    for i in 1:n
+    k_interp = interp_setup(S, mesh, y, ITU, k_discrete, p, dt)
+
+    # Sample Point 1
+    tmp₁ = similar(y, M, N - 1)
+    z₁, z₁′ = sum_stages(S, ITU, w₁, w₁′, k_discrete, k_interp, mesh, y, dt)
+
+    # Sample Point 2
+    tmp₂ = similar(y, M, N - 1)
+    z₂, z₂′ = sum_stages(S, ITU, w₂, w₂′, k_discrete, k_interp, mesh, y, dt)
+
+    defect = similar(y, M, N - 1)
+    foreach(1:(N - 1)) do i
         dt = mesh[i + 1] - mesh[i]
 
-        k_interp[i, :] = interp_setup(S, mesh[i], dt, Y[i], Y[i + 1], ITU, k_discrete[i, :])
+        f!(tmp₁[:, i], z₁[:, i], p, mesh[i] + τ_star * dt)
+        tmp₁ .= (z₁′[:, i] .- tmp₁) ./ (abs.(tmp₁) .+ T(1))
+        est₁ = maximum(abs, tmp₁)
 
-        # Sample point 1
-        z, z_prime = sum_stages(S, ITU, weights_1, weights_1_prime, k_discrete[i, :],
-            k_interp[i, :], Y[i])
-        f(f_sample_1, z, p, mesh[i] + tau_star * dt)
-        temp_1 .= (z_prime .- f_sample_1) ./ (abs.(f_sample_1) .+ 1.0)
-        estimate_1 = maximum(abs, temp_1)
+        f!(tmp₂[:, i], z₂[:, i], p, mesh[i] + (T(1) - τ_star) * dt)
+        tmp₂ .= (z₂′[:, i] .- tmp₂) ./ (abs.(tmp₂) .+ T(1))
+        est₂ = maximum(abs, tmp₂)
 
-        # Sample point 2
-        z, z_prime = sum_stages(S, ITU, weights_2, weights_2_prime, k_discrete[i, :],
-            k_interp[i, :], Y[i])
-        f(f_sample_2, z, p, mesh[i] + (1.0 - tau_star) * dt)
-        temp_2 .= (z_prime .- f_sample_2) ./ (abs.(f_sample_2) .+ 1.0)
-        estimate_2 = maximum(abs, temp_2)
-
-        # Compare defect estimates for the above two sample points
-        defect[i, :] .= estimate_1 > estimate_2 ? temp_1 : temp_2
+        defect[:, i] .= est₁ > est₂ ? tmp₁[:, i] : tmp₂[:, i]
     end
     defect_norm = maximum(abs, defect)
+
     return defect, defect_norm, k_interp
 end
 
@@ -222,36 +193,34 @@ end
 interp_setup prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-function interp_setup(S::BVPSystem,
-    tim1,
-    dt,
-    y_left,
-    y_right,
-    ITU::MIRKInterpTableau,
-    ki_discrete)
-    len, f, p = S.M, S.fun!, S.p
-    #TODO: Temporary, only debuging
-    s, s_star, c_star, v_star = S.s, ITU.s_star, ITU.c_star, ITU.v_star
-    x_star = ITU.x_star
-    # EXPORTS: ki_interp
-    ki_interp = similar(ki_discrete, s_star - s)
-    new_stages = similar(first(ki_discrete), len)
-    temp = similar(new_stages, len)
-    for r in 1:(s_star - s)
-        fill!(new_stages, 0)
-        for j in 1:s
-            new_stages .+= x_star[(j - 1) * (s_star - s) + r] .* ki_discrete[j]
-        end
-        for j in 1:(r - 1)
-            new_stages .+= x_star[(j + s - 1) * (s_star - s) + r] .* ki_interp[j]
-        end
-        @. new_stages = new_stages * dt + (1 - v_star[r]) * y_left + v_star[r] * y_right
+@views function interp_setup(S::BVPSystem, mesh, y, ITU::MIRKInterpTableau,
+    k_discrete::AbstractArray{T, 3}, p, dt_) where {T}
+    @unpack M, N, f!, stage = S
+    @unpack x_star, s_star, c_star, v_star = ITU
 
-        f(temp, new_stages, p, tim1 + c_star[r] * dt)
+    k_interp = similar(k_discrete, M, s_star - stage, N - 1)
+    new_stages = similar(k_discrete, M, N - 1)
 
-        ki_interp[r] = copy(temp)
+    dt = reshape(dt_, 1, N - 1)
+
+    for r in 1:(s_star - stage)
+        # M × (N - 1)
+        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
+        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
+        new_stages_ = reshape(new_stages, M, 1, N - 1)
+        sum!(new_stages_, reshape(x_star[idx₁], 1, :) .* k_discrete[:, 1:stage, :])
+        if r > 1
+            sum!(new_stages_, reshape(x_star[idx₂], 1, :) .* k_interp[:, 1:(r - 1), :])
+        end
+        new_stages .= new_stages .* reshape(dt, 1, :) .+
+                      (1 - v_star[r]) .* y[:, 1:(N - 1)] .+ v_star[r] .* y[:, 2:N]
+
+        foreach(1:(N - 1)) do i
+            f!(k_interp[:, r, i], new_stages[:, i], p, mesh[i] + c_star[r] * dt[i])
+        end
     end
-    return ki_interp
+
+    return k_interp
 end
 
 """
@@ -262,144 +231,149 @@ sum_stages add the discrete solution, RK method stages and extra stages to const
 Here, ki_discrete is a matrix stored with discrete RK stages in the ith interval, ki_discrete has legnth of s*neqns
 Here, ki_interp is a matrix stored with interpolation coefficients in the ith interval, ki_interp has length of (s_star-s)*neqns
 """
-function sum_stages(S::BVPSystem,
-    ITU::MIRKInterpTableau,
-    weights,
-    weights_prime,
-    ki_discrete::AbstractVector{T1},
-    ki_interp::AbstractVector{T2},
-    y) where {T1, T2}
-    len, mesh = S.M, S.x
-    dt = mesh[end] - mesh[end - 1]
-    s, s_star = S.s, ITU.s_star
-    elType_z = promote_type(eltype(weights), eltype(T1), eltype(T2))
-    elType_zprime = promote_type(eltype(weights_prime), eltype(T1), eltype(T2))
-    z = similar(first(ki_discrete), elType_z)
-    fill!(z, 0)
-    z_prime = similar(first(ki_discrete), elType_zprime)
-    fill!(z_prime, 0)
+@views function sum_stages(S::BVPSystem, ITU::MIRKInterpTableau,
+    weights::AbstractVector{T₁}, weights′::AbstractVector{T₂},
+    k_discrete::AbstractArray{T₃, 3}, k_interp::AbstractArray{T₄, 3},
+    mesh::AbstractVector, y::AbstractMatrix{T₅}, dt) where {T₁, T₂, T₃, T₄, T₅}
+    @unpack M, stage = S
+    @unpack s_star = ITU
+    N = length(mesh)
 
-    for i in 1:s
-        z .+= weights[i] .* ki_discrete[i]
-        z_prime .+= weights_prime[i] .* ki_discrete[i]
-    end
-    for i in 1:(s_star - s)
-        z .+= weights[i + s] .* ki_interp[i]
-        z_prime .+= weights_prime[i + s] .* ki_interp[i]
-    end
-    @. z = z * dt + y
+    z = similar(k_discrete, promote_type(T₁, T₃, T₄, T₅), M, N - 1)
+    z′ = similar(k_discrete, promote_type(T₂, T₃, T₄), M, N - 1)
 
-    return z, z_prime
+    foreach(1:(N - 1)) do i
+        mul!(z[:, i:i], k_discrete[:, 1:stage, i], weights[1:stage])
+        mul!(z′[:, i:i], k_discrete[:, 1:stage, i], weights′[1:stage])
+        mul!(z[:, i:i], k_interp[:, 1:(s_star - stage), i], weights[(stage + 1):s_star],
+            true, true)
+        mul!(z′[:, i:i], k_interp[:, 1:(s_star - stage), i], weights′[(stage + 1):s_star],
+            true, true)
+    end
+
+    z .= z .* reshape(dt, 1, :) .+ y[:, 1:(N - 1)]
+
+    return z, z′
 end
 
-"""
-    interp_weights(tau, alg)
+for order in (3, 4, 5, 6), alg in (Symbol("GeneralMIRK$(order)"), Symbol("MIRK$(order)"))
+    @eval begin
+        """
+            interp_weights(tau, alg)
 
-interp_weights: solver-specified interpolation weights and its first derivative
-"""
-function interp_weights(tau, alg::Union{GeneralMIRK, MIRK})
-    if alg_order(alg) == 3
-        w = [tau / 4.0 * (2.0 * tau^2 - 5.0 * tau + 4.0),
-            -3.0 / 4.0 * tau^2 * (2.0 * tau - 3.0),
-            tau^2 * (tau - 1.0)]
+        interp_weights: solver-specified interpolation weights and its first derivative
+        """
+        function interp_weights(tau::T, ::$(alg)) where {T}
+            if $(order == 3)
+                w = [tau / 4.0 * (2.0 * tau^2 - 5.0 * tau + 4.0),
+                    -3.0 / 4.0 * tau^2 * (2.0 * tau - 3.0),
+                    tau^2 * (tau - 1.0)]
 
-        #     Derivative polynomials.
+                #     Derivative polynomials.
 
-        wp = [3.0 / 2.0 * (tau - 2.0 / 3.0) * (tau - 1.0),
-            -9.0 / 2.0 * tau * (tau - 1.0),
-            3.0 * tau * (tau - 2.0 / 3.0)]
-        return w, wp
-    elseif alg_order(alg) == 4
-        t2 = tau * tau
-        tm1 = tau - 1.0
-        t4m3 = tau * 4.0 - 3.0
-        t2m1 = tau * 2.0 - 1.0
+                wp = [3.0 / 2.0 * (tau - 2.0 / 3.0) * (tau - 1.0),
+                    -9.0 / 2.0 * tau * (tau - 1.0),
+                    3.0 * tau * (tau - 2.0 / 3.0)]
+            elseif $(order == 4)
+                t2 = tau * tau
+                tm1 = tau - 1.0
+                t4m3 = tau * 4.0 - 3.0
+                t2m1 = tau * 2.0 - 1.0
 
-        w = [-tau * (2.0 * tau - 3.0) * (2.0 * t2 - 3.0 * tau + 2.0) / 6.0,
-            t2 * (12.0 * t2 - 20.0 * tau + 9.0) / 6.0,
-            2.0 * t2 * (6.0 * t2 - 14.0 * tau + 9.0) / 3.0,
-            -16.0 * t2 * tm1 * tm1 / 3.0]
+                w = [-tau * (2.0 * tau - 3.0) * (2.0 * t2 - 3.0 * tau + 2.0) / 6.0,
+                    t2 * (12.0 * t2 - 20.0 * tau + 9.0) / 6.0,
+                    2.0 * t2 * (6.0 * t2 - 14.0 * tau + 9.0) / 3.0,
+                    -16.0 * t2 * tm1 * tm1 / 3.0]
 
-        #   Derivative polynomials
+                #   Derivative polynomials
 
-        wp = [-tm1 * t4m3 * t2m1 / 3.0,
-            tau * t2m1 * t4m3,
-            4.0 * tau * t4m3 * tm1,
-            -32.0 * tau * t2m1 * tm1 / 3.0]
+                wp = [-tm1 * t4m3 * t2m1 / 3.0,
+                    tau * t2m1 * t4m3,
+                    4.0 * tau * t4m3 * tm1,
+                    -32.0 * tau * t2m1 * tm1 / 3.0]
+            elseif $(order == 5)
+                w = [
+                    tau * (22464.0 - 83910.0 * tau + 143041.0 * tau^2 - 113808.0 * tau^3 +
+                     33256.0 * tau^4) / 22464.0,
+                    tau^2 * (-2418.0 + 12303.0 * tau - 19512.0 * tau^2 + 10904.0 * tau^3) /
+                    3360.0,
+                    -8 / 81 * tau^2 * (-78.0 + 209.0 * tau - 204.0 * tau^2 + 8.0 * tau^3),
+                    -25 / 1134 * tau^2 *
+                    (-390.0 + 1045.0 * tau - 1020.0 * tau^2 + 328.0 * tau^3),
+                    -25 / 5184 * tau^2 *
+                    (390.0 + 255.0 * tau - 1680.0 * tau^2 + 2072.0 * tau^3),
+                    279841 / 168480 * tau^2 *
+                    (-6.0 + 21.0 * tau - 24.0 * tau^2 + 8.0 * tau^3)]
 
-        return w, wp
-    elseif alg_order(alg) == 5
-        w = [
-            tau * (22464.0 - 83910.0 * tau + 143041.0 * tau^2 - 113808.0 * tau^3 +
-             33256.0 * tau^4) / 22464.0,
-            tau^2 * (-2418.0 + 12303.0 * tau - 19512.0 * tau^2 + 10904.0 * tau^3) / 3360.0,
-            -8 / 81 * tau^2 * (-78.0 + 209.0 * tau - 204.0 * tau^2 + 8.0 * tau^3),
-            -25 / 1134 * tau^2 * (-390.0 + 1045.0 * tau - 1020.0 * tau^2 + 328.0 * tau^3),
-            -25 / 5184 * tau^2 * (390.0 + 255.0 * tau - 1680.0 * tau^2 + 2072.0 * tau^3),
-            279841 / 168480 * tau^2 * (-6.0 + 21.0 * tau - 24.0 * tau^2 + 8.0 * tau^3)]
+                #   Derivative polynomials
 
-        #     Derivative polynomials.
+                wp = [
+                    1.0 - 13985 // 1872 * tau + 143041 // 7488 * tau^2 -
+                    2371 // 117 * tau^3 +
+                    20785 // 2808 * tau^4,
+                    -403 // 280 * tau + 12303 // 1120 * tau^2 - 813 // 35 * tau^3 +
+                    1363 // 84 * tau^4,
+                    416 // 27 * tau - 1672 // 27 * tau^2 + 2176 // 27 * tau^3 -
+                    320 // 81 * tau^4,
+                    3250 // 189 * tau - 26125 // 378 * tau^2 + 17000 // 189 * tau^3 -
+                    20500 // 567 * tau^4,
+                    -1625 // 432 * tau - 2125 // 576 * tau^2 + 875 // 27 * tau^3 -
+                    32375 // 648 * tau^4,
+                    -279841 // 14040 * tau + 1958887 // 18720 * tau^2 -
+                    279841 // 1755 * tau^3 +
+                    279841 // 4212 * tau^4]
+            elseif $(order == 6)
+                w = [
+                    tau - 28607 // 7434 * tau^2 - 166210 // 33453 * tau^3 +
+                    334780 // 11151 * tau^4 -
+                    1911296 // 55755 * tau^5 + 406528 // 33453 * tau^6,
+                    777 // 590 * tau^2 - 2534158 // 234171 * tau^3 +
+                    2088580 // 78057 * tau^4 -
+                    10479104 // 390285 * tau^5 + 11328512 // 1170855 * tau^6,
+                    -1008 // 59 * tau^2 + 222176 // 1593 * tau^3 - 180032 // 531 * tau^4 +
+                    876544 // 2655 * tau^5 - 180224 // 1593 * tau^6,
+                    -1008 // 59 * tau^2 + 222176 // 1593 * tau^3 - 180032 // 531 * tau^4 +
+                    876544 // 2655 * tau^5 - 180224 // 1593 * tau^6,
+                    -378 // 59 * tau^2 + 27772 // 531 * tau^3 - 22504 // 177 * tau^4 +
+                    109568 // 885 * tau^5 - 22528 // 531 * tau^6,
+                    -95232 // 413 * tau^2 + 62384128 // 33453 * tau^3 -
+                    49429504 // 11151 * tau^4 +
+                    46759936 // 11151 * tau^5 - 46661632 // 33453 * tau^6,
+                    896 // 5 * tau^2 - 4352 // 3 * tau^3 + 3456 * tau^4 -
+                    16384 // 5 * tau^5 +
+                    16384 // 15 * tau^6,
+                    50176 // 531 * tau^2 - 179554304 // 234171 * tau^3 +
+                    143363072 // 78057 * tau^4 -
+                    136675328 // 78057 * tau^5 + 137363456 // 234171 * tau^6,
+                    16384 // 441 * tau^3 - 16384 // 147 * tau^4 + 16384 // 147 * tau^5 -
+                    16384 // 441 * tau^6]
 
-        wp = [
-            1.0 - 13985 // 1872 * tau + 143041 // 7488 * tau^2 - 2371 // 117 * tau^3 +
-            20785 // 2808 * tau^4,
-            -403 // 280 * tau + 12303 // 1120 * tau^2 - 813 // 35 * tau^3 +
-            1363 // 84 * tau^4,
-            416 // 27 * tau - 1672 // 27 * tau^2 + 2176 // 27 * tau^3 - 320 // 81 * tau^4,
-            3250 // 189 * tau - 26125 // 378 * tau^2 + 17000 // 189 * tau^3 -
-            20500 // 567 * tau^4,
-            -1625 // 432 * tau - 2125 // 576 * tau^2 + 875 // 27 * tau^3 -
-            32375 // 648 * tau^4,
-            -279841 // 14040 * tau + 1958887 // 18720 * tau^2 - 279841 // 1755 * tau^3 +
-            279841 // 4212 * tau^4]
+                #     Derivative polynomials.
 
-        return w, wp
-
-    elseif alg_order(alg) == 6
-        w = [
-            tau - 28607 // 7434 * tau^2 - 166210 // 33453 * tau^3 +
-            334780 // 11151 * tau^4 -
-            1911296 // 55755 * tau^5 + 406528 // 33453 * tau^6,
-            777 // 590 * tau^2 - 2534158 // 234171 * tau^3 + 2088580 // 78057 * tau^4 -
-            10479104 // 390285 * tau^5 + 11328512 // 1170855 * tau^6,
-            -1008 // 59 * tau^2 + 222176 // 1593 * tau^3 - 180032 // 531 * tau^4 +
-            876544 // 2655 * tau^5 - 180224 // 1593 * tau^6,
-            -1008 // 59 * tau^2 + 222176 // 1593 * tau^3 - 180032 // 531 * tau^4 +
-            876544 // 2655 * tau^5 - 180224 // 1593 * tau^6,
-            -378 // 59 * tau^2 + 27772 // 531 * tau^3 - 22504 // 177 * tau^4 +
-            109568 // 885 * tau^5 - 22528 // 531 * tau^6,
-            -95232 // 413 * tau^2 + 62384128 // 33453 * tau^3 - 49429504 // 11151 * tau^4 +
-            46759936 // 11151 * tau^5 - 46661632 // 33453 * tau^6,
-            896 // 5 * tau^2 - 4352 // 3 * tau^3 + 3456 * tau^4 - 16384 // 5 * tau^5 +
-            16384 // 15 * tau^6,
-            50176 // 531 * tau^2 - 179554304 // 234171 * tau^3 +
-            143363072 // 78057 * tau^4 -
-            136675328 // 78057 * tau^5 + 137363456 // 234171 * tau^6,
-            16384 // 441 * tau^3 - 16384 // 147 * tau^4 + 16384 // 147 * tau^5 -
-            16384 // 441 * tau^6]
-
-        #     Derivative polynomials.
-
-        wp = [
-            1 - 28607 // 3717 * tau - 166210 // 11151 * tau^2 + 1339120 // 11151 * tau^3 -
-            1911296 // 11151 * tau^4 + 813056 // 11151 * tau^5,
-            777 // 295 * tau - 2534158 // 78057 * tau^2 + 8354320 // 78057 * tau^3 -
-            10479104 // 78057 * tau^4 + 22657024 // 390285 * tau^5,
-            -2016 // 59 * tau + 222176 // 531 * tau^2 - 720128 // 531 * tau^3 +
-            876544 // 531 * tau^4 - 360448 // 531 * tau^5,
-            -2016 // 59 * tau + 222176 // 531 * tau^2 - 720128 // 531 * tau^3 +
-            876544 // 531 * tau^4 - 360448 // 531 * tau^5,
-            -756 // 59 * tau + 27772 // 177 * tau^2 - 90016 // 177 * tau^3 +
-            109568 // 177 * tau^4 - 45056 // 177 * tau^5,
-            -190464 // 413 * tau + 62384128 // 11151 * tau^2 - 197718016 // 11151 * tau^3 +
-            233799680 // 11151 * tau^4 - 93323264 // 11151 * tau^5,
-            1792 // 5 * tau - 4352 * tau^2 + 13824 * tau^3 - 16384 * tau^4 +
-            32768 // 5 * tau^5,
-            100352 // 531 * tau - 179554304 // 78057 * tau^2 + 573452288 // 78057 * tau^3 -
-            683376640 // 78057 * tau^4 + 274726912 // 78057 * tau^5,
-            16384 // 147 * tau^2 - 65536 // 147 * tau^3 + 81920 // 147 * tau^4 -
-            32768 // 147 * tau^5]
-
-        return w, wp
+                wp = [
+                    1 - 28607 // 3717 * tau - 166210 // 11151 * tau^2 +
+                    1339120 // 11151 * tau^3 -
+                    1911296 // 11151 * tau^4 + 813056 // 11151 * tau^5,
+                    777 // 295 * tau - 2534158 // 78057 * tau^2 + 8354320 // 78057 * tau^3 -
+                    10479104 // 78057 * tau^4 + 22657024 // 390285 * tau^5,
+                    -2016 // 59 * tau + 222176 // 531 * tau^2 - 720128 // 531 * tau^3 +
+                    876544 // 531 * tau^4 - 360448 // 531 * tau^5,
+                    -2016 // 59 * tau + 222176 // 531 * tau^2 - 720128 // 531 * tau^3 +
+                    876544 // 531 * tau^4 - 360448 // 531 * tau^5,
+                    -756 // 59 * tau + 27772 // 177 * tau^2 - 90016 // 177 * tau^3 +
+                    109568 // 177 * tau^4 - 45056 // 177 * tau^5,
+                    -190464 // 413 * tau + 62384128 // 11151 * tau^2 -
+                    197718016 // 11151 * tau^3 +
+                    233799680 // 11151 * tau^4 - 93323264 // 11151 * tau^5,
+                    1792 // 5 * tau - 4352 * tau^2 + 13824 * tau^3 - 16384 * tau^4 +
+                    32768 // 5 * tau^5,
+                    100352 // 531 * tau - 179554304 // 78057 * tau^2 +
+                    573452288 // 78057 * tau^3 -
+                    683376640 // 78057 * tau^4 + 274726912 // 78057 * tau^5,
+                    16384 // 147 * tau^2 - 65536 // 147 * tau^3 + 81920 // 147 * tau^4 -
+                    32768 // 147 * tau^5]
+            end
+            return T.(w), T.(wp)
+        end
     end
 end

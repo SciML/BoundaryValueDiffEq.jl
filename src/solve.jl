@@ -17,27 +17,13 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         ReturnCode.Failure)
 end
 
-function __mirk_reorder!(resid)
-    # reorder the Jacobian matrix such that it is banded
-    tmp_last = resid[end]
-    idxs = (lastindex(resid) - 1):-1:firstindex(resid)
-    resid[idxs .+ 1] .= resid[idxs]
-    resid[firstindex(resid)], resid[end] = resid[end], tmp_last
-    return nothing
-end
-
-function construct_MIRK_loss_function(S::BVPSystem,
-    prob::BVProblem,
-    TU,
-    cache)
+function construct_MIRK_loss_function(S::BVPSystem, prob::BVProblem, TU, cache, mesh)
     function loss!(resid, u, p)
-        nest_vector!(S.y, u)
-        S.p = p
-        Φ!(S, TU, cache)
-        eval_bc_residual!(prob.problem_type, S)
-        flatten_vector!(resid, S.residual)
-        __mirk_reorder!(resid)
-        return nothing
+        u_ = reshape(u, S.M, S.N)
+        resid_ = reshape(resid, S.M, S.N)
+        Φ!(resid_, S, TU, cache, u_, p, mesh)
+        eval_bc_residual!(resid_, prob.problem_type, S, u_, p, mesh)
+        return resid
     end
     return loss!
 end
@@ -48,6 +34,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     T = eltype(prob.u0)
     n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
+    mesh_dt = diff(mesh)
 
     # Initialization
     defect_threshold = T(0.1)
@@ -56,26 +43,25 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
     MxNsub = 3000
     S = BVPSystem(prob, mesh, alg)
 
+    y = __initial_state_from_prob(prob, mesh)
     while info == ReturnCode.Success && defect_norm > abstol
         TU, ITU = constructMIRK(S)
         cache = alg_cache(alg, S)
-        # Upper-level iteration
-        vec_y = similar(first(S.y), S.M * S.N)
 
-        loss! = construct_MIRK_loss_function(S, prob, TU, cache)
+        loss! = construct_MIRK_loss_function(S, prob, TU, cache, mesh)
         jac_wrapper = BVPJacobianWrapper(loss!)
 
-        flatten_vector!(vec_y, S.y)
-        nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec_y, prob.p)
+        nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec(y), prob.p)
         opt = solve(nlprob, alg.nlsolve; abstol, kwargs...)
-        nest_vector!(S.y, opt.u)
+        vec(y) .= opt.u
 
         info = opt.retcode
 
         !adaptive && break
 
         if info == ReturnCode.Success
-            defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU)
+            defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU, y, prob.p,
+                mesh, mesh_dt)
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
@@ -83,15 +69,14 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
         if info == ReturnCode.Success
             if defect_norm > abstol
                 # We construct a new mesh to equidistribute the defect
-                mesh_new, Nsub_star, info = mesh_selector(S, alg, defect, abstol)
+                mesh, Nsub_star, info = mesh_selector(S, alg, defect, abstol, mesh,
+                    mesh_dt)
+                mesh_dt = diff(mesh)
                 # println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
-                    new_Y = map(m -> first(interp_eval(S, cache, alg, ITU, m, k_interp)),
-                        mesh_new)
-                    S.x = mesh_new
-                    S.N = length(S.x)
-                    S.y = new_Y
-                    S.residual = vector_alloc(eltype(S.x), S.M, S.N)
+                    y = mapreduce(m -> first(interp_eval(S, cache, alg, ITU, m, k_interp)),
+                        hcat, mesh)
+                    S = BVPSystem(prob, mesh, alg)
                 end
             end
         else
@@ -100,15 +85,16 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Union{GeneralMIRK, MIRK}; dt =
                 # New mesh would be too large
                 info = ReturnCode.Failure
             else
-                S.x = half_mesh(S.x)
-                S.N = length(S.x)
-                S.y = vector_alloc(eltype(S.x), S.M, S.N)
-                S.residual = vector_alloc(eltype(S.x), S.M, S.N)
+                mesh = half_mesh(mesh)
+                mesh_dt = diff(mesh)
+                S = BVPSystem(prob, mesh, alg)
+                y = similar(y, S.M, S.N)
+                fill!(y, 0)
                 info = ReturnCode.Success # Force a restart
                 defect_norm = 2 * abstol
             end
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, S.x, S.y; retcode = info)
+    return DiffEqBase.build_solution(prob, alg, mesh, collect(eachcol(y)); retcode = info)
 end
