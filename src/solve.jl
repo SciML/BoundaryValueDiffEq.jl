@@ -20,10 +20,16 @@ end
 function construct_MIRK_loss_function(S::BVPSystem, prob::BVProblem, TU, cache, mesh)
     function loss!(resid, u, p)
         u_ = reshape(u, S.M, S.N)
+        # @show 0, sum(u)
         resid_ = reshape(resid, S.M, S.N)
+        # @show 1, resid
         Φ!(resid_, S, TU, cache, u_, p, mesh)
+        # @show 1, resid, sum(u)
+        # @show 2, resid, u
         eval_bc_residual!(resid_, prob.problem_type, S, u_, p, mesh)
-        # @show resid
+        # @show 3, resid
+        # @show 2, resid, sum(resid) / length(resid), sum(u)
+        # error(1)
         return resid
     end
     return loss!

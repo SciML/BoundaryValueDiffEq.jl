@@ -211,9 +211,10 @@ Here, the ki_interp is the stages in one subinterval.
         new_stages_ = reshape(new_stages, M, 1, N - 1)
         sum!(new_stages_, reshape(x_star[idx₁], 1, :) .* k_discrete[:, 1:stage, :])
         if r > 1
-            sum!(new_stages_, reshape(x_star[idx₂], 1, :) .* k_interp[:, 1:(r - 1), :])
+            sum!(new_stages_, reshape(x_star[idx₂], 1, :) .* k_interp[:, 1:(r - 1), :];
+                init=false)
         end
-        new_stages .= new_stages .* reshape(dt, 1, :) .+
+        new_stages .= new_stages .* dt .+
                       (1 - v_star[r]) .* y[:, 1:(N - 1)] .+ v_star[r] .* y[:, 2:N]
 
         foreach(1:(N - 1)) do i

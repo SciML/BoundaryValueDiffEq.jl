@@ -26,7 +26,6 @@ end
     @unpack c, v, x, b = TU
 
     T = eltype(y)
-    fill!(residual, T(0))
     for i in 1:(N - 1)
         K = cache.k_discrete[:, :, i]
         h = mesh[i + 1] - mesh[i]
