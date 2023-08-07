@@ -8,14 +8,10 @@ end
 #        this horror.
 function _construct_nonlinear_problem_with_jacobian(f!::BVPJacobianWrapper, S::BVPSystem,
     y, p)
-    J0 = BandedMatrix(similar(y, (S.M * S.N, S.M * S.N)), (S.M, S.M))[(S.M + 1):end,
-        :]
-    jac_cache = JacobianCache(similar(y),
-        similar(y)[(S.M + 1):end];
-        colorvec = matrix_colors(J0),
-        sparsity = sparse(J0))
+    J0 = BandedMatrix(similar(y, (S.M * S.N, S.M * S.N)), (S.M + 1, S.M))[(S.M + 1):end, :]
+    jac_cache = JacobianCache(similar(y), similar(y)[(S.M + 1):end];
+        colorvec = matrix_colors(J0), sparsity = sparse(J0))
     function jac!(J, x, p)
-        F = jac_cache.fx
         function _f!(F, x)
             FF = similar(x)
             f!(FF, x, p)
@@ -30,7 +26,6 @@ function _construct_nonlinear_problem_with_jacobian(f!::BVPJacobianWrapper, S::B
             return
         end
         finite_difference_jacobian!(@view(J[begin:(S.M), :]), _f1!, x)
-        # display(sparse(J))
         return J
     end
     return NonlinearProblem(NonlinearFunction{true}(f!; jac = jac!), y, p)

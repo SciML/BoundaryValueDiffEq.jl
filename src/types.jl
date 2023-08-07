@@ -34,10 +34,8 @@ end
 
 # ODE BVP problem system
 ## NOTE: We might want to decouple this type from MIRK sometime later
-mutable struct BVPSystem{
-    F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFunction},
-    tType <: AbstractVector,
-}
+struct BVPSystem{F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFunction},
+    tType <: AbstractVector}
     order::Int                  # The order of MIRK method
     stage::Int                  # The state of MIRK method
     M::Int                      # Number of equations in the ODE system
