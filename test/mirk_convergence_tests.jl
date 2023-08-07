@@ -48,9 +48,7 @@ probArr = [BVProblem(func_1, boundary!, u0, tspan),
 
 testTol = 0.2
 affineTol = 1e-2
-dts1 = 1 .// 2 .^ (3:-1:1)
-dts2 = 1 .// 2 .^ (4:-1:1)
-dts3 = 1 .// 2 .^ (6:-1:1)
+dts = 1 .// 2 .^ (3:-1:1)
 
 @testset "Affineness" begin
     @info "Collocation method (GeneralMIRK)"
@@ -71,22 +69,19 @@ dts3 = 1 .// 2 .^ (6:-1:1)
 end
 
 @testset "Convergence on Linear" begin
-    abstols = [1e-3, 1e-4, 1e-6, 1e-8]
-    reltols = [1e-3, 1e-4, 1e-6, 1e-8]
-    dts = [dts2, dts1, dts2, dts3]
     @info "Collocation method (GeneralMIRK)"
     prob = probArr[2]
     @testset "GeneralMIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
-        @time sim = test_convergence(dts[i], prob, mirk_solver(Val(true), Val(order));
-            abstol = abstols[i], reltol = reltols[i])
+        @time sim = test_convergence(dts, prob, mirk_solver(Val(true), Val(order));
+            abstol = 1e-8, reltol = 1e-8)
         @test sim.𝒪est[:final]≈order atol=testTol
     end
 
     @info "Collocation method (MIRK)"
     prob = probArr[4]
     @testset "MIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
-        @time sim = test_convergence(dts[i], prob, mirk_solver(Val(false), Val(order));
-            abstol = abstols[i], reltol = reltols[i])
+        @time sim = test_convergence(dts, prob, mirk_solver(Val(false), Val(order));
+            abstol = 1e-8, reltol = 1e-8)
         @test sim.𝒪est[:final]≈order atol=testTol
     end
 end
