@@ -13,7 +13,12 @@ __initial_state_from_prob(u0::AbstractMatrix, _) = copy(u0)
 # Auxiliary functions for evaluation
 @inline @views function eval_bc_residual!(residual::AbstractMatrix,
     ::SciMLBase.StandardBVProblem, S::BVPSystem, y, p, mesh)
-    S.bc!(residual[:, 1], eachcol(y), p, mesh)
+    @static if VERSION ≥ v"1.9"
+        y_ = eachcol(y) # Returns ColumnSlices which can be indexed into
+    else
+        y_ = collect(eachcol(y)) # Can't index into Generator
+    end
+    S.bc!(residual[:, 1], y_, p, mesh)
 end
 @inline @views function eval_bc_residual!(residual::AbstractMatrix, ::TwoPointBVProblem, y,
     S::BVPSystem, p, mesh)
