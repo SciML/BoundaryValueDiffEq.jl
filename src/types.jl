@@ -46,3 +46,27 @@ struct BVPSystem{F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFuncti
 end
 
 Base.eltype(S::BVPSystem) = eltype(S.tmp)
+
+# Sparsity Detection
+Base.@kwdef struct AutoMultiModeDifferentiation{D, S} <: AbstractADType
+    dense::D = AutoFiniteDiff()
+    sparse::S = AutoSparseFiniteDiff()
+end
+
+### TODO: Upstream
+struct AutoFastDifferentiation <: AbstractADType end
+struct AutoSparseFastDifferentiation <: AbstractADType end
+
+_exploit_sparsity(::AbstractADType) = false
+function _exploit_sparsity(::Union{AutoSparseFiniteDiff, AutoSparseForwardDiff,
+    AutoSparseFastDifferentiation})
+    return true
+end
+function _exploit_sparsity(mm::AutoMultiModeDifferentiation)
+    return any(_exploit_sparsity, (mm.dense, mm.sparse))
+end
+
+_dense_mode(::AutoSparseFiniteDiff) = AutoFiniteDiff()
+_dense_mode(::AutoSparseFastDifferentiation) = AutoFastDifferentiation()
+_dense_mode(::AutoSparseForwardDiff) = AutoForwardDiff()
+_dense_mode(::AbstractADType) = nothing

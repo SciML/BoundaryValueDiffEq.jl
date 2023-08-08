@@ -1,11 +1,13 @@
 module BoundaryValueDiffEq
 
 using LinearAlgebra, Reexport, Setfield, SparseArrays
-@reexport using DiffEqBase, NonlinearSolve
+@reexport using ADTypes, DiffEqBase, NonlinearSolve
 
+import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors
 import BandedMatrices: BandedMatrix
 import DiffEqBase: solve
+import FiniteDiff
 import FiniteDiff: JacobianCache, finite_difference_jacobian!
 import ForwardDiff
 import TruncatedStacktraces: @truncate_stacktrace
@@ -23,5 +25,6 @@ include("adaptivity.jl")
 
 export Shooting
 export MIRK3, MIRK4, MIRK5, MIRK6
+export AutoMultiModeDifferentiation, AutoFastDifferentiation, AutoSparseFastDifferentiation
 
 end

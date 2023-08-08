@@ -1,5 +1,7 @@
 const DEFAULT_NLSOLVE_SHOOTING = TrustRegion(; autodiff = Val(true))
 const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = Val(true))
+const DEFAULT_JACOBIAN_ALGORITHM_MIRK = AutoMultiModeDifferentiation(AutoFiniteDiff(),
+    AutoSparseFiniteDiff())
 
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
@@ -22,8 +24,9 @@ Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING) = Shooting(ode_alg, nlsolv
   pages={479-497}
 }
 """
-Base.@kwdef struct MIRK3{N} <: AbstractMIRK
+Base.@kwdef struct MIRK3{N, J} <: AbstractMIRK
     nlsolve::N = DEFAULT_NLSOLVE_MIRK
+    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
 end
 
 """
@@ -36,8 +39,9 @@ end
   pages={479-497}
 }
 """
-Base.@kwdef struct MIRK4{N} <: AbstractMIRK
+Base.@kwdef struct MIRK4{N, J} <: AbstractMIRK
     nlsolve::N = DEFAULT_NLSOLVE_MIRK
+    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
 end
 
 """
@@ -50,8 +54,9 @@ end
   pages={479-497}
 }
 """
-Base.@kwdef struct MIRK5{N} <: AbstractMIRK
+Base.@kwdef struct MIRK5{N, J} <: AbstractMIRK
     nlsolve::N = DEFAULT_NLSOLVE_MIRK
+    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
 end
 
 """
@@ -64,6 +69,7 @@ end
   pages={479-497}
 }
 """
-Base.@kwdef struct MIRK6{N} <: AbstractMIRK
+Base.@kwdef struct MIRK6{N, J} <: AbstractMIRK
     nlsolve::N = DEFAULT_NLSOLVE_MIRK
+    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
 end
