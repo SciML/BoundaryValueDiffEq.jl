@@ -1,12 +1,40 @@
 # BoundaryValueDiffEq
 
-[![Join the chat at https://gitter.im/JuliaDiffEq/Lobby](https://badges.gitter.im/JuliaDiffEq/Lobby.svg)](https://gitter.im/JuliaDiffEq/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://julialang.zulipchat.com #sciml-bridged](https://img.shields.io/static/v1?label=Zulip&message=chat&color=9558b2&labelColor=389826)](https://julialang.zulipchat.com/#narrow/stream/279055-sciml-bridged)
+[![Global Docs](https://img.shields.io/badge/docs-SciML-blue.svg)](https://docs.sciml.ai/OrdinaryDiffEq/stable/)
+
 [![Build Status](https://github.com/SciML/BoundaryValueDiffEq.jl/workflows/CI/badge.svg)](https://github.com/SciML/BoundaryValueDiffEq.jl/actions?query=workflow%3ACI)
-[![Coverage Status](https://coveralls.io/repos/github/JuliaDiffEq/BoundaryValueDiffEq.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaDiffEq/BoundaryValueDiffEq.jl?branch=master)
-[![codecov](https://codecov.io/gh/JuliaDiffEq/BoundaryValueDiffEq.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaDiffEq/BoundaryValueDiffEq.jl)
-[![BoundaryValueDiffEq](http://pkg.julialang.org/badges/BoundaryValueDiffEq_0.6.svg)](http://pkg.julialang.org/?pkg=BoundaryValueDiffEq)
+[![codecov](https://codecov.io/gh/SciML/BoundaryValueDiffEq.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SciML/BoundaryValueDiffEq.jl)
+
+[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
+[![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
 BoundaryValueDiffEq.jl is a component package in the DifferentialEquations ecosystem. It holds the
 boundary value problem solvers and utilities. While completely independent
 and usable on its own, users interested in using this
 functionality should check out [DifferentialEquations.jl](https://github.com/JuliaDiffEq/DifferentialEquations.jl).
+
+## API
+
+BoundaryValueDiffEq.jl is part of the JuliaDiffEq common interface, but can be used independently of DifferentialEquations.jl. The only requirement is that the user passes a BoundaryValueDiffEq.jl algorithm to solve. For example, we can solve the [BVP tutorial from the documentation](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/bvp_example/) using the `MIRK4()` algorithm:
+
+```julia
+using BoundaryValueDiffEq
+tspan = (0.0, pi / 2)
+function simplependulum!(du, u, p, t)
+    θ = u[1]
+    dθ = u[2]
+    du[1] = dθ
+    du[2] = -9.81 * sin(θ)
+end
+function bc!(residual, u, p, t)
+    residual[1] = u[end ÷ 2][1] + pi / 2
+    residual[2] = u[end][1] - pi / 2
+end
+prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
+sol = solve(prob, MIRK4(), dt = 0.05)
+```
+
+## Available Solvers
+
+For the list of available solvers, please refer to the [DifferentialEquations.jl BVP Solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/bvp_solve/). For options for the `solve` command, see the [common solver options page](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/).
