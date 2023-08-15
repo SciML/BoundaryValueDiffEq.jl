@@ -1,7 +1,7 @@
 module BoundaryValueDiffEq
 
 using LinearAlgebra, Reexport, Setfield, SparseArrays
-@reexport using ADTypes, DiffEqBase, NonlinearSolve
+@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools
 
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors
@@ -19,7 +19,7 @@ include("alg_utils.jl")
 include("mirk_tableaus.jl")
 include("cache.jl")
 include("collocation.jl")
-include("jacobian.jl")
+include("nlprob.jl")
 include("solve.jl")
 include("adaptivity.jl")
 

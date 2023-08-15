@@ -11,18 +11,18 @@ __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _) = reduce(hcat
 __initial_state_from_prob(u0::AbstractMatrix, _) = copy(u0)
 
 # Auxiliary functions for evaluation
-@inline @views function eval_bc_residual!(residual::AbstractMatrix,
+@inline @views function eval_bc_residual!(residual::AbstractVector,
     ::SciMLBase.StandardBVProblem, S::BVPSystem, y, p, mesh)
     @static if VERSION ≥ v"1.9"
         y_ = eachcol(y) # Returns ColumnSlices which can be indexed into
     else
         y_ = collect(eachcol(y)) # Can't index into Generator
     end
-    S.bc!(residual[:, 1], y_, p, mesh)
+    S.bc!(residual, y_, p, mesh)
 end
-@inline @views function eval_bc_residual!(residual::AbstractMatrix, ::TwoPointBVProblem, y,
+@inline @views function eval_bc_residual!(residual::AbstractVector, ::TwoPointBVProblem, y,
     S::BVPSystem, p, mesh)
-    S.bc!(residual[:, 1], (y[:, 1], y[:, end]), p, (mesh[1], mesh[end]))
+    S.bc!(residual, (y[:, 1], y[:, end]), p, (mesh[1], mesh[end]))
 end
 
 @views function Φ!(residual::AbstractMatrix, S::BVPSystem, TU::MIRKTableau,
@@ -42,9 +42,7 @@ end
         end
 
         # Update residual
-        @. residual[:, i + 1] = y[:, i + 1] - y[:, i]
-        mul!(residual[:, i + 1], K[:, 1:stage], b[1:stage], -h, T(1))
+        @. residual[:, i] = y[:, i + 1] - y[:, i]
+        mul!(residual[:, i], K[:, 1:stage], b[1:stage], -h, T(1))
     end
-
-    return residual
 end

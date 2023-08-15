@@ -69,4 +69,5 @@ end
 _dense_mode(::AutoSparseFiniteDiff) = AutoFiniteDiff()
 _dense_mode(::AutoSparseFastDifferentiation) = AutoFastDifferentiation()
 _dense_mode(::AutoSparseForwardDiff) = AutoForwardDiff()
+_dense_mode(::AutoSparseZygote) = AutoZygote()
 _dense_mode(::AbstractADType) = nothing

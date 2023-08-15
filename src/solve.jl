@@ -17,17 +17,6 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         ReturnCode.Failure)
 end
 
-function construct_MIRK_loss_function(S::BVPSystem, prob::BVProblem, TU, cache, mesh)
-    function loss!(resid, u, p)
-        u_ = reshape(u, S.M, S.N)
-        resid_ = reshape(resid, S.M, S.N)
-        Φ!(resid_, S, TU, cache, u_, p, mesh)
-        eval_bc_residual!(resid_, prob.problem_type, S, u_, p, mesh)
-        return resid
-    end
-    return loss!
-end
-
 function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
     adaptive::Bool = true, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
@@ -48,10 +37,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S)
 
-        loss! = construct_MIRK_loss_function(S, prob, TU, cache, mesh)
-        jac_wrapper = BVPJacobianWrapper(loss!)
-
-        nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec(y), prob.p)
+        nlprob = construct_MIRK_nlproblem(S, prob, TU, cache, mesh, vec(y))
         opt = solve(nlprob, alg.nlsolve; abstol, kwargs...)
         vec(y) .= opt.u
 

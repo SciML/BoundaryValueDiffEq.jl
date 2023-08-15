@@ -15,10 +15,12 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+SparseDiffTools = "47a9eef4-7e08-11e9-0b38-333d64bd3804"
 TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
+ADTypes = "0.2"
 ArrayInterface = "7"
 BandedMatrices = "0.14, 0.15, 0.16, 0.17"
 DiffEqBase = "6.94.2"
