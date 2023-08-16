@@ -3,7 +3,7 @@ abstract type MIRKCache <: AbstractMIRKCache end
 
 const AA3 = AbstractArray{T, 3} where {T}
 
-for order in (3, 4, 5, 6)
+for order in (2, 3, 4, 5, 6)
     cache = Symbol("MIRK$(order)Cache")
     # `k_discrete` stores discrete stages for each subinterval,
     # hence the size of k_discrete is M × stage × (N - 1)

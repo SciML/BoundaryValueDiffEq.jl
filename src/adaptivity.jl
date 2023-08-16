@@ -258,7 +258,7 @@ Here, ki_interp is a matrix stored with interpolation coefficients in the ith in
     return z, z′
 end
 
-for order in (3, 4, 5, 6)
+for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
     @eval begin
         """
@@ -267,7 +267,13 @@ for order in (3, 4, 5, 6)
         interp_weights: solver-specified interpolation weights and its first derivative
         """
         function interp_weights(τ::T, ::$(alg)) where {T}
-            if $(order == 3)
+            if $(order == 2)
+                w = [0, τ * (1 - τ / 2), τ^2 / 2]
+
+                #     Derivative polynomials.
+
+                wp = [0, 1 - τ, τ]
+            elseif $(order == 3)
                 w = [τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0),
                     -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0),
                     τ^2 * (τ - 1.0)]

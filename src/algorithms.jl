@@ -18,6 +18,26 @@ end
 Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING) = Shooting(ode_alg, nlsolve)
 
 """
+    MIRK2(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK)
+  
+2nd order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
+
+## References
+
+@article{Enright1996RungeKuttaSW,
+  title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
+  author={Wayne H. Enright and Paul H. Muir},
+  journal={SIAM J. Sci. Comput.},
+  year={1996},
+  volume={17},
+  pages={479-497}
+}
+"""
+Base.@kwdef struct MIRK2{N} <: AbstractMIRK
+    nlsolve::N = DEFAULT_NLSOLVE_MIRK
+end
+
+"""
     MIRK3(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK)
   
 3rd order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
