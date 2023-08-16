@@ -7,9 +7,7 @@ import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors
 import BandedMatrices: BandedMatrix
 import DiffEqBase: solve
-import FiniteDiff
-import FiniteDiff: JacobianCache, finite_difference_jacobian!
-import ForwardDiff
+import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
 
@@ -25,6 +23,7 @@ include("adaptivity.jl")
 
 export Shooting
 export MIRK3, MIRK4, MIRK5, MIRK6
+export MIRKJacobianComputationAlgorithm
 export AutoMultiModeDifferentiation, AutoFastDifferentiation, AutoSparseFastDifferentiation
 
 end

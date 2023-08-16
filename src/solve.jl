@@ -37,7 +37,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S)
 
-        nlprob = construct_MIRK_nlproblem(S, prob, TU, cache, mesh, vec(y))
+        nlprob = construct_MIRK_nlproblem(S, prob, TU, cache, mesh, vec(y), alg.jac_alg)
         opt = solve(nlprob, alg.nlsolve; abstol, kwargs...)
         vec(y) .= opt.u
 

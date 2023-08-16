@@ -1,7 +1,6 @@
 const DEFAULT_NLSOLVE_SHOOTING = TrustRegion(; autodiff = Val(true))
 const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = Val(true))
-const DEFAULT_JACOBIAN_ALGORITHM_MIRK = AutoMultiModeDifferentiation(AutoFiniteDiff(),
-    AutoSparseFiniteDiff())
+const DEFAULT_JACOBIAN_ALGORITHM_MIRK = MIRKJacobianComputationAlgorithm()
 
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
@@ -19,86 +18,35 @@ end
 
 Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING) = Shooting(ode_alg, nlsolve)
 
-"""
-    MIRK3(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK)
-  
-3rd order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
+for order in (3, 4, 5, 6)
+    alg = Symbol("MIRK$(order)")
 
-## References
+    @eval begin
+        """
+            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
+                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
 
-@article{Enright1996RungeKuttaSW,
-  title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
-  author={Wayne H. Enright and Paul H. Muir},
-  journal={SIAM J. Sci. Comput.},
-  year={1996},
-  volume={17},
-  pages={479-497}
-}
-"""
-Base.@kwdef struct MIRK3{N, J} <: AbstractMIRK
-    nlsolve::N = DEFAULT_NLSOLVE_MIRK
-    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
-end
+        $($order)th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
 
-"""
-    MIRK4(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK)
-  
-4th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
+        ## References
 
-## References
+        @article{Enright1996RungeKuttaSW,
+        title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
+        author={Wayne H. Enright and Paul H. Muir},
+        journal={SIAM J. Sci. Comput.},
+        year={1996},
+        volume={17},
+        pages={479-497}
+        }
+        """
+        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractMIRK
+            nlsolve::N
+            jac_alg::J
+        end
 
-@article{Enright1996RungeKuttaSW,
-  title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
-  author={Wayne H. Enright and Paul H. Muir},
-  journal={SIAM J. Sci. Comput.},
-  year={1996},
-  volume={17},
-  pages={479-497}
-}
-"""
-Base.@kwdef struct MIRK4{N, J} <: AbstractMIRK
-    nlsolve::N = DEFAULT_NLSOLVE_MIRK
-    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
-end
-
-"""
-    MIRK5(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK)
-  
-5th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
-
-## References
-
-@article{Enright1996RungeKuttaSW,
-  title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
-  author={Wayne H. Enright and Paul H. Muir},
-  journal={SIAM J. Sci. Comput.},
-  year={1996},
-  volume={17},
-  pages={479-497}
-}
-"""
-Base.@kwdef struct MIRK5{N, J} <: AbstractMIRK
-    nlsolve::N = DEFAULT_NLSOLVE_MIRK
-    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
-end
-
-"""
-    MIRK6(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK)
-  
-6th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
-
-## References
-
-@article{Enright1996RungeKuttaSW,
-  title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
-  author={Wayne H. Enright and Paul H. Muir},
-  journal={SIAM J. Sci. Comput.},
-  year={1996},
-  volume={17},
-  pages={479-497}
-}
-"""
-Base.@kwdef struct MIRK6{N, J} <: AbstractMIRK
-    nlsolve::N = DEFAULT_NLSOLVE_MIRK
-    jac_alg::J = DEFAULT_JACOBIAN_ALGORITHM_MIRK
+        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
+            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            return $(alg)(nlsolve, jac_alg)
+        end
+    end
 end

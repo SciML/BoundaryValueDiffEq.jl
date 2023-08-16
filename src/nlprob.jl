@@ -1,4 +1,5 @@
-function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh, y)
+function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh, y,
+    jac_alg::MIRKJacobianComputationAlgorithm)
     function loss_bc!(resid, u)
         u_ = reshape(u, S.M, S.N)
         eval_bc_residual!(resid, prob.problem_type, S, u_, prob.p, mesh)
@@ -19,21 +20,26 @@ function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh
     end
 
     resid = similar(y)
-    resid₁, resid₂ = @view(resid[1:(S.M)]), @view(resid[(S.M + 1):end])
+    resid_bc, resid_collocation = @view(resid[1:(S.M)]), @view(resid[(S.M + 1):end])
 
-    ad₁ = AutoFiniteDiff()
-    sd₁ = NoSparsityDetection()
-    cache₁ = sparse_jacobian_cache(ad₁, sd₁, loss_bc!, resid₁, y)
+    sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+            NoSparsityDetection()
+    cache_bc = sparse_jacobian_cache(jac_alg.bc_diffmode, sd_bc, loss_bc!, resid_bc, y)
 
-    ad₂ = AutoSparseFiniteDiff()
-    Jₛ = sparse(BandedMatrix(similar(y, (S.M * (S.N - 1), S.M * S.N)), (1, 2S.M)))
-    sd₂ = JacPrototypeSparsityDetection(; jac_prototype = Jₛ)
-    cache₂ = sparse_jacobian_cache(ad₂, sd₂, loss_collocation!, resid₂, y)
+    sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
+        Jₛ = sparse(BandedMatrix(similar(y, (S.M * (S.N - 1), S.M * S.N)), (1, 2 * S.M)))
+        JacPrototypeSparsityDetection(; jac_prototype = Jₛ)
+    else
+        NoSparsityDetection()
+    end
+    cache_collocation = sparse_jacobian_cache(jac_alg.collocation_diffmode, sd_collocation,
+        loss_collocation!, resid_collocation, y)
 
     function jac!(J, x, p)
-        sparse_jacobian!(@view(J[1:(S.M), :]), ad₁, cache₁, loss_bc!, resid₁, x)
-        sparse_jacobian!(@view(J[(S.M + 1):end, :]), ad₂, cache₂, loss_collocation!, resid₂,
-            x)
+        sparse_jacobian!(@view(J[1:(S.M), :]), jac_alg.bc_diffmode, cache_bc, loss_bc!,
+            resid_bc, x)
+        sparse_jacobian!(@view(J[(S.M + 1):end, :]), jac_alg.collocation_diffmode,
+            cache_collocation, loss_collocation!, resid_collocation, x)
         return J
     end
 
