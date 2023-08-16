@@ -1,6 +1,6 @@
 using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools, LinearAlgebra, Test
 
-for order in (3, 4, 5, 6)
+for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")
     @eval mirk_solver(::Val{$order}) = $(s)()
 end
@@ -89,6 +89,7 @@ end
 
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
+@test_nowarn solve(bvp1, MIRK2(); dt = 0.005)
 @test_nowarn solve(bvp1, MIRK3(); dt = 0.005)
 @test_nowarn solve(bvp1, MIRK4(); dt = 0.05)
 @test_nowarn solve(bvp1, MIRK5(); dt = 0.05)

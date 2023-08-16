@@ -1,7 +1,29 @@
-for order in (3, 4, 5, 6)
+for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
     f = Symbol("constructMIRK$(order)")
     @eval constructMIRK(::$(alg), S::BVPSystem) = $(f)(S)
+end
+
+function constructMIRK2(S::BVPSystem)
+    T = eltype(S)
+
+    # RK coefficients tableau
+    s = 1
+    c = [1 // 2]
+    v = [1 // 2]
+    b = [1]
+    x = [0]
+
+    # Interpolant tableau
+    s_star = 3
+    c_star = [0, 1]
+    v_star = [0, 1]
+    x_star = [0, 0, 0, 0]
+    τ_star = 0.25
+
+    TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
+    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    return TU, ITU
 end
 
 function constructMIRK3(S::BVPSystem)
