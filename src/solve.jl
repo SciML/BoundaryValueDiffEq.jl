@@ -34,7 +34,6 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
 
     y = __initial_state_from_prob(prob, mesh)
     while info == ReturnCode.Success && defect_norm > abstol
-        @show S.N
         TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S)
 
@@ -49,7 +48,6 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         if info == ReturnCode.Success
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU, y, prob.p,
                 mesh, mesh_dt)
-                @show defect_norm
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
