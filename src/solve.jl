@@ -34,6 +34,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
 
     y = __initial_state_from_prob(prob, mesh)
     while info == ReturnCode.Success && defect_norm > abstol
+        @show S.N
         TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S)
 
@@ -48,6 +49,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         if info == ReturnCode.Success
             defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU, y, prob.p,
                 mesh, mesh_dt)
+                @show defect_norm
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
@@ -55,18 +57,20 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         if info == ReturnCode.Success
             if defect_norm > abstol
                 # We construct a new mesh to equidistribute the defect
-                mesh, Nsub_star, info = mesh_selector(S, alg, defect, abstol, mesh,
+                mesh_new, Nsub_star, info = mesh_selector(S, alg, defect, abstol, mesh,
                     mesh_dt)
-                mesh_dt = diff(mesh)
+                mesh_dt_new = diff(mesh_new)
                 # println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
-                    y__ = similar(y, S.M, Nsub_star)
-                    for (i, m) in enumerate(mesh)
+                    y__ = similar(y, S.M, length(mesh_new))
+                    for (i, m) in enumerate(mesh_new)
                         y__[:, i] .= first(interp_eval(S, cache, alg, ITU, m, k_interp,
                             mesh, y, mesh_dt))
                     end
                     y = y__
-                    S = BVPSystem(prob, mesh, alg)
+                    S = BVPSystem(prob, mesh_new, alg)
+                    mesh = mesh_new
+                    mesh_dt = mesh_dt_new
                 end
             end
         else
