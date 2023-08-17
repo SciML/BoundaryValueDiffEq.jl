@@ -35,7 +35,10 @@ function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh
     cache_collocation = sparse_jacobian_cache(jac_alg.collocation_diffmode, sd_collocation,
         loss_collocation!, resid_collocation, y)
 
+    # FIXME: The Jacobian being created is still dense. We need to define a custom Jacobian
+    #        type for this problem. We simply need to define matmul functions
     function jac!(J, x, p)
+        J .= 0
         sparse_jacobian!(@view(J[1:(S.M), :]), jac_alg.bc_diffmode, cache_bc, loss_bc!,
             resid_bc, x)
         sparse_jacobian!(@view(J[(S.M + 1):end, :]), jac_alg.collocation_diffmode,
