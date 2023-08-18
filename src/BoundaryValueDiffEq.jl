@@ -22,7 +22,7 @@ include("solve.jl")
 include("adaptivity.jl")
 
 export Shooting
-export MIRK3, MIRK4, MIRK5, MIRK6
+export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 export MIRKJacobianComputationAlgorithm
 export AutoMultiModeDifferentiation, AutoFastDifferentiation, AutoSparseFastDifferentiation
 

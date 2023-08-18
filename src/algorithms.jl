@@ -18,7 +18,7 @@ end
 
 Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING) = Shooting(ode_alg, nlsolve)
 
-for order in (3, 4, 5, 6)
+for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
 
     @eval begin
