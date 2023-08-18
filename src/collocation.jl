@@ -1,6 +1,7 @@
 function BVPSystem(prob::BVProblem, mesh, alg::AbstractMIRK)
+    tmp = similar(prob.u0, length(prob.u0))
     return BVPSystem(alg_order(alg), alg_stage(alg), length(prob.u0), length(mesh),
-        prob.f, prob.bc, similar(prob.u0, length(prob.u0)))
+        prob.f, prob.bc, DiffCache(tmp))
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
@@ -27,12 +28,15 @@ end
 
 @views function Φ!(residual::AbstractMatrix, S::BVPSystem, TU::MIRKTableau,
     cache::AbstractMIRKCache, y::AbstractMatrix, p, mesh)
-    @unpack M, N, f!, stage, tmp = S
+    @unpack M, N, f!, stage = S
     @unpack c, v, x, b = TU
+
+    tmp = get_tmp(S.tmp, y)
+    k_discrete = get_tmp(cache.k_discrete, y)
 
     T = eltype(y)
     for i in 1:(N - 1)
-        K = cache.k_discrete[:, :, i]
+        K = k_discrete[:, :, i]
         h = mesh[i + 1] - mesh[i]
 
         for r in 1:stage

@@ -1,6 +1,6 @@
 module BoundaryValueDiffEq
 
-using LinearAlgebra, Reexport, Setfield, SparseArrays
+using LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools
 
 import ADTypes: AbstractADType

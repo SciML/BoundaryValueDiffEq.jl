@@ -35,7 +35,7 @@ end
 # ODE BVP problem system
 ## NOTE: We might want to decouple this type from MIRK sometime later
 struct BVPSystem{F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFunction},
-    tType <: AbstractVector}
+    tType <: DiffCache}
     order::Int                  # The order of MIRK method
     stage::Int                  # The state of MIRK method
     M::Int                      # Number of equations in the ODE system
@@ -45,7 +45,7 @@ struct BVPSystem{F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFuncti
     tmp::tType                  # M
 end
 
-Base.eltype(S::BVPSystem) = eltype(S.tmp)
+Base.eltype(S::BVPSystem) = eltype(S.tmp.du)
 
 # Sparsity Detection
 Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}

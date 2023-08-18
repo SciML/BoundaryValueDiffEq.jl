@@ -6,7 +6,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 """
 @views function interp_eval(S::BVPSystem, cache::AbstractMIRKCache,
     alg::AbstractMIRK, ITU::MIRKInterpTableau, t, k_interp, mesh, y, dt_)
-    @unpack k_discrete = cache
+    k_discrete = get_tmp(cache.k_discrete, y)
     i = interval(mesh, t)
     dt = dt_[i]
     τ = (t - mesh[i]) / dt
@@ -150,7 +150,7 @@ an interpolant
 @views function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache,
     alg::AbstractMIRK, ITU::MIRKInterpTableau, y, p, mesh, dt)
     @unpack M, N, stage, f! = S
-    @unpack k_discrete = cache
+    k_discrete = get_tmp(cache.k_discrete, y)
     T = eltype(y)
     @unpack s_star, τ_star = ITU
 

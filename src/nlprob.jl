@@ -19,8 +19,9 @@ function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh
         return resid
     end
 
-    resid = similar(y)
-    resid_bc, resid_collocation = @view(resid[1:(S.M)]), @view(resid[(S.M + 1):end])
+    resid = DiffCache(similar(y))
+    resid_ = get_tmp(resid, y)
+    resid_bc, resid_collocation = @view(resid_[1:(S.M)]), @view(resid_[(S.M + 1):end])
 
     sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
@@ -39,6 +40,8 @@ function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh
         SparseDiffTools.__init_𝒥(cache_collocation))
 
     function jac!(J, x, p)
+        resid__ = get_tmp(resid, x)
+        resid_bc, resid_collocation = @view(resid__[1:(S.M)]), @view(resid__[(S.M + 1):end])
         sparse_jacobian!(@view(J[1:(S.M), :]), jac_alg.bc_diffmode, cache_bc, loss_bc!,
             resid_bc, x)
         sparse_jacobian!(@view(J[(S.M + 1):end, :]), jac_alg.collocation_diffmode,
@@ -46,5 +49,6 @@ function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh
         return J
     end
 
-    return NonlinearProblem(NonlinearFunction{true}(loss!; jac, jac_prototype), y, prob.p)
+    return NonlinearProblem(NonlinearFunction{true}(loss!; jac = jac!, jac_prototype),
+        y, prob.p)
 end
