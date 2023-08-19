@@ -137,7 +137,11 @@ Divide the original subinterval into two equal length subinterval.
     return mesh_new
 end
 
-amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
+@static if VERSION ≥ v"1.9"
+    amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
+else
+    amax(x; kwargs...) = first(findmax(abs.(x); kwargs...))
+end
 
 """
     defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::AbstractMIRK,
