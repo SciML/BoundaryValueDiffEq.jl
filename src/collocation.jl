@@ -1,6 +1,8 @@
 function BVPSystem(prob::BVProblem, mesh, alg::AbstractMIRK)
-    return BVPSystem(alg_order(alg), alg_stage(alg), length(prob.u0), length(mesh),
-        prob.f, prob.bc, similar(prob.u0, length(prob.u0)))
+    M = isa(prob.u0[1], Vector) ? length(prob.u0[1]) : length(prob.u0)
+    tmp = isa(prob.u0[1], Vector) ? prob.u0[1] : prob.u0
+    return BVPSystem(alg_order(alg), alg_stage(alg), M, length(mesh),
+        prob.f, prob.bc, similar(tmp, M), mesh, prob.p)
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)

@@ -19,6 +19,8 @@ using Test, SafeTestsets
         @time @safetestset "MIRK Convergence Tests" begin
             include("mirk_convergence_tests.jl")
         end
-        #@time @safetestset "Vector of Vector" begin include("vectorofvector_initials.jl") end
+        @time @safetestset "Vector of Vector" begin
+            include("vectorofvector_initials.jl")
+        end
     end
 end
