@@ -17,8 +17,10 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
         ReturnCode.Failure)
 end
 
-function construct_MIRK_loss_function(S::BVPSystem, prob::BVProblem, TU, cache, mesh)
+function construct_MIRK_loss_function(S::BVPSystem, prob::BVProblem, TU, cache)
+    @unpack mesh = S
     function loss!(resid, u, p)
+        u = reduce(hcat, u)
         u_ = reshape(u, S.M, S.N)
         resid_ = reshape(resid, S.M, S.N)
         Φ!(resid_, S, TU, cache, u_, p, mesh)
@@ -31,8 +33,9 @@ end
 function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
     adaptive::Bool = true, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
-    T = eltype(prob.u0)
-    n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
+    T = isa(prob.u0[1], Vector) ? eltype(prob.u0[1]) : eltype(prob.u0)
+    n = isa(prob.u0[1], Vector) ? (length(prob.u0) - 1) :
+        Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     mesh_dt = diff(mesh)
 
@@ -45,10 +48,11 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
 
     y = __initial_state_from_prob(prob, mesh)
     while info == ReturnCode.Success && defect_norm > abstol
+        @unpack mesh = S # We should use the updated mesh in each iteration
         TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S)
 
-        loss! = construct_MIRK_loss_function(S, prob, TU, cache, mesh)
+        loss! = construct_MIRK_loss_function(S, prob, TU, cache)
         jac_wrapper = BVPJacobianWrapper(loss!)
 
         nlprob = _construct_nonlinear_problem_with_jacobian(jac_wrapper, S, vec(y), prob.p)
@@ -60,8 +64,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         !adaptive && break
 
         if info == ReturnCode.Success
-            defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU, y, prob.p,
-                mesh, mesh_dt)
+            defect, defect_norm, k_interp = defect_estimate(S, cache, alg, ITU, y, mesh_dt)
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
@@ -69,18 +72,17 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
         if info == ReturnCode.Success
             if defect_norm > abstol
                 # We construct a new mesh to equidistribute the defect
-                mesh, Nsub_star, info = mesh_selector(S, alg, defect, abstol, mesh,
+                new_mesh, Nsub_star, info = mesh_selector(S, alg, defect, abstol, mesh,
                     mesh_dt)
                 mesh_dt = diff(mesh)
-                # println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
-                    y__ = similar(y, S.M, Nsub_star)
-                    for (i, m) in enumerate(mesh)
+                    y__ = similar(y, S.M, Nsub_star + 1)
+                    for (i, m) in enumerate(new_mesh)
                         y__[:, i] .= first(interp_eval(S, cache, alg, ITU, m, k_interp,
                             mesh, y, mesh_dt))
                     end
                     y = y__
-                    S = BVPSystem(prob, mesh, alg)
+                    S = BVPSystem(prob, new_mesh, alg)
                 end
             end
         else

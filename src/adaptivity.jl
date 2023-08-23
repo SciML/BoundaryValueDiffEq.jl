@@ -137,7 +137,11 @@ Divide the original subinterval into two equal length subinterval.
     return mesh_new
 end
 
-amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
+@static if VERSION ≥ v"1.9"
+    amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
+else
+    amax(x; kwargs...) = first(findmax(abs.(x); kwargs...))
+end
 
 """
     defect_estimate(S::BVPSystem, cache::AbstractMIRKCache, alg::AbstractMIRK,
@@ -148,8 +152,8 @@ the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
 @views function defect_estimate(S::BVPSystem, cache::AbstractMIRKCache,
-    alg::AbstractMIRK, ITU::MIRKInterpTableau, y, p, mesh, dt)
-    @unpack M, N, stage, f! = S
+    alg::AbstractMIRK, ITU::MIRKInterpTableau, y, dt)
+    @unpack M, N, stage, f!, mesh, p = S
     @unpack k_discrete = cache
     T = eltype(y)
     @unpack s_star, τ_star = ITU

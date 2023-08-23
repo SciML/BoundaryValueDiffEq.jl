@@ -54,7 +54,7 @@ dts = 1 .// 2 .^ (3:-1:1)
 @testset "Affineness" begin
     @testset "Problem: $i" for i in (1, 3)
         prob = probArr[i]
-        @testset "MIRK$order" for order in (3, 4, 5, 6)
+        @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             @time sol = solve(prob, mirk_solver(Val(order)), dt = 0.2)
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
         end
@@ -64,7 +64,7 @@ end
 @testset "Convergence on Linear" begin
     @testset "Problem: $i" for i in (2, 4)
         prob = probArr[i]
-        @testset "MIRK$order" for (i, order) in enumerate((3, 4, 5, 6))
+        @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
             @time sim = test_convergence(dts, prob, mirk_solver(Val(order));
                 abstol = 1e-8, reltol = 1e-8)
             @test sim.𝒪est[:final]≈order atol=testTol
