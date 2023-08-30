@@ -74,7 +74,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
                 # We construct a new mesh to equidistribute the defect
                 new_mesh, Nsub_star, info = mesh_selector(S, alg, defect, abstol, mesh,
                     mesh_dt)
-                mesh_dt = diff(mesh)
+                mesh_dt = diff(new_mesh)
                 if info == ReturnCode.Success
                     y__ = similar(y, S.M, Nsub_star + 1)
                     for (i, m) in enumerate(new_mesh)
