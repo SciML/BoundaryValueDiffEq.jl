@@ -46,24 +46,10 @@ end
             @. tmp = (1 - v[r]) * y[:, i] + v[r] * y[:, i + 1]
             mul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             f!(K[:, r], tmp, p, mesh[i] + c[r] * h)
-
-            if any(!isfinite, K[:, r])
-                @show i, r
-                @show tmp, p, mesh[i] + c[r] * h
-                @show K[:, r]
-            end
         end
 
         # Update residual
         @. residual[:, i] = y[:, i + 1] - y[:, i]
         mul!(residual[:, i], K[:, 1:stage], b[1:stage], -h, T(1))
-
-        if any(!isfinite, residual[:, i])
-            @show y[:, i + 1], y[:, i]
-            @show h
-            @show K[:, 1:stage]
-            @show residual[:, i]
-            error(1)
-        end
     end
 end
