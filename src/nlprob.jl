@@ -1,3 +1,5 @@
+import SparseDiffTools: __init_𝒥
+
 function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh, y,
     jac_alg::MIRKJacobianComputationAlgorithm)
     function loss_bc!(resid, u)
@@ -36,8 +38,7 @@ function construct_MIRK_nlproblem(S::BVPSystem, prob::BVProblem, TU, cache, mesh
     cache_collocation = sparse_jacobian_cache(jac_alg.collocation_diffmode, sd_collocation,
         loss_collocation!, resid_collocation, y)
 
-    jac_prototype = vcat(SparseDiffTools.__init_𝒥(cache_bc),
-        SparseDiffTools.__init_𝒥(cache_collocation))
+    jac_prototype = vcat(__init_𝒥(cache_bc), __init_𝒥(cache_collocation))
 
     function jac!(J, x, p)
         resid__ = get_tmp(resid, x)

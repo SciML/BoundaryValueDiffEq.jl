@@ -13,15 +13,15 @@ function DiffEqBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     sol_prob = ODEProblem{iip}(prob.f, opt.u, prob.tspan, prob.p)
     sol = solve(sol_prob, alg.ode_alg; kwargs...)
     return DiffEqBase.solution_new_retcode(sol,
-        sol.retcode == opt.retcode ? ReturnCode.Success :
-        ReturnCode.Failure)
+        sol.retcode == opt.retcode ? ReturnCode.Success : ReturnCode.Failure)
 end
 
 function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
     adaptive::Bool = true, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
-    T = eltype(prob.u0)
-    n = Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
+    T = isa(prob.u0[1], Vector) ? eltype(prob.u0[1]) : eltype(prob.u0)
+    n = isa(prob.u0[1], Vector) ? (length(prob.u0) - 1) :
+        Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     mesh_dt = diff(mesh)
 
@@ -33,8 +33,8 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
     S = BVPSystem(prob, mesh, alg)
 
     y = __initial_state_from_prob(prob, mesh)
+    TU, ITU = constructMIRK(alg, S)
     while info == ReturnCode.Success && defect_norm > abstol
-        TU, ITU = constructMIRK(alg, S)
         cache = alg_cache(alg, S, y)
 
         nlprob = construct_MIRK_nlproblem(S, prob, TU, cache, mesh, vec(y), alg.jac_alg)
@@ -60,7 +60,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
                 mesh_dt_new = diff(mesh_new)
                 # println("New mesh size would be: ", Nsub_star)
                 if info == ReturnCode.Success
-                    y__ = similar(y, S.M, length(mesh_new))
+                    y__ = similar(y, S.M, Nsub_star + 1)
                     for (i, m) in enumerate(mesh_new)
                         y__[:, i] .= first(interp_eval(S, cache, alg, ITU, m, k_interp,
                             mesh, y, mesh_dt))
