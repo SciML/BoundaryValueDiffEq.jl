@@ -19,9 +19,11 @@ end
 function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
     adaptive::Bool = true, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
-    T = isa(prob.u0[1], Vector) ? eltype(prob.u0[1]) : eltype(prob.u0)
-    n = isa(prob.u0[1], Vector) ? (length(prob.u0) - 1) :
-        Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
+    (T, n) = if first(prob.u0) isa AbstractArray
+        eltype(first(prob.u0)), (length(prob.u0) - 1)
+    else
+        eltype(prob.u0), Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
+    end
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     mesh_dt = diff(mesh)
 
@@ -30,9 +32,9 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
     info::ReturnCode.T = ReturnCode.Success
     defect_norm = 2 * abstol
     MxNsub = 3000
-    S = BVPSystem(prob, mesh, alg)
 
     y = __initial_state_from_prob(prob, mesh)
+    S = BVPSystem(prob, mesh, alg, y)
     TU, ITU = constructMIRK(alg, S)
     while info == ReturnCode.Success && defect_norm > abstol
         cache = alg_cache(alg, S, y)
@@ -66,7 +68,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
                             mesh, y, mesh_dt))
                     end
                     y = y__
-                    S = BVPSystem(prob, mesh_new, alg)
+                    S = BVPSystem(prob, mesh_new, alg, y)
                     mesh = mesh_new
                     mesh_dt = mesh_dt_new
                 end
@@ -79,7 +81,7 @@ function DiffEqBase.__solve(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol
             else
                 mesh = half_mesh(mesh)
                 mesh_dt = diff(mesh)
-                S = BVPSystem(prob, mesh, alg)
+                S = BVPSystem(prob, mesh, alg, y)
                 y = similar(y, S.M, S.N)
                 fill!(y, 0)
                 info = ReturnCode.Success # Force a restart

@@ -1,8 +1,8 @@
-function BVPSystem(prob::BVProblem, mesh, alg::AbstractMIRK)
+function BVPSystem(prob::BVProblem, mesh, alg::AbstractMIRK, y)
     _u0 = first(prob.u0)
-    (M, tmp) = isa(_u0, Vector) ? (length(_u0), _u0) : (length(prob.u0), prob.u0)
+    (M, tmp) = isa(_u0, AbstractArray) ? (length(_u0), _u0) : (length(prob.u0), prob.u0)
     return BVPSystem(alg_order(alg), alg_stage(alg), M, length(mesh),
-        prob.f, prob.bc, DiffCache(similar(tmp, M)))
+        prob.f, prob.bc, DiffCache(similar(tmp, M), pickchunksize(length(y))))
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)

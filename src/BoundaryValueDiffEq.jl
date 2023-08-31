@@ -7,6 +7,7 @@ import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors
 import BandedMatrices: BandedMatrix
 import DiffEqBase: solve
+import ForwardDiff: pickchunksize
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack

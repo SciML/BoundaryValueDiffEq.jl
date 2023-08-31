@@ -49,6 +49,6 @@ Base.eltype(S::BVPSystem) = eltype(S.tmp.du)
 
 # Sparsity Detection
 Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}
-    bc_diffmode::BD = AutoFiniteDiff()
-    collocation_diffmode::CD = AutoSparseFiniteDiff()
+    bc_diffmode::BD = AutoForwardDiff()
+    collocation_diffmode::CD = AutoSparseForwardDiff()
 end
