@@ -48,7 +48,15 @@ end
 Base.eltype(S::BVPSystem) = eltype(S.tmp.du)
 
 # Sparsity Detection
-Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}
-    bc_diffmode::BD = AutoForwardDiff()
-    collocation_diffmode::CD = AutoSparseForwardDiff()
+@static if VERSION < v"1.9"
+    # Sparse Linear Solvers in LinearSolve.jl are a bit flaky on older versions
+    Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}
+        bc_diffmode::BD = AutoForwardDiff()
+        collocation_diffmode::CD = AutoForwardDiff()
+    end
+else
+    Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}
+        bc_diffmode::BD = AutoForwardDiff()
+        collocation_diffmode::CD = AutoSparseForwardDiff()
+    end
 end
