@@ -1,22 +1,32 @@
-abstract type AbstractMIRKCache end
-abstract type MIRKCache <: AbstractMIRKCache end
+const AA3 = AbstractArray{T, 3} where {T}  # TODO: Remove
 
-const AA3 = AbstractArray{T, 3} where {T}
-
-for order in (2, 3, 4, 5, 6)
-    cache = Symbol("MIRK$(order)Cache")
-    # `k_discrete` stores discrete stages for each subinterval,
-    # hence the size of k_discrete is M × stage × (N - 1)
-    @eval struct $(cache){kType} <: MIRKCache
-        k_discrete::kType
-    end
-
-    @eval @truncate_stacktrace $cache
-
-    algType = Symbol("MIRK$(order)")
-    @eval function alg_cache(::$algType, S::BVPSystem, y::AbstractArray)
-        tmp = get_tmp(S.tmp, y)
-        return $(cache)(DiffCache(similar(tmp, S.M, S.stage, S.N - 1),
-            pickchunksize(length(y))))
-    end
+@concrete struct MIRKCache{T}
+    order::Int                 # The order of MIRK method
+    stage::Int                 # The state of MIRK method
+    M::Int
+    in_size
+    f!                         # FIXME: After supporting OOP functions
+    bc!                        # FIXME: After supporting OOP functions
+    prob
+    problem_type
+    p
+    alg
+    TU
+    ITU
+    # Everything below gets resized in adaptive methods
+    mesh
+    mesh_dt
+    k_discrete
+    k_interp
+    y
+    y₀
+    residual
+    # The following 2 caches are never resized
+    fᵢ_cache
+    fᵢ₂_cache
+    defect
+    new_stages
+    kwargs
 end
+
+Base.eltype(::MIRKCache{T}) where {T} = T

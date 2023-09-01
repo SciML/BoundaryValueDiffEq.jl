@@ -6,12 +6,14 @@ using LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors
 import BandedMatrices: BandedMatrix
+import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
 
+include("utils.jl")
 include("types.jl")
 include("algorithms.jl")
 include("alg_utils.jl")

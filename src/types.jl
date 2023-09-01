@@ -34,6 +34,7 @@ end
 
 # ODE BVP problem system
 ## NOTE: We might want to decouple this type from MIRK sometime later
+# FIXME: Remove
 struct BVPSystem{F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFunction},
     tType <: DiffCache}
     order::Int                  # The order of MIRK method
