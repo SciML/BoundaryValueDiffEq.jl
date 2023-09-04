@@ -1,10 +1,10 @@
 module BoundaryValueDiffEq
 
-using LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
+using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools
 
 import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors
+import ArrayInterface: matrix_colors, parameterless_type
 import BandedMatrices: BandedMatrix
 import ConcreteStructs: @concrete
 import DiffEqBase: solve

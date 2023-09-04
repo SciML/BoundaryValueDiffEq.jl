@@ -19,8 +19,13 @@ tspan = (0, pi / 2)
 p = [rand()]
 bvp = BVProblem(ode!, bc!, initial_guess, tspan, p)
 ensemble_prob = EnsembleProblem(bvp, prob_func = prob_func)
-@test_nowarn sim = solve(ensemble_prob, MIRK2(), trajectories = 10, dt = 0.1)
-@test_nowarn sim = solve(ensemble_prob, MIRK3(), trajectories = 10, dt = 0.1)
-@test_nowarn sim = solve(ensemble_prob, MIRK4(), trajectories = 10, dt = 0.1)
-@test_nowarn sim = solve(ensemble_prob, MIRK5(), trajectories = 10, dt = 0.1)
-@test_nowarn sim = solve(ensemble_prob, MIRK6(), trajectories = 10, dt = 0.1)
+
+@testset "$(nameof(typeof(solver)))" for solver in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
+    jac_algs = [MIRKJacobianComputationAlgorithm(),
+        MIRKJacobianComputationAlgorithm(; bc_diffmode = AutoFiniteDiff(),
+            collocation_diffmode = AutoSparseFiniteDiff())]
+    for jac_alg in jac_algs
+        sim = solve(ensemble_prob, solver(; jac_alg), trajectories = 10, dt = 0.1)
+        @test SciMLBase.successful_retcode(sim)
+    end
+end

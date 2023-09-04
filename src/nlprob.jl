@@ -37,8 +37,11 @@ function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
 
     N = length(cache.mesh)
     sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
+        # FIXME: We don't really need BandedMatrices. Especially because it doesn't play
+        #        well with CUDA and other GPU packages
         Jₛ = sparse(BandedMatrix(similar(y, (cache.M * (N - 1), cache.M * N)),
             (1, 2 * cache.M)))
+        Jₛ = adapt(parameterless_type(y), Jₛ)
         JacPrototypeSparsityDetection(; jac_prototype = Jₛ)
     else
         NoSparsityDetection()
