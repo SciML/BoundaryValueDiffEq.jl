@@ -4,23 +4,18 @@ __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _) = deepcopy(u0
 __initial_state_from_prob(u0::AbstractMatrix, _) = copy(u0)
 
 # Auxiliary functions for evaluation
-function eval_bc_residual!(residual::DiffCache, _, bc!, y, p, mesh, u)
-    resid = get_tmp(residual, u)
-    ys = [get_tmp(yᵢ, u) for yᵢ in y]
-    bc!(resid, ys, p, mesh)
+function eval_bc_residual!(residual::AbstractArray, _, bc!, y, p, mesh, u)
+    return bc!(residual, y, p, mesh)
 end
-function eval_bc_residual!(residual::DiffCache, ::TwoPointBVProblem, bc!, y, p, mesh, u)
-    resid = get_tmp(residual, u)
-    y₁ = get_tmp(first(y), u)
-    y₂ = get_tmp(last(y), u)
-    bc!(resid, (y₁, y₂), p, (first(mesh), last(mesh)))
+function eval_bc_residual!(residual::AbstractArray, ::TwoPointBVProblem, bc!, y, p, mesh, u)
+    y₁ = first(y)
+    y₂ = last(y)
+    return bc!(residual, (y₁, y₂), p, (first(mesh), last(mesh)))
 end
 
-@views Φ!(cache::MIRKCache, u, p = cache.p) = Φ!(cache.residual[2:end], cache, u, p)
-
-function Φ!(residual, cache::MIRKCache, u, p = cache.p)
+function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
     return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f!, cache.TU,
-        cache.y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+        y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
 @views function Φ!(residual, fᵢ_cache::DiffCache, k_discrete, f!, TU::MIRKTableau, y, u, p,
@@ -31,7 +26,7 @@ end
     T = eltype(u)
     for i in eachindex(k_discrete)
         K = get_tmp(k_discrete[i], u)
-        residᵢ = get_tmp(residual[i], u)
+        residᵢ = residual[i]
         h = mesh_dt[i]
 
         yᵢ = get_tmp(y[i], u)

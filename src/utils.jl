@@ -16,18 +16,6 @@ end
     return y
 end
 
-@views function recursive_flatten!(y::AbstractVector, x::Vector{<:DiffCache};
-    skip_first::Bool = false)
-    i = 0
-    x_ = skip_first ? x[2:end] : x
-    for xᵢ in x_
-        xᵢ_ = get_tmp(xᵢ, y)
-        copyto!(y[(i + 1):(i + length(xᵢ_))], xᵢ_)
-        i += length(xᵢ_)
-    end
-    return y
-end
-
 @views function recursive_unflatten!(y::Vector{<:AbstractArray}, x::AbstractVector)
     i = 0
     for yᵢ in y
@@ -38,11 +26,19 @@ end
 end
 
 @views function recursive_unflatten!(y::Vector{<:DiffCache}, x::AbstractVector)
-    i = 0
+    return recursive_unflatten!(get_tmp.(y, (x,)), x)
+end
+
+function recursive_fill!(y::Vector{<:AbstractArray}, x)
     for yᵢ in y
-        yᵢ_ = get_tmp(yᵢ, x)
-        copyto!(yᵢ_, x[(i + 1):(i + length(yᵢ_))])
-        i += length(yᵢ_)
+        fill!(yᵢ, x)
     end
     return y
+end
+
+function diff!(dx, x)
+    for i in eachindex(dx)
+        dx[i] = x[i + 1] - x[i]
+    end
+    return dx
 end

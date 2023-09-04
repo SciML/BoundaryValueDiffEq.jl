@@ -30,3 +30,38 @@ const AA3 = AbstractArray{T, 3} where {T}  # TODO: Remove
 end
 
 Base.eltype(::MIRKCache{T}) where {T} = T
+
+"""
+    expand_cache!(cache::MIRKCache)
+
+After redistributing or halving the mesh, this function expands the required vectors to
+match the length of the new mesh.
+"""
+function expand_cache!(cache::MIRKCache)
+    Nₙ = length(cache.mesh)
+    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
+    __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
+    __append_similar!(cache.y, Nₙ, cache.M)
+    __append_similar!(cache.y₀, Nₙ, cache.M)
+    __append_similar!(cache.residual, Nₙ, cache.M)
+    __append_similar!(cache.defect, Nₙ - 1, cache.M)
+    __append_similar!(cache.new_stages, Nₙ - 1, cache.M)
+    return cache
+end
+
+function __append_similar!(x::AbstractVector{<: AbstractArray}, n, _)
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, [similar(first(x)) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVector{<: DiffCache}, n, M)
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    chunksize = pickchunksize(M * (N + length(x)))
+    append!(x, [DiffCache(similar(first(x).du), chunksize) for _ in 1:N])
+    return x
+end

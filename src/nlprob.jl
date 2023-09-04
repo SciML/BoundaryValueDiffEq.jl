@@ -2,26 +2,26 @@ import SparseDiffTools: __init_𝒥
 
 function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
     function loss_bc!(resid::AbstractVector, u::AbstractVector, p = cache.p)
-        recursive_unflatten!(cache.y, u)
-        eval_bc_residual!(cache.residual[1], cache.problem_type, cache.bc!, cache.y, p,
-            cache.mesh, u)
-        copyto!(resid, get_tmp(cache.residual[1], u))
+        y_ = recursive_unflatten!(cache.y, u)
+        eval_bc_residual!(resid, cache.problem_type, cache.bc!, y_, p, cache.mesh, u)
         return resid
     end
 
     function loss_collocation!(resid::AbstractVector, u::AbstractVector, p = cache.p)
-        recursive_unflatten!(cache.y, u)
-        Φ!(cache, u, p)
-        recursive_flatten!(resid, cache.residual; skip_first = true)
+        y_ = recursive_unflatten!(cache.y, u)
+        resids = [get_tmp(r, u) for r in cache.residual[2:end]]
+        Φ!(resids, cache, y_, u, p)
+        recursive_flatten!(resid, resids)
         return resid
     end
 
     function loss!(resid::AbstractVector, u::AbstractVector, p)
-        recursive_unflatten!(cache.y, u)
-        eval_bc_residual!(cache.residual[1], cache.problem_type, cache.bc!, cache.y, p,
+        y_ = recursive_unflatten!(cache.y, u)
+        resids = [get_tmp(r, u) for r in cache.residual]
+        eval_bc_residual!(resids[1], cache.problem_type, cache.bc!, y_, p,
             cache.mesh, u)
-        Φ!(cache, u, p)
-        recursive_flatten!(resid, cache.residual)
+        Φ!(resids[2:end], cache, y_, u, p)
+        recursive_flatten!(resid, resids)
         return resid
     end
 
@@ -54,7 +54,6 @@ function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
             resid_bc, x)
         sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.collocation_diffmode,
             cache_collocation, loss_collocation!, resid_collocation, x)
-
         return J
     end
 
