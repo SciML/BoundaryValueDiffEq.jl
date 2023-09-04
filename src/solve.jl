@@ -28,16 +28,17 @@ end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
     adaptive = true, kwargs...)
-    _u0 = first(prob.u0)
-    (T, M, n) = if _u0 isa AbstractArray
+    has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
+    (T, M, n) = if has_initial_guess
         # If user provided a vector of initial guesses
+        _u0 = first(prob.u0)
         eltype(_u0), length(_u0), (length(prob.u0) - 1)
     else
         dt ≤ 0 && throw(ArgumentError("dt must be positive"))
         eltype(prob.u0), length(prob.u0), Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     end
     chunksize = pickchunksize(M * (n + 1))
-    if _u0 isa AbstractArray
+    if has_initial_guess
         fᵢ_cache = maybe_allocate_diffcache(similar(_u0), chunksize, alg.jac_alg)
         fᵢ₂_cache = similar(_u0)
     else
@@ -46,7 +47,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     end
 
     # Without this, boxing breaks type stability
-    X = _u0 isa AbstractArray ? _u0 : prob.u0
+    X = has_initial_guess ? _u0 : prob.u0
 
     # NOTE: Assumes the user provided initial guess is on a uniform mesh
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))

@@ -41,7 +41,7 @@ Generate new mesh based on the defect.
 
     info = ReturnCode.Success
 
-    ŝ = amax.(defect)
+    ŝ = [maximum(abs, d) for d in defect]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -136,12 +136,6 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
     return mesh, mesh_dt
 end
 half_mesh!(cache::MIRKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
-
-@static if VERSION ≥ v"1.9"
-    amax(x; kwargs...) = first(findmax(abs, x; kwargs...))
-else
-    amax(x; kwargs...) = first(findmax(abs.(x); kwargs...))
-end
 
 """
     defect_estimate!(cache::MIRKCache{T})

@@ -34,12 +34,32 @@ end
 
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
-            mul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            Φ!_maybe_matmul!(tmp, K, x, r, h, T)
             f!(K[:, r], tmp, p, mesh[i] + c[r] * h)
         end
 
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
-        mul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        Φ!_maybe_matmul_2!(residᵢ, K, b, stage, h, T)
+    end
+end
+
+function Φ!_maybe_matmul!(tmp::Array, K, x, r, h, ::Type{T}) where {T}
+    mul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+end
+
+function Φ!_maybe_matmul!(tmp, K, x, r, h, ::Type{T}) where {T}
+    for i in 1:(r - 1)
+        @. tmp += K[:, i] * x[r, i] * h
+    end
+end
+
+function Φ!_maybe_matmul_2!(tmp::Array, K, b, stage, h, ::Type{T}) where {T}
+    mul!(tmp, K[:, 1:stage], b[1:stage], -h, T(1))
+end
+
+function Φ!_maybe_matmul_2!(tmp, K, b, stage, h, ::Type{T}) where {T}
+    for i in 1:stage
+        @. tmp -= K[:, i] * b[i] * h
     end
 end
