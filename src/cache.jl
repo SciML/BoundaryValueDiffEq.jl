@@ -7,14 +7,16 @@ for order in (2, 3, 4, 5, 6)
     cache = Symbol("MIRK$(order)Cache")
     # `k_discrete` stores discrete stages for each subinterval,
     # hence the size of k_discrete is M × stage × (N - 1)
-    @eval struct $(cache){kType <: AA3} <: MIRKCache
+    @eval struct $(cache){kType} <: MIRKCache
         k_discrete::kType
     end
 
     @eval @truncate_stacktrace $cache
 
     algType = Symbol("MIRK$(order)")
-    @eval function alg_cache(::$algType, S::BVPSystem)
-        return $(cache)(similar(S.tmp, S.M, S.stage, S.N - 1))
+    @eval function alg_cache(::$algType, S::BVPSystem, y::AbstractArray)
+        tmp = get_tmp(S.tmp, y)
+        return $(cache)(DiffCache(similar(tmp, S.M, S.stage, S.N - 1),
+            pickchunksize(length(y))))
     end
 end
