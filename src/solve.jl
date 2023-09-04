@@ -27,9 +27,7 @@ end
 # MIRK Methods
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
-    kwargs...)
-    # TODO: Avoid allocating a few of these if adaptive is false
-    # TODO: Only allocate as DualCache if jac_alg has ForwardDiff
+    adaptive = true, kwargs...)
     _u0 = first(prob.u0)
     (T, M, n) = if _u0 isa AbstractArray
         # If user provided a vector of initial guesses
@@ -40,10 +38,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     end
     chunksize = pickchunksize(M * (n + 1))
     if _u0 isa AbstractArray
-        fᵢ_cache = DiffCache(similar(_u0), chunksize)
+        fᵢ_cache = maybe_allocate_diffcache(similar(_u0), chunksize, alg.jac_alg)
         fᵢ₂_cache = similar(_u0)
     else
-        fᵢ_cache = DiffCache(similar(prob.u0), chunksize)
+        fᵢ_cache = maybe_allocate_diffcache(similar(prob.u0), chunksize, alg.jac_alg)
         fᵢ₂_cache = similar(prob.u0)
     end
 
@@ -59,25 +57,27 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_state_from_prob(prob, mesh)
-    y = [DiffCache(copy(yᵢ), chunksize) for yᵢ in y₀]
+    y = [maybe_allocate_diffcache(copy(yᵢ), chunksize, alg.jac_alg) for yᵢ in y₀]
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [DiffCache(similar(X, M, stage), chunksize) for _ in 1:n]
-    k_interp = [similar(X, M, ITU.s_star - stage) for _ in 1:n]
+    k_discrete = [maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
+                  for _ in 1:n]
+    k_interp = adaptive ? [similar(X, M, ITU.s_star - stage) for _ in 1:n] :
+               [similar(X, 0, 0) for _ in 1:n]
 
     # FIXME: Here we are making the assumption that size(first(residual)) == size(first(y))
     #        This won't hold true for underconstrained or overconstrained problems
-    residual = [DiffCache(copy(yᵢ), chunksize) for yᵢ in y₀]
+    residual = [maybe_allocate_diffcache(copy(yᵢ), chunksize, alg.jac_alg) for yᵢ in y₀]
 
-    defect = [similar(X, M) for _ in 1:n]
+    defect = adaptive ? [similar(X, M) for _ in 1:n] : [similar(X, 0) for _ in 1:n]
 
-    new_stages = [similar(X, M) for _ in 1:n]
+    new_stages = adaptive ? [similar(X, M) for _ in 1:n] : [similar(X, 0) for _ in 1:n]
 
     return MIRKCache{T}(alg_order(alg), stage, M, size(X), prob.f, prob.bc, prob,
         prob.problem_type, prob.p, alg, TU, ITU, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
         residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        (; defect_threshold, MxNsub, abstol, dt, kwargs...))
+        (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
 end
 
 function __split_mirk_kwargs(; defect_threshold, MxNsub, abstol, dt, adaptive = true,
@@ -111,7 +111,7 @@ function SciMLBase.solve!(cache::MIRKCache)
         if info == ReturnCode.Success
             if defect_norm > abstol
                 # We construct a new mesh to equidistribute the defect
-                mesh, mesh_dt, Nsub_star, info = mesh_selector!(cache)
+                mesh, mesh_dt, _, info = mesh_selector!(cache)
                 if info == ReturnCode.Success
                     __append_similar!(cache.y₀, length(cache.mesh), cache.M)
                     for (i, m) in enumerate(cache.mesh)

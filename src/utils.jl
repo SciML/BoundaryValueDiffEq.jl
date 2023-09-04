@@ -1,5 +1,5 @@
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
-recursive_length(x::Vector{<:DiffCache}) = sum(length, x)
+recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
 function recursive_flatten(x::Vector{<:AbstractArray})
     y = similar(first(x), recursive_length(x))
@@ -25,7 +25,7 @@ end
     return y
 end
 
-@views function recursive_unflatten!(y::Vector{<:DiffCache}, x::AbstractVector)
+@views function recursive_unflatten!(y::Vector{<:MaybeDiffCache}, x::AbstractVector)
     return recursive_unflatten!(get_tmp.(y, (x,)), x)
 end
 

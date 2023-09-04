@@ -13,8 +13,8 @@ import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
 
-include("utils.jl")
 include("types.jl")
+include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 include("mirk_tableaus.jl")

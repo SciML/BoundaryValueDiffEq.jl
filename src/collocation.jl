@@ -18,7 +18,7 @@ function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
         y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
-@views function Φ!(residual, fᵢ_cache::DiffCache, k_discrete, f!, TU::MIRKTableau, y, u, p,
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
     mesh, mesh_dt, stage::Int)
     @unpack c, v, x, b = TU
 
