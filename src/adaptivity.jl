@@ -165,13 +165,6 @@ an interpolant
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
-        if isnan(est₁)
-            @show cache.k_interp[i]
-            @show w₁, w₁′, i
-            @show z
-            throw(ArgumentError("NaN in defect estimate"))
-        end
-
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
         f!(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
@@ -231,7 +224,11 @@ function sum_stages!(z, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    __maybe_matmul!(z,
+        k_interp[i][:, 1:(s_star - stage)],
+        w[(stage + 1):s_star],
+        true,
+        true)
     z .= z .* dt .+ cache.y₀[i]
 
     return z
@@ -243,10 +240,18 @@ end
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    __maybe_matmul!(z,
+        k_interp[i][:, 1:(s_star - stage)],
+        w[(stage + 1):s_star],
+        true,
+        true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
-    __maybe_matmul!(z′, k_interp[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+    __maybe_matmul!(z′,
+        k_interp[i][:, 1:(s_star - stage)],
+        w′[(stage + 1):s_star],
+        true,
+        true)
     z .= z .* dt .+ cache.y₀[i]
 
     return z, z′
