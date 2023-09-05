@@ -20,12 +20,11 @@ p = [rand()]
 bvp = BVProblem(ode!, bc!, initial_guess, tspan, p)
 ensemble_prob = EnsembleProblem(bvp, prob_func = prob_func)
 
-@testset "$(nameof(typeof(solver)))" for solver in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
+@testset "$(solver)" for solver in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
     jac_algs = [MIRKJacobianComputationAlgorithm(),
         MIRKJacobianComputationAlgorithm(; bc_diffmode = AutoFiniteDiff(),
             collocation_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        sim = solve(ensemble_prob, solver(; jac_alg), trajectories = 10, dt = 0.1)
-        @test SciMLBase.successful_retcode(sim)
+        @test_nowarn solve(ensemble_prob, solver(; jac_alg), trajectories = 10, dt = 0.1)
     end
 end

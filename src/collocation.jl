@@ -1,7 +1,8 @@
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
-__initial_state_from_prob(u0::AbstractVector{<:Real}, mesh) = [copy(u0) for _ in mesh]
-__initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _) = deepcopy(u0)
-__initial_state_from_prob(u0::AbstractMatrix, _) = copy(u0)
+__initial_state_from_prob(u0::AbstractArray, mesh) = [copy(vec(u0)) for _ in mesh]
+function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
+    [copy(vec(u)) for u in u0]
+end
 
 # Auxiliary functions for evaluation
 function eval_bc_residual!(residual::AbstractArray, _, bc!, y, p, mesh, u)

@@ -39,11 +39,11 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     end
     chunksize = pickchunksize(M * (n + 1))
     if has_initial_guess
-        fᵢ_cache = maybe_allocate_diffcache(similar(_u0), chunksize, alg.jac_alg)
-        fᵢ₂_cache = similar(_u0)
+        fᵢ_cache = maybe_allocate_diffcache(vec(similar(_u0)), chunksize, alg.jac_alg)
+        fᵢ₂_cache = vec(similar(_u0))
     else
-        fᵢ_cache = maybe_allocate_diffcache(similar(prob.u0), chunksize, alg.jac_alg)
-        fᵢ₂_cache = similar(prob.u0)
+        fᵢ_cache = maybe_allocate_diffcache(vec(similar(prob.u0)), chunksize, alg.jac_alg)
+        fᵢ₂_cache = vec(similar(prob.u0))
     end
 
     # Without this, boxing breaks type stability
@@ -58,7 +58,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_state_from_prob(prob, mesh)
-    y = [maybe_allocate_diffcache(copy(yᵢ), chunksize, alg.jac_alg) for yᵢ in y₀]
+    y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
@@ -69,13 +69,33 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
 
     # FIXME: Here we are making the assumption that size(first(residual)) == size(first(y))
     #        This won't hold true for underconstrained or overconstrained problems
-    residual = [maybe_allocate_diffcache(copy(yᵢ), chunksize, alg.jac_alg) for yᵢ in y₀]
+    resid₁_size = size(X)
+    residual = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
 
     defect = adaptive ? [similar(X, M) for _ in 1:n] : [similar(X, 0) for _ in 1:n]
 
     new_stages = adaptive ? [similar(X, M) for _ in 1:n] : [similar(X, 0) for _ in 1:n]
 
-    return MIRKCache{T}(alg_order(alg), stage, M, size(X), prob.f, prob.bc, prob,
+    # Transform the functions to handle non-vector inputs
+    f, bc = if X isa AbstractVector
+        prob.f, prob.bc
+    else
+        function vecf(du, u, p, t)
+            du_ = reshape(du, size(X))
+            x_ = reshape(u, size(X))
+            prob.f(du_, x_, p, t)
+            return du
+        end
+        function vecbc(resid, sol, p, t)
+            resid_ = reshape(resid, resid₁_size)
+            sol_ = map(s -> reshape(s, size(X)), sol)
+            prob.bc(resid_, sol_, p, t)
+            return resid
+        end
+        vecf, vecbc
+    end
+
+    return MIRKCache{T}(alg_order(alg), stage, M, size(X), f, bc, prob,
         prob.problem_type, prob.p, alg, TU, ITU, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
         residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
         (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
@@ -136,5 +156,6 @@ function SciMLBase.solve!(cache::MIRKCache)
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, mesh, cache.y₀; retcode = info)
+    return DiffEqBase.build_solution(prob, alg, mesh,
+        [reshape(y, cache.in_size) for y in cache.y₀]; retcode = info)
 end

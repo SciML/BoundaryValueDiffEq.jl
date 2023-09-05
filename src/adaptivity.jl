@@ -201,7 +201,8 @@ Here, the ki_interp is the stages in one subinterval.
         end
         for i in eachindex(new_stages)
             new_stages[i] .= new_stages[i] .* mesh_dt[i] .+
-                             (1 - v_star[r]) .* y[i].du .+ v_star[r] .* y[i + 1].du
+                             (1 - v_star[r]) .* vec(y[i].du) .+
+                             v_star[r] .* vec(y[i + 1].du)
             f!(k_interp[i][:, r], new_stages[i], p, mesh[i] + c_star[r] * mesh_dt[i])
         end
     end

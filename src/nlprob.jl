@@ -18,8 +18,7 @@ function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
     function loss!(resid::AbstractVector, u::AbstractVector, p)
         y_ = recursive_unflatten!(cache.y, u)
         resids = [get_tmp(r, u) for r in cache.residual]
-        eval_bc_residual!(resids[1], cache.problem_type, cache.bc!, y_, p,
-            cache.mesh, u)
+        eval_bc_residual!(resids[1], cache.problem_type, cache.bc!, y_, p, cache.mesh, u)
         Φ!(resids[2:end], cache, y_, u, p)
         recursive_flatten!(resid, resids)
         return resid
