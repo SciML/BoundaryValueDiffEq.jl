@@ -165,6 +165,13 @@ an interpolant
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
+        if isnan(est₁)
+            @show cache.k_interp[i]
+            @show w₁, w₁′, i
+            @show z
+            throw(ArgumentError("NaN in defect estimate"))
+        end
+
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
         f!(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
@@ -186,8 +193,19 @@ Here, the ki_interp is the stages in one subinterval.
     @unpack x_star, s_star, c_star, v_star = cache.ITU
     @unpack k_interp, k_discrete, f!, stage, new_stages, y, p, mesh, mesh_dt = cache
 
+    [fill!(s, zero(eltype(s))) for s in new_stages]
     for r in 1:(s_star - stage)
-        __maybe_matmul!(new_stages[r], k_discrete, k_interp, x_star, stage, s_star, r)
+        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
+        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
+        for j in eachindex(k_discrete)
+            __maybe_matmul!(new_stages[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
+        end
+        if r > 1
+            for j in eachindex(k_interp)
+                __maybe_matmul!(new_stages[j], k_interp[j][:, 1:(r - 1)], x_star[idx₂],
+                    T(1), T(1))
+            end
+        end
         for i in eachindex(new_stages)
             new_stages[i] .= new_stages[i] .* mesh_dt[i] .+
                              (1 - v_star[r]) .* y[i].du .+ v_star[r] .* y[i + 1].du
@@ -196,37 +214,6 @@ Here, the ki_interp is the stages in one subinterval.
     end
 
     return k_interp
-end
-
-function __maybe_matmul!(z::Array, k_discrete, k_interp, x_star, r, s_star, stage)
-    idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
-    for j in eachindex(k_discrete)
-        mul!(z, k_discrete[j].du[:, 1:stage], x_star[idx₁])
-    end
-    if r > 1
-        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
-        for j in eachindex(k_interp)
-            mul!(z, k_interp[j][:, 1:(r - 1)], x_star[idx₂], true, true)
-        end
-    end
-    return z
-end
-
-function __maybe_matmul!(z, k_discrete, k_interp, x_star, r, s_star, stage)
-    z .= 0
-    for j in eachindex(k_discrete)
-        for k in 1:stage
-            z .+= k_discrete[j].du[:, k] .* x_star[(k - 1) * (s_star - stage) + r]
-        end
-    end
-    if r > 1
-        for j in eachindex(k_interp)
-            for k in 1:(r - 1)
-                z .+= k_interp[j][:, k] .* x_star[(k + stage - 1) * (s_star - stage) + r]
-            end
-        end
-    end
-    return z
 end
 
 """
@@ -242,7 +229,9 @@ function sum_stages!(z, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
-    __maybe_matmul!(z, k_discrete, k_interp, w, stage, s_star, i)
+    z .= zero(z)
+    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ cache.y₀[i]
 
     return z
@@ -252,30 +241,15 @@ end
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
-    __maybe_matmul!(z, k_discrete, k_interp, w, stage, s_star, i)
-    __maybe_matmul!(z′, k_discrete, k_interp, w′, stage, s_star, i)
+    z .= zero(z)
+    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z′ .= zero(z′)
+    __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′, k_interp[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
     z .= z .* dt .+ cache.y₀[i]
 
     return z, z′
-end
-
-function __maybe_matmul!(z::Array, k_discrete, k_interp, w, stage, s_star, i)
-    mul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    mul!(z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
-end
-
-function __maybe_matmul!(z, k_discrete, k_interp, w, stage, s_star, i)
-    # NOTE: We can implement it as mul! as above but then we pay the cost of moving
-    #       `w` to the GPU too many times. Instead if we iterate of w and w′ we save
-    #       that cost. Our main cost is anyways going to be due to a large `u0` and
-    #       we are going to use GPUs for that
-    z .= 0
-    for j in 1:stage
-        z .+= k_discrete[i].du[:, j] .* w[j]
-    end
-    for j in (stage + 1):s_star
-        z .+= k_interp[i][:, j - stage] .* w[j]
-    end
 end
 
 for order in (2, 3, 4, 5, 6)

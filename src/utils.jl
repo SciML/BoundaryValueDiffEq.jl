@@ -42,3 +42,18 @@ function diff!(dx, x)
     end
     return dx
 end
+
+function __maybe_matmul!(z::Array, A, b, α=eltype(z)(1), β=eltype(z)(0))
+    mul!(z, A, b, α, β)
+end
+
+# NOTE: We can implement it as mul! as above but then we pay the cost of moving
+#       `w` to the GPU too many times. Instead if we iterate of w and w′ we save
+#       that cost. Our main cost is anyways going to be due to a large `u0` and
+#       we are going to use GPUs for that
+function __maybe_matmul!(z, A, b, α=eltype(z)(1), β=eltype(z)(0))
+    for j in eachindex(b)
+        z .= α .* A[:, j] .* b[j] .+ β .* z
+    end
+    return z
+end

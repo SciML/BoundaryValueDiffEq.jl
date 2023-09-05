@@ -37,11 +37,7 @@ function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
 
     N = length(cache.mesh)
     sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
-        # FIXME: We don't really need BandedMatrices. Especially because it doesn't play
-        #        well with CUDA and other GPU packages
-        Jₛ = sparse(BandedMatrix(similar(y, (cache.M * (N - 1), cache.M * N)),
-            (1, 2 * cache.M)))
-        Jₛ = adapt(parameterless_type(y), Jₛ)
+        Jₛ = construct_sparse_banded_jac_prototype(y, cache.M, N)
         JacPrototypeSparsityDetection(; jac_prototype = Jₛ)
     else
         NoSparsityDetection()
@@ -62,4 +58,19 @@ function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
 
     return NonlinearProblem(NonlinearFunction{true}(loss!; jac = jac!, jac_prototype),
         y, cache.p)
+end
+
+function construct_sparse_banded_jac_prototype(y, M, N)
+    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
+    Is = Vector{Int}(undef, l)
+    Js = Vector{Int}(undef, l)
+    idx = 1
+    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
+        Is[idx] = i
+        Js[idx] = j
+        idx += 1
+    end
+    y_ = similar(y, length(Is))
+    return sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
+        y_, M * (N - 1), M * N)
 end
