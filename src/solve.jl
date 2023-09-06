@@ -108,7 +108,7 @@ function __split_mirk_kwargs(; defect_threshold, MxNsub, abstol, dt, adaptive = 
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
-    (defect_threshold, MxNsub, abstol, adaptive, dt), kwargs = __split_mirk_kwargs(;
+    (defect_threshold, MxNsub, abstol, adaptive, _), kwargs = __split_mirk_kwargs(;
         cache.kwargs...)
     @unpack y, y₀, prob, alg, mesh, mesh_dt, TU, ITU = cache
     info::ReturnCode.T = ReturnCode.Success
