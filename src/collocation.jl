@@ -1,55 +1,46 @@
-function BVPSystem(prob::BVProblem, mesh, alg::AbstractMIRK, y)
-    _u0 = first(prob.u0)
-    (M, tmp) = isa(_u0, AbstractArray) ? (length(_u0), _u0) : (length(prob.u0), prob.u0)
-    return BVPSystem(alg_order(alg), alg_stage(alg), M, length(mesh),
-        prob.f, prob.bc, DiffCache(similar(tmp, M), pickchunksize(length(y))))
-end
-
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
-function __initial_state_from_prob(u0::AbstractVector{<:Real}, mesh)
-    repeat(u0, outer = (1, length(mesh)))
+__initial_state_from_prob(u0::AbstractArray, mesh) = [copy(vec(u0)) for _ in mesh]
+function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
+    [copy(vec(u)) for u in u0]
 end
-__initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _) = reduce(hcat, u0)
-__initial_state_from_prob(u0::AbstractMatrix, _) = copy(u0)
 
 # Auxiliary functions for evaluation
-@inline @views function eval_bc_residual!(residual::AbstractVector,
-    ::SciMLBase.StandardBVProblem, S::BVPSystem, y, p, mesh)
-    @static if VERSION ≥ v"1.9"
-        y_ = eachcol(y) # Returns ColumnSlices which can be indexed into
-    else
-        y_ = collect(eachcol(y)) # Can't index into Generator
-    end
-    S.bc!(residual, y_, p, mesh)
+function eval_bc_residual!(residual::AbstractArray, _, bc!, y, p, mesh, u)
+    return bc!(residual, y, p, mesh)
 end
-@inline @views function eval_bc_residual!(residual::AbstractVector, ::TwoPointBVProblem, y,
-    S::BVPSystem, p, mesh)
-    S.bc!(residual, (y[:, 1], y[:, end]), p, (mesh[1], mesh[end]))
+function eval_bc_residual!(residual::AbstractArray, ::TwoPointBVProblem, bc!, y, p, mesh, u)
+    y₁ = first(y)
+    y₂ = last(y)
+    return bc!(residual, (y₁, y₂), p, (first(mesh), last(mesh)))
 end
 
-@views function Φ!(residual::AbstractMatrix, S::BVPSystem, TU::MIRKTableau,
-    cache::AbstractMIRKCache, y::AbstractMatrix, p, mesh)
-    @unpack M, N, f!, stage = S
+function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f!, cache.TU,
+        y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+end
+
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
+    mesh, mesh_dt, stage::Int)
     @unpack c, v, x, b = TU
 
-    tmp = get_tmp(S.tmp, y)
-    k_discrete = get_tmp(cache.k_discrete, y)
+    tmp = get_tmp(fᵢ_cache, u)
+    T = eltype(u)
+    for i in eachindex(k_discrete)
+        K = get_tmp(k_discrete[i], u)
+        residᵢ = residual[i]
+        h = mesh_dt[i]
 
-    T = eltype(y)
-    for i in 1:(N - 1)
-        K = k_discrete[:, :, i]
-        K .= 0
-        tmp .= 0
-        h = mesh[i + 1] - mesh[i]
+        yᵢ = get_tmp(y[i], u)
+        yᵢ₊₁ = get_tmp(y[i + 1], u)
 
         for r in 1:stage
-            @. tmp = (1 - v[r]) * y[:, i] + v[r] * y[:, i + 1]
-            mul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
+            __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             f!(K[:, r], tmp, p, mesh[i] + c[r] * h)
         end
 
         # Update residual
-        @. residual[:, i] = y[:, i + 1] - y[:, i]
-        mul!(residual[:, i], K[:, 1:stage], b[1:stage], -h, T(1))
+        @. residᵢ = yᵢ₊₁ - yᵢ
+        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 end

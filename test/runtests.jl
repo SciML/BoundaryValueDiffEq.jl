@@ -23,4 +23,10 @@ using Test, SafeTestsets
             include("vectorofvector_initials.jl")
         end
     end
+
+    @time @testset "Non Vector Inputs Tests" begin
+        @time @safetestset "Non Vector Inputs" begin
+            include("non_vector_inputs.jl")
+        end
+    end
 end

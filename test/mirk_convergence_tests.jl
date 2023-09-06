@@ -89,8 +89,13 @@ end
 
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
-@test_nowarn solve(bvp1, MIRK2(); dt = 0.005)
-@test_nowarn solve(bvp1, MIRK3(); dt = 0.005)
-@test_nowarn solve(bvp1, MIRK4(); dt = 0.05)
-@test_nowarn solve(bvp1, MIRK5(); dt = 0.05)
-@test_nowarn solve(bvp1, MIRK6(); dt = 0.05)
+
+jac_alg = MIRKJacobianComputationAlgorithm(; bc_diffmode = AutoFiniteDiff(),
+    collocation_diffmode = AutoSparseFiniteDiff())
+
+# Using ForwardDiff might lead to Cache expansion warnings
+@test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
+@test_nowarn solve(bvp1, MIRK3(; jac_alg); dt = 0.005)
+@test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)

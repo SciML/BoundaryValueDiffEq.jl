@@ -63,3 +63,11 @@ end
 bvp1 = TwoPointBVProblem(TC!, bc_po!, sol.u, tspan)
 sol6 = solve(bvp1, MIRK6(); dt = 0.5)
 @test SciMLBase.successful_retcode(sol6.retcode)
+
+@static if VERSION ≥ v"1.9"
+    # 1.6 runs without sparsity support. This takes over 2 hrs to run there :(
+    # Setup to test the mesh_selector! code
+    bvp1 = TwoPointBVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
+    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1e-16)
+    @test SciMLBase.successful_retcode(sol6.retcode)
+end

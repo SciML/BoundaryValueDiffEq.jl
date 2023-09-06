@@ -1,12 +1,10 @@
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
     f = Symbol("constructMIRK$(order)")
-    @eval constructMIRK(::$(alg), S::BVPSystem) = $(f)(S)
+    @eval constructMIRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
 end
 
-function constructMIRK2(S::BVPSystem)
-    T = eltype(S)
-
+function constructMIRK2(::Type{T}) where {T}
     # RK coefficients tableau
     s = 1
     c = [1 // 2]
@@ -26,9 +24,7 @@ function constructMIRK2(S::BVPSystem)
     return TU, ITU
 end
 
-function constructMIRK3(S::BVPSystem)
-    T = eltype(S)
-
+function constructMIRK3(::Type{T}) where {T}
     # RK coefficients tableau
     s = 2
     c = [0, 2 // 3]
@@ -49,9 +45,7 @@ function constructMIRK3(S::BVPSystem)
     return TU, ITU
 end
 
-function constructMIRK4(S::BVPSystem)
-    T = eltype(S)
-
+function constructMIRK4(::Type{T}) where {T}
     # RK coefficients tableau
     s = 3
     c = [0, 1, 1 // 2, 3 // 4]
@@ -73,9 +67,7 @@ function constructMIRK4(S::BVPSystem)
     return TU, ITU
 end
 
-function constructMIRK5(S::BVPSystem)
-    T = eltype(S)
-
+function constructMIRK5(::Type{T}) where {T}
     # RK coefficients tableau
     s = 4
     c = [0, 1, 3 // 4, 3 // 10]
@@ -99,9 +91,7 @@ function constructMIRK5(S::BVPSystem)
     return TU, ITU
 end
 
-function constructMIRK6(S::BVPSystem)
-    T = eltype(S)
-
+function constructMIRK6(::Type{T}) where {T}
     # RK coefficients tableau
     s = 5
     c = [0, 1, 1 // 4, 3 // 4, 1 // 2]

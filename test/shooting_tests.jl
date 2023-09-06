@@ -2,7 +2,7 @@ using BoundaryValueDiffEq
 using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
 using Test, LinearAlgebra
 
-println("Shooting method")
+@info "Shooting method"
 
 function f(du, u, p, t)
     (x, v) = u

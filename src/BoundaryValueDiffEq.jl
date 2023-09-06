@@ -1,11 +1,11 @@
 module BoundaryValueDiffEq
 
-using LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
+using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools
 
 import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors
-import BandedMatrices: BandedMatrix
+import ArrayInterface: matrix_colors, parameterless_type
+import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import SparseDiffTools: AbstractSparseADType
@@ -13,6 +13,7 @@ import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
 
 include("types.jl")
+include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 include("mirk_tableaus.jl")

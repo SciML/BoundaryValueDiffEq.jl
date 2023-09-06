@@ -32,21 +32,6 @@ end
 
 @truncate_stacktrace MIRKInterpTableau 1
 
-# ODE BVP problem system
-## NOTE: We might want to decouple this type from MIRK sometime later
-struct BVPSystem{F <: Function, B <: Union{Function, SciMLBase.TwoPointBVPFunction},
-    tType <: DiffCache}
-    order::Int                  # The order of MIRK method
-    stage::Int                  # The state of MIRK method
-    M::Int                      # Number of equations in the ODE system
-    N::Int                      # Number of nodes in the mesh
-    f!::F                       # M -> M
-    bc!::B                      # 2 -> 2
-    tmp::tType                  # M
-end
-
-Base.eltype(S::BVPSystem) = eltype(S.tmp.du)
-
 # Sparsity Detection
 @static if VERSION < v"1.9"
     # Sparse Linear Solvers in LinearSolve.jl are a bit flaky on older versions
@@ -60,3 +45,29 @@ else
         collocation_diffmode::CD = AutoSparseForwardDiff()
     end
 end
+
+__needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true
+__needs_diffcache(_) = false
+function __needs_diffcache(jac_alg::MIRKJacobianComputationAlgorithm)
+    return __needs_diffcache(jac_alg.bc_diffmode) ||
+           __needs_diffcache(jac_alg.collocation_diffmode)
+end
+
+# We don't need to always allocate a DiffCache. This works around that.
+@concrete struct FakeDiffCache
+    du
+end
+
+function maybe_allocate_diffcache(x, chunksize, jac_alg)
+    if __needs_diffcache(jac_alg)
+        return DiffCache(x, chunksize)
+    else
+        return FakeDiffCache(x)
+    end
+end
+maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
+maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
+
+PreallocationTools.get_tmp(dc::FakeDiffCache, _) = dc.du
+
+const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
