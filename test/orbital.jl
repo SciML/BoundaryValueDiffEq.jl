@@ -3,6 +3,8 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
 
 @info "Testing Lambert's Problem"
 
+@info "Testing Lambert's Problem"
+
 y0 = [
     -4.7763169762853989E+06,
     -3.8386398704441520E+05,
@@ -74,8 +76,7 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
     nlsolve = NewtonRaphson(; autodiff)
-    @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
-        reltol = 1e-13)
+    @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13, reltol = 1e-13)
     cur_bc!(resid_f, sol, nothing, sol.t)
     @test norm(resid_f, Inf) < TestTol
 end

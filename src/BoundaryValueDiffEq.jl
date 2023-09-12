@@ -11,6 +11,7 @@ import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation
+import RecursiveArrayTools: ArrayPartition
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
