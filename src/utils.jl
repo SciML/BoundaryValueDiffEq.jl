@@ -15,6 +15,18 @@ end
     end
     return y
 end
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray})
+    x_, xiter = Iterators.peel(x)
+    # x_ will be an ArrayPartition
+    copyto!(y[1:length(x_.x[1])], x_.x[1])
+    i = length(x_.x[1])
+    for xᵢ in xiter
+        copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
+        i += length(xᵢ)
+    end
+    copyto!(y[(i + 1):(i + length(x_.x[2]))], x_.x[2])
+    return y
+end
 
 @views function recursive_unflatten!(y::Vector{<:AbstractArray}, x::AbstractVector)
     i = 0
@@ -56,4 +68,23 @@ function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
         z .= α .* A[:, j] .* b[j] .+ β .* z
     end
     return z
+end
+
+## Easier to dispatch
+eval_bc_residual(pt, bc, sol, p) = eval_bc_residual(pt, bc, sol, p, sol.t)
+eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
+function eval_bc_residual(::TwoPointBVProblem, bc, sol, p, t)
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
+    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    resid₀, resid₁ = bc((ua, ub), p)
+    return ArrayPartition(resid₀, resid₁)
+end
+
+eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
+eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, bc!, sol, p, t)
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
+    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    bc!((resid.x[1], resid.x[2]), (ua, ub), p)
+    return resid
 end

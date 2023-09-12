@@ -9,11 +9,17 @@ import ArrayInterface: matrix_colors, parameterless_type
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
-import RecursiveArrayTools: DiffEqArray
+import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
+
+function SciMLBase.__solve(prob::BVProblem, alg; kwargs...)
+    # If dispatch not directly defined
+    cache = init(prob, alg; kwargs...)
+    return solve!(cache)
+end
 
 include("types.jl")
 include("utils.jl")
@@ -23,7 +29,8 @@ include("mirk_tableaus.jl")
 include("cache.jl")
 include("collocation.jl")
 include("nlprob.jl")
-include("solve.jl")
+include("solve/single_shooting.jl")
+include("solve/mirk.jl")
 include("adaptivity.jl")
 include("interpolation.jl")
 

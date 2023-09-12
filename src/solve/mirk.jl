@@ -1,34 +1,7 @@
-function SciMLBase.__solve(prob::BVProblem, alg; kwargs...)
-    # If dispatch not directly defined
-    cache = init(prob, alg; kwargs...)
-    return solve!(cache)
-end
-
-# Shooting Methods
-
-function SciMLBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
-    iip = isinplace(prob)
-    bc = prob.bc
-    u0 = deepcopy(prob.u0)
-    function loss!(resid, u0, p)
-        tmp_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, p)
-        internal_sol = solve(tmp_prob, alg.ode_alg; kwargs...)
-        bc(resid, internal_sol, prob.p, internal_sol.t)
-        return nothing
-    end
-    opt = solve(NonlinearProblem(NonlinearFunction{true}(loss!), u0, prob.p), alg.nlsolve;
-        kwargs...)
-    sol_prob = ODEProblem{iip}(prob.f, opt.u, prob.tspan, prob.p)
-    sol = solve(sol_prob, alg.ode_alg; kwargs...)
-    return DiffEqBase.solution_new_retcode(sol,
-        sol.retcode == opt.retcode ? ReturnCode.Success : ReturnCode.Failure)
-end
-
-# MIRK Methods
-
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
     adaptive = true, kwargs...)
     has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
+    iip = isinplace(prob)
     (T, M, n) = if has_initial_guess
         # If user provided a vector of initial guesses
         _u0 = first(prob.u0)
@@ -67,10 +40,28 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     k_interp = adaptive ? [similar(X, M, ITU.s_star - stage) for _ in 1:n] :
                [similar(X, 0, 0) for _ in 1:n]
 
-    # FIXME: Here we are making the assumption that size(first(residual)) == size(first(y))
-    #        This won't hold true for underconstrained or overconstrained problems
-    resid₁_size = size(X)
-    residual = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
+    resid₁_size = if prob.f.bcresid_prototype === nothing
+        size(X)
+    elseif prob.f.bcresid_prototype isa ArrayPartition
+        size.(prob.f.bcresid_prototype.x)
+    else
+        size(prob.f.bcresid_prototype)
+    end
+
+    if iip
+        if prob.f.bcresid_prototype === nothing
+            residual = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg)
+                        for yᵢ in y₀]
+        else
+            residual = vcat([
+                    maybe_allocate_diffcache(vec(copy(prob.f.bcresid_prototype)),
+                        chunksize, alg.jac_alg)],
+                [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg)
+                 for yᵢ in y₀[2:end]])
+        end
+    else
+        residual = nothing
+    end
 
     defect = adaptive ? [similar(X, M) for _ in 1:n] : [similar(X, 0) for _ in 1:n]
 
@@ -79,23 +70,46 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     # Transform the functions to handle non-vector inputs
     f, bc = if X isa AbstractVector
         prob.f, prob.bc
-    else
-        function vecf(du, u, p, t)
+    elseif iip
+        function vecf!(du, u, p, t)
             du_ = reshape(du, size(X))
             x_ = reshape(u, size(X))
             prob.f(du_, x_, p, t)
             return du
         end
-        function vecbc(resid, sol, p, t)
+        function vecbc!(resid, sol, p, t)
             resid_ = reshape(resid, resid₁_size)
             sol_ = map(s -> reshape(s, size(X)), sol)
             prob.bc(resid_, sol_, p, t)
             return resid
         end
+        function vecbc!((resida, residb), (ua, ub), p)
+            resida_ = reshape(resida, resid₁_size[1])
+            residb_ = reshape(residb, resid₁_size[2])
+            ua_ = reshape(ua, size(X))
+            ub_ = reshape(ub, size(X))
+            prob.bc((resida_, residb_), (ua_, ub_), p)
+            return (resida, residb)
+        end
+        vecf!, vecbc!
+    else
+        function vecf(u, p, t)
+            x_ = reshape(u, size(X))
+            return vec(prob.f(x_, p, t))
+        end
+        function vecbc(sol, p, t)
+            sol_ = map(s -> reshape(s, size(X)), sol)
+            return vec(prob.bc(sol_, p, t))
+        end
+        function vecbc((ua, ub), p)
+            ua_ = reshape(ua, size(X))
+            ub_ = reshape(ub, size(X))
+            return vec.(prob.bc((ua_, ub_), p))
+        end
         vecf, vecbc
     end
 
-    return MIRKCache{T}(alg_order(alg), stage, M, size(X), f, bc, prob,
+    return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
         prob.problem_type, prob.p, alg, TU, ITU, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
         residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
         (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))

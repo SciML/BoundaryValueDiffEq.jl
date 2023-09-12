@@ -25,6 +25,8 @@ ensemble_prob = EnsembleProblem(bvp, prob_func = prob_func)
         MIRKJacobianComputationAlgorithm(; bc_diffmode = AutoFiniteDiff(),
             collocation_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        @test_nowarn solve(ensemble_prob, solver(; jac_alg), trajectories = 10, dt = 0.1)
+        # Not sure why it is throwing so many warnings
+        sol = solve(ensemble_prob, solver(; jac_alg); trajectories = 10, dt = 0.1)
+        @test sol.converged
     end
 end

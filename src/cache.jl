@@ -1,10 +1,10 @@
-@concrete struct MIRKCache{T}
+@concrete struct MIRKCache{iip, T}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
     in_size
-    f!                         # FIXME: After supporting OOP functions
-    bc!                        # FIXME: After supporting OOP functions
+    f
+    bc
     prob                       # BVProblem
     problem_type               # StandardBVProblem
     p                          # Parameters
@@ -27,7 +27,7 @@
     kwargs
 end
 
-Base.eltype(::MIRKCache{T}) where {T} = T
+Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
 
 """
     expand_cache!(cache::MIRKCache)

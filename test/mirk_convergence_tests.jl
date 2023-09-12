@@ -6,44 +6,62 @@ for order in (2, 3, 4, 5, 6)
 end
 
 # First order test
-function func_1!(du, u, p, t)
+function f1!(du, u, p, t)
     du[1] = u[2]
     du[2] = 0
 end
+f1(u, p, t) = [u[2], 0]
 
-# Not able to change the initial condition.
-# Hard coded solution.
-func_1 = ODEFunction(func_1!, analytic = (u0, p, t) -> [5 - t, -1])
+# Second order linear test
+function f2!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = -u[1]
+end
+f2(u, p, t) = [u[2], -u[1]]
 
 function boundary!(residual, u, p, t)
     residual[1] = u[1][1] - 5
     residual[2] = u[end][1]
 end
+boundary(u, p, t) = [u[1][1] - 5, u[end][1]]
 
-function boundary_two_point!(residual, u, p, t)
-    ua = u[1]
-    ub = u[end]
-    residual[1] = ua[1] - 5
-    residual[2] = ub[1]
+function boundary_two_point!((resida, residb), (ua, ub), p)
+    resida[1] = ua[1] - 5
+    residb[1] = ub[1]
 end
-
-# Second order linear test
-function func_2!(du, u, p, t)
-    du[1] = u[2]
-    du[2] = -u[1]
-end
+boundary_two_point((ua, ub), p) = [ua[1] - 5, ub[1]]
 
 # Not able to change the initial condition.
 # Hard coded solution.
-func_2 = ODEFunction(func_2!,
-    analytic = (u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)),
-        5 * (-cos(t) * cot(5) - sin(t))])
+odef1! = ODEFunction(f1!, analytic = (u0, p, t) -> [5 - t, -1])
+odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
+
+odef2! = ODEFunction(f2!,
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)),
+        5 * (-cos(t) * cot(5) - sin(t)),
+    ])
+odef2 = ODEFunction(f2,
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)),
+        5 * (-cos(t) * cot(5) - sin(t)),
+    ])
+
+bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
+
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
-probArr = [BVProblem(func_1, boundary!, u0, tspan),
-    BVProblem(func_2, boundary!, u0, tspan),
-    TwoPointBVProblem(func_1, boundary_two_point!, u0, tspan),
-    TwoPointBVProblem(func_2, boundary_two_point!, u0, tspan)]
+
+probArr = [
+    BVProblem(odef1!, boundary!, u0, tspan),
+    BVProblem(odef1, boundary, u0, tspan),
+    BVProblem(odef2!, boundary!, u0, tspan),
+    BVProblem(odef2, boundary, u0, tspan),
+    TwoPointBVProblem(odef1!, boundary_two_point!, u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(odef1, boundary_two_point, u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(odef2!, boundary_two_point!, u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(odef2, boundary_two_point, u0, tspan; bcresid_prototype),
+];
 
 testTol = 0.2
 affineTol = 1e-2
@@ -52,7 +70,7 @@ dts = 1 .// 2 .^ (3:-1:1)
 @info "Collocation method (MIRK)"
 
 @testset "Affineness" begin
-    @testset "Problem: $i" for i in (1, 3)
+    @testset "Problem: $i" for i in (1, 2, 5, 6)
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             @time sol = solve(prob, mirk_solver(Val(order)), dt = 0.2)
@@ -62,7 +80,7 @@ dts = 1 .// 2 .^ (3:-1:1)
 end
 
 @testset "Convergence on Linear" begin
-    @testset "Problem: $i" for i in (2, 4)
+    @testset "Problem: $i" for i in (3, 4, 7, 8)
         prob = probArr[i]
         @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
             @time sim = test_convergence(dts, prob, mirk_solver(Val(order));
@@ -82,13 +100,14 @@ function simplependulum!(du, u, p, t)
     du[2] = -(g / L) * sin(θ)
 end
 
-function bc1!(residual, u, p, t)
+# FIXME: This is a really bad test. Needs interpolation
+function bc_pendulum!(residual, u, p, t)
     residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
     residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
 end
 
 u0 = MVector{2}([pi / 2, pi / 2])
-bvp1 = BVProblem(simplependulum!, bc1!, u0, tspan)
+bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
 jac_alg = MIRKJacobianComputationAlgorithm(; bc_diffmode = AutoFiniteDiff(),
     collocation_diffmode = AutoSparseFiniteDiff())

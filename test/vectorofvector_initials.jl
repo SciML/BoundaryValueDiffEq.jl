@@ -52,7 +52,8 @@ tspan = (0.0, T)
 prob = ODEProblem(TC!, u0, tspan, dt = 0.01)
 sol = solve(prob, Rodas4P(), reltol = 1e-12, abstol = 1e-12, saveat = 0.5)
 
-#The BVP set up
+# The BVP set up
+# This is not really kind of Two-Point BVP we support. However,
 function bc_po!(residual, u, p, t)
     residual[1] = u[1][1] - u[end][1]
     residual[2] = u[1][2] - u[end][2]
@@ -60,14 +61,14 @@ function bc_po!(residual, u, p, t)
 end
 
 #This is the part of the code that has problems
-bvp1 = TwoPointBVProblem(TC!, bc_po!, sol.u, tspan)
+bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
 sol6 = solve(bvp1, MIRK6(); dt = 0.5)
 @test SciMLBase.successful_retcode(sol6.retcode)
 
 @static if VERSION ≥ v"1.9"
     # 1.6 runs without sparsity support. This takes over 2 hrs to run there :(
     # Setup to test the mesh_selector! code
-    bvp1 = TwoPointBVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
+    bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
     sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1e-16)
     @test SciMLBase.successful_retcode(sol6.retcode)
 end
