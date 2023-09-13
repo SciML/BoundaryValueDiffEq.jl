@@ -25,6 +25,7 @@ include("cache.jl")
 include("collocation.jl")
 include("nlprob.jl")
 include("solve/single_shooting.jl")
+include("solve/multiple_shooting.jl")
 include("solve/mirk.jl")
 include("adaptivity.jl")
 include("lobatto_tableaus.jl")
@@ -37,7 +38,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, a
     return solve!(cache)
 end
 
-export Shooting
+export Shooting, MultipleShooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 export RadauIIa1, RadauIIa3, RadauIIa5,RadauIIa9,RadauIIa13
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
