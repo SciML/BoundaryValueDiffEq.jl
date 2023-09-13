@@ -7,7 +7,7 @@ abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
 """
-    Shooting(ode_alg; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_SHOOTING)
+    Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING)
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
 """
@@ -17,6 +17,31 @@ struct Shooting{O, N} <: BoundaryValueDiffEqAlgorithm
 end
 
 Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING) = Shooting(ode_alg, nlsolve)
+
+"""
+    MultipleShooting(nshoots::Int, ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING,
+        grid_coarsening = true)
+
+Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
+Significantly more stable than Single Shooting.
+"""
+@concrete struct MultipleShooting
+    ode_alg
+    nlsolve
+    nshoots::Int
+    grid_coarsening
+end
+
+function MultipleShooting(nshoots::Int, ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING,
+    grid_coarsening = true)
+    @assert grid_coarsening isa Bool || grid_coarsening isa Function || grid_coarsening isa AbstractVector{<:Integer} || grid_coarsening isa NTuple{N, <:Integer} where {N}
+    grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
+    if grid_coarsening isa AbstractVector
+        sort!(grid_coarsening; rev=true)
+        @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
+    end
+    return MultipleShooting(ode_alg, nlsolve, nshoots, grid_coarsening)
+end
 
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
