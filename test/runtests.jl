@@ -1,5 +1,3 @@
-using BoundaryValueDiffEq
-using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
 using Test, SafeTestsets
 
 @testset "Boundary Value Problem Tests" begin
