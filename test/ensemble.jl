@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, Random
+using BoundaryValueDiffEq, Random, Test
 
 function ode!(du, u, p, t)
     du[1] = u[2]

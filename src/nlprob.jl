@@ -72,10 +72,7 @@ function construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {ii
         end
     end
 
-    jac, jac_prototype = generate_split_jac(cache, y, loss_bc, loss_collocation, loss,
-        cache.problem_type)
-
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    return generate_nlprob(cache, y, loss_bc, loss_collocation, loss, cache.problem_type)
 end
 
 function construct_sparse_banded_jac_prototype(y, M, N)
@@ -88,9 +85,19 @@ function construct_sparse_banded_jac_prototype(y, M, N)
         Js[idx] = j
         idx += 1
     end
+    col_colorvec = Vector{Int}(undef, M * N)
+    for i in eachindex(col_colorvec)
+        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
+    end
+    row_colorvec = Vector{Int}(undef, M * (N - 1))
+    for i in eachindex(row_colorvec)
+        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
+    end
     y_ = similar(y, length(Is))
     return sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-        y_, M * (N - 1), M * N)
+        y_, M * (N - 1), M * N),
+    col_colorvec,
+    row_colorvec
 end
 
 # Two Point Specialization
@@ -121,12 +128,23 @@ function construct_sparse_banded_jac_prototype(y::ArrayPartition, M, N)
         idx += 1
     end
 
+    col_colorvec = Vector{Int}(undef, M * N)
+    for i in eachindex(col_colorvec)
+        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
+    end
+    row_colorvec = Vector{Int}(undef, M * N)
+    for i in eachindex(row_colorvec)
+        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
+    end
+
     y_ = similar(y, length(Is))
     return sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-        y_, M * N, M * N)
+        y_, M * N, M * N),
+    col_colorvec,
+    row_colorvec
 end
 
-function generate_split_jac(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
+function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
     _) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
@@ -146,8 +164,9 @@ function generate_split_jac(cache::MIRKCache{iip}, y, loss_bc, loss_collocation,
     end
 
     sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
-        Jₛ = construct_sparse_banded_jac_prototype(y, cache.M, N)
-        JacPrototypeSparsityDetection(; jac_prototype = Jₛ)
+        Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(y, cache.M, N)
+        PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
+            col_colorvec = cvec)
     else
         NoSparsityDetection()
     end
@@ -160,7 +179,9 @@ function generate_split_jac(cache::MIRKCache{iip}, y, loss_bc, loss_collocation,
             sd_collocation, loss_collocation, y; fx = resid_collocation)
     end
 
-    jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
+    jac_prototype = vcat(init_jacobian(cache_bc),
+        jac_alg.collocation_diffmode isa AbstractSparseADType ? Jₛ :
+        init_jacobian(cache_collocation))
 
     # TODO: Pass `p` into `loss_bc` and `loss_collocation`. Currently leads to a Tag
     #       mismatch for ForwardDiff
@@ -183,10 +204,10 @@ function generate_split_jac(cache::MIRKCache{iip}, y, loss_bc, loss_collocation,
         end
     end
 
-    return jac, jac_prototype
+    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
 end
 
-function generate_split_jac(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
+function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
     ::TwoPointBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
@@ -200,31 +221,37 @@ function generate_split_jac(cache::MIRKCache{iip}, y, loss_bc, loss_collocation,
             similar(y, cache.M * (N - 1)))
     end
 
-    Jₛ = construct_sparse_banded_jac_prototype(resid, cache.M, N)
-    sd = JacPrototypeSparsityDetection(; jac_prototype = Jₛ)
-
-    if iip
-        cache = sparse_jacobian_cache(jac_alg.bc_diffmode, sd, loss, resid, y)
+    sd = if jac_alg.diffmode isa AbstractSparseADType
+        Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(resid, cache.M, N)
+        PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
+            col_colorvec = cvec)
     else
-        cache = sparse_jacobian_cache(jac_alg.bc_diffmode, sd, loss, y; fx = resid)
+        NoSparsityDetection()
     end
 
-    jac_prototype = init_jacobian(cache)
+    if iip
+        diffcache = sparse_jacobian_cache(jac_alg.diffmode, sd, loss, resid, y)
+    else
+        diffcache = sparse_jacobian_cache(jac_alg.diffmode, sd, loss, y; fx = resid)
+    end
+
+    jac_prototype = jac_alg.diffmode isa AbstractSparseADType ? Jₛ :
+                    init_jacobian(diffcache)
 
     # TODO: Pass `p` into `loss_bc` and `loss_collocation`. Currently leads to a Tag
     #       mismatch for ForwardDiff
     jac = if iip
         function jac_internal!(J, x, p)
-            sparse_jacobian!(J, jac_alg.bc_diffmode, cache, loss, resid, x)
+            sparse_jacobian!(J, jac_alg.diffmode, diffcache, loss, resid, x)
             return J
         end
     else
         J_ = jac_prototype
         function jac_internal(x, p)
-            sparse_jacobian!(J_, jac_alg.bc_diffmode, cache, loss, x)
+            sparse_jacobian!(J_, jac_alg.diffmode, diffcache, loss, x)
             return J_
         end
     end
 
-    return jac, jac_prototype
+    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
 end

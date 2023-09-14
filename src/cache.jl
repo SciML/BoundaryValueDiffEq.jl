@@ -47,6 +47,8 @@ function expand_cache!(cache::MIRKCache)
     return cache
 end
 
+__append_similar!(::Nothing, n, _) = nothing
+
 function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
     N = n - length(x)
     N == 0 && return x
