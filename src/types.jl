@@ -49,12 +49,12 @@ function MIRKJacobianComputationAlgorithm(diffmode = missing;
             diffmode = AutoForwardDiff()
             bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
             collocation_diffmode = collocation_diffmode === missing ?
-                AutoForwardDiff() : collocation_diffmode
+                                   AutoForwardDiff() : collocation_diffmode
         else
             diffmode = AutoSparseForwardDiff()
             bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
             collocation_diffmode = collocation_diffmode === missing ?
-                AutoSparseForwardDiff() : collocation_diffmode
+                                   AutoSparseForwardDiff() : collocation_diffmode
         end
         return MIRKJacobianComputationAlgorithm(bc_diffmode, collocation_diffmode,
             collocation_diffmode)

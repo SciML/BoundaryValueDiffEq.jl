@@ -63,7 +63,7 @@ end
 bvp3 = TwoPointBVProblem(f1!, bc2!, u0, tspan;
     bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1)))
 @test SciMLBase.isinplace(bvp3)
-sol = solve(bvp3, Shooting(Tsit5(), TrustRegion(; autodiff=false)))
+sol = solve(bvp3, Shooting(Tsit5(), TrustRegion(; autodiff = false)))
 @test SciMLBase.successful_retcode(sol)
 resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
 bc2!(resid_f, (sol(tspan[1]), sol(tspan[2])), nothing)

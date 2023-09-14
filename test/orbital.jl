@@ -70,12 +70,12 @@ TestTol = 0.05
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital!, cur_bc!, y0, tspan)
-for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype=Val(:central)),
-        AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype=Val(:forward)),
-        AutoSparseFiniteDiff())
+for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
+    AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
+    AutoSparseFiniteDiff())
     nlsolve = NewtonRaphson(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
-        reltol = 1e-13);
+        reltol = 1e-13)
     cur_bc!(resid_f, sol, nothing, sol.t)
     @test norm(resid_f, Inf) < TestTol
 end
@@ -83,12 +83,12 @@ end
 ### Using the TwoPoint BVP Structure
 bvp = TwoPointBVProblem(orbital!, cur_bc_2point!, y0, tspan;
     bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)))
-for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype=Val(:central)),
-        AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype=Val(:forward)),
-        AutoSparseFiniteDiff())
+for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
+    AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
+    AutoSparseFiniteDiff())
     nlsolve = NewtonRaphson(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
-        reltol = 1e-13);
+        reltol = 1e-13)
     cur_bc_2point!(resid_f_2p, (sol(t0), sol(t1)), nothing)
     @test norm(vcat(resid_f_2p...), Inf) < TestTol
 end
