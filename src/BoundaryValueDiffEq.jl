@@ -1,13 +1,16 @@
 module BoundaryValueDiffEq
 
-using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools
+using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays, SciMLBase,
+    RecursiveArrayTools
+@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
+import RecursiveArrayTools: DiffEqArray
+import SciMLBase: AbstractDiffEqInterpolation
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
@@ -22,6 +25,7 @@ include("collocation.jl")
 include("nlprob.jl")
 include("solve.jl")
 include("adaptivity.jl")
+include("interpolation.jl")
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6

@@ -1,21 +1,21 @@
 @concrete struct MIRKCache{T}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
-    M::Int
+    M::Int                     # The number of equations
     in_size
     f!                         # FIXME: After supporting OOP functions
     bc!                        # FIXME: After supporting OOP functions
-    prob
-    problem_type
-    p
-    alg
-    TU
-    ITU
+    prob                       # BVProblem
+    problem_type               # StandardBVProblem
+    p                          # Parameters
+    alg                        # MIRK methods
+    TU                         # MIRK Tableau
+    ITU                        # MIRK Interpolation Tableau
     # Everything below gets resized in adaptive methods
-    mesh
-    mesh_dt
-    k_discrete
-    k_interp
+    mesh                       # Discrete mesh
+    mesh_dt                    # Step size
+    k_discrete                 # Stage information associated with the discrete Runge-Kutta method
+    k_interp                   # Stage information associated with the discrete Runge-Kutta method
     y
     y₀
     residual
