@@ -30,6 +30,7 @@ DiffEqBase = "6.94.2"
 ForwardDiff = "0.10"
 NonlinearSolve = "2"
 RecursiveArrayTools = "2.38.10"
+ODEInterface = "0.5"
 Reexport = "0.2, 1.0"
 SciMLBase = "1"
 Setfield = "1"
@@ -37,9 +38,16 @@ TruncatedStacktraces = "1"
 UnPack = "1"
 julia = "1.6"
 
+[weakdeps]
+ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
+
+[extensions]
+BVPODEInterfaceExt = "ODEInterface"
+
 [extras]
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
+ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
