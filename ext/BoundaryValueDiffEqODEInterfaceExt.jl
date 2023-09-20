@@ -1,4 +1,4 @@
-module BVPODEInterfaceExt
+module BoundaryValueDiffEqODEInterfaceExt
 
 using SciMLBase, BoundaryValueDiffEq, ODEInterface
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
@@ -55,6 +55,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
 
     sol, retcode, stats = bvpm2_solve(initial_guess, rhs, bc, opt)
     retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure
+    bvpm2_destroy(initial_guess)
 
     x_mesh = bvpm2_get_x(sol)
     return DiffEqBase.build_solution(prob, alg, x_mesh, eachcol(evalSolution(sol, x_mesh));

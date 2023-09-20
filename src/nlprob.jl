@@ -93,11 +93,10 @@ function construct_sparse_banded_jac_prototype(y, M, N)
     for i in eachindex(row_colorvec)
         row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
     end
+
     y_ = similar(y, length(Is))
-    return sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-        y_, M * (N - 1), M * N),
-    col_colorvec,
-    row_colorvec
+    return (sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
+            y_, M * (N - 1), M * N), col_colorvec, row_colorvec)
 end
 
 # Two Point Specialization
@@ -138,10 +137,8 @@ function construct_sparse_banded_jac_prototype(y::ArrayPartition, M, N)
     end
 
     y_ = similar(y, length(Is))
-    return sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-        y_, M * N, M * N),
-    col_colorvec,
-    row_colorvec
+    return (sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
+            y_, M * N, M * N), col_colorvec, row_colorvec)
 end
 
 function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
