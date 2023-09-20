@@ -37,10 +37,9 @@ end
         i = interval(t, tval)
         dt = t[i + 1] - t[i]
         θ = (tval - t[i]) / dt
-        weights, weights_prime = interp_weights(θ, cache.alg)
+        weights, _ = interp_weights(θ, cache.alg)
         z = zeros(cache.M)
-        z_prime = zeros(cache.M)
-        sum_stages!(z, z_prime, cache, weights, weights_prime, i)
+        sum_stages!(z, cache, weights, i)
         vals[j] = copy(z)
     end
     DiffEqArray(vals, tvals)
@@ -63,10 +62,9 @@ end
         i = interval(t, tval)
         dt = t[i] - t[i - 1]
         θ = (tval - t[i]) / dt
-        weights, weights_prime = interp_weights(θ, cache.alg)
+        weights, _ = interp_weights(θ, cache.alg)
         z = zeros(cache.M)
-        z_prime = zeros(cache.M)
-        sum_stages!(z, z_prime, cache, weights, weights_prime, i)
+        sum_stages!(z, cache, weights, i)
         vals[j] = copy(z)
     end
 end
@@ -82,10 +80,9 @@ end
     i = interval(t, tval)
     dt = t[i] - t[i - 1]
     θ = (tval - t[i]) / dt
-    weights, weights_prime = interp_weights(θ, cache.alg)
+    weights, _ = interp_weights(θ, cache.alg)
     z = zeros(cache.M)
-    z_prime = zeros(cache.M)
-    sum_stages!(z, z_prime, cache, weights, weights_prime, i)
+    sum_stages!(z, cache, weights, i)
     val = copy(z)
     val
 end
