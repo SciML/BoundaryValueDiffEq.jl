@@ -1,8 +1,5 @@
 # Lambert's Problem
-
-using BoundaryValueDiffEq
-using DiffEqBase, OrdinaryDiffEq, LinearAlgebra, NonlinearSolve
-using Test
+using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
 
 @info "Testing Lambert's Problem"
 

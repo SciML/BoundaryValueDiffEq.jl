@@ -1,5 +1,5 @@
-const DEFAULT_NLSOLVE_SHOOTING = TrustRegion(; autodiff = Val(true))
-const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = Val(true))
+const DEFAULT_NLSOLVE_SHOOTING = NewtonRaphson(; autodiff = AutoForwardDiff())
+const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = AutoForwardDiff())
 const DEFAULT_JACOBIAN_ALGORITHM_MIRK = MIRKJacobianComputationAlgorithm()
 
 # Algorithms
@@ -65,7 +65,7 @@ Fortran code for solving two-point boundary value problems. For detailed documen
     input structures!
 
 !!! note
-    Only available in julia 1.9+ and if the `ODEInterface` package is loaded.
+    Only available if the `ODEInterface` package is loaded.
 """
 Base.@kwdef struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
     max_num_subintervals::Int = 3000
@@ -90,7 +90,7 @@ For detailed documentation, see
     input structures!
 
 !!! note
-    Only available in julia 1.9+ and if the `ODEInterface` package is loaded.
+    Only available if the `ODEInterface` package is loaded.
 """
 Base.@kwdef struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
     bvpclass::Int = 2

@@ -52,7 +52,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
         eachcol(evalSolution(sol, x_mesh)); retcode, stats)
 
     bvpm2_destroy(initial_guess)
-    bvpm2_destroy(sol_final)
+    bvpm2_destroy(sol)
 
     return sol_final
 end
@@ -60,14 +60,8 @@ end
 #-------
 # BVPSOL
 #-------
-bvpsol_f(f, t, u, du) = f(du, u, SciMLBase.NullParameters(), t)
-function bvpsol_bc(bc, ra, rb, ya, yb, r)
-    bc((view(r, 1:(length(ra))), view(r, (length(ra) + 1):(length(ra) + length(rb)))),
-        (ya, yb), SciMLBase.NullParameters())
-end
-
 function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3,
-    dt = 0.0, kwargs...)
+    dt = 0.0, verbose = true, kwargs...)
     _test_bvpm2_bvpsol_problem_criteria(prob, prob.problem_type, :BVPSOL)
     @assert isa(prob.p, SciMLBase.NullParameters) "BVPSOL only supports NullParameters!"
     @assert isa(prob.u0, AbstractVector{<:AbstractArray}) "BVPSOL requires a vector of initial guesses!"
@@ -78,11 +72,39 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol
         OPT_BVPCLASS => alg.bvpclass, OPT_SOLMETHOD => alg.sol_method,
         OPT_RHS_CALLMODE => RHS_CALL_INSITU)
 
-    f! = (args...) -> bvpsol_f(prob.f, args...)
-    bc! = (args...) -> bvpsol_bc(prob.bc, first(prob.f.bcresid_prototype.x),
-        last(prob.f.bcresid_prototype.x), args...)
+    f!(t, u, du) = prob.f(du, u, prob.p, t)
+    function bc!(ya, yb, r)
+        ra = first(prob.f.bcresid_prototype.x)
+        rb = last(prob.f.bcresid_prototype.x)
+        prob.bc((ra, rb), (ya, yb), prob.p)
+        r[1:length(ra)] .= ra
+        r[(length(ra) + 1):(length(ra) + length(rb))] .= rb
+        return r
+    end
 
     sol_t, sol_x, retcode, stats = bvpsol(f!, bc!, mesh, u0, alg.odesolver, opt)
+
+    if verbose
+        if retcode == -3
+            @error "Integrator failed to complete the trajectory"
+        elseif retcode == -4
+            @error "Gauss Newton method failed to converge"
+        elseif retcode == -5
+            @error "Given initial values inconsistent with separable linear bc"
+        elseif retcode == -6
+            @error """Iterative refinement faild to converge for `sol_method=0`
+            Termination since multiple shooting condition or
+            condition of Jacobian is too bad for `sol_method=1`"""
+        elseif retcode == -8
+            @error "Condensing algorithm for linear block system fails, try `sol_method=1`"
+        elseif retcode == -9
+            @error "Sparse linear solver failed"
+        elseif retcode == -10
+            @error "Real or integer work-space exhausted"
+        elseif retcode == -11
+            @error "Rank reduction failed - resulting rank is zero"
+        end
+    end
 
     return DiffEqBase.build_solution(prob, alg, sol_t, eachcol(sol_x);
         retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure, stats)

@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools, LinearAlgebra, OrdinaryDiffEq, Test
+using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
 
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")

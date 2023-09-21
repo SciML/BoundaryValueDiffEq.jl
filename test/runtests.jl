@@ -22,6 +22,12 @@ using Test, SafeTestsets
         end
     end
 
+    @time @testset "ODE Interface Solvers" begin
+        @time @safetestset "ODE Interface Tests" begin
+            include("odeinterface_ex7.jl")
+        end
+    end
+
     @time @testset "Non Vector Inputs Tests" begin
         @time @safetestset "Non Vector Inputs" begin
             include("non_vector_inputs.jl")

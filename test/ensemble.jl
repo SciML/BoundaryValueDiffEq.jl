@@ -10,15 +10,13 @@ function bc!(residual, u, p, t)
     residual[2] = u[end][1]
 end
 
-function prob_func(prob, i, repeat)
-    remake(prob, p = [rand()])
-end
+prob_func(prob, i, repeat) = remake(prob, p = [rand()])
 
 initial_guess = [0.0, 1.0]
 tspan = (0, pi / 2)
 p = [rand()]
 bvp = BVProblem(ode!, bc!, initial_guess, tspan, p)
-ensemble_prob = EnsembleProblem(bvp, prob_func = prob_func)
+ensemble_prob = EnsembleProblem(bvp; prob_func)
 
 @testset "$(solver)" for solver in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
     jac_algs = [MIRKJacobianComputationAlgorithm(),
