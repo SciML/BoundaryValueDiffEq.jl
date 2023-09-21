@@ -32,6 +32,38 @@ end
 
 @truncate_stacktrace MIRKInterpTableau 1
 
+# RK Method Tableaus
+struct RKTableau{sType, aType, cType, bType}
+    """Discrete stages of RK formula"""
+    s::sType
+    a::aType
+    c::cType
+    b::bType
+
+    function RKTableau(s, a, c, b)
+        @assert eltype(a) == eltype(c) == eltype(b)
+        return new{typeof(s), typeof(a), typeof(c), typeof(b)}(s, a, c, b)
+    end
+end
+
+@truncate_stacktrace RKTableau 1
+
+struct RKInterpTableau{s, a, c, τ}
+    s_star::s
+    a_star::a
+    c_star::c
+    τ_star::τ
+
+    function RKInterpTableau(s_star, a_star, c_star, τ_star)
+        @assert eltype(a_star) == eltype(c_star)
+        return new{typeof(s_star), typeof(a_star), typeof(c_star),
+            typeof(τ_star)}(s_star,
+            a_star, c_star, τ_star)
+    end
+end
+
+@truncate_stacktrace RKInterpTableau 1
+
 # Sparsity Detection
 @static if VERSION < v"1.9"
     # Sparse Linear Solvers in LinearSolve.jl are a bit flaky on older versions
