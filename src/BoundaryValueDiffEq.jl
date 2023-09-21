@@ -26,6 +26,7 @@ include("nlprob.jl")
 include("solve/single_shooting.jl")
 include("solve/mirk.jl")
 include("adaptivity.jl")
+include("lobatto_tableaus.jl")
 include("interpolation.jl")
 
 function SciMLBase.__solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...;
@@ -36,6 +37,7 @@ end
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
+export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export MIRKJacobianComputationAlgorithm
 # From ODEInterface.jl
 export BVPM2, BVPSOL

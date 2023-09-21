@@ -51,6 +51,32 @@ for order in (2, 3, 4, 5, 6)
     end
 end
 
+for order in (2, 3, 4, 5)
+    alg = Symbol("LobattoIIIb$(order)")
+
+    @eval begin
+        """
+            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
+                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+
+        $($order)th order LobattoIIIb method, with Newton Raphson nonlinear solver as default.
+
+        ## References
+        TODO
+        }
+        """
+        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractMIRK
+            nlsolve::N
+            jac_alg::J
+        end
+
+        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
+            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            return $(alg)(nlsolve, jac_alg)
+        end
+    end
+end
+
 """
     BVPM2(; max_num_subintervals = 3000, method_choice = 4, diagnostic_output = 1,
         error_control = 1, singular_term = nothing)
