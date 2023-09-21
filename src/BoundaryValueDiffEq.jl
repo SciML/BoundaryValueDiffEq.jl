@@ -22,9 +22,11 @@ include("collocation.jl")
 include("nlprob.jl")
 include("solve.jl")
 include("adaptivity.jl")
+include("lobatto_tableaus.jl")
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
+export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export MIRKJacobianComputationAlgorithm
 
 end
