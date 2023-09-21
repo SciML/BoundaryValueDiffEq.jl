@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{T}
+@concrete struct RKCache{T}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int
@@ -27,15 +27,15 @@
     kwargs
 end
 
-Base.eltype(::MIRKCache{T}) where {T} = T
+Base.eltype(::RKCache{T}) where {T} = T
 
 """
-    expand_cache!(cache::MIRKCache)
+    expand_cache!(cache::RKCache)
 
 After redistributing or halving the mesh, this function expands the required vectors to
 match the length of the new mesh.
 """
-function expand_cache!(cache::MIRKCache)
+function expand_cache!(cache::RKCache)
     Nₙ = length(cache.mesh)
     __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
     __append_similar!(cache.k_interp, Nₙ - 1, cache.M)

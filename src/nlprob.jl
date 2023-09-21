@@ -1,6 +1,6 @@
 import SparseDiffTools: __init_𝒥
 
-function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
+function construct_nlproblem(cache::RKCache, y::AbstractVector)
     function loss_bc!(resid::AbstractVector, u::AbstractVector, p = cache.p)
         y_ = recursive_unflatten!(cache.y, u)
         eval_bc_residual!(resid, cache.problem_type, cache.bc!, y_, p, cache.mesh, u)
@@ -55,8 +55,14 @@ function construct_nlproblem(cache::MIRKCache, y::AbstractVector)
         return J
     end
 
-    return NonlinearProblem(NonlinearFunction{true}(loss!; jac = jac!, jac_prototype),
+    # TODO: Enable sparse jacobian for RK tableau
+    if typeof(cache.TU) == MIRKTableau
+        return NonlinearProblem(NonlinearFunction{true}(loss!; jac = jac!, jac_prototype),
+            y, cache.p) 
+    else
+        return NonlinearProblem(NonlinearFunction{true}(loss!),
         y, cache.p)
+    end  
 end
 
 function construct_sparse_banded_jac_prototype(y, M, N)

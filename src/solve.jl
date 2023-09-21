@@ -59,7 +59,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_state_from_prob(prob, mesh)
     y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
-    TU, ITU = constructMIRK(alg, T)
+    TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
 
     k_discrete = [maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
@@ -95,7 +95,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
         vecf, vecbc
     end
 
-    return MIRKCache{T}(alg_order(alg), stage, M, size(X), f, bc, prob,
+    return RKCache{T}(alg_order(alg), stage, M, size(X), f, bc, prob,
         prob.problem_type, prob.p, alg, TU, ITU, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
         residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
         (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
@@ -107,7 +107,7 @@ function __split_mirk_kwargs(; defect_threshold, MxNsub, abstol, dt, adaptive = 
         (; abstol, adaptive, kwargs...))
 end
 
-function SciMLBase.solve!(cache::MIRKCache)
+function SciMLBase.solve!(cache::RKCache)
     (defect_threshold, MxNsub, abstol, adaptive, _), kwargs = __split_mirk_kwargs(;
         cache.kwargs...)
     @unpack y, y₀, prob, alg, mesh, mesh_dt, TU, ITU = cache
