@@ -1,4 +1,4 @@
-function construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
+function construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
