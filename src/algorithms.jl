@@ -1,5 +1,5 @@
-const DEFAULT_NLSOLVE_SHOOTING = NewtonRaphson(; autodiff = AutoForwardDiff())
-const DEFAULT_NLSOLVE_MIRK = NewtonRaphson(; autodiff = AutoForwardDiff())
+const DEFAULT_NLSOLVE_SHOOTING = NewtonRaphson()
+const DEFAULT_NLSOLVE_MIRK = NewtonRaphson()
 const DEFAULT_JACOBIAN_ALGORITHM_MIRK = MIRKJacobianComputationAlgorithm()
 
 # Algorithms
