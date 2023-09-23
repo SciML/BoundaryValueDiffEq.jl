@@ -34,10 +34,12 @@ end
 
 function MultipleShooting(nshoots::Int, ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING,
     grid_coarsening = true)
-    @assert grid_coarsening isa Bool || grid_coarsening isa Function || grid_coarsening isa AbstractVector{<:Integer} || grid_coarsening isa NTuple{N, <:Integer} where {N}
+    @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
+            grid_coarsening isa AbstractVector{<:Integer} ||
+            grid_coarsening isa NTuple{N, <:Integer} where {N}
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
-        sort!(grid_coarsening; rev=true)
+        sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
     return MultipleShooting(ode_alg, nlsolve, nshoots, grid_coarsening)
