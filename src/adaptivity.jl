@@ -253,7 +253,7 @@ end
         w′[(stage + 1):s_star],
         true,
         true)
-    z .= z .* dt .+ cache.y₀[i]
+    z .= z .* dt[1] .+ cache.y₀[i]
 
     return z, z′
 end
@@ -385,4 +385,18 @@ for order in (2, 3, 4, 5, 6)
             return T.(w), T.(wp)
         end
     end
+end
+
+function sol_eval(cache::MIRKCache{T}, t::T) where {T}
+    @unpack M, mesh, mesh_dt, alg, k_discrete, k_interp, y = cache
+
+    @assert mesh[1] ≤ t ≤ mesh[end]
+    i = interval(mesh, t)
+    dt = mesh_dt[i]
+    τ = (t - mesh[i]) / dt
+    weights, weights_prime = interp_weights(τ, alg)
+    z = zeros(M)
+    z_prime = zeros(M)
+    sum_stages!(z, z_prime, cache, weights, weights_prime, i, mesh_dt)
+    return z
 end

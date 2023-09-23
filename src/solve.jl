@@ -156,6 +156,7 @@ function SciMLBase.solve!(cache::MIRKCache)
         end
     end
 
+    u = [reshape(y, cache.in_size) for y in cache.y₀]
     return DiffEqBase.build_solution(prob, alg, mesh,
-        [reshape(y, cache.in_size) for y in cache.y₀]; retcode = info)
+        u; interp = MIRKInterpolation(mesh, u, cache), retcode = info)
 end
