@@ -1,10 +1,9 @@
-# TODO: Support Non-Vector Inputs
 function SciMLBase.__solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), kwargs...)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(prob.u0), size(prob.u0)
+    resid_size = prob.f.bcresid_prototype === nothing ? u0_size :
+                 size(prob.f.bcresid_prototype)
     loss_fn = if iip
-        resid_size = prob.f.bcresid_prototype === nothing ? u0_size :
-                     size(prob.f.bcresid_prototype)
         function loss!(resid, u0_, p)
             u0_internal = reshape(u0_, u0_size)
             tmp_prob = ODEProblem{iip}(prob.f, u0_internal, prob.tspan, p)
