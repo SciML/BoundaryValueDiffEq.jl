@@ -1,12 +1,12 @@
-function SciMLBase.__solve(prob::BVProblem, alg; kwargs...)
+function SciMLBase.__solve(prob::BVProblem, alg, args...; kwargs...)
     # If dispatch not directly defined
-    cache = init(prob, alg; kwargs...)
+    cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end
 
 # Shooting Methods
 
-function SciMLBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
+function SciMLBase.__solve(prob::BVProblem, alg::Shooting, args...; kwargs...)
     iip = isinplace(prob)
     bc = prob.bc
     u0 = deepcopy(prob.u0)
@@ -26,7 +26,7 @@ end
 
 # MIRK Methods
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
+function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK, args...; dt = 0.0, abstol = 1e-3,
     adaptive = true, kwargs...)
     has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
     (T, M, n) = if has_initial_guess
