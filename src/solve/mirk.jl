@@ -1,5 +1,5 @@
-function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
-    adaptive = true, kwargs...)
+function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
+    abstol = 1e-3, adaptive = true, kwargs...)
     has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
     iip = isinplace(prob)
     (T, M, n) = if has_initial_guess

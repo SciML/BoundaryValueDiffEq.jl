@@ -1,5 +1,4 @@
 # TODO: Differentiate between nlsolve kwargs and odesolve kwargs
-# TODO: Add in u0/p into `__solve`: Needed for differentiation
 # TODO: Support Non-Vector Inputs
 function SciMLBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     iip = isinplace(prob)

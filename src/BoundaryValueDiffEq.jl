@@ -15,12 +15,6 @@ import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
 
-function SciMLBase.__solve(prob::BVProblem, alg; kwargs...)
-    # If dispatch not directly defined
-    cache = init(prob, alg; kwargs...)
-    return solve!(cache)
-end
-
 include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
@@ -33,6 +27,12 @@ include("solve/single_shooting.jl")
 include("solve/mirk.jl")
 include("adaptivity.jl")
 include("interpolation.jl")
+
+function SciMLBase.__solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...;
+    kwargs...)
+    cache = init(prob, alg, args...; kwargs...)
+    return solve!(cache)
+end
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
