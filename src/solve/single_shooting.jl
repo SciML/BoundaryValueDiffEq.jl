@@ -22,9 +22,9 @@ function SciMLBase.__solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;)
     end
     opt = solve(NonlinearProblem(NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype,
                 resid_prototype = prob.f.bcresid_prototype), vec(u0), prob.p), alg.nlsolve;
-        kwargs...)
-    sol_prob = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan, prob.p)
-    sol = solve(sol_prob, alg.ode_alg; nlsolve_kwargs..., kwargs...)
+        nlsolve_kwargs..., kwargs...)
+    newprob = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan, prob.p)
+    sol = solve(newprob, alg.ode_alg; odesolve_kwargs..., kwargs...)
     return DiffEqBase.solution_new_retcode(sol,
         sol.retcode == opt.retcode ? ReturnCode.Success : ReturnCode.Failure)
 end
