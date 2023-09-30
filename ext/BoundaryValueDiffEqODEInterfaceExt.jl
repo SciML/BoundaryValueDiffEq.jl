@@ -86,23 +86,23 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol
 
     if verbose
         if retcode == -3
-            @error "Integrator failed to complete the trajectory"
+            @warn "Integrator failed to complete the trajectory"
         elseif retcode == -4
-            @error "Gauss Newton method failed to converge"
+            @warn "Gauss Newton method failed to converge"
         elseif retcode == -5
-            @error "Given initial values inconsistent with separable linear bc"
+            @warn "Given initial values inconsistent with separable linear bc"
         elseif retcode == -6
-            @error """Iterative refinement faild to converge for `sol_method=0`
+            @warn """Iterative refinement faild to converge for `sol_method=0`
             Termination since multiple shooting condition or
             condition of Jacobian is too bad for `sol_method=1`"""
         elseif retcode == -8
-            @error "Condensing algorithm for linear block system fails, try `sol_method=1`"
+            @warn "Condensing algorithm for linear block system fails, try `sol_method=1`"
         elseif retcode == -9
-            @error "Sparse linear solver failed"
+            @warn "Sparse linear solver failed"
         elseif retcode == -10
-            @error "Real or integer work-space exhausted"
+            @warn "Real or integer work-space exhausted"
         elseif retcode == -11
-            @error "Rank reduction failed - resulting rank is zero"
+            @warn "Rank reduction failed - resulting rank is zero"
         end
     end
 
