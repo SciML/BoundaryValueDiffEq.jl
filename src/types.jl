@@ -33,23 +33,39 @@ end
 @truncate_stacktrace MIRKInterpTableau 1
 
 # Sparsity Detection
-@static if VERSION < v"1.9"
-    # Sparse Linear Solvers in LinearSolve.jl are a bit flaky on older versions
-    Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}
-        bc_diffmode::BD = AutoForwardDiff()
-        collocation_diffmode::CD = AutoForwardDiff()
-    end
-else
-    Base.@kwdef struct MIRKJacobianComputationAlgorithm{BD, CD}
-        bc_diffmode::BD = AutoForwardDiff()
-        collocation_diffmode::CD = AutoSparseForwardDiff()
+@concrete struct MIRKJacobianComputationAlgorithm
+    bc_diffmode
+    collocation_diffmode
+    diffmode
+end
+
+function MIRKJacobianComputationAlgorithm(diffmode = missing;
+    collocation_diffmode = missing, bc_diffmode = missing)
+    if diffmode !== missing
+        @assert collocation_diffmode === missing && bc_diffmode === missing
+        return MIRKJacobianComputationAlgorithm(diffmode, diffmode, diffmode)
+    else
+        @static if VERSION < v"1.9"
+            diffmode = AutoForwardDiff()
+            bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
+            collocation_diffmode = collocation_diffmode === missing ?
+                                   AutoForwardDiff() : collocation_diffmode
+        else
+            diffmode = AutoSparseForwardDiff()
+            bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
+            collocation_diffmode = collocation_diffmode === missing ?
+                                   AutoSparseForwardDiff() : collocation_diffmode
+        end
+        return MIRKJacobianComputationAlgorithm(bc_diffmode, collocation_diffmode,
+            collocation_diffmode)
     end
 end
 
 __needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true
 __needs_diffcache(_) = false
 function __needs_diffcache(jac_alg::MIRKJacobianComputationAlgorithm)
-    return __needs_diffcache(jac_alg.bc_diffmode) ||
+    return __needs_diffcache(jac_alg.diffmode) ||
+           __needs_diffcache(jac_alg.bc_diffmode) ||
            __needs_diffcache(jac_alg.collocation_diffmode)
 end
 

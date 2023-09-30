@@ -1,5 +1,3 @@
-using BoundaryValueDiffEq
-using DiffEqBase, OrdinaryDiffEq, DiffEqDevTools
 using Test, SafeTestsets
 
 @testset "Boundary Value Problem Tests" begin
@@ -21,6 +19,12 @@ using Test, SafeTestsets
         end
         @time @safetestset "Vector of Vector" begin
             include("vectorofvector_initials.jl")
+        end
+    end
+
+    @time @testset "ODE Interface Solvers" begin
+        @time @safetestset "ODE Interface Tests" begin
+            include("odeinterface_ex7.jl")
         end
     end
 

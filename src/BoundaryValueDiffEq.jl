@@ -9,7 +9,7 @@ import ArrayInterface: matrix_colors, parameterless_type
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
-import RecursiveArrayTools: DiffEqArray
+import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
@@ -23,12 +23,21 @@ include("mirk_tableaus.jl")
 include("cache.jl")
 include("collocation.jl")
 include("nlprob.jl")
-include("solve.jl")
+include("solve/single_shooting.jl")
+include("solve/mirk.jl")
 include("adaptivity.jl")
 include("interpolation.jl")
+
+function SciMLBase.__solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...;
+    kwargs...)
+    cache = init(prob, alg, args...; kwargs...)
+    return solve!(cache)
+end
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 export MIRKJacobianComputationAlgorithm
+# From ODEInterface.jl
+export BVPM2, BVPSOL
 
 end

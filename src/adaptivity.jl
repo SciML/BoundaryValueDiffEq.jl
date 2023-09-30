@@ -24,11 +24,11 @@ function interval(mesh, t)
 end
 
 """
-    mesh_selector!(cache::MIRKCache{T})
+    mesh_selector!(cache::MIRKCache)
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::MIRKCache{T}) where {T}
+@views function mesh_selector!(cache::MIRKCache{iip, T}) where {iip, T}
     @unpack M, order, defect, mesh, mesh_dt = cache
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
@@ -81,11 +81,12 @@ Generate new mesh based on the defect.
 end
 
 """
-    redistribute!(cache::MIRKCache{T}, Nsub_star, ŝ, mesh, mesh_dt) where {T}
+    redistribute!(cache::MIRKCache, Nsub_star, ŝ, mesh, mesh_dt)
 
 Generate a new mesh based on the `ŝ`.
 """
-function redistribute!(cache::MIRKCache{T}, Nsub_star, ŝ, mesh, mesh_dt) where {T}
+function redistribute!(cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh,
+    mesh_dt) where {iip, T}
     N = length(mesh)
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
@@ -138,14 +139,14 @@ end
 half_mesh!(cache::MIRKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
 
 """
-    defect_estimate!(cache::MIRKCache{T})
+    defect_estimate!(cache::MIRKCache)
 
 defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::MIRKCache{T}) where {T}
-    @unpack M, stage, f!, alg, mesh, mesh_dt, defect = cache
+@views function defect_estimate!(cache::MIRKCache{iip, T}) where {iip, T}
+    @unpack M, stage, f, alg, mesh, mesh_dt, defect = cache
     @unpack s_star, τ_star = cache.ITU
 
     # Evaluate at the first sample point
@@ -157,16 +158,24 @@ an interpolant
 
     for i in 1:(length(mesh) - 1)
         dt = mesh_dt[i]
-        yᵢ₁ = cache.y[i].du
-        yᵢ₂ = cache.y[i + 1].du
 
         z, z′ = sum_stages!(cache, w₁, w₁′, i)
-        f!(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
+        if iip
+            yᵢ₁ = cache.y[i].du
+            f(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
+        else
+            yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
+        end
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
-        f!(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+        if iip
+            yᵢ₂ = cache.y[i + 1].du
+            f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+        else
+            yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+        end
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -182,11 +191,10 @@ end
 `interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-@views function interp_setup!(cache::MIRKCache{T}) where {T}
+@views function interp_setup!(cache::MIRKCache{iip, T}) where {iip, T}
     @unpack x_star, s_star, c_star, v_star = cache.ITU
-    @unpack k_interp, k_discrete, f!, stage, new_stages, y, p, mesh, mesh_dt = cache
+    @unpack k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt = cache
 
-    [fill!(s, zero(eltype(s))) for s in new_stages]
     for r in 1:(s_star - stage)
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
@@ -203,7 +211,11 @@ Here, the ki_interp is the stages in one subinterval.
             new_stages[i] .= new_stages[i] .* mesh_dt[i] .+
                              (1 - v_star[r]) .* vec(y[i].du) .+
                              v_star[r] .* vec(y[i + 1].du)
-            f!(k_interp[i][:, r], new_stages[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            if iip
+                f(k_interp[i][:, r], new_stages[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            else
+                k_interp[i][:, r] .= f(new_stages[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            end
         end
     end
 

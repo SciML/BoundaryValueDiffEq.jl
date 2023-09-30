@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEq"
 uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
-version = "4.1.0"
+version = "4.2.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -21,6 +21,12 @@ SparseDiffTools = "47a9eef4-7e08-11e9-0b38-333d64bd3804"
 TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
+[weakdeps]
+ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
+
+[extensions]
+BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
+
 [compat]
 ADTypes = "0.2"
 Adapt = "3"
@@ -28,18 +34,22 @@ ArrayInterface = "7"
 ConcreteStructs = "0.2"
 DiffEqBase = "6.94.2"
 ForwardDiff = "0.10"
-NonlinearSolve = "1"
+NonlinearSolve = "2"
+ODEInterface = "0.5"
+PreallocationTools = "0.4"
 RecursiveArrayTools = "2.38.10"
 Reexport = "0.2, 1.0"
-SciMLBase = "1.70"
+SciMLBase = "2"
 Setfield = "1"
+SparseDiffTools = "2.6"
 TruncatedStacktraces = "1"
 UnPack = "1"
-julia = "1.6"
+julia = "1.9"
 
 [extras]
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
+ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
@@ -47,4 +57,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["StaticArrays", "Random", "DiffEqDevTools", "OrdinaryDiffEq", "Test", "NonlinearSolve", "SafeTestsets"]
+test = ["StaticArrays", "Random", "DiffEqDevTools", "OrdinaryDiffEq", "Test", "NonlinearSolve", "SafeTestsets", "ODEInterface"]
