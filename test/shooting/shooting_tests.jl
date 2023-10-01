@@ -82,6 +82,18 @@ end
 
 @testset "Shooting with Complex Values" begin
     # Test for complex values
+        function f1!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -u[1]
+        return nothing
+    end
+
+    function bc1!(resid, sol, p, t)
+        t₀, t₁ = first(t), last(t)
+        resid[1] = sol(t₀)[1]
+        resid[2] = sol(t₁)[1] - 1
+        return nothing
+    end
     u0 = [0.0, 1.0] .+ 1im
     bvp = BVProblem(f1!, bc1!, u0, tspan)
     resid_f = Array{ComplexF64}(undef, 2)
