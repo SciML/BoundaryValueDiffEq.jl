@@ -15,7 +15,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
         for i in 1:cur_nshoots
             local odeprob = ODEProblem{iip}(f,
                 reshape(us[((i - 1) * N + 1):(i * N)], u0_size), (nodes[i], nodes[i + 1]),
-                p)
+                prob.p)
             sol = solve(odeprob, alg.ode_alg; odesolve_kwargs..., kwargs...,
                 save_end = true, save_everystep = false)
 
@@ -32,7 +32,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
         # Boundary conditions
         # Builds an ODESolution object to keep the framework for bc(,,) consistent
         odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
-        total_solution = SciMLBase.build_solution(odeprob, nothing, _ts, _us)
+        total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
 
         if iip
             eval_bc_residual!(resid_bc, prob.problem_type, bc, total_solution, p)
@@ -139,8 +139,8 @@ end
             ustart = u_at_nodes_prev[idxs_prev]
 
             odeprob = ODEProblem(f, ustart, (t0, tstop), p)
-            odesol = solve(odeprob, alg.ode_alg; odesolve_kwargs..., kwargs...,
-                saveat = (), save_end = true)
+            odesol = solve(odeprob, alg.ode_alg; odesolve_kwargs..., kwargs..., saveat = (),
+                save_end = true)
 
             u_at_nodes[idxs] .= odesol.u[end]
         end
