@@ -23,10 +23,11 @@ include("alg_utils.jl")
 include("mirk_tableaus.jl")
 include("cache.jl")
 include("collocation.jl")
-include("nlprob.jl")
+
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
 include("solve/mirk.jl")
+
 include("adaptivity.jl")
 include("interpolation.jl")
 

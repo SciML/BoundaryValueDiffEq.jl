@@ -1,6 +1,7 @@
 # TODO: incorporate `initial_guess` similar to MIRK methods
+# FIXME: We can't specify `ensemblealg` from outside
 function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwargs = (;),
-    nlsolve_kwargs = (;), kwargs...)
+    nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), kwargs...)
     @unpack f, bc, tspan = prob
     bcresid_prototype = prob.f.bcresid_prototype === nothing ? similar(prob.u0) :
                         prob.f.bcresid_prototype
@@ -12,26 +13,33 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
 
         resid_bc, resid_nodes = resid.x[1], resid.x[2]
 
-        for i in 1:cur_nshoots
-            local odeprob = ODEProblem{iip}(f,
-                reshape(us[((i - 1) * N + 1):(i * N)], u0_size), (nodes[i], nodes[i + 1]),
-                prob.p)
-            sol = solve(odeprob, alg.ode_alg; odesolve_kwargs..., kwargs...,
-                save_end = true, save_everystep = false)
-
-            ts_[i] = sol.t
-            us_[i] = sol.u
-
-            resid_nodes[((i - 1) * N + 1):(i * N)] .= vec(us[(i * N + 1):((i + 1) * N)]) .-
-                                                      vec(sol.u[end])
+        function prob_func(probᵢ, i, repeat)
+            return remake(probᵢ; u0 = reshape(us[((i - 1) * N + 1):(i * N)], u0_size),
+                tspan = (nodes[i], nodes[i + 1]))
         end
 
-        _ts = foldl(vcat, ts_)
-        _us = foldl(vcat, us_)
+        function reduction(u, data, I)
+            for i in I
+                u.us[i] = data[i].u
+                u.ts[i] = data[i].t
+                u.resid[((i - 1) * N + 1):(i * N)] .= vec(us[(i * N + 1):((i + 1) * N)]) .-
+                                                      vec(data[i].u[end])
+            end
+            return (u, false)
+        end
+
+        odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
+
+        ensemble_prob = EnsembleProblem(odeprob; prob_func, reduction, safetycopy = false,
+            u_init = (; us = us_, ts = ts_, resid = resid_nodes))
+        ensemble_sol = solve(ensemble_prob, alg.ode_alg, ensemblealg; odesolve_kwargs...,
+            kwargs..., trajectories = cur_nshoots)
+
+        _us = reduce(vcat, ensemble_sol.u.us)
+        _ts = reduce(vcat, ensemble_sol.u.ts)
 
         # Boundary conditions
         # Builds an ODESolution object to keep the framework for bc(,,) consistent
-        odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
         total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
 
         if iip
