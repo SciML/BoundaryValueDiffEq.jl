@@ -23,29 +23,41 @@ p = [1.0, 1.0, 1.0, 1.0]
 bcresid_prototype = (zeros(1), zeros(1))
 
 # Multi-Point BVP
-mpbvp_iip = BVProblem(f!, bc!, u0, tspan, p)
-mpbvp_oop = BVProblem(f, bc, u0, tspan, p)
+@testset "Multi-Point BVP" begin
+    mpbvp_iip = BVProblem(f!, bc!, u0, tspan, p)
+    mpbvp_oop = BVProblem(f, bc, u0, tspan, p)
 
-@inferred solve(mpbvp_iip, Shooting(Tsit5()))
-@inferred solve(mpbvp_oop, Shooting(Tsit5()))
-@inferred solve(mpbvp_iip, MultipleShooting(5, Tsit5()))
-@inferred solve(mpbvp_oop, MultipleShooting(5, Tsit5()))
+    @testset "Shooting Methods" begin
+        @inferred solve(mpbvp_iip, Shooting(Tsit5()))
+        @inferred solve(mpbvp_oop, Shooting(Tsit5()))
+        @inferred solve(mpbvp_iip, MultipleShooting(5, Tsit5()))
+        @inferred solve(mpbvp_oop, MultipleShooting(5, Tsit5()))
+    end
 
-for solver in (MIRK2(), MIRK3(), MIRK4(), MIRK5(), MIRK6())
-    @inferred solve(mpbvp_iip, solver; dt = 0.2)
-    @inferred solve(mpbvp_oop, solver; dt = 0.2)
+    @testset "MIRK Methods" begin
+        for solver in (MIRK2(), MIRK3(), MIRK4(), MIRK5(), MIRK6())
+            @inferred solve(mpbvp_iip, solver; dt = 0.2)
+            @inferred solve(mpbvp_oop, solver; dt = 0.2)
+        end
+    end
 end
 
 # Two-Point BVP
-tpbvp_iip = TwoPointBVProblem(f!, twobc!, u0, tspan, p; bcresid_prototype)
-tpbvp_oop = TwoPointBVProblem(f, twobc, u0, tspan, p)
+@testset "Two-Point BVP" begin
+    tpbvp_iip = TwoPointBVProblem(f!, twobc!, u0, tspan, p; bcresid_prototype)
+    tpbvp_oop = TwoPointBVProblem(f, twobc, u0, tspan, p)
 
-@inferred solve(tpbvp_iip, Shooting(Tsit5()))
-@inferred solve(tpbvp_oop, Shooting(Tsit5()))
-@inferred solve(tpbvp_iip, MultipleShooting(5, Tsit5()))
-@inferred solve(tpbvp_oop, MultipleShooting(5, Tsit5()))
+    @testset "Shooting Methods" begin
+        @inferred solve(tpbvp_iip, Shooting(Tsit5()))
+        @inferred solve(tpbvp_oop, Shooting(Tsit5()))
+        @inferred solve(tpbvp_iip, MultipleShooting(5, Tsit5()))
+        @inferred solve(tpbvp_oop, MultipleShooting(5, Tsit5()))
+    end
 
-for solver in (MIRK2(), MIRK3(), MIRK4(), MIRK5(), MIRK6())
-    @inferred solve(tpbvp_iip, solver; dt = 0.2)
-    @inferred solve(tpbvp_oop, solver; dt = 0.2)
+    @testset "MIRK Methods" begin
+        for solver in (MIRK2(), MIRK3(), MIRK4(), MIRK5(), MIRK6())
+            @inferred solve(tpbvp_iip, solver; dt = 0.2)
+            @inferred solve(tpbvp_oop, solver; dt = 0.2)
+        end
+    end
 end
