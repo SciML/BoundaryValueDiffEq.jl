@@ -82,7 +82,7 @@ end
 
 @testset "Shooting with Complex Values" begin
     # Test for complex values
-        function f1!(du, u, p, t)
+    function f1!(du, u, p, t)
         du[1] = u[2]
         du[2] = -u[1]
         return nothing
@@ -94,6 +94,8 @@ end
         resid[2] = sol(t₁)[1] - 1
         return nothing
     end
+
+    tspan = (0.0, 100.0)
     u0 = [0.0, 1.0] .+ 1im
     bvp = BVProblem(f1!, bc1!, u0, tspan)
     resid_f = Array{ComplexF64}(undef, 2)
@@ -161,7 +163,7 @@ end
 end
 
 @testset "Ray Tracing BVP" begin
-    # Example 1.7 from 
+    # Example 1.7 from
     # "Numerical Solution to Boundary Value Problems for Ordinary Differential equations",
     # 'Ascher, Mattheij, Russell'
 
