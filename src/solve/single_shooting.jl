@@ -25,6 +25,6 @@ function SciMLBase.__solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;)
         nlsolve_kwargs..., kwargs...)
     newprob = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan, prob.p)
     sol = solve(newprob, alg.ode_alg; odesolve_kwargs..., kwargs...)
-    return DiffEqBase.solution_new_retcode(sol,
+    return SciMLBase.solution_new_retcode(sol,
         sol.retcode == opt.retcode ? ReturnCode.Success : ReturnCode.Failure)
 end
