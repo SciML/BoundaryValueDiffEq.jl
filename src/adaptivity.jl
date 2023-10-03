@@ -18,9 +18,7 @@ end
 Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
 """
 function interval(mesh, t)
-    t == first(mesh) && return 1
-    t == last(mesh) && return length(mesh) - 1
-    return searchsortedfirst(mesh, t) - 1
+    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
 end
 
 """
@@ -236,11 +234,8 @@ function sum_stages!(z, cache::RKCache, w, i::Int, dt = cache.mesh_dt[i])
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    __maybe_matmul!(z,
-        k_interp[i][:, 1:(s_star - stage)],
-        w[(stage + 1):s_star],
-        true,
-        true)
+    __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)],
+        w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ cache.y₀[i]
 
     return z
@@ -252,18 +247,12 @@ end
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    __maybe_matmul!(z,
-        k_interp[i][:, 1:(s_star - stage)],
-        w[(stage + 1):s_star],
-        true,
-        true)
+    __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)],
+        w[(stage + 1):s_star], true, true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
-    __maybe_matmul!(z′,
-        k_interp[i][:, 1:(s_star - stage)],
-        w′[(stage + 1):s_star],
-        true,
-        true)
+    __maybe_matmul!(z′, k_interp[i][:, 1:(s_star - stage)],
+        w′[(stage + 1):s_star], true, true)
     z .= z .* dt[1] .+ cache.y₀[i]
 
     return z, z′

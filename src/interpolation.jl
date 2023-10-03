@@ -4,6 +4,10 @@ struct MIRKInterpolation{T1, T2} <: AbstractDiffEqInterpolation
     cache
 end
 
+function DiffEqBase.interp_summary(interp::MIRKInterpolation)
+    return "MIRK Order $(interp.cache.order) Interpolation"
+end
+
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation(tvals, id, idxs, deriv, p, continuity)
 end
@@ -12,14 +16,11 @@ function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol 
     interpolation!(val, tvals, id, idxs, deriv, p, continuity)
 end
 
-@inline function interpolation(tvals,
-    id::I,
-    idxs,
-    deriv::D,
-    p,
+# FIXME: Fix the interpolation outside the tspan
+
+@inline function interpolation(tvals, id::I, idxs, deriv::D, p,
     continuity::Symbol = :left) where {I, D}
-    t = id.t
-    u = id.u
+    @unpack t, u, cache = id
     cache = id.cache
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -33,56 +34,29 @@ end
     end
 
     for j in idx
-        tval = tvals[j]
-        i = interval(t, tval)
-        dt = t[i + 1] - t[i]
-        θ = (tval - t[i]) / dt
-        weights, _ = interp_weights(θ, cache.alg)
-        z = zeros(cache.M)
-        sum_stages!(z, cache, weights, i)
-        vals[j] = copy(z)
+        z = similar(cache.fᵢ₂_cache)
+        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        vals[j] = z
     end
-    DiffEqArray(vals, tvals)
+    return DiffEqArray(vals, tvals)
 end
 
-@inline function interpolation!(vals,
-    tvals,
-    id::I,
-    idxs,
-    deriv::D,
-    p,
+@inline function interpolation!(vals, tvals, id::I, idxs, deriv::D, p,
     continuity::Symbol = :left) where {I, D}
-    t = id.t
-    cache = id.cache
+    @unpack t, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
     for j in idx
-        tval = tvals[j]
-        i = interval(t, tval)
-        dt = t[i] - t[i - 1]
-        θ = (tval - t[i]) / dt
-        weights, _ = interp_weights(θ, cache.alg)
-        z = zeros(cache.M)
-        sum_stages!(z, cache, weights, i)
-        vals[j] = copy(z)
+        z = similar(cache.fᵢ₂_cache)
+        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        vals[j] = z
     end
 end
 
-@inline function interpolation(tval::Number,
-    id::I,
-    idxs,
-    deriv::D,
-    p,
+@inline function interpolation(tval::Number, id::I, idxs, deriv::D, p,
     continuity::Symbol = :left) where {I, D}
-    t = id.t
-    cache = id.cache
-    i = interval(t, tval)
-    dt = t[i] - t[i - 1]
-    θ = (tval - t[i]) / dt
-    weights, _ = interp_weights(θ, cache.alg)
-    z = zeros(cache.M)
-    sum_stages!(z, cache, weights, i)
-    val = copy(z)
-    val
+    z = similar(id.cache.fᵢ₂_cache)
+    interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
+    return z
 end
