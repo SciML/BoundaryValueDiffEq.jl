@@ -37,6 +37,7 @@ end
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
+export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export MIRKJacobianComputationAlgorithm
 # From ODEInterface.jl
