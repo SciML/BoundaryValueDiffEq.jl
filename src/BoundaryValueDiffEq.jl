@@ -34,6 +34,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, a
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end
+include("lobatto_tableaus.jl")
 
 export Shooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
