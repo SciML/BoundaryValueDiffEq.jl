@@ -4,7 +4,6 @@ function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
     [copy(vec(u)) for u in u0]
 end
 
-function Φ!(residual, cache::RKCache, y, u, p = cache.p)
 # Auxiliary functions for evaluation
 function eval_bc_residual!(residual::AbstractArray, _, bc!, y, p, mesh, u)
     return bc!(residual, y, p, mesh)
@@ -16,7 +15,7 @@ function eval_bc_residual!(residual::AbstractArray, ::TwoPointBVProblem, bc!, y,
 end
 
 function Φ!(residual, cache::RKCache, y, u, p = cache.p)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f!, cache.TU,
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
         y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
@@ -71,7 +70,7 @@ end
     end
 end
 
-function Φ(cache::MIRKCache, y, u, p = cache.p)
+function Φ(cache::RKCache, y, u, p = cache.p)
     return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, p, cache.mesh,
         cache.mesh_dt, cache.stage)
 end

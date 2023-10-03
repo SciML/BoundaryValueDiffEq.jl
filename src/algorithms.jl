@@ -4,7 +4,7 @@ const DEFAULT_JACOBIAN_ALGORITHM_MIRK = MIRKJacobianComputationAlgorithm()
 
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
-abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractRK <: BoundaryValueDiffEqAlgorithm end
 
 """
     Shooting(ode_alg; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_SHOOTING)
@@ -39,7 +39,7 @@ for order in (2, 3, 4, 5, 6)
         pages={479-497}
         }
         """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractMIRK
+        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
         end
@@ -65,7 +65,7 @@ for order in (2, 3, 4, 5)
         TODO
         }
         """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractMIRK
+        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
         end
@@ -122,30 +122,4 @@ Base.@kwdef struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
     bvpclass::Int = 2
     sol_method::Int = 0
     odesolver::O = nothing
-end
-
-for order in (2, 3, 4, 5)
-    alg = Symbol("LobattoIIIb$(order)")
-
-    @eval begin
-        """
-            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
-                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
-
-        $($order)th order LobattoIIIb method, with Newton Raphson nonlinear solver as default.
-
-        ## References
-        TODO
-        }
-        """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractMIRK
-            nlsolve::N
-            jac_alg::J
-        end
-
-        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
-            return $(alg)(nlsolve, jac_alg)
-        end
-    end
 end

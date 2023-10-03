@@ -398,7 +398,7 @@ for order in (2, 3, 4, 5, 6)
     end
 end
 
-function sol_eval(cache::MIRKCache{T}, t::T) where {T}
+function sol_eval(cache::RKCache{T}, t::T) where {T}
     @unpack M, mesh, mesh_dt, alg, k_discrete, k_interp, y = cache
 
     @assert mesh[1] ≤ t ≤ mesh[end]
