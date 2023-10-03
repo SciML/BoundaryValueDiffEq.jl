@@ -1,7 +1,7 @@
 module BoundaryValueDiffEq
 
 using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays, SciMLBase,
-    RecursiveArrayTools
+    RecursiveArrayTools, ForwardDiff
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType
