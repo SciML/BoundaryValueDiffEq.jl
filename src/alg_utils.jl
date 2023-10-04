@@ -4,20 +4,17 @@ for order in (2, 3, 4, 5, 6)
     @eval alg_stage(::$(alg)) = $(order - 1)
 end
 
-
-# TODO: make this consistent with paper
-
-#= for order in (2, 3, 4, 5)
+for order in (1, 3, 5, 9, 13)
     alg = Symbol("RadauIIa$(order)")
     @eval alg_order(::$(alg)) = $order
-    @eval alg_stage(::$(alg)) = $(order - 1)
+    @eval alg_stage(::$(alg)) = $(order + 1) / 2
 end
-=#
+
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIa$(order)")
     @eval alg_order(::$(alg)) = $order
     @eval alg_stage(::$(alg)) = $order
-end 
+end
 
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIb$(order)")

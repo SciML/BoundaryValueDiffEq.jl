@@ -51,6 +51,33 @@ for order in (2, 3, 4, 5, 6)
     end
 end
 
+for order in (1, 3, 5, 9, 13)
+    alg = Symbol("RadauIIa$(order)")
+
+    @eval begin
+        """
+            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
+                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+
+        $($order)th order RadauIIa method, with Newton Raphson nonlinear solver as default.
+
+        ## References
+        TODO
+        }
+        """
+        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
+            nlsolve::N
+            jac_alg::J
+        end
+
+        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
+            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            return $(alg)(nlsolve, jac_alg)
+        end
+    end
+end
+
+
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIa$(order)")
 
