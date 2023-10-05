@@ -1,7 +1,8 @@
 # TODO: incorporate `initial_guess` similar to MIRK methods
 function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
-    @unpack f, bc, tspan = prob
+    @unpack f, tspan = prob
+    bc = prob.f.bc
     has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
     _u0 = has_initial_guess ? first(prob.u0) : prob.u0
     N, u0_size, nshoots, iip = length(_u0), size(_u0), alg.nshoots, isinplace(prob)
@@ -143,12 +144,18 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
 
         resid_prototype = ArrayPartition(bcresid_prototype,
             similar(u_at_nodes, cur_nshoot * N))
-        residbc_prototype = DiffCache(bcresid_prototype, pickchunksize(cur_nshoot * N))
-        jac_prototype = __generate_sparse_jacobian_prototype(alg, _u0, bcresid_prototype, N,
+        residbc_prototype = DiffCache(bcresid_prototype,
+            pickchunksize((cur_nshoot + 1) * N))
+
+        J_bc = similar(bcresid_prototype, length(bcresid_prototype), N * (cur_nshoot + 1))
+        J_c, col_colorvec, row_colorvec = __generate_sparse_jacobian_prototype(alg, _u0, N,
             cur_nshoot)
+        jac_prototype = vcat(J_bc, J_c)
 
         loss_function! = NonlinearFunction{true}((args...) -> loss!(args..., cur_nshoot,
-                nodes); resid_prototype, jac = (args...) -> jac!(args..., cur_nshoot, nodes, residbc_prototype), jac_prototype)
+                nodes); resid_prototype,
+            jac = (args...) -> jac!(args..., cur_nshoot, nodes, residbc_prototype),
+            jac_prototype)
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
         sol_nlsolve = solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
         u_at_nodes = sol_nlsolve.u
@@ -264,11 +271,7 @@ end
     return nshoots_vec
 end
 
-function __generate_sparse_jacobian_prototype(::MultipleShooting, u0, bcresid_prototype,
-    N::Int, nshoots::Int)
-    # Assume dense BC
-    J_bc = similar(bcresid_prototype, length(bcresid_prototype), N * (nshoots + 1))
-
+function __generate_sparse_jacobian_prototype(::MultipleShooting, u0, N::Int, nshoots::Int)
     # Sparse for Stitching solution together
     Is = Vector{UInt32}(undef, (N^2 + N) * nshoots)
     Js = Vector{UInt32}(undef, (N^2 + N) * nshoots)
@@ -288,5 +291,14 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, u0, bcresid_pr
     J_c = sparse(adapt(parameterless_type(u0), Is), adapt(parameterless_type(u0), Js),
         similar(u0, length(Is)))
 
-    return vcat(J_bc, J_c)
+    col_colorvec = Vector{Int}(undef, N * (nshoots + 1))
+    for i in eachindex(col_colorvec)
+        col_colorvec[i] = mod1(i, 2 * N)
+    end
+    row_colorvec = Vector{Int}(undef, N * nshoots)
+    for i in eachindex(row_colorvec)
+        row_colorvec[i] = mod1(i, 2 * N)
+    end
+
+    return J_c, col_colorvec, row_colorvec
 end
