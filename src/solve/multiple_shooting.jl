@@ -1,5 +1,4 @@
 # TODO: incorporate `initial_guess` similar to MIRK methods
-# FIXME: We can't specify `ensemblealg` from outside
 function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), kwargs...)
     @unpack f, bc, tspan = prob
@@ -33,7 +32,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
         ensemble_prob = EnsembleProblem(odeprob; prob_func, reduction, safetycopy = false,
             u_init = (; us = us_, ts = ts_, resid = resid_nodes))
         ensemble_sol = solve(ensemble_prob, alg.ode_alg, ensemblealg; odesolve_kwargs...,
-            kwargs..., trajectories = cur_nshoots)
+            kwargs..., save_end = true, save_everystep = false, trajectories = cur_nshoots)
 
         _us = reduce(vcat, ensemble_sol.u.us)
         _ts = reduce(vcat, ensemble_sol.u.ts)
@@ -66,8 +65,8 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
 
         resid_prototype = ArrayPartition(bcresid_prototype,
             similar(u_at_nodes, cur_nshoot * N))
-        loss_function! = NonlinearFunction{true}((args...) -> loss!(args...,
-                cur_nshoot, nodes); resid_prototype)
+        loss_function! = NonlinearFunction{true}((args...) -> loss!(args..., cur_nshoot,
+            nodes); resid_prototype)
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
         sol_nlsolve = solve(nlprob, alg.nlsolve; nlsolve_kwargs..., kwargs...)
         u_at_nodes = sol_nlsolve.u
