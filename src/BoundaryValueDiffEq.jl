@@ -5,7 +5,7 @@ using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors, parameterless_type
+import ArrayInterface: matrix_colors, parameterless_type, undefmatrix
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
