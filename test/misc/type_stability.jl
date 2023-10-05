@@ -28,8 +28,7 @@ bcresid_prototype = (zeros(1), zeros(1))
     mpbvp_oop = BVProblem(f, bc, u0, tspan, p)
 
     @testset "Shooting Methods" begin
-        @test_broken SciMLBase.successful_retcode(@inferred solve(mpbvp_iip,
-            Shooting(Tsit5())))
+        @inferred solve(mpbvp_iip, Shooting(Tsit5()))
         @inferred solve(mpbvp_oop, Shooting(Tsit5()))
         @inferred solve(mpbvp_iip, MultipleShooting(5, Tsit5()))
         @inferred solve(mpbvp_oop, MultipleShooting(5, Tsit5()))
@@ -49,8 +48,7 @@ end
     tpbvp_oop = TwoPointBVProblem(f, twobc, u0, tspan, p)
 
     @testset "Shooting Methods" begin
-        @test_broken SciMLBase.successful_retcode(@inferred solve(tpbvp_iip,
-            Shooting(Tsit5())))
+        @inferred solve(tpbvp_iip, Shooting(Tsit5()))
         @inferred solve(tpbvp_oop, Shooting(Tsit5()))
         @inferred solve(tpbvp_iip, MultipleShooting(5, Tsit5()))
         @inferred solve(tpbvp_oop, MultipleShooting(5, Tsit5()))
