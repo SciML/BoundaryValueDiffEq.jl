@@ -2,7 +2,7 @@
 # TODO: Support Non-Vector Inputs
 function SciMLBase.__solve(prob::BVProblem, alg::Shooting; kwargs...)
     iip = isinplace(prob)
-    bc = prob.bc
+    bc = prob.f.bc
     u0 = deepcopy(prob.u0)
     loss_fn = if iip
         function loss!(resid, u0, p)

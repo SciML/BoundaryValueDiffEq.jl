@@ -73,18 +73,20 @@ end
 ## Easier to dispatch
 eval_bc_residual(pt, bc, sol, p) = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
-function eval_bc_residual(::TwoPointBVProblem, bc, sol, p, t)
+function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    resid₀, resid₁ = bc((ua, ub), p)
+    resid₀ = bca(ua, p)
+    resid₁ = bcb(ub, p)
     return ArrayPartition(resid₀, resid₁)
 end
 
 eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, bc!, sol, p, t)
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    bc!((resid.x[1], resid.x[2]), (ua, ub), p)
+    bca!(resid.x[1], ua, p)
+    bcb!(resid.x[2], ub, p)
     return resid
 end
