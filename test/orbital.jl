@@ -49,17 +49,20 @@ function bc!_generator(resid, sol, init_val)
     resid[6] = sol(t1)[3] - init_val[6]
 end
 
-function bc!_generator_2p((resid0, resid1), (ua, ub), init_val)
+function bc!_generator_2p_a(resid0, ua, init_val)
     resid0[1] = ua[1] - init_val[1]
     resid0[2] = ua[2] - init_val[2]
     resid0[3] = ua[3] - init_val[3]
+end
+function bc!_generator_2p_b(resid1, ub, init_val)
     resid1[1] = ub[1] - init_val[4]
     resid1[2] = ub[2] - init_val[5]
     resid1[3] = ub[3] - init_val[6]
 end
 
 cur_bc! = (resid, sol, p, t) -> bc!_generator(resid, sol, init_val)
-cur_bc_2point! = (resid, sol, p) -> bc!_generator_2p(resid, sol, init_val)
+cur_bc_2point_a! = (resid, sol, p) -> bc!_generator_2p_a(resid, sol, init_val)
+cur_bc_2point_b! = (resid, sol, p) -> bc!_generator_2p_b(resid, sol, init_val)
 resid_f = Array{Float64}(undef, 6)
 resid_f_2p = (Array{Float64, 1}(undef, 3), Array{Float64, 1}(undef, 3))
 
@@ -78,7 +81,7 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
 end
 
 ### Using the TwoPoint BVP Structure
-bvp = TwoPointBVProblem(orbital!, cur_bc_2point!, y0, tspan;
+bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
     bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)))
 for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
@@ -86,6 +89,7 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     nlsolve = NewtonRaphson(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
         reltol = 1e-13)
-    cur_bc_2point!(resid_f_2p, (sol(t0), sol(t1)), nothing)
-    @test norm(vcat(resid_f_2p...), Inf) < TestTol
+    cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
+    cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
+    @test norm(reduce(vcat, resid_f_2p), Inf) < TestTol
 end

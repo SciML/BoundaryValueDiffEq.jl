@@ -19,8 +19,10 @@ function boundary!(residual, u, p, t)
     residual[1, 2] = u[end][1, 1]
 end
 
-function boundary!((resida, residb), (ua, ub), p)
+function boundary_a!(resida, ua, p)
     resida[1, 1] = ua[1, 1] - 5
+end
+function boundary_b!(residb, ub, p)
     residb[1, 1] = ub[1, 1]
 end
 
@@ -28,18 +30,17 @@ function boundary(u, p, t)
     return [u[1][1, 1] - 5 u[end][1, 1]]
 end
 
-function boundary((ua, ub), p)
-    return (reshape([ua[1, 1] - 5], (1, 1)), reshape([ub[1, 1]], (1, 1)))
-end
+boundary_a = (ua, p) -> [ua[1, 1] - 5]
+boundary_b = (ub, p) -> [ub[1, 1]]
 
 tspan = (0.0, 5.0)
 u0 = [5.0 -3.5]
 probs = [
     BVProblem(f1!, boundary!, u0, tspan),
-    TwoPointBVProblem(f1!, boundary!, u0, tspan;
+    TwoPointBVProblem(f1!, (boundary_a!, boundary_b!), u0, tspan;
         bcresid_prototype = (Array{Float64}(undef, 1, 1), Array{Float64}(undef, 1, 1))),
     BVProblem(f1, boundary, u0, tspan),
-    TwoPointBVProblem(f1, boundary, u0, tspan),
+    TwoPointBVProblem(f1, (boundary_a, boundary_b), u0, tspan),
 ];
 
 @testset "Affineness" begin
