@@ -69,7 +69,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     # Transform the functions to handle non-vector inputs
     f, bc = if X isa AbstractVector
-        prob.f, prob.bc
+        prob.f, prob.f.bc
     elseif iip
         function vecf!(du, u, p, t)
             du_ = reshape(du, size(X))
@@ -77,19 +77,27 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
             prob.f(du_, x_, p, t)
             return du
         end
-        function vecbc!(resid, sol, p, t)
-            resid_ = reshape(resid, resid₁_size)
-            sol_ = map(s -> reshape(s, size(X)), sol)
-            prob.bc(resid_, sol_, p, t)
-            return resid
-        end
-        function vecbc!((resida, residb), (ua, ub), p)
-            resida_ = reshape(resida, resid₁_size[1])
-            residb_ = reshape(residb, resid₁_size[2])
-            ua_ = reshape(ua, size(X))
-            ub_ = reshape(ub, size(X))
-            prob.bc((resida_, residb_), (ua_, ub_), p)
-            return (resida, residb)
+        vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
+            function __vecbc!(resid, sol, p, t)
+                resid_ = reshape(resid, resid₁_size)
+                sol_ = map(s -> reshape(s, size(X)), sol)
+                prob.f.bc(resid_, sol_, p, t)
+                return resid
+            end
+        else
+            function __vecbc_a!(resida, ua, p)
+                resida_ = reshape(resida, resid₁_size[1])
+                ua_ = reshape(ua, size(X))
+                prob.f.bc[1](resida_, ua_, p)
+                return nothing
+            end
+            function __vecbc_b!(residb, ub, p)
+                residb_ = reshape(residb, resid₁_size[2])
+                ub_ = reshape(ub, size(X))
+                prob.f.bc[2](residb_, ub_, p)
+                return nothing
+            end
+            (__vecbc_a!, __vecbc_b!)
         end
         vecf!, vecbc!
     else
@@ -97,14 +105,15 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
             x_ = reshape(u, size(X))
             return vec(prob.f(x_, p, t))
         end
-        function vecbc(sol, p, t)
-            sol_ = map(s -> reshape(s, size(X)), sol)
-            return vec(prob.bc(sol_, p, t))
-        end
-        function vecbc((ua, ub), p)
-            ua_ = reshape(ua, size(X))
-            ub_ = reshape(ub, size(X))
-            return vec.(prob.bc((ua_, ub_), p))
+        vecbc = if !(prob.problem_type isa TwoPointBVProblem)
+            function __vecbc(sol, p, t)
+                sol_ = map(s -> reshape(s, size(X)), sol)
+                return vec(prob.f.bc(sol_, p, t))
+            end
+        else
+            __vecbc_a(ua, p) = vec(prob.f.bc[1](reshape(ua, size(X)), p))
+            __vecbc_b(ub, p) = vec(prob.f.bc[2](reshape(ub, size(X)), p))
+            (__vecbc_a, __vecbc_b)
         end
         vecf, vecbc
     end

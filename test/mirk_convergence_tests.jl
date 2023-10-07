@@ -25,11 +25,15 @@ function boundary!(residual, u, p, t)
 end
 boundary(u, p, t) = [u[1][1] - 5, u[end][1]]
 
-function boundary_two_point!((resida, residb), (ua, ub), p)
+function boundary_two_point_a!(resida, ua, p)
     resida[1] = ua[1] - 5
+end
+function boundary_two_point_b!(residb, ub, p)
     residb[1] = ub[1]
 end
-boundary_two_point((ua, ub), p) = [ua[1] - 5, ub[1]]
+
+boundary_two_point_a(ua, p) = [ua[1] - 5]
+boundary_two_point_b(ub, p) = [ub[1]]
 
 # Not able to change the initial condition.
 # Hard coded solution.
@@ -57,10 +61,14 @@ probArr = [
     BVProblem(odef1, boundary, u0, tspan),
     BVProblem(odef2!, boundary!, u0, tspan),
     BVProblem(odef2, boundary, u0, tspan),
-    TwoPointBVProblem(odef1!, boundary_two_point!, u0, tspan; bcresid_prototype),
-    TwoPointBVProblem(odef1, boundary_two_point, u0, tspan; bcresid_prototype),
-    TwoPointBVProblem(odef2!, boundary_two_point!, u0, tspan; bcresid_prototype),
-    TwoPointBVProblem(odef2, boundary_two_point, u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!), u0, tspan;
+        bcresid_prototype),
+    TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
+        bcresid_prototype),
+    TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!), u0, tspan;
+        bcresid_prototype),
+    TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
+        bcresid_prototype),
 ];
 
 testTol = 0.2
@@ -73,7 +81,7 @@ dts = 1 .// 2 .^ (3:-1:1)
     @testset "Problem: $i" for i in (1, 2, 5, 6)
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
-            @time sol = solve(prob, mirk_solver(Val(order)), dt = 0.2)
+            @time sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
         end
     end

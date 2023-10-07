@@ -38,7 +38,11 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
         alg.max_num_subintervals)
 
     bvp2m_f(t, u, du) = prob.f(du, u, prob.p, t)
-    bvp2m_bc(ya, yb, bca, bcb) = prob.bc((bca, bcb), (ya, yb), prob.p)
+    function bvp2m_bc(ya, yb, bca, bcb)
+        prob.f.bc[1](bca, ya, prob.p)
+        prob.f.bc[2](bcb, yb, prob.p)
+        return nothing
+    end
 
     opt = OptionsODE(OPT_RTOL => reltol, OPT_METHODCHOICE => alg.method_choice,
         OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
@@ -76,7 +80,8 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol
     function bc!(ya, yb, r)
         ra = first(prob.f.bcresid_prototype.x)
         rb = last(prob.f.bcresid_prototype.x)
-        prob.bc((ra, rb), (ya, yb), prob.p)
+        prob.f.bc[1](ra, ya, prob.p)
+        prob.f.bc[2](rb, yb, prob.p)
         r[1:length(ra)] .= ra
         r[(length(ra) + 1):(length(ra) + length(rb))] .= rb
         return r
