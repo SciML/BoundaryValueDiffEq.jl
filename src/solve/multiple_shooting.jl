@@ -14,11 +14,10 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
             @warn "Initial guess length != `nshoots + 1`! Adapting to `nshoots = $(nshoots)`"
     end
 
-    @views function loss!(resid::ArrayPartition, us, p, cur_nshoots, nodes)
+    # We will use colored AD for this parts!
+    @views function solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
         ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
         us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
-
-        resid_bc, resid_nodes = resid.x[1], resid.x[2]
 
         function prob_func(probᵢ, i, repeat)
             return remake(probᵢ; u0 = reshape(us[((i - 1) * N + 1):(i * N)], u0_size),
@@ -43,11 +42,42 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
             verbose, kwargs..., save_end = true, save_everystep = false,
             trajectories = cur_nshoots)
 
-        _us = reduce(vcat, ensemble_sol.u.us)
-        _ts = reduce(vcat, ensemble_sol.u.ts)
+        return reduce(vcat, ensemble_sol.u.us), reduce(vcat, ensemble_sol.u.ts)
+    end
+
+    @views function compute_bc_residual!(resid_bc, us, p, cur_nshoots, nodes,
+        resid_nodes::Union{Nothing, MaybeDiffCache} = nothing)
+        if resid_nodes === nothing
+            _resid_nodes = similar(us, cur_nshoots * N)  # This might be Dual based on `us`
+        else
+            _resid_nodes = get_tmp(resid_nodes, us)
+        end
+
+        # NOTE: We need to recompute this to correctly propagate the dual numbers / gradients
+        _us, _ts = solve_internal_odes!(_resid_nodes, us, p, cur_nshoots, nodes)
 
         # Boundary conditions
         # Builds an ODESolution object to keep the framework for bc(,,) consistent
+        odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
+        total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
+
+        if iip
+            eval_bc_residual!(resid_bc, prob.problem_type, bc, total_solution, p)
+        else
+            resid_bc .= eval_bc_residual(prob.problem_type, bc, total_solution, p)
+        end
+
+        return resid_bc
+    end
+
+    @views function loss!(resid::ArrayPartition, us, p, cur_nshoots, nodes)
+        resid_bc, resid_nodes = resid.x[1], resid.x[2]
+
+        _us, _ts = solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
+
+        # Boundary conditions
+        # Builds an ODESolution object to keep the framework for bc(,,) consistent
+        odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
         total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
 
         if iip
@@ -59,70 +89,17 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
         return resid
     end
 
-    @views function jac!(J::AbstractMatrix, us, p, cur_nshoots, nodes, resid_bc)
+    @views function jac!(J::AbstractMatrix, us, p, resid_bc, resid_nodes::MaybeDiffCache,
+        ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, cur_nshoot, nodes)
         J_bc = J[1:N, :]
         J_c = J[(N + 1):end, :]
 
-        # Threads.@threads :static
-        # FIXME: Threading here leads to segfaults
-        for i in 1:cur_nshoots
-            uᵢ = us[((i - 1) * N + 1):(i * N)]
-            idx = ((i - 1) * N + 1):(i * N)
-            probᵢ = ODEProblem{iip}(f, reshape(uᵢ, u0_size), (nodes[i], nodes[i + 1]), p)
-            function solve_func(u₀)
-                sJ = solve(probᵢ, alg.ode_alg; u0 = u₀, odesolve_kwargs...,
-                    kwargs..., save_end = true, save_everystep = false, saveat = ())
-                return -last(sJ)
-            end
-            # @show sum(J_c[idx, idx]), sum(J_c[idx, idx .+ N])
-            ForwardDiff.jacobian!(J_c[idx, idx], solve_func, uᵢ)
-            J_c′ = J_c[idx, idx .+ N]
-            J_c′[diagind(J_c′)] .= 1
-            # @show sum(J_c[idx, idx]), sum(J_c[idx, idx .+ N])
-        end
+        # FIXME: External control
+        sparse_jacobian!(J_c, AutoSparseForwardDiff(), ode_jac_cache, ode_fn,
+            resid_nodes.du, us)
 
-        function evaluate_boundary_condition(us)
-            ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
-            us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
-
-            function prob_func(probᵢ, i, repeat)
-                return remake(probᵢ; u0 = reshape(us[((i - 1) * N + 1):(i * N)], u0_size),
-                    tspan = (nodes[i], nodes[i + 1]))
-            end
-
-            function reduction(u, data, I)
-                for i in I
-                    u.us[i] = data[i].u
-                    u.ts[i] = data[i].t
-                end
-                return (u, false)
-            end
-
-            odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
-
-            ensemble_prob = EnsembleProblem(odeprob; prob_func, reduction,
-                safetycopy = false, u_init = (; us = us_, ts = ts_))
-            ensemble_sol = solve(ensemble_prob, alg.ode_alg, ensemblealg;
-                odesolve_kwargs..., kwargs..., save_end = true, save_everystep = false,
-                trajectories = cur_nshoots)
-
-            _us = reduce(vcat, ensemble_sol.u.us)
-            _ts = reduce(vcat, ensemble_sol.u.ts)
-
-            # Boundary conditions
-            # Builds an ODESolution object to keep the framework for bc(,,) consistent
-            total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
-
-            if iip
-                _resid_bc = get_tmp(resid_bc, us)
-                eval_bc_residual!(_resid_bc, prob.problem_type, bc, total_solution, p)
-                return _resid_bc
-            else
-                return eval_bc_residual(prob.problem_type, bc, total_solution, p)
-            end
-        end
-
-        ForwardDiff.jacobian!(J_bc, evaluate_boundary_condition, us)
+        # For BC
+        sparse_jacobian!(J_bc, AutoForwardDiff(), bc_jac_cache, bc_fn, resid_bc, us)
 
         return nothing
     end
@@ -145,16 +122,30 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
             similar(u_at_nodes, cur_nshoot * N))
         residbc_prototype = DiffCache(bcresid_prototype,
             pickchunksize((cur_nshoot + 1) * N))
+        resid_nodes = maybe_allocate_diffcache(resid_prototype.x[2],
+            pickchunksize((cur_nshoot + 1) * N),
+            AutoForwardDiff())
 
-        J_bc = similar(bcresid_prototype, length(bcresid_prototype), N * (cur_nshoot + 1))
         J_c, col_colorvec, row_colorvec = __generate_sparse_jacobian_prototype(alg, _u0, N,
             cur_nshoot)
-        jac_prototype = vcat(J_bc, J_c)
+
+        ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
+        ode_jac_cache = sparse_jacobian_cache(AutoSparseForwardDiff(),
+            PrecomputedJacobianColorvec(; jac_prototype = J_c, col_colorvec, row_colorvec),
+            ode_fn, copy(resid_prototype.x[2]), u_at_nodes)
+
+        bc_fn = (du, u) -> compute_bc_residual!(du, u, prob.p, cur_nshoot,
+            nodes, resid_nodes)
+        bc_jac_cache = sparse_jacobian_cache(AutoForwardDiff(),
+            NoSparsityDetection(), bc_fn, copy(resid_prototype.x[1]), u_at_nodes)
+
+        jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
+
+        jac_fn = (J, us, p) -> jac!(J, us, p, resid_prototype.x[1], resid_nodes,
+            ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, cur_nshoot, nodes)
 
         loss_function! = NonlinearFunction{true}((args...) -> loss!(args..., cur_nshoot,
-                nodes); resid_prototype,
-            jac = (args...) -> jac!(args..., cur_nshoot, nodes, residbc_prototype),
-            jac_prototype)
+                nodes); resid_prototype, jac = jac_fn, jac_prototype)
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
         sol_nlsolve = solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
         u_at_nodes = sol_nlsolve.u
