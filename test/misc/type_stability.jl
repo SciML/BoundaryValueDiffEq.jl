@@ -11,11 +11,10 @@ function bc!(res, sol, p, t)
     res[1] = sol[1][1] - 1
     res[2] = sol[end][2] - 2
 end
-twobc((ua, ub), p) = ([ua[1] - 1], [ub[2] - 2])
-function twobc!((resa, resb), (ua, ub), p)
-    resa[1] = ua[1] - 1
-    resb[1] = ub[2] - 2
-end
+twobc_a(ua, p) = [ua[1] - 1]
+twobc_b(ub, p) = [ub[2] - 2]
+twobc_a!(resa, ua, p) = (resa[1] = ua[1] - 1)
+twobc_b!(resb, ub, p) = (resb[1] = ub[2] - 2)
 
 u0 = Float64[0, 0]
 tspan = (0.0, 1.0)
@@ -44,8 +43,8 @@ end
 
 # Two-Point BVP
 @testset "Two-Point BVP" begin
-    tpbvp_iip = TwoPointBVProblem(f!, twobc!, u0, tspan, p; bcresid_prototype)
-    tpbvp_oop = TwoPointBVProblem(f, twobc, u0, tspan, p)
+    tpbvp_iip = TwoPointBVProblem(f!, (twobc_a!, twobc_b!), u0, tspan, p; bcresid_prototype)
+    tpbvp_oop = TwoPointBVProblem(f, (twobc_a, twobc_b), u0, tspan, p)
 
     @testset "Shooting Methods" begin
         @inferred solve(tpbvp_iip, Shooting(Tsit5()))
