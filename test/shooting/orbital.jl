@@ -1,8 +1,6 @@
 # Lambert's Problem
 using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
 
-@info "Testing Lambert's Problem"
-
 y0 = [
     -4.7763169762853989E+06,
     -3.8386398704441520E+05,

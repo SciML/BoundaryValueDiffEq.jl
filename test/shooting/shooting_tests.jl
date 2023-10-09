@@ -51,8 +51,8 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
     end
 
     # Inplace
-    bc2_a!(resid, ua, p) = (resid[1] = ua[1])
-    bc2_b!(resid, ub, p) = (resid[1] = ub[1] - 1)
+    bc2a!(resid, ua, p) = (resid[1] = ua[1])
+    bc2b!(resid, ub, p) = (resid[1] = ub[1] - 1)
 
     bvp3 = TwoPointBVProblem(f1!, (bc2a!, bc2b!), u0, tspan;
         bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1)))

@@ -259,3 +259,4 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
     return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y,
                             cache.p)
 end
+

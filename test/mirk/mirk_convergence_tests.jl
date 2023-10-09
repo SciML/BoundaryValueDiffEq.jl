@@ -75,8 +75,6 @@ testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
-@info "Collocation method (MIRK)"
-
 @testset "Affineness" begin
     @testset "Problem: $i" for i in (1, 2, 5, 6)
         prob = probArr[i]
