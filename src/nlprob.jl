@@ -1,4 +1,4 @@
-function construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
+function construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
@@ -140,7 +140,7 @@ function construct_sparse_banded_jac_prototype(y::ArrayPartition, M, N)
             y_, M * N, M * N), col_colorvec, row_colorvec)
 end
 
-function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
+function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
     _) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
@@ -203,7 +203,7 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
     return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
 end
 
-function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
+function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
     ::TwoPointBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)

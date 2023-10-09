@@ -1,7 +1,7 @@
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
     f = Symbol("constructMIRK$(order)")
-    @eval constructMIRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
+    @eval constructRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
 end
 
 function constructMIRK2(::Type{T}) where {T}
