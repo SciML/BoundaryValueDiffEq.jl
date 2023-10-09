@@ -14,7 +14,7 @@ function construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
 
     loss_collocation = if iip
         function loss_collocation_internal!(resid::AbstractVector, u::AbstractVector,
-            p = cache.p)
+                                            p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
             resids = [get_tmp(r, u) for r in cache.residual[2:end]]
             Φ!(resids, cache, y_, u, p)
@@ -36,8 +36,8 @@ function construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
                 y_ = recursive_unflatten!(cache.y, u)
                 resids = [get_tmp(r, u) for r in cache.residual]
                 eval_bc_residual!(resids[1], cache.problem_type, cache.bc, y_, p,
-                    cache.mesh)
-                Φ!(resids[2:end], cache, y_, u, p)
+                                  cache.mesh)
+                Φ!(@view(resids[2:end]), cache, y_, u, p)
                 recursive_flatten!(resid, resids)
                 return resid
             end
@@ -53,11 +53,11 @@ function construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
         # Reordering for 2 point BVP
         if iip
             function loss_internal_2point!(resid::AbstractVector, u::AbstractVector,
-                p = cache.p)
+                                           p = cache.p)
                 y_ = recursive_unflatten!(cache.y, u)
                 resids = [get_tmp(r, u) for r in cache.residual]
                 eval_bc_residual!(resids[1], cache.problem_type, cache.bc, y_, p,
-                    cache.mesh)
+                                  cache.mesh)
                 Φ!(resids[2:end], cache, y_, u, p)
                 recursive_flatten_twopoint!(resid, resids)
                 return resid
@@ -96,7 +96,7 @@ function construct_sparse_banded_jac_prototype(y, M, N)
 
     y_ = similar(y, length(Is))
     return (sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-            y_, M * (N - 1), M * N), col_colorvec, row_colorvec)
+                   y_, M * (N - 1), M * N), col_colorvec, row_colorvec)
 end
 
 # Two Point Specialization
@@ -138,17 +138,19 @@ function construct_sparse_banded_jac_prototype(y::ArrayPartition, M, N)
 
     y_ = similar(y, length(Is))
     return (sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-            y_, M * N, M * N), col_colorvec, row_colorvec)
+                   y_, M * N, M * N), col_colorvec, row_colorvec)
 end
 
 function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
-    _) where {iip}
+                         _) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
+    stage = alg_stage(cache.alg)
+
     resid_bc = cache.prob.f.bcresid_prototype === nothing ? similar(y, cache.M) :
                cache.prob.f.bcresid_prototype
-    resid_collocation = similar(y, cache.M * (N - 1))
+    resid_collocation = similar(y, cache.M * (N - 1) * (stage + 1))
 
     sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
@@ -157,71 +159,74 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
         cache_bc = sparse_jacobian_cache(jac_alg.bc_diffmode, sd_bc, loss_bc, resid_bc, y)
     else
         cache_bc = sparse_jacobian_cache(jac_alg.bc_diffmode, sd_bc, loss_bc, y;
-            fx = resid_bc)
+                                         fx = resid_bc)
     end
 
     sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
         Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(y, cache.M, N)
         PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
-            col_colorvec = cvec)
+                                    col_colorvec = cvec)
     else
         NoSparsityDetection()
     end
 
     if iip
         cache_collocation = sparse_jacobian_cache(jac_alg.collocation_diffmode,
-            sd_collocation, loss_collocation, resid_collocation, y)
+                                                  sd_collocation, loss_collocation,
+                                                  resid_collocation, y)
     else
         cache_collocation = sparse_jacobian_cache(jac_alg.collocation_diffmode,
-            sd_collocation, loss_collocation, y; fx = resid_collocation)
+                                                  sd_collocation, loss_collocation, y;
+                                                  fx = resid_collocation)
     end
 
     jac_prototype = vcat(init_jacobian(cache_bc),
-        jac_alg.collocation_diffmode isa AbstractSparseADType ? Jₛ :
-        init_jacobian(cache_collocation))
+                         jac_alg.collocation_diffmode isa AbstractSparseADType ? Jₛ :
+                         init_jacobian(cache_collocation))
 
     # TODO: Pass `p` into `loss_bc` and `loss_collocation`. Currently leads to a Tag
     #       mismatch for ForwardDiff
     jac = if iip
         function jac_internal!(J, x, p)
             sparse_jacobian!(@view(J[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
-                loss_bc, resid_bc, x)
+                             loss_bc, resid_bc, x)
             sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.collocation_diffmode,
-                cache_collocation, loss_collocation, resid_collocation, x)
+                             cache_collocation, loss_collocation, resid_collocation, x)
             return J
         end
     else
         J_ = jac_prototype
         function jac_internal(x, p)
             sparse_jacobian!(@view(J_[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
-                loss_bc, x)
+                             loss_bc, x)
             sparse_jacobian!(@view(J_[(cache.M + 1):end, :]), jac_alg.collocation_diffmode,
-                cache_collocation, loss_collocation, x)
+                             cache_collocation, loss_collocation, x)
             return J_
         end
     end
 
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y,
+                            cache.p)
 end
 
 function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
-    ::TwoPointBVProblem) where {iip}
+                         ::TwoPointBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
     if !iip && cache.prob.f.bcresid_prototype === nothing
         y_ = recursive_unflatten!(cache.y, y)
         resid_ = cache.bc((y_[1], y_[end]), cache.p)
-        resid = ArrayPartition(ArrayPartition(resid_), similar(y, cache.M * (N - 1)))
+        resid = ArrayPartition(ArrayPartition(resid_), similar(y, cache.M * (N - 1)*(stage + 1)))
     else
         resid = ArrayPartition(cache.prob.f.bcresid_prototype,
-            similar(y, cache.M * (N - 1)))
+                               similar(y, cache.M * (N - 1)*(stage + 1)))
     end
 
     sd = if jac_alg.diffmode isa AbstractSparseADType
         Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(resid, cache.M, N)
         PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
-            col_colorvec = cvec)
+                                    col_colorvec = cvec)
     else
         NoSparsityDetection()
     end
@@ -250,5 +255,6 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
         end
     end
 
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y,
+                            cache.p)
 end

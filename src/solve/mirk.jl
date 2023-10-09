@@ -1,5 +1,31 @@
+function extend_y(y, N, stage)
+    y_extended = similar(y, (N - 1) * (stage + 1) + 1)
+    y_extended[1] = y[1]
+    let ctr1 = 2
+        for i in 2:N
+            for j in 1:(stage + 1)
+                y_extended[(ctr1)] = y[i]
+                ctr1 += 1
+            end
+        end
+    end
+    return y_extended
+end
+
+function shrink_y(y, N, M, stage)
+    y_shrink = similar(y,N)
+    y_shrink[1] = y[1]
+    let ctr = 2
+        for i in 2:N
+            y_shrink[i] = y[ctr]
+            ctr += (stage + 1)
+        end
+    end
+    return y_shrink
+end
+
 function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
-    abstol = 1e-3, adaptive = true, kwargs...)
+                          abstol = 1e-3, adaptive = true, kwargs...)
     has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
     iip = isinplace(prob)
     (T, M, n) = if has_initial_guess
@@ -31,8 +57,11 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_state_from_prob(prob, mesh)
-    y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
     TU, ITU = constructRK(alg, T)
+    if isa(TU, RKTableau)
+        y₀ = extend_y(y₀, n + 1, alg_stage(alg))
+    end
+    y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
     stage = alg_stage(alg)
 
     k_discrete = [maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
@@ -54,10 +83,11 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
                         for yᵢ in y₀]
         else
             residual = vcat([
-                    maybe_allocate_diffcache(vec(copy(prob.f.bcresid_prototype)),
-                        chunksize, alg.jac_alg)],
-                [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg)
-                 for yᵢ in y₀[2:end]])
+                                maybe_allocate_diffcache(vec(copy(prob.f.bcresid_prototype)),
+                                                         chunksize, alg.jac_alg)],
+                            [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize,
+                                                      alg.jac_alg)
+                             for yᵢ in y₀[2:end]])
         end
     else
         residual = nothing
@@ -110,20 +140,21 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     end
 
     return RKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
-        prob.problem_type, prob.p, alg, TU, ITU, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
-        residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+                           prob.problem_type, prob.p, alg, TU, ITU, mesh, mesh_dt,
+                           k_discrete, k_interp, y, y₀,
+                           residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
+                           (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
 end
 
 function __split_mirk_kwargs(; defect_threshold, MxNsub, abstol, dt, adaptive = true,
-    kwargs...)
+                             kwargs...)
     return ((defect_threshold, MxNsub, abstol, adaptive, dt),
-        (; abstol, adaptive, kwargs...))
+            (; abstol, adaptive, kwargs...))
 end
 
 function SciMLBase.solve!(cache::RKCache)
     (defect_threshold, MxNsub, abstol, adaptive, _), kwargs = __split_mirk_kwargs(;
-        cache.kwargs...)
+                                                                                  cache.kwargs...)
     @unpack y, y₀, prob, alg, mesh, mesh_dt, TU, ITU = cache
     info::ReturnCode.T = ReturnCode.Success
     defect_norm = 2 * abstol
@@ -170,7 +201,12 @@ function SciMLBase.solve!(cache::RKCache)
         end
     end
 
+    
     u = [reshape(y, cache.in_size) for y in cache.y₀]
+    if isa(cache.TU, RKTableau)
+        u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))
+    end
     return DiffEqBase.build_solution(prob, alg, cache.mesh,
-        u; interp = MIRKInterpolation(cache.mesh, u, cache), retcode = info)
+                                     u; interp = MIRKInterpolation(cache.mesh, u, cache),
+                                     retcode = info)
 end
