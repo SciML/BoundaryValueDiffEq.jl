@@ -322,8 +322,8 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
 
     if !iip && cache.prob.f.bcresid_prototype === nothing
         y_ = recursive_unflatten!(cache.y, y)
-        resid_ = cache.bc((y_[1], y_[end]), cache.p)
-        resid = ArrayPartition(ArrayPartition(resid_), similar(y, cache.M * (N - 1)))
+        resid_ = ArrayPartition(cache.bc[1](y_[1], cache.p), cache.bc[2](y_[end], cache.p))
+        resid = ArrayPartition(resid_, similar(y, cache.M * (N - 1)))
     else
         resid = ArrayPartition(cache.prob.f.bcresid_prototype,
             similar(y, cache.M * (N - 1)))

@@ -168,7 +168,7 @@ end
 
 function multiple_shooting_initialize(prob, alg::MultipleShooting, has_initial_guess,
     nshoots; odesolve_kwargs = (;), verbose = true, kwargs...)
-    @unpack f, bc, u0, tspan, p = prob
+    @unpack f, u0, tspan, p = prob
     @unpack ode_alg = alg
 
     nodes = range(tspan[1], tspan[2]; length = nshoots + 1)
@@ -210,7 +210,7 @@ end
 
 @views @inline function multiple_shooting_initialize(u_at_nodes_prev, prob, alg,
     prev_nodes, nshoots, old_nshoots, has_initial_guess; odesolve_kwargs = (;), kwargs...)
-    @unpack f, bc, u0, tspan, p = prob
+    @unpack f, u0, tspan, p = prob
     nodes = range(tspan[1], tspan[2]; length = nshoots + 1)
     N = has_initial_guess ? length(first(u0)) : length(u0)
 
