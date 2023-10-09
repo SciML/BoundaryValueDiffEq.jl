@@ -1,4 +1,3 @@
-# TODO: incorporate `initial_guess` similar to MIRK methods
 function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     @unpack f, tspan = prob
