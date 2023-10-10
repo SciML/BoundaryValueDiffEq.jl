@@ -90,12 +90,3 @@ eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
     bcb!(resid.x[2], ub, p)
     return resid
 end
-
-# Helpers for IIP/OOP functions
-function __sparse_jacobian_cache(::Val{iip}, ad, sd, fn, fx, y) where {iip}
-    if iip
-        sparse_jacobian_cache(ad, sd, fn, fx, y)
-    else
-        sparse_jacobian_cache(ad, sd, fn, y; fx)
-    end
-end
