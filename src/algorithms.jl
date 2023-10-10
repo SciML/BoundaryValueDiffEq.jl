@@ -29,6 +29,21 @@ Significantly more stable than Single Shooting.
     grid_coarsening
 end
 
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob,
+    alg::MultipleShooting)
+    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
+    bc_diffmode = if jac_alg.bc_diffmode === nothing
+        prob.problem_type isa TwoPointBVProblem ? AutoSparseForwardDiff() :
+        AutoForwardDiff()
+    else
+        jac_alg.bc_diffmode
+    end
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
+                     jac_alg.nonbc_diffmode
+
+    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
+end
+
 function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
     grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||

@@ -5,6 +5,9 @@ using Test, SafeTestsets
         @time @safetestset "Shooting Tests" begin
             include("shooting/shooting_tests.jl")
         end
+        @time @safetestset "Ray Tracing BVP" begin
+            include("shooting/ray_tracing.jl")
+        end
         @time @safetestset "Orbital" begin
             include("shooting/orbital.jl")
         end
