@@ -15,7 +15,7 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -31,7 +31,7 @@ function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -48,7 +48,7 @@ function constructLobattoIIIa4(::Type{T}, nested::Bool) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -66,7 +66,7 @@ function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -88,7 +88,7 @@ function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -104,7 +104,7 @@ function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -121,7 +121,7 @@ function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -139,7 +139,7 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end

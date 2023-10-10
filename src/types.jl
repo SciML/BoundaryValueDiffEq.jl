@@ -40,7 +40,7 @@ struct RKTableau{nested, sType, aType, cType, bType}
     c::cType
     b::bType
 
-    function RKTableau(s, a, c, b; nested = false)
+    function RKTableau(s, a, c, b, nested)
         @assert eltype(a) == eltype(c) == eltype(b)
         return new{nested, typeof(s), typeof(a), typeof(c), typeof(b)}(s, a, c, b)
     end
