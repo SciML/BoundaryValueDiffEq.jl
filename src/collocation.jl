@@ -39,7 +39,6 @@ end
                    mesh, mesh_dt, stage::Int)
     @unpack c, a, b = TU
     tmp1 = get_tmp(fᵢ_cache, u)
-    tmp2 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal
     T = eltype(u)
     ctr = 1
@@ -50,7 +49,7 @@ end
 
         # Load interpolation residual
         for j in 1:stage
-            K[:,j] = get_tmp(y[ctr + j], u)
+            K[:, j] = get_tmp(y[ctr + j], u)
         end
 
         # Update interpolation residual
@@ -58,7 +57,7 @@ end
             @. tmp1 = yᵢ
             __maybe_matmul!(tmp1, K[:, 1:stage], a[r, 1:stage], h, T(1))
             f!(residual[ctr + r], tmp1, p, mesh[i] + c[r] * h)
-            residual[ctr + r] .-= K[:,r]
+            residual[ctr + r] .-= K[:, r]
         end
 
         # Update mesh point residual
@@ -99,5 +98,40 @@ end
         __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 
+    return residuals
+end
+
+@views function Φ(fᵢ_cache, k_discrete, f!, TU::RKTableau, y, u, p,
+                   mesh, mesh_dt, stage::Int)
+    @unpack c, a, b = TU
+    residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    tmp1 = get_tmp(fᵢ_cache, u)
+    K = get_tmp(k_discrete[1], u) # Not optimal
+    T = eltype(u)
+    ctr = 1
+    for i in eachindex(k_discrete)
+        h = mesh_dt[i]
+        yᵢ = get_tmp(y[ctr], u)
+        yᵢ₊₁ = get_tmp(y[ctr + stage + 1], u)
+
+        # Load interpolation residual
+        for j in 1:stage
+            K[:, j] = get_tmp(y[ctr + j], u)
+        end
+
+        # Update interpolation residual
+        for r in 1:stage
+            @. tmp1 = yᵢ
+            __maybe_matmul!(tmp1, K[:, 1:stage], a[r, 1:stage], h, T(1))
+            f!(residuals[ctr + r], tmp1, p, mesh[i] + c[r] * h)
+            residuals[ctr + r] .-= K[:, r]
+        end
+
+        # Update mesh point residual
+        residᵢ = residuals[ctr]
+        @. residᵢ = yᵢ₊₁ - yᵢ
+        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        ctr += stage + 1
+    end
     return residuals
 end
