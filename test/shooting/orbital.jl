@@ -77,7 +77,8 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     cur_bc!(resid_f, sol, nothing, sol.t)
     @test norm(resid_f, Inf) < TestTol
 
-    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve); abstol = 1e-6,
+    jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
+    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg); abstol = 1e-6,
         reltol = 1e-6)
     @test SciMLBase.successful_retcode(sol)
     cur_bc!(resid_f, sol, nothing, sol.t)
@@ -97,7 +98,8 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
     @test norm(reduce(vcat, resid_f_2p), Inf) < TestTol
 
-    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve); abstol = 1e-6,
+    jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
+    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg); abstol = 1e-6,
         reltol = 1e-6)
     @test SciMLBase.successful_retcode(sol)
     cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)

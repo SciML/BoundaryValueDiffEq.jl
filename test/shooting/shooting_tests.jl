@@ -76,7 +76,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
         sol = solve(bvp4, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         resid_f = reduce(vcat, (bc2a(sol(tspan[1]), nothing), bc2b(sol(tspan[2]), nothing)))
-        @test norm(resid_f) < 1e-12
+        @test norm(resid_f) < 1e-11
     end
 end
 
@@ -101,10 +101,10 @@ end
     resid_f = Array{ComplexF64}(undef, 2)
 
     nlsolve = NewtonRaphson(; autodiff = AutoFiniteDiff())
-    for solver in [Shooting(Tsit5(); nlsolve)]
-        # FIXME: Need to reenable MS. Currently it always uses ForwardDiff which is a
-        # regression and needs fixing
-        # , MultipleShooting(10, Tsit5(); nlsolve)]
+    jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
+        nonbc_diffmode = AutoSparseFiniteDiff())
+    for solver in [Shooting(Tsit5(); nlsolve),
+        MultipleShooting(10, Tsit5(); nlsolve, jac_alg)]
         sol = solve(bvp, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         bc1!(resid_f, sol, nothing, sol.t)

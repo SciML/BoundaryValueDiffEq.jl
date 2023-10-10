@@ -1,13 +1,9 @@
-const DEFAULT_NLSOLVE_SHOOTING = NewtonRaphson()
-const DEFAULT_NLSOLVE_MIRK = NewtonRaphson()
-const DEFAULT_JACOBIAN_ALGORITHM_MIRK = MIRKJacobianComputationAlgorithm()
-
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractRK <: BoundaryValueDiffEqAlgorithm end
 
 """
-    Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING)
+    Shooting(ode_alg; nlsolve = NewtonRaphson())
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
 """
@@ -16,24 +12,25 @@ struct Shooting{O, N} <: BoundaryValueDiffEqAlgorithm
     nlsolve::N
 end
 
-Shooting(ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING) = Shooting(ode_alg, nlsolve)
+Shooting(ode_alg; nlsolve = NewtonRaphson()) = Shooting(ode_alg, nlsolve)
 
 """
-    MultipleShooting(nshoots::Int, ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING,
+    MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
         grid_coarsening = true)
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
 Significantly more stable than Single Shooting.
 """
-@concrete struct MultipleShooting
+@concrete struct MultipleShooting{J <: BVPJacobianAlgorithm}
     ode_alg
     nlsolve
+    jac_alg::J
     nshoots::Int
     grid_coarsening
 end
 
-function MultipleShooting(nshoots::Int, ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOTING,
-    grid_coarsening = true)
+function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
+    grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
             grid_coarsening isa AbstractVector{<:Integer} ||
             grid_coarsening isa NTuple{N, <:Integer} where {N}
@@ -42,7 +39,7 @@ function MultipleShooting(nshoots::Int, ode_alg; nlsolve = DEFAULT_NLSOLVE_SHOOT
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(ode_alg, nlsolve, nshoots, grid_coarsening)
+    return MultipleShooting(ode_alg, nlsolve, jac_alg, nshoots, grid_coarsening)
 end
 
 for order in (2, 3, 4, 5, 6)
@@ -50,29 +47,27 @@ for order in (2, 3, 4, 5, 6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
-                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
 
         $($order)th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
 
         ## References
 
         @article{Enright1996RungeKuttaSW,
-        title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
-        author={Wayne H. Enright and Paul H. Muir},
-        journal={SIAM J. Sci. Comput.},
-        year={1996},
-        volume={17},
-        pages={479-497}
+            title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
+            author={Wayne H. Enright and Paul H. Muir},
+            journal={SIAM J. Sci. Comput.},
+            year={1996},
+            volume={17},
+            pages={479-497}
         }
         """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
             nlsolve::N
             jac_alg::J
         end
 
-        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+        function $(alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
             return $(alg)(nlsolve, jac_alg)
         end
     end

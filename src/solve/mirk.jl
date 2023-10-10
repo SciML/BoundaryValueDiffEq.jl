@@ -316,7 +316,7 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
     cache_bc = __sparse_jacobian_cache(Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bc,
         resid_bc, y)
 
-    sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
+    sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
         Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(cache, y, cache.M, N)
         PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
             col_colorvec = cvec)
@@ -324,12 +324,10 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
         NoSparsityDetection()
     end
 
-    cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.collocation_diffmode,
+    cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
         sd_collocation, loss_collocation, resid_collocation, y)
 
-    jac_prototype = vcat(init_jacobian(cache_bc),
-        jac_alg.collocation_diffmode isa AbstractSparseADType ? Jₛ :
-        init_jacobian(cache_collocation))
+    jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
 
     # TODO: Pass `p` into `loss_bc` and `loss_collocation`. Currently leads to a Tag
     #       mismatch for ForwardDiff
@@ -337,7 +335,7 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
         function jac_internal!(J, x, p)
             sparse_jacobian!(@view(J[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
                 loss_bc, resid_bc, x)
-            sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.collocation_diffmode,
+            sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
                 cache_collocation, loss_collocation, resid_collocation, x)
             return J
         end
@@ -346,7 +344,7 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
         function jac_internal(x, p)
             sparse_jacobian!(@view(J_[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
                 loss_bc, x)
-            sparse_jacobian!(@view(J_[(cache.M + 1):end, :]), jac_alg.collocation_diffmode,
+            sparse_jacobian!(@view(J_[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
                 cache_collocation, loss_collocation, x)
             return J_
         end

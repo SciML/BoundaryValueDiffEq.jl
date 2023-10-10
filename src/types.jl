@@ -65,40 +65,40 @@ end
 @truncate_stacktrace RKInterpTableau 1
 
 # Sparsity Detection
-@concrete struct MIRKJacobianComputationAlgorithm
+@concrete struct BVPJacobianAlgorithm
     bc_diffmode
-    collocation_diffmode
+    nonbc_diffmode
     diffmode
+end
+
+function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
+    bc_diffmode = missing)
+    if diffmode !== missing
+        @assert nonbc_diffmode === missing && bc_diffmode === missing
+        return BVPJacobianAlgorithm(diffmode, diffmode, diffmode)
+    else
+        diffmode = AutoSparseForwardDiff()
+        bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
+        nonbc_diffmode = nonbc_diffmode === missing ?
+                         AutoSparseForwardDiff() : nonbc_diffmode
+        return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, nonbc_diffmode)
+    end
 end
 
 function MIRKJacobianComputationAlgorithm(diffmode = missing;
     collocation_diffmode = missing, bc_diffmode = missing)
-    if diffmode !== missing
-        @assert collocation_diffmode === missing && bc_diffmode === missing
-        return MIRKJacobianComputationAlgorithm(diffmode, diffmode, diffmode)
-    else
-        @static if VERSION < v"1.9"
-            diffmode = AutoForwardDiff()
-            bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
-            collocation_diffmode = collocation_diffmode === missing ?
-                                   AutoForwardDiff() : collocation_diffmode
-        else
-            diffmode = AutoSparseForwardDiff()
-            bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
-            collocation_diffmode = collocation_diffmode === missing ?
-                                   AutoSparseForwardDiff() : collocation_diffmode
-        end
-        return MIRKJacobianComputationAlgorithm(bc_diffmode, collocation_diffmode,
-            collocation_diffmode)
-    end
+    Base.depwarn("`MIRKJacobianComputationAlgorithm` has been deprecated in favor of \
+        `BVPJacobianAlgorithm`. Replace `collocation_diffmode` with `nonbc_diffmode",
+        :MIRKJacobianComputationAlgorithm)
+    return BVPJacobianAlgorithm(diffmode; nonbc_diffmode = collocation_diffmode,
+        bc_diffmode)
 end
 
 __needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true
 __needs_diffcache(_) = false
-function __needs_diffcache(jac_alg::MIRKJacobianComputationAlgorithm)
-    return __needs_diffcache(jac_alg.diffmode) ||
-           __needs_diffcache(jac_alg.bc_diffmode) ||
-           __needs_diffcache(jac_alg.collocation_diffmode)
+function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
+    return __needs_diffcache(jac_alg.diffmode) || __needs_diffcache(jac_alg.bc_diffmode) ||
+           __needs_diffcache(jac_alg.nonbc_diffmode)
 end
 
 # We don't need to always allocate a DiffCache. This works around that.

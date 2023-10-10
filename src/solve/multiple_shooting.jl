@@ -14,7 +14,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
             @warn "Initial guess length != `nshoots + 1`! Adapting to `nshoots = $(nshoots)`"
     end
 
-    # We will use colored AD for this parts!
+    # We will use colored AD for this part!
     @views function solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
         ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
         us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
@@ -94,12 +94,11 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
         J_bc = J[1:N, :]
         J_c = J[(N + 1):end, :]
 
-        # FIXME: External control
-        sparse_jacobian!(J_c, AutoSparseForwardDiff(), ode_jac_cache, ode_fn,
+        sparse_jacobian!(J_c, alg.jac_alg.nonbc_diffmode, ode_jac_cache, ode_fn,
             resid_nodes.du, us)
 
         # For BC
-        sparse_jacobian!(J_bc, AutoForwardDiff(), bc_jac_cache, bc_fn, resid_bc, us)
+        sparse_jacobian!(J_bc, alg.jac_alg.bc_diffmode, bc_jac_cache, bc_fn, resid_bc, us)
 
         return nothing
     end
@@ -120,28 +119,30 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
 
         resid_prototype = ArrayPartition(bcresid_prototype,
             similar(u_at_nodes, cur_nshoot * N))
-        residbc_prototype = DiffCache(bcresid_prototype,
-            pickchunksize((cur_nshoot + 1) * N))
         resid_nodes = maybe_allocate_diffcache(resid_prototype.x[2],
-            pickchunksize((cur_nshoot + 1) * N),
-            AutoForwardDiff())
-
-        J_c, col_colorvec, row_colorvec = __generate_sparse_jacobian_prototype(alg, _u0, N,
-            cur_nshoot)
+            pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
 
         ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
-        ode_jac_cache = sparse_jacobian_cache(AutoSparseForwardDiff(),
-            PrecomputedJacobianColorvec(; jac_prototype = J_c, col_colorvec, row_colorvec),
-            ode_fn, copy(resid_prototype.x[2]), u_at_nodes)
+        sd_ode = if alg.jac_alg.nonbc_diffmode isa AbstractSparseADType
+            J_c, col_colorvec, row_colorvec = __generate_sparse_jacobian_prototype(alg, _u0,
+                N, cur_nshoot)
+            PrecomputedJacobianColorvec(; jac_prototype = J_c, row_colorvec, col_colorvec)
+        else
+            NoSparsityDetection()
+        end
+        ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
+            ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
 
         bc_fn = (du, u) -> compute_bc_residual!(du, u, prob.p, cur_nshoot,
             nodes, resid_nodes)
-        bc_jac_cache = sparse_jacobian_cache(AutoForwardDiff(),
-            NoSparsityDetection(), bc_fn, copy(resid_prototype.x[1]), u_at_nodes)
+        sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
+                SymbolicsSparsityDetection() : NoSparsityDetection()
+        bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
+            sd_bc, bc_fn, similar(bcresid_prototype), u_at_nodes)
 
         jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
 
-        jac_fn = (J, us, p) -> jac!(J, us, p, resid_prototype.x[1], resid_nodes,
+        jac_fn = (J, us, p) -> jac!(J, us, p, similar(bcresid_prototype), resid_nodes,
             ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, cur_nshoot, nodes)
 
         loss_function! = NonlinearFunction{true}((args...) -> loss!(args..., cur_nshoot,
@@ -152,8 +153,8 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
     end
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
-    return SciMLBase.__solve(single_shooting_prob, Shooting(alg.ode_alg; alg.nlsolve);
-        odesolve_kwargs, nlsolve_kwargs, verbose, kwargs...)
+    return solve(single_shooting_prob, Shooting(alg.ode_alg; alg.nlsolve); odesolve_kwargs,
+        nlsolve_kwargs, verbose, kwargs...)
 end
 
 function multiple_shooting_initialize(prob, alg::MultipleShooting, has_initial_guess,
