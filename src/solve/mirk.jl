@@ -318,9 +318,8 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
         resid_bc, y)
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
-        Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(cache, y, cache.M, N)
-        PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
-            col_colorvec = cvec)
+        PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
+            cache.problem_type, y, cache.M, N))
     else
         NoSparsityDetection()
     end
@@ -369,17 +368,15 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
     end
 
     sd = if jac_alg.diffmode isa AbstractSparseADType
-        Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(cache, resid, cache.M, N)
-        PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
-            col_colorvec = cvec)
+        PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
+            cache.problem_type, resid.x[1], cache.M, N))
     else
         NoSparsityDetection()
     end
 
     diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, loss, resid, y)
 
-    jac_prototype = jac_alg.diffmode isa AbstractSparseADType ? Jₛ :
-                    init_jacobian(diffcache)
+    jac_prototype = init_jacobian(diffcache)
 
     # TODO: Pass `p` into `loss_bc` and `loss_collocation`. Currently leads to a Tag
     #       mismatch for ForwardDiff
@@ -397,71 +394,4 @@ function generate_nlprob(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, lo
     end
 
     return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
-end
-
-# Generating Banded Matrix
-function construct_sparse_banded_jac_prototype(::MIRKCache, y, M, N)
-    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
-    Is = Vector{Int}(undef, l)
-    Js = Vector{Int}(undef, l)
-    idx = 1
-    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
-        Is[idx] = i
-        Js[idx] = j
-        idx += 1
-    end
-    col_colorvec = Vector{Int}(undef, M * N)
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-    row_colorvec = Vector{Int}(undef, M * (N - 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-
-    y_ = similar(y, length(Is))
-    return (sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-            y_, M * (N - 1), M * N), col_colorvec, row_colorvec)
-end
-
-# Two Point Specialization
-function construct_sparse_banded_jac_prototype(::MIRKCache, y::ArrayPartition, M, N)
-    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
-    l_top = M * length(y.x[1].x[1])
-    l_bot = M * length(y.x[1].x[2])
-
-    Is = Vector{Int}(undef, l + l_top + l_bot)
-    Js = Vector{Int}(undef, l + l_top + l_bot)
-    idx = 1
-
-    for i in 1:length(y.x[1].x[1]), j in 1:M
-        Is[idx] = i
-        Js[idx] = j
-        idx += 1
-    end
-
-    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
-        Is[idx] = i + length(y.x[1].x[1])
-        Js[idx] = j
-        idx += 1
-    end
-
-    for i in 1:length(y.x[1].x[2]), j in 1:M
-        Is[idx] = i + length(y.x[1].x[1]) + M * (N - 1)
-        Js[idx] = j + M * (N - 1)
-        idx += 1
-    end
-
-    col_colorvec = Vector{Int}(undef, M * N)
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-    row_colorvec = Vector{Int}(undef, M * N)
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-
-    y_ = similar(y, length(Is))
-    return (sparse(adapt(parameterless_type(y), Is), adapt(parameterless_type(y), Js),
-            y_, M * N, M * N), col_colorvec, row_colorvec)
 end
