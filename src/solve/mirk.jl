@@ -13,7 +13,7 @@ function extend_y(y, N, stage)
 end
 
 function shrink_y(y, N, M, stage)
-    y_shrink = similar(y,N)
+    y_shrink = similar(y, N)
     y_shrink[1] = y[1]
     let ctr = 2
         for i in 2:N
@@ -37,11 +37,13 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
         eltype(prob.u0), length(prob.u0), Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     end
 
-    stage = alg_stage(alg) 
+    stage = alg_stage(alg)
     TU, ITU = constructRK(alg, T)
+
     expanded_jac = isa(TU, RKTableau{false})
-    chunksize = expanded_jac ? pickchunksize(M + M * n *(stage + 1)) : pickchunksize(M * (n + 1))
-    
+    chunksize = expanded_jac ? pickchunksize(M + M * n * (stage + 1)) :
+                pickchunksize(M * (n + 1))
+
     if has_initial_guess
         fᵢ_cache = maybe_allocate_diffcache(vec(similar(_u0)), chunksize, alg.jac_alg)
         fᵢ₂_cache = vec(similar(_u0))
@@ -61,7 +63,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     MxNsub = 3000              # TODO: Allow user to specify these
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = expanded_jac ? extend_y(__initial_state_from_prob(prob, mesh), n + 1, alg_stage(alg)) : __initial_state_from_prob(prob, mesh)
+    y₀ = expanded_jac ?
+         extend_y(__initial_state_from_prob(prob, mesh), n + 1, alg_stage(alg)) :
+         __initial_state_from_prob(prob, mesh)
 
     y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
 
@@ -202,9 +206,8 @@ function SciMLBase.solve!(cache::RKCache)
         end
     end
 
-    
     u = [reshape(y, cache.in_size) for y in cache.y₀]
-    if isa(cache.TU, RKTableau)
+    if isa(TU, RKTableau{false})
         u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))
     end
     return DiffEqBase.build_solution(prob, alg, cache.mesh,

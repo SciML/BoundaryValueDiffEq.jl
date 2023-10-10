@@ -150,7 +150,7 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
 
     resid_bc = cache.prob.f.bcresid_prototype === nothing ? similar(y, cache.M) :
                cache.prob.f.bcresid_prototype
-    expanded_jac = !(cache.alg.nested_nlsolve) && isa(cache.TU, RKTableau)
+    expanded_jac = isa(cache.TU, RKTableau{false})
     resid_collocation = expanded_jac ? similar(y, cache.M * (N - 1) * (stage + 1)) :
                         similar(y, cache.M * (N - 1))
 

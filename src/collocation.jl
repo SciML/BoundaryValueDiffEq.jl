@@ -35,7 +35,7 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau, y, u, p,
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau{false}, y, u, p,
                    mesh, mesh_dt, stage::Int)
     @unpack c, a, b = TU
     tmp1 = get_tmp(fᵢ_cache, u)
@@ -65,6 +65,43 @@ end
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
         ctr += stage + 1
+    end
+end
+
+function FIRK_nlsolve(K, f!, a, c, yᵢ, h, mesh_i, stage, p)
+    res = copy(K)
+    T = eltype(K)
+    tmp1 = similar(K, size(K, 1))
+
+    for r in 1:stage
+        @. tmp1 = yᵢ
+        __maybe_matmul!(tmp1, K[:, 1:stage], a[r, 1:stage], h, T(1))
+        f!(@view(res[:, r]), tmp1, p, mesh_i + c[r] * h)
+        res[:, r] .-= K[:, r]
+    end
+    return res
+end
+
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau{true}, y, u, p,
+                   mesh, mesh_dt, stage::Int)
+    @unpack c, a, b = TU
+    T = eltype(u)
+    K = get_tmp(k_discrete[1], u)
+
+    for i in eachindex(k_discrete)
+        residᵢ = residual[i]
+        h = mesh_dt[i]
+
+        yᵢ = get_tmp(y[i], u)
+        yᵢ₊₁ = get_tmp(y[i + 1], u)
+        y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ] 
+        prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage, p), fill(1.0, size(K)), p);
+        sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
+        K = sol.u
+
+        # Update residual
+        @. residᵢ = yᵢ₊₁ - yᵢ
+        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 end
 
@@ -102,7 +139,7 @@ end
 end
 
 @views function Φ(fᵢ_cache, k_discrete, f!, TU::RKTableau, y, u, p,
-                   mesh, mesh_dt, stage::Int)
+                  mesh, mesh_dt, stage::Int)
     @unpack c, a, b = TU
     residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp1 = get_tmp(fᵢ_cache, u)
@@ -132,6 +169,32 @@ end
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
         ctr += stage + 1
+    end
+    return residuals
+end
+
+@views function Φ(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau{true}, y, u, p,
+                   mesh, mesh_dt, stage::Int)
+    @unpack c, a, b = TU
+    residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    tmp1 = get_tmp(fᵢ_cache, u)
+    T = eltype(u)
+    K = get_tmp(k_discrete[1], u)
+
+    for i in eachindex(k_discrete)
+        residᵢ = residual[i]
+        h = mesh_dt[i]
+
+        yᵢ = get_tmp(y[i], u)
+        yᵢ₊₁ = get_tmp(y[i + 1], u)
+        FIRK_nlsolve!(res, K, p) = FIRK_nlsolve!(res, K, a, c, tmp1, yᵢ, h, T, mesh[i], p)
+        prob = NonlinearProblem(FIRK_nlsolve!, K, p)
+        sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
+        K = sol.u
+
+        # Update residual
+        @. residᵢ = yᵢ₊₁ - yᵢ
+        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
     return residuals
 end
