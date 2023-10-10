@@ -163,7 +163,7 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
     end
 
     sd_collocation = if jac_alg.collocation_diffmode isa AbstractSparseADType
-        Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(y, cache.M, (N-1) * (stage + 1)) # WIP 
+        Jₛ, cvec, rvec = construct_sparse_banded_jac_prototype(y, cache.M, N)
         PrecomputedJacobianColorvec(; jac_prototype = Jₛ, row_colorvec = rvec,
                                     col_colorvec = cvec)
     else
