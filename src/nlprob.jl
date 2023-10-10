@@ -150,7 +150,9 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
 
     resid_bc = cache.prob.f.bcresid_prototype === nothing ? similar(y, cache.M) :
                cache.prob.f.bcresid_prototype
-    resid_collocation = isa(cache.TU, RKTableau) ? similar(y, cache.M * (N - 1) * (stage + 1)) : similar(y, cache.M * (N - 1))
+    expanded_jac = !alg.nested_nlsolve && isa(TU, RKTableau)
+    resid_collocation = expanded_jac ? similar(y, cache.M * (N - 1) * (stage + 1)) :
+                        similar(y, cache.M * (N - 1))
 
     sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
@@ -217,10 +219,11 @@ function generate_nlprob(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss
     if !iip && cache.prob.f.bcresid_prototype === nothing
         y_ = recursive_unflatten!(cache.y, y)
         resid_ = cache.bc((y_[1], y_[end]), cache.p)
-        resid = ArrayPartition(ArrayPartition(resid_), similar(y, cache.M * (N - 1)*(stage + 1)))
+        resid = ArrayPartition(ArrayPartition(resid_),
+                               similar(y, cache.M * (N - 1) * (stage + 1)))
     else
         resid = ArrayPartition(cache.prob.f.bcresid_prototype,
-                               similar(y, cache.M * (N - 1)*(stage + 1)))
+                               similar(y, cache.M * (N - 1) * (stage + 1)))
     end
 
     sd = if jac_alg.diffmode isa AbstractSparseADType

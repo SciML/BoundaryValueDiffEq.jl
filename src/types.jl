@@ -33,16 +33,16 @@ end
 @truncate_stacktrace MIRKInterpTableau 1
 
 # RK Method Tableaus
-struct RKTableau{sType, aType, cType, bType}
+struct RKTableau{nested, sType, aType, cType, bType}
     """Discrete stages of RK formula"""
     s::sType
     a::aType
     c::cType
     b::bType
 
-    function RKTableau(s, a, c, b)
+    function RKTableau(s, a, c, b; nested = false)
         @assert eltype(a) == eltype(c) == eltype(b)
-        return new{typeof(s), typeof(a), typeof(c), typeof(b)}(s, a, c, b)
+        return new{nested, typeof(s), typeof(a), typeof(c), typeof(b)}(s, a, c, b)
     end
 end
 

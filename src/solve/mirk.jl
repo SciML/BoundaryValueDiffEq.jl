@@ -39,7 +39,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
 
     stage = alg_stage(alg) 
     TU, ITU = constructRK(alg, T)
-    chunksize = isa(TU, RKTableau) ? pickchunksize(M + M * n *(stage + 1)) : pickchunksize(M * (n + 1))
+    expanded_jac = isa(TU, RKTableau{false})
+    chunksize = expanded_jac ? pickchunksize(M + M * n *(stage + 1)) : pickchunksize(M * (n + 1))
     
     if has_initial_guess
         fᵢ_cache = maybe_allocate_diffcache(vec(similar(_u0)), chunksize, alg.jac_alg)
@@ -60,7 +61,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     MxNsub = 3000              # TODO: Allow user to specify these
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = isa(TU, RKTableau) ? extend_y(__initial_state_from_prob(prob, mesh), n + 1, alg_stage(alg)) : __initial_state_from_prob(prob, mesh)
+    y₀ = expanded_jac ? extend_y(__initial_state_from_prob(prob, mesh), n + 1, alg_stage(alg)) : __initial_state_from_prob(prob, mesh)
 
     y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
 

@@ -2,10 +2,10 @@
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIa$(order)")
     f = Symbol("constructLobattoIIIa$(order)")
-    @eval constructRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
+    @eval constructRK(_alg::$(alg), ::Type{T}) where {T} = $(f)(T, _alg.nested_nlsolve)
 end
 
-function constructLobattoIIIa2(::Type{T}) where {T}
+function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [0 0
@@ -15,12 +15,12 @@ function constructLobattoIIIa2(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructLobattoIIIa3(::Type{T}) where {T}
+function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 3
     a = [0 0 0
@@ -31,12 +31,12 @@ function constructLobattoIIIa3(::Type{T}) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructLobattoIIIa4(::Type{T}) where {T}
+function constructLobattoIIIa4(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 4
     a = [0 0 0 0
@@ -48,12 +48,12 @@ function constructLobattoIIIa4(::Type{T}) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructLobattoIIIa5(::Type{T}) where {T}
+function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 5
     a = [0 0 0 0 0
@@ -66,7 +66,7 @@ function constructLobattoIIIa5(::Type{T}) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
@@ -78,7 +78,7 @@ for order in (2, 3, 4, 5)
     @eval constructRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
 end
 
-function constructLobattoIIIb2(::Type{T}) where {T}
+function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [1//2 0
@@ -88,12 +88,12 @@ function constructLobattoIIIb2(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructLobattoIIIb3(::Type{T}) where {T}
+function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 3
     a = [1//6 -1//6 0
@@ -104,12 +104,12 @@ function constructLobattoIIIb3(::Type{T}) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructLobattoIIIb4(::Type{T}) where {T}
+function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 4
     a = [1 // 12 (-1 - Rational(√5))//24 (-1 + Rational(√5))//24 0
@@ -121,12 +121,12 @@ function constructLobattoIIIb4(::Type{T}) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructLobattoIIIb5(::Type{T}) where {T}
+function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 5
     a = [1 // 20 (-7 - Rational(√21))//120 1 // 15 (-7 + Rational(√21))//120 0
@@ -139,7 +139,7 @@ function constructLobattoIIIb5(::Type{T}) where {T}
     
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end

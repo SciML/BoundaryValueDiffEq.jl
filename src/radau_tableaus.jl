@@ -2,10 +2,10 @@
 for order in (1, 3, 5, 9, 13)
     alg = Symbol("RadauIIa$(order)")
     f = Symbol("constructRadauIIa$(order)")
-    @eval constructRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
+    @eval constructRK(_alg::$(alg), ::Type{T}) where {T} = $(f)(T, _alg.nested_nlsolve)
 end
 
-function constructRadauIIa1(::Type{T}) where {T}
+function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 1
     a = [1]
@@ -14,12 +14,12 @@ function constructRadauIIa1(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructRadauIIa3(::Type{T}) where {T}
+function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [5//12 -1//12
@@ -29,12 +29,12 @@ function constructRadauIIa3(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructRadauIIa5(::Type{T}) where {T}
+function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 3
     a = [11 // 45-7 * Rational(√6) // 360 37 // 225-169 * Rational(√6) // 1800 -2 // 225+Rational(√6) // 75
@@ -45,12 +45,12 @@ function constructRadauIIa5(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructRadauIIa9(::Type{T}) where {T}
+function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 5
     c = [
@@ -77,12 +77,12 @@ function constructRadauIIa9(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
 
-function constructRadauIIa13(::Type{T}) where {T}
+function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 7
     c = [
@@ -116,7 +116,7 @@ function constructRadauIIa13(::Type{T}) where {T}
 
     # TODO: Interpolant tableau, no adaptivity for now
 
-    TU = ITU = RKTableau(Int64(s), T.(a), T.(c), T.(b))
+    TU = ITU = RKTableau{nested}(Int64(s), T.(a), T.(c), T.(b))
     # ITU = RKInterpTableau(Int64(s_star), T.(a_star), T.(c_star), T(τ_star))
     return TU, ITU
 end
