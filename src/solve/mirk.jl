@@ -27,6 +27,7 @@ end
 function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
                           abstol = 1e-3, adaptive = true, kwargs...)
     has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
+    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     (T, M, n) = if has_initial_guess
         # If user provided a vector of initial guesses

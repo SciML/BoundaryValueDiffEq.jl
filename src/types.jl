@@ -77,12 +77,20 @@ function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
         @assert nonbc_diffmode === missing && bc_diffmode === missing
         return BVPJacobianAlgorithm(diffmode, diffmode, diffmode)
     else
-        diffmode = AutoSparseForwardDiff()
-        bc_diffmode = bc_diffmode === missing ? AutoForwardDiff() : bc_diffmode
-        nonbc_diffmode = nonbc_diffmode === missing ?
-                         AutoSparseForwardDiff() : nonbc_diffmode
+        diffmode = nothing
+        bc_diffmode = bc_diffmode === missing ? nothing : bc_diffmode
+        nonbc_diffmode = nonbc_diffmode === missing ? nothing : nonbc_diffmode
         return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, nonbc_diffmode)
     end
+end
+
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob, alg)
+    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
+    bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoForwardDiff() : jac_alg.bc_diffmode
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
+                     jac_alg.nonbc_diffmode
+
+    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
 function MIRKJacobianComputationAlgorithm(diffmode = missing;
