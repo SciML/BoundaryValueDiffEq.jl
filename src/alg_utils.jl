@@ -7,7 +7,7 @@ end
 for order in (1, 3, 5, 9, 13)
     alg = Symbol("RadauIIa$(order)")
     @eval alg_order(::$(alg)) = $order
-    @eval alg_stage(::$(alg)) = $(order + 1) / 2
+    @eval alg_stage(::$(alg)) = Int($(order + 1) / 2)
 end
 
 for order in (2, 3, 4, 5)

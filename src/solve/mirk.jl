@@ -36,7 +36,11 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
         dt ≤ 0 && throw(ArgumentError("dt must be positive"))
         eltype(prob.u0), length(prob.u0), Int(cld((prob.tspan[2] - prob.tspan[1]), dt))
     end
-    chunksize = pickchunksize(M * (n + 1))
+
+    stage = alg_stage(alg) 
+    TU, ITU = constructRK(alg, T)
+    chunksize = isa(TU, RKTableau) ? pickchunksize(M + M * n *(stage + 1)) : pickchunksize(M * (n + 1))
+    
     if has_initial_guess
         fᵢ_cache = maybe_allocate_diffcache(vec(similar(_u0)), chunksize, alg.jac_alg)
         fᵢ₂_cache = vec(similar(_u0))
@@ -56,13 +60,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     MxNsub = 3000              # TODO: Allow user to specify these
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_state_from_prob(prob, mesh)
-    TU, ITU = constructRK(alg, T)
-    if isa(TU, RKTableau)
-        y₀ = extend_y(y₀, n + 1, alg_stage(alg))
-    end
+    y₀ = isa(TU, RKTableau) ? extend_y(__initial_state_from_prob(prob, mesh), n + 1, alg_stage(alg)) : __initial_state_from_prob(prob, mesh)
+
     y = [maybe_allocate_diffcache(vec(copy(yᵢ)), chunksize, alg.jac_alg) for yᵢ in y₀]
-    stage = alg_stage(alg)
 
     k_discrete = [maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]

@@ -58,7 +58,7 @@ end
             @. tmp1 = yᵢ
             __maybe_matmul!(tmp1, K[:, 1:stage], a[r, 1:stage], h, T(1))
             f!(residual[ctr + r], tmp1, p, mesh[i] + c[r] * h)
-            residual[ctr + r] -= K[:,r]
+            residual[ctr + r] .-= K[:,r]
         end
 
         # Update mesh point residual
