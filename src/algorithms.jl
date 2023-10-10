@@ -68,11 +68,13 @@ for order in (1, 3, 5, 9, 13)
         struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
+            nested_nlsolve::Bool
         end
 
         function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
-            return $(alg)(nlsolve, jac_alg)
+            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK,
+            nested_nlsolve = false)
+            return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
     end
 end
@@ -95,11 +97,13 @@ for order in (2, 3, 4, 5)
         struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
+            nested_nlsolve::Bool
         end
 
         function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
-            return $(alg)(nlsolve, jac_alg)
+            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK,
+            nested_nlsolve = false)
+            return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
     end
 end
@@ -121,11 +125,13 @@ for order in (2, 3, 4, 5)
         struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
+            nested_nlsolve::Bool
         end
 
         function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK)
-            return $(alg)(nlsolve, jac_alg)
+            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK,
+            nested_nlsolve = false)
+            return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
     end
 end
