@@ -39,7 +39,7 @@ end
 
 export Shooting, MultipleShooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
-export MIRKJacobianComputationAlgorithm
+export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
 # From ODEInterface.jl
 export BVPM2, BVPSOL
 
