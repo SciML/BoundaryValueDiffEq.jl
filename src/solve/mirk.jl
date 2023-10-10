@@ -309,6 +309,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
                 loss_bc, resid_bc, x)
             sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
                 cache_collocation, loss_collocation, resid_collocation, x)
+            display(Array(J)) # display the jacobian for error checking
             return J
         end
     else

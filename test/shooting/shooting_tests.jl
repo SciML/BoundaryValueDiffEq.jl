@@ -1,5 +1,28 @@
 using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
 
+### BVP Solution Type Test: build bvp solition ###
+tspan = (0.0, 2.0)
+u0 = [0.0, 1.0]
+# Inplace
+function f1!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = -u[1]
+    return nothing
+end
+
+function bc1!(resid, sol, p, t)
+    t₀, t₁ = first(t), last(t)
+    resid[1] = sol(t₀)[1]
+    resid[2] = sol(t₁)[1] - 1
+    return nothing
+end
+
+bvp = BVProblem(f1!, bc1!, u0, tspan)
+sol = solve(bvp, MIRK4(); dt=0.1)
+
+# ================================ #
+
+
 @testset "Basic Shooting Tests" begin
     SOLVERS = [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
 
