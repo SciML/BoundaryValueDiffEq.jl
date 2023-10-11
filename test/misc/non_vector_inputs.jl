@@ -58,5 +58,5 @@ probs = [
         end
     end
 
-    # TODO: Multiple Shooting
+    # FIXME: Add Multiple Shooting here once it supports non-vector inputs
 end

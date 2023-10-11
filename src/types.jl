@@ -42,13 +42,14 @@ end
 function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
     bc_diffmode = missing)
     if diffmode !== missing
-        @assert nonbc_diffmode === missing && bc_diffmode === missing
+        bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
+        nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
         return BVPJacobianAlgorithm(diffmode, diffmode, diffmode)
     else
         diffmode = nothing
         bc_diffmode = bc_diffmode === missing ? nothing : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? nothing : nonbc_diffmode
-        return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, nonbc_diffmode)
+        return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
     end
 end
 
@@ -86,6 +87,12 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::TwoPointBV
                      jac_alg.nonbc_diffmode
 
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
+end
+
+# This can cause Type Instability
+function concretize_jacobian_algorithm(alg, prob)
+    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    return alg
 end
 
 function MIRKJacobianComputationAlgorithm(diffmode = missing;

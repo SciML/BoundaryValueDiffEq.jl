@@ -29,6 +29,17 @@ Significantly more stable than Single Shooting.
     grid_coarsening
 end
 
+function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
+    jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    return MultipleShooting(alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots,
+        alg.grid_coarsening)
+end
+
+function update_nshoots(alg::MultipleShooting, nshoots::Int)
+    return MultipleShooting(alg.ode_alg, alg.nlsolve, alg.jac_alg, nshoots,
+        alg.grid_coarsening)
+end
+
 function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
     grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
