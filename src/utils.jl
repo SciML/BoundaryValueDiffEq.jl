@@ -106,7 +106,7 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
     chunksize = pickchunksize(M * (N + length(x)))
-    append!(x, [maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
     return x
 end
 
@@ -132,19 +132,22 @@ function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
     return [copy(vec(u)) for u in u0]
 end
 
-function __get_bcresid_prototype(::TwoPointBVProblem, prob, u)
+function __get_bcresid_prototype(prob::BVProblem, u)
+    return __get_bcresid_prototype(prob.problem_type, prob, u)
+end
+function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     prototype = if isinplace(prob)
         prob.f.bcresid_prototype
-    elseif prob.f.bcresid_prototype === nothing
+    elseif prob.f.bcresid_prototype !== nothing
         prob.f.bcresid_prototype
     else
         ArrayPartition(first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p))
     end
     return prototype, size.(prototype.x)
 end
-function __get_bcresid_prototype(::StandardBVProblem, prob, u)
+function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
-                fill!(similar(u), 0)
+                __zeros_like(u)
     return prototype, size(prototype)
 end
 
@@ -155,3 +158,8 @@ function __fill_like(v, x, args...)
 end
 __zeros_like(args...) = __fill_like(0, args...)
 __ones_like(args...) = __fill_like(1, args...)
+
+__safe_reshape(x, args...) = reshape(x, args...)
+function __safe_reshape(x::ArrayPartition, sizes::NTuple)
+    return ArrayPartition(__safe_reshape.(x.x, sizes))
+end

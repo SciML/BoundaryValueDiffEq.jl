@@ -126,6 +126,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
             end
             (__vecbc_a!, __vecbc_b!)
         end
+        bcresid_prototype = vec(bcresid_prototype)
         vecf!, vecbc!
     else
         vecf(u, p, t) = vec(prob.f(reshape(u, size(X)), p, t))
@@ -136,6 +137,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
             __vecbc_b(ub, p) = vec(prob.f.bc[2](reshape(ub, size(X)), p))
             (__vecbc_a, __vecbc_b)
         end
+        bcresid_prototype = vec(bcresid_prototype)
         vecf, vecbc
     end
 
@@ -263,8 +265,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
         function loss_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
             resids = [get_tmp(r, u) for r in cache.residual]
-            eval_bc_residual!(resids[1], cache.problem_type, cache.bc, y_, p,
-                cache.mesh)
+            eval_bc_residual!(resids[1], cache.problem_type, cache.bc, y_, p, cache.mesh)
             Φ!(resids[2:end], cache, y_, u, p)
             if cache.problem_type isa TwoPointBVProblem
                 recursive_flatten_twopoint!(resid, resids)
@@ -343,6 +344,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
 
     resid = ArrayPartition(cache.bcresid_prototype, similar(y, cache.M * (N - 1)))
 
+    # TODO: We can splitup the computation here as well similar to the Multiple Shooting
+    # TODO: code. That way for the BC part the actual jacobian computation is even cheaper
+    # TODO: Remember to not reorder if we end up using that implementation
     sd = if jac_alg.diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
             cache.problem_type, resid.x[1], cache.M, N))

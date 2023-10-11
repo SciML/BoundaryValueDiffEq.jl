@@ -84,9 +84,36 @@ function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
     end
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob, alg)
+"""
+    concrete_jacobian_algorithm(jac_alg, prob, alg)
+    concrete_jacobian_algorithm(jac_alg, problem_type, prob, alg)
+
+If user provided all the required fields, then return the user provided algorithm.
+Otherwise, based on the problem type and the algorithm, decide the missing fields.
+
+For example, for `TwoPointBVProblem`, the `bc_diffmode` is set to
+`AutoSparseForwardDiff` while for `StandardBVProblem`, the `bc_diffmode` is set to
+`AutoForwardDiff`.
+"""
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg)
+    return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
+end
+
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::StandardBVProblem,
+    prob::BVProblem, alg)
     diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoForwardDiff() : jac_alg.bc_diffmode
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
+                     jac_alg.nonbc_diffmode
+
+    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
+end
+
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::TwoPointBVProblem,
+    prob::BVProblem, alg)
+    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
+    bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoSparseForwardDiff() :
+                  jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
                      jac_alg.nonbc_diffmode
 
