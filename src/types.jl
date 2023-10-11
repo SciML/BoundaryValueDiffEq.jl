@@ -82,15 +82,11 @@ end
     du
 end
 
-function maybe_allocate_diffcache(x, chunksize, jac_alg)
-    if __needs_diffcache(jac_alg)
-        return DiffCache(x, chunksize)
-    else
-        return FakeDiffCache(x)
-    end
+function __maybe_allocate_diffcache(x, chunksize, jac_alg)
+    return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : FakeDiffCache(x)
 end
-maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
-maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
+__maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
+__maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
 
 PreallocationTools.get_tmp(dc::FakeDiffCache, _) = dc.du
 

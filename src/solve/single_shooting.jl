@@ -1,9 +1,8 @@
 function SciMLBase.__solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), verbose = true, kwargs...)
-    has_initial_guess = prob.u0 isa AbstractVector{<:AbstractArray}
-    has_initial_guess && verbose &&
+    ig, T, _, _, u0 = __extract_problem_details(prob; dt = 0.1)
+    known(ig) && verbose &&
         @warn "Initial guess provided, but will be ignored for Shooting!"
-    u0 = has_initial_guess ? first(prob.u0) : prob.u0
 
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
     resid_size = prob.f.bcresid_prototype === nothing ? u0_size :
