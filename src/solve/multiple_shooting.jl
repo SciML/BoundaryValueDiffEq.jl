@@ -1,4 +1,4 @@
-function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwargs = (;),
+function __solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     @unpack f, tspan = prob
     bc = prob.f.bc
@@ -188,7 +188,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::MultipleShooting; odesolve_kwar
 
         resid_prototype = ArrayPartition(bcresid_prototype,
             similar(u_at_nodes, cur_nshoot * N))
-        resid_nodes = maybe_allocate_diffcache(resid_prototype.x[2],
+        resid_nodes = __maybe_allocate_diffcache(resid_prototype.x[2],
             pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
 
         if prob.problem_type isa TwoPointBVProblem

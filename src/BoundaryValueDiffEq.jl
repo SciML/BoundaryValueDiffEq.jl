@@ -10,7 +10,7 @@ import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
-import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem
+import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve
 import RecursiveArrayTools: ArrayPartition
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
@@ -33,8 +33,7 @@ include("sparse_jacobians.jl")
 include("adaptivity.jl")
 include("interpolation.jl")
 
-function SciMLBase.__solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...;
-    kwargs...)
+function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end
