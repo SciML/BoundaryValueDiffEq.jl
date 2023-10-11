@@ -90,3 +90,68 @@ eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
     bcb!(resid.x[2], ub, p)
     return resid
 end
+
+__append_similar!(::Nothing, n, _) = nothing
+
+function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, [similar(first(x)) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    chunksize = pickchunksize(M * (N + length(x)))
+    append!(x, [maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    return x
+end
+
+## Problem with Initial Guess
+function __extract_problem_details(prob; kwargs...)
+    return __extract_problem_details(prob, prob.u0; kwargs...)
+end
+function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kwargs...)
+    # Problem has Initial Guess
+    _u0 = first(u0)
+    return True(), eltype(_u0), length(_u0), (length(u0) - 1), _u0
+end
+function __extract_problem_details(prob, u0; dt = 0.0, check_positive_dt::Bool = false)
+    # Problem does not have Initial Guess
+    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    t₀, t₁ = prob.tspan
+    return False(), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+end
+
+__initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
+__initial_state_from_prob(u0::AbstractArray, mesh) = [copy(vec(u0)) for _ in mesh]
+function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
+    return [copy(vec(u)) for u in u0]
+end
+
+function __get_bcresid_prototype(::TwoPointBVProblem, prob, u)
+    prototype = if isinplace(prob)
+        prob.f.bcresid_prototype
+    elseif prob.f.bcresid_prototype === nothing
+        prob.f.bcresid_prototype
+    else
+        ArrayPartition(first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p))
+    end
+    return prototype, size.(prototype.x)
+end
+function __get_bcresid_prototype(::StandardBVProblem, prob, u)
+    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
+                fill!(similar(u), 0)
+    return prototype, size(prototype)
+end
+
+function __fill_like(v, x, args...)
+    y = similar(x, args...)
+    fill!(y, v)
+    return y
+end
+__zeros_like(args...) = __fill_like(0, args...)
+__ones_like(args...) = __fill_like(1, args...)

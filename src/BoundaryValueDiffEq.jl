@@ -1,7 +1,7 @@
 module BoundaryValueDiffEq
 
 using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays, SciMLBase,
-    RecursiveArrayTools, ForwardDiff
+    Static, RecursiveArrayTools, ForwardDiff
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType
@@ -10,7 +10,7 @@ import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
-import SciMLBase: AbstractDiffEqInterpolation
+import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem
 import RecursiveArrayTools: ArrayPartition
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
@@ -20,14 +20,15 @@ include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
+
 include("mirk_tableaus.jl")
-include("cache.jl")
-include("collocation.jl")
-include("sparse_jacobians.jl")
 
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
 include("solve/mirk.jl")
+
+include("collocation.jl")
+include("sparse_jacobians.jl")
 
 include("adaptivity.jl")
 include("lobatto_tableaus.jl")
