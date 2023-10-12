@@ -21,7 +21,6 @@ end
 @inline function interpolation(tvals, id::I, idxs, deriv::D, p,
     continuity::Symbol = :left) where {I, D}
     @unpack t, u, cache = id
-    cache = id.cache
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
