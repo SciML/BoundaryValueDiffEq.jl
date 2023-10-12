@@ -48,17 +48,14 @@ end
 
 @truncate_stacktrace RKTableau 1
 
-struct RKInterpTableau{s, a, c, τ}
-    s_star::s
-    a_star::a
-    c_star::c
-    τ_star::τ
+struct RKInterpTableau{c, m}
+    poly_coeffs::c
+    poly_max::m
 
-    function RKInterpTableau(s_star, a_star, c_star, τ_star)
-        @assert eltype(a_star) == eltype(c_star)
-        return new{typeof(s_star), typeof(a_star), typeof(c_star),
-            typeof(τ_star)}(s_star,
-            a_star, c_star, τ_star)
+    function RKInterpTableau(poly_coeffs, poly_max)
+        @assert eltype(poly_coeffs) == eltype(poly_max)
+        return new{typeof(poly_coeffs), typeof(poly_max)}(poly_coeffs,
+            poly_max)
     end
 end
 
