@@ -75,7 +75,7 @@ end
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIb$(order)")
     f = Symbol("constructLobattoIIIb$(order)")
-    @eval constructRK(::$(alg), ::Type{T}) where {T} = $(f)(T)
+    @eval constructRK(_alg::$(alg), ::Type{T}) where {T} = $(f)(T, _alg.nested_nlsolve)
 end
 
 function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}

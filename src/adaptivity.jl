@@ -135,6 +135,16 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
 end
 half_mesh!(cache::RKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
 
+
+"""
+    get_r(ymid, h, c)
+
+Defect estimate from bvde5c paper.
+"""
+function get_r(ymid, h, polymax)
+    ymid^5/factorial(4)*h^4*polymax
+end
+
 """
     defect_estimate!(cache::RKCache{T})
 
@@ -142,7 +152,7 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::RKCache{T}) where {T}
+@views function defect_estimate!(cache::RKCache{T}, TU::MIRKTableau) where {T}
     @unpack M, stage, f!, alg, mesh, mesh_dt, defect = cache
     @unpack s_star, τ_star = cache.ITU
 
@@ -177,6 +187,55 @@ an interpolant
         est₂ = maximum(abs, yᵢ₂)
 
         defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+    end
+
+    return maximum(Base.Fix1(maximum, abs), defect)
+end
+
+@views function defect_estimate!(cache::RKCache{T}, TU::RKTableau{false}) where {T}
+    @unpack M, stage, mesh, mesh_dt, defect = cache
+    @unpack poly_coeffs, poly_max = cache.ITU
+
+    K = zeros(typeof(cache.y[1].u), M, stage)
+    ctr = 1
+
+    for i in 1:(length(mesh) - 1)
+        h = mesh_dt[i]
+        yᵢ = cache.y[ctr].u
+
+        # Load interpolation residual
+        for j in 1:stage
+            K[:, j] = cache.y[ctr + j].u
+        end
+
+        ymid = get_ymid(yᵢ, poly_coeffs, K, h)
+        r = get_r(ymid, h, poly_max)
+
+        defect[i] .= abs.(r)
+        ctr += stage + 1
+    end
+
+    return maximum(Base.Fix1(maximum, abs), defect)
+end
+
+@views function defect_estimate!(cache::RKCache{T}, TU::RKTableau{true}) where {T}
+    @unpack M, stage, mesh, mesh_dt, defect = cache
+    @unpack coeffs = cache.ITU
+
+    K = zeros(typeof(cache.y[1].u), M, stage)
+
+    for i in 1:(length(mesh) - 1)
+        h = mesh_dt[i]
+        yᵢ = cache.y[i].u
+
+        prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage, p), fill(1.0, size(K)), p);
+        sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
+        K .= sol.u
+
+        ymid = get_ymid(yᵢ, poly_coeffs, K, h)
+        r = get_r(ymid, h, poly_max)
+
+        defect[i] .= r
     end
 
     return maximum(Base.Fix1(maximum, abs), defect)

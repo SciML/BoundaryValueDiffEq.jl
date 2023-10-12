@@ -63,3 +63,16 @@ end
     interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return z
 end
+
+"""
+    get_ymid(yᵢ, coeffs, K, h)
+
+Gets the interpolated middle value for a RK method, see bvp5c paper.
+"""
+function get_ymid(yᵢ, coeffs, K, h)
+    res = copy(yᵢ)
+    for i in axes(K,2)
+        res .+=  h.*K[:,i].*coeffs[i]
+    end
+    return res
+end

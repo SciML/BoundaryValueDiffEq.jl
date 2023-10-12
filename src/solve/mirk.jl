@@ -188,7 +188,7 @@ function SciMLBase.solve!(cache::RKCache)
         !adaptive && break
 
         if info == ReturnCode.Success
-            defect_norm = defect_estimate!(cache)
+            defect_norm = defect_estimate!(cache, TU)
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
