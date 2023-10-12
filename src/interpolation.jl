@@ -8,6 +8,10 @@ function DiffEqBase.interp_summary(interp::MIRKInterpolation)
     return "MIRK Order $(interp.cache.order) Interpolation"
 end
 
+function DiffEqBase.interp_summary(interp::MIRKInterpolation)
+    return "MIRK Order $(interp.cache.order) Interpolation"
+end
+
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation(tvals, id, idxs, deriv, p, continuity)
 end
@@ -21,7 +25,6 @@ end
 @inline function interpolation(tvals, id::I, idxs, deriv::D, p,
     continuity::Symbol = :left) where {I, D}
     @unpack t, u, cache = id
-    cache = id.cache
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 

@@ -46,4 +46,10 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             end
         end
     end
+    
+    @time @testset "Interpolation Tests" begin
+        @time @safetestset "MIRK Interpolation Test" begin
+            include("interpolation_test.jl")
+        end
+    end
 end
