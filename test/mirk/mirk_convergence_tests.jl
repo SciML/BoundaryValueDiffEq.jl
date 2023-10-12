@@ -108,8 +108,8 @@ end
 
 # FIXME: This is a really bad test. Needs interpolation
 function bc_pendulum!(residual, u, p, t)
-    residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-    residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
+    residual[1] = u(tspan[end]/2)[1] + π / 2 # the solution at the middle of the time span should be -pi/2
+    residual[2] = u(tspan[end])[1] - π / 2 # the solution at the end of the time span should be pi/2
 end
 
 u0 = MVector{2}([pi / 2, pi / 2])
