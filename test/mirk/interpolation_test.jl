@@ -14,7 +14,8 @@ function prob_bvp_linear_bc!(res, u, p, t)
     res[1] = u[1][1] - 1
     res[2] = u[end][1]
 end
-prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
+prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!,
+    analytic = prob_bvp_linear_analytic)
 prob_bvp_linear_tspan = (0.0, 1.0)
 prob_bvp_linear = BVProblem(prob_bvp_linear_function, prob_bvp_linear_bc!,
     [1.0, 0.0], prob_bvp_linear_tspan, λ)
@@ -28,6 +29,6 @@ end
 @testset "Interpolation" begin
     @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
         @time sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
-        @test sol(0.001) ≈ [0.998687464, -1.312035941] atol=testTol
+        @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
     end
 end
