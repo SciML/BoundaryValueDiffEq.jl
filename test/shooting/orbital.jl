@@ -1,8 +1,6 @@
 # Lambert's Problem
 using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
 
-@info "Testing Lambert's Problem"
-
 y0 = [
     -4.7763169762853989E+06,
     -3.8386398704441520E+05,
@@ -66,18 +64,24 @@ cur_bc_2point_b! = (resid, sol, p) -> bc!_generator_2p_b(resid, sol, init_val)
 resid_f = Array{Float64}(undef, 6)
 resid_f_2p = (Array{Float64, 1}(undef, 3), Array{Float64, 1}(undef, 3))
 
-TestTol = 0.05
-
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital!, cur_bc!, y0, tspan)
 for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
-    nlsolve = NewtonRaphson(; autodiff)
+    nlsolve = TrustRegion(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
-        reltol = 1e-13)
+        reltol = 1e-13, verbose = false)
     cur_bc!(resid_f, sol, nothing, sol.t)
-    @test norm(resid_f, Inf) < TestTol
+    @info "Single Shooting Lambert's Problem: $(norm(resid_f, Inf))"
+    @test norm(resid_f, Inf) < 0.005
+
+    jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
+    @time sol = solve(bvp, MultipleShooting(10, AutoVern7(Rodas5P()); nlsolve, jac_alg);
+        abstol = 1e-6, reltol = 1e-6, verbose = false)
+    cur_bc!(resid_f, sol, nothing, sol.t)
+    @info "Multiple Shooting Lambert's Problem: $(norm(resid_f, Inf))"
+    @test norm(resid_f, Inf) < 0.005
 end
 
 ### Using the TwoPoint BVP Structure
@@ -86,10 +90,19 @@ bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspa
 for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
-    nlsolve = NewtonRaphson(; autodiff)
+    nlsolve = TrustRegion(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
-        reltol = 1e-13)
+        reltol = 1e-13, verbose = false)
     cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
     cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
-    @test norm(reduce(vcat, resid_f_2p), Inf) < TestTol
+    @info "Single Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
+    @test norm(reduce(vcat, resid_f_2p), Inf) < 0.005
+
+    jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
+    @time sol = solve(bvp, MultipleShooting(10, AutoVern7(Rodas5P()); nlsolve, jac_alg);
+        abstol = 1e-6, reltol = 1e-6, verbose = false)
+    cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
+    cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
+    @info "Multiple Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
+    @test norm(reduce(vcat, resid_f_2p), Inf) < 0.005
 end

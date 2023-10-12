@@ -75,8 +75,6 @@ testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
-@info "Collocation method (MIRK)"
-
 @testset "Affineness" begin
     @testset "Problem: $i" for i in (1, 2, 5, 6)
         prob = probArr[i]
@@ -117,8 +115,8 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = MIRKJacobianComputationAlgorithm(; bc_diffmode = AutoFiniteDiff(),
-    collocation_diffmode = AutoSparseFiniteDiff())
+jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
+    nonbc_diffmode = AutoSparseFiniteDiff())
 
 # Using ForwardDiff might lead to Cache expansion warnings
 @test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)

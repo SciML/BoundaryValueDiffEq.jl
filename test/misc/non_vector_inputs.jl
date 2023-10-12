@@ -50,4 +50,13 @@ probs = [
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < 0.01
         end
     end
+
+    @testset "Single Shooting" begin
+        for prob in probs
+            @time sol = solve(prob, Shooting(Tsit5()))
+            @test norm(boundary(sol, prob.p, nothing)) < 0.01
+        end
+    end
+
+    # FIXME: Add Multiple Shooting here once it supports non-vector inputs
 end

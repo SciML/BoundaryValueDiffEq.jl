@@ -1,9 +1,3 @@
-__initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
-__initial_state_from_prob(u0::AbstractArray, mesh) = [copy(vec(u0)) for _ in mesh]
-function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
-    [copy(vec(u)) for u in u0]
-end
-
 function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
     return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
         y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
