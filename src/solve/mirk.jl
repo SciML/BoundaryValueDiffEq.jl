@@ -201,8 +201,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
-            y_ = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, y_; interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
-            eval_bc_residual!(resid, cache.problem_type, cache.bc, y_, p, cache.mesh)
+            bc_sol_ = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, y_; interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
+            eval_bc_residual!(resid, cache.problem_type, cache.bc, bc_sol_, p, cache.mesh)
             return resid
         end
     else
@@ -253,8 +253,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
             function loss_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
                 y_ = recursive_unflatten!(cache.y, u)
                 resids = [get_tmp(r, u) for r in cache.residual]
-                y_ = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, y_; interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
-                eval_bc_residual!(resids[1], cache.problem_type, cache.bc, y_, p,
+                intern_sol_ = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, y_; interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
+                eval_bc_residual!(resids[1], cache.problem_type, cache.bc, intern_sol_, p,
                     cache.mesh)
                 Φ!(resids[2:end], cache, y_, u, p)
 >>>>>>> 5a37ad4 (build solution when constructing nonliear problem)
