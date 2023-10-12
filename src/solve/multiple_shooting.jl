@@ -209,7 +209,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
 
             bc_jac_cache = (bc_jac_cache_partial, init_jacobian(bc_jac_cache_partial))
 
-            jac_prototype = if @isdefined(J_full)
+            jac_prototype = if alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ||
+                               alg.jac_alg.bc_diffmode isa AbstractSparseADType
                 J_full
             else
                 __zeros_like(u_at_nodes, length(resid_prototype), length(u_at_nodes))
@@ -230,7 +231,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
                 nodes); resid_prototype, jac = jac_fn, jac_prototype)
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
         sol_nlsolve = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
-        u_at_nodes = sol_nlsolve.u
+        u_at_nodes = sol_nlsolve.u::typeof(u0)
     end
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
