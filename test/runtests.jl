@@ -33,4 +33,10 @@ using Test, SafeTestsets
             include("non_vector_inputs.jl")
         end
     end
+    
+    @time @testset "Interpolation Tests" begin
+        @time @safetestset "MIRK Interpolation Test" begin
+            include("interpolation_test.jl")
+        end
+    end
 end
