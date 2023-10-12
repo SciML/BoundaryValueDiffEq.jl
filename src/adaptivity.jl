@@ -3,12 +3,12 @@
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-@views function interp_eval!(y::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt)
+@views function interp_eval!(y::AbstractArray, cache::MIRKCache, u, t, mesh, mesh_dt) # add u arg
     i = interval(mesh, t)
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     w, w′ = interp_weights(τ, cache.alg)
-    sum_stages!(y, cache, w, i)
+    sum_stages!(y, cache, w, i; u=u)
     return y
 end
 
@@ -225,11 +225,11 @@ end
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 """
-function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
-    sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
+function sum_stages!(cache::MIRKCache, w, w′, i::Int; u = cache.y₀, dt = cache.mesh_dt[i]) # add u
+    sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i; u, dt) # add u
 end
 
-function sum_stages!(z, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(z, cache::MIRKCache, w, i::Int; u = cache.y₀, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
@@ -237,12 +237,12 @@ function sum_stages!(z, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true)
-    z .= z .* dt .+ cache.y₀[i]
+    z .= z .* dt .+ u[i]
 
     return z
 end
 
-@views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+@views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int; u = cache.y₀, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
@@ -254,7 +254,7 @@ end
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
     __maybe_matmul!(z′, k_interp[i][:, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true)
-    z .= z .* dt[1] .+ cache.y₀[i]
+    z .= z .* dt[1] .+ u[i]
 
     return z, z′
 end

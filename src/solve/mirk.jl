@@ -171,7 +171,7 @@ function SciMLBase.solve!(cache::MIRKCache)
                 if info == ReturnCode.Success
                     __append_similar!(cache.y₀, length(cache.mesh), cache.M)
                     for (i, m) in enumerate(cache.mesh)
-                        interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                        interp_eval!(cache.y₀[i], cache, cache.y₀, m, mesh, mesh_dt)
                     end
                     __expand_cache!(cache)
                 end
@@ -308,8 +308,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
             sparse_jacobian!(@view(J[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
                 loss_bc, resid_bc, x)
             sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
-                cache_collocation, loss_collocation, resid_collocation, x)
-            display(Array(J)) # display the jacobian for error checking
+                cache_collocation, loss_collocation, resid_collocation, x) 
             return J
         end
     else
