@@ -48,14 +48,15 @@ end
 
 @truncate_stacktrace RKTableau 1
 
-struct RKInterpTableau{c, m}
+struct RKInterpTableau{c, m, d}
     poly_coeffs::c
     poly_max::m
+    dn_coeffs::d
 
-    function RKInterpTableau(poly_coeffs, poly_max)
-        @assert eltype(poly_coeffs) == eltype(poly_max)
+    function RKInterpTableau(poly_coeffs, poly_max, dn_coeffs)
+        @assert eltype(poly_coeffs) == eltype(poly_max) == eltype(dn_coeffs)
         return new{typeof(poly_coeffs), typeof(poly_max)}(poly_coeffs,
-            poly_max)
+            poly_max, dn_coeffs)
     end
 end
 
