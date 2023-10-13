@@ -21,6 +21,9 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     if prob.problem_type isa TwoPointBVProblem
         resida_len = prod(resid_size[1])
         residb_len = prod(resid_size[2])
+        M = resida_len + residb_len
+    else
+        M = length(bcresid_prototype)
     end
 
     internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
@@ -46,11 +49,11 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         if prob.problem_type isa TwoPointBVProblem
             __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
                 cur_nshoot, N, resida_len, residb_len, solve_internal_odes!, bc[1], bc[2],
-                prob, u0; verbose, kwargs..., nlsolve_kwargs...)
+                prob, u0, M; verbose, kwargs..., nlsolve_kwargs...)
         else
             __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
                 cur_nshoot, N, prod(resid_size), solve_internal_odes!, bc, prob, f,
-                u0_size, u0; verbose, kwargs..., nlsolve_kwargs...)
+                u0_size, u0, M; verbose, kwargs..., nlsolve_kwargs...)
         end
     end
 
@@ -61,7 +64,7 @@ end
 
 function __solve_nlproblem!(::TwoPointBVProblem, alg::MultipleShooting, bcresid_prototype,
         u_at_nodes, nodes, cur_nshoot::Int, N::Int, resida_len::Int, residb_len::Int,
-        solve_internal_odes!::S, bca::B1, bcb::B2, prob, u0; kwargs...) where {B1, B2, S}
+        solve_internal_odes!::S, bca::B1, bcb::B2, prob, u0, M; kwargs...) where {B1, B2, S}
     if __any_sparse_ad(alg.jac_alg)
         J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
             bcresid_prototype, u0, N, cur_nshoot)
@@ -89,7 +92,8 @@ function __solve_nlproblem!(::TwoPointBVProblem, alg::MultipleShooting, bcresid_
         jac_prototype)
 
     # NOTE: u_at_nodes is updated inplace
-    nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
+    nlprob = (M != N ? NonlinearLeastSquaresProblem : NonlinearProblem)(loss_function!,
+        u_at_nodes, prob.p)
     __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
 
     return nothing
@@ -97,7 +101,7 @@ end
 
 function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_prototype,
         u_at_nodes, nodes, cur_nshoot, N, resid_len::Int, solve_internal_odes!::S, bc::BC,
-        prob, f::F, u0_size, u0; kwargs...) where {BC, F, S}
+        prob, f::F, u0_size, u0, M; kwargs...) where {BC, F, S}
     if __any_sparse_ad(alg.jac_alg)
         J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
             bcresid_prototype, u0, N, cur_nshoot)
@@ -135,7 +139,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         jac_prototype)
 
     # NOTE: u_at_nodes is updated inplace
-    nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
+    nlprob = (M != N ? NonlinearLeastSquaresProblem : NonlinearProblem)(loss_function!,
+        u_at_nodes, prob.p)
     __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
 
     return nothing

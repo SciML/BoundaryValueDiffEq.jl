@@ -85,7 +85,11 @@ end
         Shooting(Tsit5();
             nlsolve = LevenbergMarquardt(; damping_initial = 1e-6,
                 α_geodesic = 0.9, b_uphill = 2.0)),
-        Shooting(Tsit5(); nlsolve = GaussNewton())]
+        Shooting(Tsit5(); nlsolve = GaussNewton()),
+        MultipleShooting(10, Tsit5();
+            nlsolve = LevenbergMarquardt(; damping_initial = 1e-6,
+                α_geodesic = 0.9, b_uphill = 2.0)),
+        MultipleShooting(10, Tsit5(); nlsolve = GaussNewton())]
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -146,7 +150,7 @@ end
     bc1a(ua, p) = [ua[1]]
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    bvp3 = TwoPointBVProblem(BVPFunction{false}(f, (bc_a, bc_b); twopoint = Val(true),
+    bvp3 = TwoPointBVProblem(BVPFunction{false}(f, (bc1a, bc1b); twopoint = Val(true),
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
 
     for solver in SOLVERS
