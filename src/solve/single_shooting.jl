@@ -1,6 +1,6 @@
 function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), verbose = true, kwargs...)
-    ig, T, _, _, u0 = __extract_problem_details(prob; dt = 0.1)
+    ig, T, N, _, u0 = __extract_problem_details(prob; dt = 0.1)
     _unwrap_val(ig) && verbose &&
         @warn "Initial guess provided, but will be ignored for Shooting!"
 
@@ -17,9 +17,14 @@ function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
             prob.problem_type, alg, ode_kwargs)
     end
 
-    opt = __solve(NonlinearProblem(NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype,
-                resid_prototype), vec(u0), prob.p), alg.nlsolve;
-        nlsolve_kwargs..., verbose, kwargs...)
+    nlf = NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype, resid_prototype)
+    nlprob = if length(resid_prototype) == length(u0)
+        NonlinearProblem(nlf, vec(u0), prob.p)
+    else
+        NonlinearLeastSquaresProblem(nlf, vec(u0), prob.p)
+    end
+    opt = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
+
     newprob = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan, prob.p)
     sol = __solve(newprob, alg.ode_alg; odesolve_kwargs..., verbose, kwargs...)
 
