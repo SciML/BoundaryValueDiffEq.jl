@@ -8,10 +8,6 @@ function DiffEqBase.interp_summary(interp::MIRKInterpolation)
     return "MIRK Order $(interp.cache.order) Interpolation"
 end
 
-function DiffEqBase.interp_summary(interp::MIRKInterpolation)
-    return "MIRK Order $(interp.cache.order) Interpolation"
-end
-
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation(tvals, id, idxs, deriv, p, continuity)
 end

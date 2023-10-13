@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T}
+@concrete struct RKCache{iip, T}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -28,7 +28,7 @@
     kwargs
 end
 
-Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
+Base.eltype(::RKCache{iip, T}) where {iip, T} = T
 
 function extend_y(y, N, stage)
     y_extended = similar(y, (N - 1) * (stage + 1) + 1)
@@ -141,19 +141,19 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
         vecf, vecbc
     end
 
-    return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
+    return RKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
         (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
 end
 
 """
-    __expand_cache!(cache::MIRKCache)
+    __expand_cache!(cache::RKCache)
 
 After redistributing or halving the mesh, this function expands the required vectors to
 match the length of the new mesh.
 """
-function __expand_cache!(cache::MIRKCache)
+function __expand_cache!(cache::RKCache)
     Nₙ = length(cache.mesh)
     __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
     __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
@@ -230,7 +230,7 @@ function SciMLBase.solve!(cache::RKCache)
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
+function __construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
@@ -291,7 +291,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
         cache.problem_type)
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
+function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
     ::StandardBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
@@ -337,7 +337,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
     return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocation, loss,
+function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
     ::TwoPointBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)

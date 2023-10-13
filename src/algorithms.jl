@@ -73,7 +73,7 @@ for order in (2, 3, 4, 5, 6)
             pages={479-497}
         }
         """
-        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
         end
@@ -89,8 +89,8 @@ for order in (1, 3, 5, 9, 13)
 
     @eval begin
         """
-            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
-                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            $($alg)(; nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm())
 
         $($order)th order RadauIIa method, with Newton Raphson nonlinear solver as default.
 
@@ -98,14 +98,14 @@ for order in (1, 3, 5, 9, 13)
         TODO
         }
         """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
             nested_nlsolve::Bool
         end
 
-        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK,
+        function $(alg)(; nlsolve = NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(),
             nested_nlsolve = false)
             return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
@@ -118,8 +118,8 @@ for order in (2, 3, 4, 5)
 
     @eval begin
         """
-            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
-                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            $($alg)(; nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm())
 
         $($order)th order LobattoIIIa method, with Newton Raphson nonlinear solver as default.
 
@@ -127,14 +127,14 @@ for order in (2, 3, 4, 5)
         TODO
         }
         """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
             nested_nlsolve::Bool
         end
 
-        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK,
+        function $(alg)(; nlsolve = NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(),
             nested_nlsolve = false)
             return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
@@ -146,8 +146,8 @@ for order in (2, 3, 4, 5)
 
     @eval begin
         """
-            $($alg)(; nlsolve = BoundaryValueDiffEq.DEFAULT_NLSOLVE_MIRK,
-                jac_alg = BoundaryValueDiffEq.DEFAULT_JACOBIAN_ALGORITHM_MIRK)
+            $($alg)(; nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm())
 
         $($order)th order LobattoIIIb method, with Newton Raphson nonlinear solver as default.
 
@@ -155,14 +155,14 @@ for order in (2, 3, 4, 5)
         TODO
         }
         """
-        struct $(alg){N, J <: MIRKJacobianComputationAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
             nlsolve::N
             jac_alg::J
             nested_nlsolve::Bool
         end
 
-        function $(alg)(; nlsolve = DEFAULT_NLSOLVE_MIRK,
-            jac_alg = DEFAULT_JACOBIAN_ALGORITHM_MIRK,
+        function $(alg)(; nlsolve = NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(),
             nested_nlsolve = false)
             return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end

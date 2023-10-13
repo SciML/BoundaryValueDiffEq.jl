@@ -33,9 +33,9 @@ end
 
 # For MIRK Methods
 """
-    __generate_sparse_jacobian_prototype(::MIRKCache, y, M, N)
-    __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
-    __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem, y, M, N)
+    __generate_sparse_jacobian_prototype(::RKCache, y, M, N)
+    __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N)
+    __generate_sparse_jacobian_prototype(::RKCache, ::TwoPointBVProblem, y, M, N)
 
 Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
 coloring.
@@ -43,11 +43,11 @@ coloring.
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
 """
-function __generate_sparse_jacobian_prototype(cache::MIRKCache, y, M, N)
+function __generate_sparse_jacobian_prototype(cache::RKCache, y, M, N)
     return __generate_sparse_jacobian_prototype(cache, cache.problem_type, y, M, N)
 end
 
-function __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
+function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N)
     l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
@@ -72,7 +72,7 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
 end
 
-function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
+function __generate_sparse_jacobian_prototype(::RKCache, ::TwoPointBVProblem,
     y::ArrayPartition, M, N)
     resida, residb = y.x
 
