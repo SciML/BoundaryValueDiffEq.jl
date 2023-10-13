@@ -31,6 +31,9 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Interpolation Tests" begin
                 include("mirk/interpolation_test.jl")
             end
+            @time @safetestset "MIRK Nonlinear Least Squares Tests" begin
+                include("mirk/nonlinear_least_squares.jl")
+            end
         end
     end
 

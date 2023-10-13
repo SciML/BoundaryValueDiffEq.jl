@@ -104,11 +104,13 @@ end
 
 __append_similar!(::Nothing, n, _) = nothing
 
+# NOTE: We use `last` since the `first` might not conform to the same structure. For eg,
+#       in the case of residuals
 function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [similar(first(x)) for _ in 1:N])
+    append!(x, [similar(last(x)) for _ in 1:N])
     return x
 end
 
@@ -117,7 +119,7 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
     chunksize = pickchunksize(M * (N + length(x)))
-    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
     return x
 end
 

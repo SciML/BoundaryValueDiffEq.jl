@@ -279,6 +279,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     N = length(cache.mesh)
 
     resid_bc = cache.bcresid_prototype
+    L = length(resid_bc)
     resid_collocation = similar(y, cache.M * (N - 1))
 
     loss_bcₚ = iip ? ((du, u) -> loss_bc(du, u, cache.p)) : (u -> loss_bc(u, cache.p))
@@ -311,7 +312,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             loss_collocationₚ, cache.M)
     end
 
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    nlf = NonlinearFunction{iip}(loss; resid_prototype = vcat(resid_bc, resid_collocation),
+        jac, jac_prototype)
+    return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
 function __mirk_mpoint_jacobian!(J, x, p, bc_diffmode, nonbc_diffmode, bc_diffcache,
@@ -341,6 +344,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     resid = vcat(cache.bcresid_prototype[1:prod(cache.resid_size[1])],
         similar(y, cache.M * (N - 1)),
         cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end])
+    L = length(cache.bcresid_prototype)
 
     sd = if jac_alg.diffmode isa AbstractSparseADType
         __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
@@ -361,7 +365,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             lossₚ)
     end
 
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    nlf = NonlinearFunction{iip}(loss; resid_prototype = copy(resid), jac, jac_prototype)
+
+    return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
 function __mirk_2point_jacobian!(J, x, p, diffmode, diffcache, loss_fn::L, resid) where {L}

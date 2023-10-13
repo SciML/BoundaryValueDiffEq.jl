@@ -150,7 +150,7 @@ end
     bc1a(ua, p) = [ua[1]]
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    bvp3 = TwoPointBVProblem(BVPFunction{false}(f, (bc1a, bc1b); twopoint = Val(true),
+    bvp3 = TwoPointBVProblem(BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
 
     for solver in SOLVERS
@@ -164,7 +164,7 @@ end
     bc1a!(resid, ua, p) = (resid[1] = ua[1])
     bc1b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
-    bvp4 = TwoPointBVProblem(BVPFunction{true}(f!, (bc1a!, bc1b!); twopoint = Val(true),
+    bvp4 = TwoPointBVProblem(BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
 
     for solver in SOLVERS
