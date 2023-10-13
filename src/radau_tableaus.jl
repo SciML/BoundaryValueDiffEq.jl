@@ -13,9 +13,9 @@ function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
     b = [1]
 
     # Interpolant coefficients and p(x) max
-    poly_coeffs = [1//2]
-    poly_max = 1.0 
-    dn_coeffs = [-2.0, 2.0, 1/1.3333333333333335]
+    poly_coeffs = [1 // 2]
+    poly_max = 1.0
+    dn_coeffs = [1.0]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -31,9 +31,9 @@ function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
     b = [3 // 4, 1 // 4]
 
     # Interpolant coefficients and p(x) max
-    poly_coeffs = [0.5625, -0.06249999999999997]
-    poly_max = 1//3
-    dn_coeffs = []
+    poly_coeffs = [0.5625, -0.0625]
+    poly_max = 1 // 3
+    dn_coeffs = [-2, 2, 1.3333333333333335]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -51,8 +51,8 @@ function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
 
     # Interpolant coefficients and p(x) max
     poly_coeffs = [0.382961306940849, 0.14481647083692872, -0.027777777777777735]
-    poly_max = 0.10000000000000002
-    dn_coeffs = []
+    poly_max = 0.1
+    dn_coeffs = [4.3484692283495345, -10.348469228349535, 6.0, 0.9]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -85,9 +85,20 @@ function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
     b = a[5, :]
 
     # Interpolant coefficients and p(x) max
-    poly_coeffs = [0.14162553295705615, 0.2899064921881931, 0.08419708339605547, -0.023229108541305443, 0.007500000000000173]
+    poly_coeffs = [
+        0.14162553295705615,
+        0.2899064921881931,
+        0.08419708339605547,
+        -0.023229108541305443,
+        0.0075,
+    ]
     poly_max = 0.007936507936507936
-    dn_coeffs = []
+    dn_coeffs = [54.35432870991608,
+        -167.45423544989396,
+        255.9539629158005,
+        -262.8540561758225,
+        120.0,
+        0.19841269841269948]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -127,9 +138,24 @@ function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
     b = a[7, :]
 
     # Interpolant coefficients and p(x) max
-    poly_coeffs = [0.07525040363897162, 0.1560619574068569, 0.22009145086760462, 0.05944815647539037, -0.01646794001947477, 0.00880474714086077, -0.0031887755102048693]
+    poly_coeffs = [
+        0.07525040363897162,
+        0.1560619574068569,
+        0.22009145086760462,
+        0.05944815647539037,
+        -0.01646794001947477,
+        0.00880474714086077,
+        -0.0031887755102048693,
+    ]
     poly_max = 0.0005827505827505828
-    dn_coeffs = []
+    dn_coeffs = [1648.7143992159574,
+        -5415.177583593382,
+        9437.603481951755,
+        -12468.061993282445,
+        13504.443508516517,
+        -11747.521812808422,
+        5040.0,
+        0.028554778554777505]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))

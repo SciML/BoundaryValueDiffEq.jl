@@ -16,7 +16,7 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     # Interpolant coefficients and p(x) max
     poly_coeffs = [3 // 8, 1 // 8]
     poly_max = 0.25
-    dn_coeffs = []
+    dn_coeffs = [-1, 1, 1]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -35,7 +35,7 @@ function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
     # Interpolant coefficients and p(x) max
     poly_coeffs = [0.20833333333333337, 0.33333333333333337, -0.04166666666666667]
     poly_max = 0.048112522432468816
-    dn_coeffs = []
+    dn_coeffs = [6, -12, 6, 1.5]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -60,7 +60,11 @@ function constructLobattoIIIa4(::Type{T}, nested::Bool) where {T}
         -0.005208333333333329,
     ]
     poly_max = 0.012499999999999997
-    dn_coeffs = []
+    dn_coeffs = [-24.0,
+        53.665631459994984,
+        -53.66563145999497,
+        24.0,
+        0.8]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -87,7 +91,12 @@ function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
         0.009374999999999994,
     ]
     poly_max = 0.0029409142833778648
-    dn_coeffs = []
+    dn_coeffs = [120.0,
+        -280.0,
+        320.0,
+        -280.0,
+        120.0,
+        0.3571428571428581]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -112,7 +121,7 @@ function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
     # Interpolant coefficients and p(x) max
     poly_coeffs = [3 // 8, 1 // 8]
     poly_max = 0.25
-    dn_coeffs = []
+    dn_coeffs = [-1, 1, 1]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -131,7 +140,7 @@ function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
     # Interpolant coefficients and p(x) max
     poly_coeffs = [0.20833333333333337, 0.33333333333333337, -0.04166666666666667]
     poly_max = 0.048112522432468816
-    dn_coeffs = []
+    dn_coeffs = [6, -12, 6, 1.5]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -156,7 +165,11 @@ function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
         -0.005208333333333329,
     ]
     poly_max = 0.012499999999999997
-    dn_coeffs = []
+    dn_coeffs = [-24.0,
+        53.665631459994984,
+        -53.66563145999497,
+        24.0,
+        0.8]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
@@ -184,7 +197,12 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
     ]
 
     poly_max = 0.0029409142833778648
-    dn_coeffs = []
+    dn_coeffs = [120,
+        -280.0,
+        320.0,
+        -280.0,
+        120.0,
+        0.3571428571428581]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
