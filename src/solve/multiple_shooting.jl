@@ -9,10 +9,10 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
 
     __alg = concretize_jacobian_algorithm(_alg, prob)
-    alg = if has_initial_guess && Nig != __alg.nshoots + 1
+    alg = if has_initial_guess && Nig != __alg.nshoots
         verbose &&
-            @warn "Initial guess length != `nshoots + 1`! Adapting to `nshoots = $(Nig - 1)`"
-        update_nshoots(__alg, Nig - 1)
+            @warn "Initial guess length != `nshoots + 1`! Adapting to `nshoots = $(Nig)`"
+        update_nshoots(__alg, Nig)
     else
         __alg
     end
@@ -57,13 +57,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     compute_bc_residual! = if prob.problem_type isa TwoPointBVProblem
         @views function compute_bc_residual_tp!(resid_bc, us::ArrayPartition, p,
             cur_nshoots, nodes, resid_nodes::Union{Nothing, MaybeDiffCache} = nothing)
-            ua, ub0 = us.x
-            # Just Recompute the last ODE Solution
-            lastodeprob = ODEProblem{iip}(f, reshape(ub0, u0_size),
-                (nodes[end - 1], nodes[end]), p)
-            sol_ode_last = __solve(lastodeprob, alg.ode_alg; odesolve_kwargs..., verbose,
-                kwargs..., save_everystep = false, saveat = (), save_end = true)
-            ub = vec(sol_ode_last.u[end])
+            ua, ub = us.x
 
             resid_bc_a, resid_bc_b = if resid_bc isa ArrayPartition
                 resid_bc.x
@@ -147,7 +141,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             resida, residb = resid_bc.x
             J_bc[1:length(resida), 1:N] .= J_bc′[1:length(resida), 1:N]
             idxᵢ = (length(resida) + 1):(length(resida) + length(residb))
-            J_bc[idxᵢ, (end - 2N + 1):(end - N)] .= J_bc′[idxᵢ, (end - N + 1):end]
+            J_bc[idxᵢ, (end - N + 1):end] .= J_bc′[idxᵢ, (end - N + 1):end]
 
             return nothing
         end
@@ -215,7 +209,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
 
             bc_jac_cache = (bc_jac_cache_partial, init_jacobian(bc_jac_cache_partial))
 
-            jac_prototype = if @isdefined(J_full)
+            jac_prototype = if alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ||
+                               alg.jac_alg.bc_diffmode isa AbstractSparseADType
                 J_full
             else
                 __zeros_like(u_at_nodes, length(resid_prototype), length(u_at_nodes))
@@ -236,7 +231,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
                 nodes); resid_prototype, jac = jac_fn, jac_prototype)
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
         sol_nlsolve = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
-        # u_at_nodes = sol_nlsolve.u
+        u_at_nodes = sol_nlsolve.u::typeof(u0)
     end
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))

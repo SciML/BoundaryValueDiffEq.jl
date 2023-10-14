@@ -198,7 +198,7 @@ function __generate_sparse_jacobian_prototype(alg::MultipleShooting, ::TwoPointB
 
     J_full[(L₁ + L₂ + 1):end, :] .= J_c.M
     J_full[1:L₁, 1:N] .= J_bc.M[1:L₁, 1:N]
-    J_full[(L₁ + 1):(L₁ + L₂), (end - 2N + 1):(end - N)] .= J_bc.M[(L₁ + 1):(L₁ + L₂),
+    J_full[(L₁ + 1):(L₁ + L₂), (end - N + 1):end] .= J_bc.M[(L₁ + 1):(L₁ + L₂),
         (N + 1):(2N)]
 
     return J_full, J_c, J_bc

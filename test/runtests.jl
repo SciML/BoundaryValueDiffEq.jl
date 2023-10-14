@@ -11,8 +11,11 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Ray Tracing BVP" begin
                 include("shooting/ray_tracing.jl")
             end
-            @time @safetestset "Orbital" begin
-                include("shooting/orbital.jl")
+            @static if VERSION ≥ v"1.10.0-beta2"
+                # Orbital Tests take extremely long to compile on Julia 1.9
+                @time @safetestset "Orbital" begin
+                    include("shooting/orbital.jl")
+                end
             end
         end
     end
@@ -27,6 +30,9 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             end
             @time @safetestset "Vector of Vector" begin
                 include("mirk/vectorofvector_initials.jl")
+            end
+            @time @safetestset "Interpolation Tests" begin
+                include("mirk/interpolation_test.jl")
             end
         end
     end
@@ -44,12 +50,6 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "ODE Interface Tests" begin
                 include("misc/odeinterface_ex7.jl")
             end
-        end
-    end
-    
-    @time @testset "Interpolation Tests" begin
-        @time @safetestset "MIRK Interpolation Test" begin
-            include("interpolation_test.jl")
         end
     end
 end
