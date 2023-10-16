@@ -306,9 +306,6 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
 
     resid = ArrayPartition(cache.bcresid_prototype, similar(y, cache.M * (N - 1)))
 
-    # TODO: We can splitup the computation here as well similar to the Multiple Shooting
-    # TODO: code. That way for the BC part the actual jacobian computation is even cheaper
-    # TODO: Remember to not reorder if we end up using that implementation
     sd = if jac_alg.diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
             cache.problem_type, resid.x[1], cache.M, N))

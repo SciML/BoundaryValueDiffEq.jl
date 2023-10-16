@@ -47,71 +47,21 @@ function __generate_sparse_jacobian_prototype(cache::MIRKCache, y, M, N)
     return __generate_sparse_jacobian_prototype(cache, cache.problem_type, y, M, N)
 end
 
+# TODO: Add dispatches which avoid scalar indexing for CuArrays
 function __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
-    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
-    Is = Vector{Int}(undef, l)
-    Js = Vector{Int}(undef, l)
-    idx = 1
-    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
-        Is[idx] = i
-        Js[idx] = j
-        idx += 1
-    end
-
-    J_c = _sparse_like(Is, Js, y, M * (N - 1), M * N)
-
-    col_colorvec = Vector{Int}(undef, size(J_c, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-    row_colorvec = Vector{Int}(undef, size(J_c, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-
-    return ColoredMatrix(J_c, row_colorvec, col_colorvec)
+    J_c = BandedMatrix(Ones{eltype(y)}(M * (N - 1), M * N), (1, 2M))
+    # NOTE: We don't retain the Banded Structure since vcat/hcat makes it into a dense
+    # array. Instead we can atleast exploit sparsity!
+    return ColoredMatrix(sparse(J_c), matrix_colors(J_c'), matrix_colors(J_c))
 end
 
 function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
     y::ArrayPartition, M, N)
     resida, residb = y.x
-
-    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
-    l_top = M * length(resida)
-    l_bot = M * length(residb)
-
-    Is = Vector{Int}(undef, l + l_top + l_bot)
-    Js = Vector{Int}(undef, l + l_top + l_bot)
-
-    idx = 1
-    for i in 1:length(resida), j in 1:M
-        Is[idx] = i
-        Js[idx] = j
-        idx += 1
-    end
-    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
-        Is[idx] = i + length(resida)
-        Js[idx] = j
-        idx += 1
-    end
-    for i in 1:length(residb), j in 1:M
-        Is[idx] = i + length(resida) + M * (N - 1)
-        Js[idx] = j + M * (N - 1)
-        idx += 1
-    end
-
-    J = _sparse_like(Is, Js, y, M * N, M * N)
-
-    col_colorvec = Vector{Int}(undef, size(J, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-    row_colorvec = Vector{Int}(undef, size(J, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-
-    return ColoredMatrix(J, row_colorvec, col_colorvec)
+    J₁ = length(resida) + length(residb) + M * (N - 1)
+    J₂ = M * N
+    J = BandedMatrix(Ones{eltype(y)}(J₁, J₂), (M + 1, M + 1))
+    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
 
 # For Multiple Shooting
