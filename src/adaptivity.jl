@@ -3,13 +3,70 @@
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-@views function interp_eval!(y::AbstractArray, cache::RKCache, t, mesh, mesh_dt)
+@views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::MIRKInterpTableau, t,
+                             mesh, mesh_dt)
     i = interval(mesh, t)
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     w, w′ = interp_weights(τ, cache.alg)
     sum_stages!(y, cache, w, i)
     return y
+end
+
+@views function interp_eval!(y::AbstractArray, cache::RKCache{false}, ITU::RKInterpTableau,
+                             t,
+                             mesh, mesh_dt)
+    i = interval(mesh, t)
+    @unpack poly_coeffs, stage = ITU
+    yᵢ = cache.y[i].u
+    yᵢ₊₁ = cache.y[i + 1].u
+
+    dyᵢ = cache.y[i].du
+    dyᵢ₊₁ = cache.y[i + 1].du
+
+    h = mesh_dt[i]
+
+    K = zeros(typeof(cache.y[1].u), M, stage)
+
+    # Load interpolation residual
+    ctr = (i - 1) * (stage + 1) + 1
+    for j in 1:stage
+        K[:, j] = cache.y[ctr + j].u
+    end
+
+    ymid = get_ymid(yᵢ, poly_coeffs, K, h)
+
+    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
+
+    return eval_S(t - mesh[i], h, S_coeffs)
+end
+
+@views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::RKInterpTableau,
+                             t,
+                             mesh, mesh_dt)
+    i = interval(mesh, t)
+    @unpack poly_coeffs, stage = ITU
+    yᵢ = cache.y[i].u
+    yᵢ₊₁ = cache.y[i + 1].u
+
+    dyᵢ = cache.y[i].du
+    dyᵢ₊₁ = cache.y[i + 1].du
+
+    h = mesh_dt[i]
+
+    K = zeros(typeof(cache.y[1].u), M, stage)
+
+    # Load interpolation residual
+    prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage,
+                                                   p), fill(1.0, size(K)), p)
+    sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
+    K .= sol.u
+
+    ymid = get_ymid(yᵢ, poly_coeffs, K, h)
+
+    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
+    
+    return S_interpolate(t - mesh[i], S_coeffs)
 end
 
 """
@@ -141,8 +198,7 @@ half_mesh!(cache::RKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
 Defect estimate from bvde5c paper.
 """
 function get_r(dk_ymid, h, poly_max, k)
-    d = 2 * (k - 2)
-    dk_ymid / factorial(k-1) * h^(k-1) * poly_max # Power of k or kth derivative?
+    dk_ymid / factorial(k - 1) * h^(k - 1) * poly_max
 end
 
 function n_derivative(coeffs, K, h, n)
@@ -243,9 +299,8 @@ end
 
     K = zeros(typeof(cache.y[1].u), M, stage)
 
-    for i in 1:length(mesh) 
+    for i in 1:length(mesh)
         h = mesh_dt[i]
-        yᵢ = cache.y[i].u
 
         prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage,
                                                        p), fill(1.0, size(K)), p)

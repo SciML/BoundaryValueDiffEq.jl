@@ -200,7 +200,7 @@ function SciMLBase.solve!(cache::RKCache)
                 if info == ReturnCode.Success
                     __append_similar!(cache.y₀, length(cache.mesh), cache.M)
                     for (i, m) in enumerate(cache.mesh)
-                        interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                        interp_eval!(cache.y₀[i], cache, id.cache.ITU, m, mesh, mesh_dt)
                     end
                     __expand_cache!(cache)
                 end
@@ -225,7 +225,7 @@ function SciMLBase.solve!(cache::RKCache)
         u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))
     end
     return DiffEqBase.build_solution(prob, alg, cache.mesh,
-                                     u; interp = MIRKInterpolation(cache.mesh, u, cache),
+                                     u; interp = RKInterpolation(cache.mesh, u, cache),
                                      retcode = info)
 end
 
