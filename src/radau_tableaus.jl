@@ -18,7 +18,7 @@ function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
     dn_coeffs = [1.0]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
+    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(stage), nested)
     return TU, ITU
 end
 
@@ -36,7 +36,7 @@ function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
     dn_coeffs = [-2, 2, 1.3333333333333335]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
+    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(stage), nested)
     return TU, ITU
 end
 
@@ -55,7 +55,7 @@ function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
     dn_coeffs = [4.3484692283495345, -10.348469228349535, 6.0, 0.9]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
+    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(stage), nested)
     return TU, ITU
 end
 
@@ -101,7 +101,7 @@ function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
         0.19841269841269948]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
+    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(stage), nested)
     return TU, ITU
 end
 
@@ -158,6 +158,6 @@ function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
         0.028554778554777505]
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), t.(dn_coeffs))
+    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(stage), nested)
     return TU, ITU
 end
