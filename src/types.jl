@@ -39,6 +39,11 @@ end
     diffmode
 end
 
+__any_sparse_ad(ad) = ad isa AbstractSparseADType
+__any_sparse_ad(jac_alg::BVPJacobianAlgorithm) =
+    __any_sparse_ad(jac_alg.bc_diffmode) || __any_sparse_ad(jac_alg.nonbc_diffmode) ||
+    __any_sparse_ad(jac_alg.diffmode)
+
 function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
     bc_diffmode = missing)
     if diffmode !== missing

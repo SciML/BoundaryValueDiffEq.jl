@@ -121,7 +121,7 @@ alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson
 
 for (prob, alg) in Iterators.product((prob_oop, prob_iip, prob_tp_oop, prob_tp_iip),
     (alg_sp, alg_dense, alg_default))
-    sol = solve(prob, alg; abstol = 1e-9, reltol = 1e-9, maxiters = 1000)
+    @time sol = solve(prob, alg; abstol = 1e-9, reltol = 1e-9, maxiters = 1000)
     @test SciMLBase.successful_retcode(sol.retcode)
 
     if prob.problem_type isa TwoPointBVProblem
