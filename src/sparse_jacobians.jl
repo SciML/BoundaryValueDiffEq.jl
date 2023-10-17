@@ -43,11 +43,11 @@ coloring.
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
 """
-function __generate_sparse_jacobian_prototype(cache::MIRKCache, y, M, N)
-    return __generate_sparse_jacobian_prototype(cache, cache.problem_type, y, M, N)
+function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
+    return __generate_sparse_jacobian_prototype(cache, cache.problem_type, ya, yb, M, N)
 end
 
-function __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
+function __generate_sparse_jacobian_prototype(::MIRKCache, _, ya, yb, M, N)
     l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
@@ -58,7 +58,7 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
         idx += 1
     end
 
-    J_c = _sparse_like(Is, Js, y, M * (N - 1), M * N)
+    J_c = _sparse_like(Is, Js, ya, M * (N - 1), M * N)
 
     col_colorvec = Vector{Int}(undef, size(J_c, 2))
     for i in eachindex(col_colorvec)
@@ -73,9 +73,7 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, _, y, M, N)
 end
 
 function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
-    y::ArrayPartition, M, N)
-    resida, residb = y.x
-
+    resida, residb, M, N)
     l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
     l_top = M * length(resida)
     l_bot = M * length(residb)
@@ -100,7 +98,7 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
         idx += 1
     end
 
-    J = _sparse_like(Is, Js, y, M * N, M * N)
+    J = _sparse_like(Is, Js, resida, M * N, M * N)
 
     col_colorvec = Vector{Int}(undef, size(J, 2))
     for i in eachindex(col_colorvec)

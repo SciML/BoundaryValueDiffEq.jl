@@ -1,7 +1,7 @@
 module BoundaryValueDiffEq
 
-using Adapt, LinearAlgebra, PreallocationTools, Reexport, Setfield, SparseArrays, SciMLBase,
-    Static, RecursiveArrayTools, ForwardDiff
+using Adapt, ComponentArrays, ForwardDiff, LinearAlgebra, PreallocationTools,
+    RecursiveArrayTools, Reexport, Setfield, SparseArrays, SciMLBase, Static
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType
@@ -11,7 +11,6 @@ import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve
-import RecursiveArrayTools: ArrayPartition
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
