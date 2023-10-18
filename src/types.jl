@@ -40,9 +40,10 @@ end
 end
 
 __any_sparse_ad(ad) = ad isa AbstractSparseADType
-__any_sparse_ad(jac_alg::BVPJacobianAlgorithm) =
+function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
     __any_sparse_ad(jac_alg.bc_diffmode) || __any_sparse_ad(jac_alg.nonbc_diffmode) ||
-    __any_sparse_ad(jac_alg.diffmode)
+        __any_sparse_ad(jac_alg.diffmode)
+end
 
 function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
     bc_diffmode = missing)
@@ -73,25 +74,32 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProb
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::StandardBVProblem,
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
     prob::BVProblem, alg)
-    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
-    bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoForwardDiff() : jac_alg.bc_diffmode
-    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
+    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(prob.u0) :
+               jac_alg.diffmode
+    bc_diffmode = jac_alg.bc_diffmode === nothing ?
+                  (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
+                   __default_nonsparse_ad)(prob.u0) :
+                  jac_alg.bc_diffmode
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(prob.u0) :
                      jac_alg.nonbc_diffmode
 
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::TwoPointBVProblem,
-    prob::BVProblem, alg)
-    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
-    bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoSparseForwardDiff() :
-                  jac_alg.bc_diffmode
-    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
-                     jac_alg.nonbc_diffmode
+@inline __default_sparse_ad(x::AbstractArray) = __default_sparse_ad(first(x))
+@inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
+@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()
+@inline function __default_sparse_ad(T::Type)
+    return ForwardDiff.can_dual(T) ? AutoSparseForwardDiff() : AutoSparseFiniteDiff()
+end
 
-    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
+@inline __default_nonsparse_ad(x::AbstractArray) = __default_nonsparse_ad(first(x))
+@inline __default_nonsparse_ad(x::T) where {T} = __default_nonsparse_ad(T)
+@inline __default_nonsparse_ad(::Type{<:Complex}) = AutoFiniteDiff()
+@inline function __default_nonsparse_ad(T::Type)
+    return ForwardDiff.can_dual(T) ? AutoForwardDiff() : AutoFiniteDiff()
 end
 
 # This can cause Type Instability

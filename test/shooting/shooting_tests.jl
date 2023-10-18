@@ -100,11 +100,8 @@ end
     bvp = BVProblem(f1!, bc1!, u0, tspan)
     resid_f = Array{ComplexF64}(undef, 2)
 
-    nlsolve = NewtonRaphson(; autodiff = AutoFiniteDiff())
-    jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
-        nonbc_diffmode = AutoSparseFiniteDiff())
-    for solver in [Shooting(Tsit5(); nlsolve),
-        MultipleShooting(10, Tsit5(); nlsolve, jac_alg)]
+    # We will automatically use FiniteDiff if we can't use dual numbers
+    for solver in [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
         sol = solve(bvp, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         bc1!(resid_f, sol, nothing, sol.t)
