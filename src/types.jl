@@ -80,8 +80,7 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
                jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
-                   __default_nonsparse_ad)(prob.u0) :
-                  jac_alg.bc_diffmode
+                   __default_nonsparse_ad)(prob.u0) : jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(prob.u0) :
                      jac_alg.nonbc_diffmode
 

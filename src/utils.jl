@@ -17,14 +17,13 @@ end
 end
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray})
     x_, xiter = Iterators.peel(x)
-    # x_ will be an ArrayPartition
-    copyto!(y[1:length(x_.x[1])], x_.x[1])
-    i = length(x_.x[1])
+    copyto!(y[1:length(x_.resida)], x_.resida)
+    i = length(x_.resida)
     for xᵢ in xiter
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
         i += length(xᵢ)
     end
-    copyto!(y[(i + 1):(i + length(x_.x[2]))], x_.x[2])
+    copyto!(y[(i + 1):(i + length(x_.residb))], x_.residb)
     return y
 end
 
@@ -76,9 +75,9 @@ eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
 function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    resid₀ = bca(ua, p)
-    resid₁ = bcb(ub, p)
-    return ArrayPartition(resid₀, resid₁)
+    resida = bca(ua, p)
+    residb = bcb(ub, p)
+    return (resida, residb)
 end
 
 eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
@@ -86,8 +85,8 @@ eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
 @views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    bca!(resid.x[1], ua, p)
-    bcb!(resid.x[2], ub, p)
+    bca!(resid.resida, ua, p)
+    bcb!(resid.residb, ub, p)
     return resid
 end
 
@@ -136,14 +135,14 @@ function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
 function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
-    prototype = if isinplace(prob)
-        prob.f.bcresid_prototype
-    elseif prob.f.bcresid_prototype !== nothing
-        prob.f.bcresid_prototype
+    prototype = if prob.f.bcresid_prototype !== nothing
+        resida, residb = prob.f.bcresid_prototype.x
+        ComponentArray(; resida, residb)
     else
-        ArrayPartition(first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p))
+        resida, residb = first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
+        ComponentArray(; resida, residb)
     end
-    return prototype, size.(prototype.x)
+    return prototype, (; resida = size(prototype.resida), residb = size(prototype.residb))
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
@@ -151,15 +150,29 @@ function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     return prototype, size(prototype)
 end
 
-function __fill_like(v, x, args...)
+@inline function __fill_like(v, x, args...)
     y = similar(x, args...)
     fill!(y, v)
     return y
 end
-__zeros_like(args...) = __fill_like(0, args...)
-__ones_like(args...) = __fill_like(1, args...)
+@inline __zeros_like(args...) = __fill_like(0, args...)
+@inline __ones_like(args...) = __fill_like(1, args...)
 
-__safe_reshape(x, args...) = reshape(x, args...)
-function __safe_reshape(x::ArrayPartition, sizes::NTuple)
-    return ArrayPartition(__safe_reshape.(x.x, sizes))
+@inline __safe_reshape(x, args...) = reshape(x, args...)
+@inline __safe_reshape(ca::ComponentArray, sizes) = __safe_reshape(NamedTuple(ca), sizes)
+@inline function __safe_reshape(x::NamedTuple{F}, sizes::NamedTuple{F}) where {F}
+    return NamedTuple{F}(__safe_reshape.(values(x), values(sizes)))
 end
+
+@inline __safe_vec(x) = vec(x)
+@inline __safe_vec(x::ComponentArray) = getdata(x)
+@inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
+
+@inline __safe_getdata(x::AbstractArray) = x
+@inline __safe_getdata(x::ComponentArray) = getdata(x)
+
+@inline __maybe_componentarray(x::AbstractArray, ax) = ComponentArray(x, ax)
+@inline __maybe_componentarray(x::AbstractArray, ::Nothing) = x
+
+@inline __safe_getaxes(x::ComponentArray) = getaxes(x)
+@inline __safe_getaxes(x::AbstractArray) = nothing

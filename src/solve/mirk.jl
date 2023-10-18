@@ -242,7 +242,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
             resid_bc = eval_bc_residual(cache.problem_type, cache.bc, y_, p, cache.mesh)
             resid_co = Φ(cache, y_, u, p)
             if cache.problem_type isa TwoPointBVProblem
-                return vcat(resid_bc.x[1], mapreduce(vec, vcat, resid_co), resid_bc.x[2])
+                return vcat(resid_bc[1], mapreduce(vec, vcat, resid_co), resid_bc[2])
             else
                 return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
             end
@@ -268,7 +268,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-            cache.problem_type, y, cache.M, N))
+            cache.problem_type, y, y, cache.M, N))
     else
         NoSparsityDetection()
     end
@@ -304,11 +304,13 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
-    resid = ArrayPartition(cache.bcresid_prototype, similar(y, cache.M * (N - 1)))
+    resid = ComponentArray(; resida = cache.bcresid_prototype.resida,
+        collocation = similar(y, cache.M * (N - 1)),
+        residb = cache.bcresid_prototype.residb)
 
     sd = if jac_alg.diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-            cache.problem_type, resid.x[1], cache.M, N))
+            cache.problem_type, resid.resida, resid.residb, cache.M, N))
     else
         NoSparsityDetection()
     end
