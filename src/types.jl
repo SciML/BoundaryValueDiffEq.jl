@@ -88,14 +88,18 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-@inline __default_sparse_ad(x::AbstractArray) = __default_sparse_ad(first(x))
+@inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
+    return isbitstype(T) ? __default_nonsparse_ad(T) : __default_sparse_ad(first(x))
+end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
 @inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()
 @inline function __default_sparse_ad(T::Type)
     return ForwardDiff.can_dual(T) ? AutoSparseForwardDiff() : AutoSparseFiniteDiff()
 end
 
-@inline __default_nonsparse_ad(x::AbstractArray) = __default_nonsparse_ad(first(x))
+@inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
+    return isbitstype(T) ? __default_nonsparse_ad(T) : __default_nonsparse_ad(first(x))
+end
 @inline __default_nonsparse_ad(x::T) where {T} = __default_nonsparse_ad(T)
 @inline __default_nonsparse_ad(::Type{<:Complex}) = AutoFiniteDiff()
 @inline function __default_nonsparse_ad(T::Type)

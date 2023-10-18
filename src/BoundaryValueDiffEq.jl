@@ -16,14 +16,6 @@ import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
 
-# FIXME: Remove
-function NonlinearSolve.LinearSolve.init_cacheval(alg::NonlinearSolve.LinearSolve.KrylovJL,
-    A::BandedMatrix, b::ArrayPartition, u, Pl, Pr, maxiters::Int, abstol, reltol,
-    verbose::Bool, ::NonlinearSolve.LinearSolve.OperatorAssumptions)
-    return nothing
-end
-# FIXME: Remove
-
 include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
