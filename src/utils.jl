@@ -15,16 +15,16 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray})
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
+    sizes)
     x_, xiter = Iterators.peel(x)
-    # x_ will be an ArrayPartition
-    copyto!(y[1:length(x_.x[1])], x_.x[1])
-    i = length(x_.x[1])
+    copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
+    i = prod(sizes[1])
     for xᵢ in xiter
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
         i += length(xᵢ)
     end
-    copyto!(y[(i + 1):(i + length(x_.x[2]))], x_.x[2])
+    copyto!(y[(i + 1):(i + prod(sizes[2]))], x_[(end - prod(sizes[2]) + 1):end])
     return y
 end
 
@@ -76,9 +76,9 @@ eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
 function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    resid₀ = bca(ua, p)
-    resid₁ = bcb(ub, p)
-    return ArrayPartition(resid₀, resid₁)
+    resida = bca(ua, p)
+    residb = bcb(ub, p)
+    return (resida, residb)
 end
 
 eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
@@ -86,8 +86,16 @@ eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
 @views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    bca!(resid.x[1], ua, p)
-    bcb!(resid.x[2], ub, p)
+    bca!(resid.resida, ua, p)
+    bcb!(resid.residb, ub, p)
+    return resid
+end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!), sol, p,
+    t)
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
+    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    bca!(resid[1], ua, p)
+    bcb!(resid[2], ub, p)
     return resid
 end
 
@@ -117,13 +125,13 @@ end
 function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0)
-    return True(), eltype(_u0), length(_u0), (length(u0) - 1), _u0
+    return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
 function __extract_problem_details(prob, u0; dt = 0.0, check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
-    return False(), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+    return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
@@ -136,14 +144,12 @@ function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
 function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
-    prototype = if isinplace(prob)
-        prob.f.bcresid_prototype
-    elseif prob.f.bcresid_prototype !== nothing
-        prob.f.bcresid_prototype
+    prototype = if prob.f.bcresid_prototype !== nothing
+        prob.f.bcresid_prototype.x
     else
-        ArrayPartition(first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p))
+        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
     end
-    return prototype, size.(prototype.x)
+    return prototype, size.(prototype)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
@@ -151,15 +157,16 @@ function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     return prototype, size(prototype)
 end
 
-function __fill_like(v, x, args...)
+@inline function __fill_like(v, x, args...)
     y = similar(x, args...)
     fill!(y, v)
     return y
 end
-__zeros_like(args...) = __fill_like(0, args...)
-__ones_like(args...) = __fill_like(1, args...)
+@inline __zeros_like(args...) = __fill_like(0, args...)
+@inline __ones_like(args...) = __fill_like(1, args...)
 
-__safe_reshape(x, args...) = reshape(x, args...)
-function __safe_reshape(x::ArrayPartition, sizes::NTuple)
-    return ArrayPartition(__safe_reshape.(x.x, sizes))
-end
+@inline __safe_vec(x) = vec(x)
+@inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
+
+@inline __vec(x::AbstractArray) = vec(x)
+@inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)

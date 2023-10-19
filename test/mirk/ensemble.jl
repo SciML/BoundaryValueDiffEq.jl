@@ -12,10 +12,10 @@ end
 
 prob_func(prob, i, repeat) = remake(prob, p = [rand()])
 
-initial_guess = [0.0, 1.0]
+u0 = [0.0, 1.0]
 tspan = (0, pi / 2)
 p = [rand()]
-bvp = BVProblem(ode!, bc!, initial_guess, tspan, p)
+bvp = BVProblem(ode!, bc!, u0, tspan, p)
 ensemble_prob = EnsembleProblem(bvp; prob_func)
 
 @testset "$(solver)" for solver in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)

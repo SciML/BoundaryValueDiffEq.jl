@@ -108,20 +108,17 @@ prob_tp_oop = TwoPointBVProblem{false}(ray_tracing, (ray_tracing_bc_a, ray_traci
 prob_tp_iip = TwoPointBVProblem{true}(ray_tracing!, (ray_tracing_bc_a!, ray_tracing_bc_b!),
     u0, tspan, p; bcresid_prototype = (zeros(5), zeros(3)))
 
-alg_sp = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(),
-    grid_coarsening = Base.Fix2(div, 3),
+alg_sp = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true,
     jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(),
         nonbc_diffmode = AutoSparseForwardDiff()))
-alg_dense = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(),
-    grid_coarsening = Base.Fix2(div, 3),
+alg_dense = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true,
     jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(),
         nonbc_diffmode = AutoForwardDiff()))
-alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(),
-    grid_coarsening = Base.Fix2(div, 3))
+alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true)
 
 for (prob, alg) in Iterators.product((prob_oop, prob_iip, prob_tp_oop, prob_tp_iip),
     (alg_sp, alg_dense, alg_default))
-    sol = solve(prob, alg; abstol = 1e-9, reltol = 1e-9, maxiters = 1000)
+    @time sol = solve(prob, alg; abstol = 1e-9, reltol = 1e-9, maxiters = 1000)
     @test SciMLBase.successful_retcode(sol.retcode)
 
     if prob.problem_type isa TwoPointBVProblem
