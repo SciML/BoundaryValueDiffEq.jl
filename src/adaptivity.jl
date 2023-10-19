@@ -13,8 +13,10 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     return y
 end
 
-interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::MIRKInterpTableau, t,
-                             mesh, mesh_dt) = interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
+function interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::MIRKInterpTableau, t,
+                      mesh, mesh_dt)
+    interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
+end
 
 @views function interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::RKInterpTableau{false},
     t,
@@ -37,7 +39,7 @@ else
     end
 end
 
-return y[ctr_y0 + 1]
+    return y[ctr_y0 + 1]
 end
 
 @views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::RKInterpTableau{true},
@@ -197,7 +199,6 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
 end
 half_mesh!(cache::RKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
 
-
 """
     defect_estimate!(cache::RKCache{T})
 
@@ -275,19 +276,19 @@ end
 
     return maximum(Base.Fix1(maximum, abs), defect)
 end =#
-function get_q_coeffs(A,ki,h)
+function get_q_coeffs(A, ki, h)
     coeffs = A * ki
     for i in axes(coeffs, 1)
-        coeffs[i] = coeffs[i] / (h^(i-1))
+        coeffs[i] = coeffs[i] / (h^(i - 1))
     end
     return coeffs
 end
 
 function apply_q(y_i, τ, h, coeffs)
-    return y_i + sum(coeffs[i]*(τ*h)^(i) for i in axes(coeffs, 1))  # Make this works
+    return y_i + sum(coeffs[i] * (τ * h)^(i) for i in axes(coeffs, 1))  # Make this works
 end
 function apply_q_prime(τ, h, coeffs)
-    return sum(i*coeffs[i]*(τ*h)^(i-1) for i in axes(coeffs, 1))
+    return sum(i * coeffs[i] * (τ * h)^(i - 1) for i in axes(coeffs, 1))
 end
 
 function eval_q(y_i, τ, h, A, K)
@@ -311,7 +312,6 @@ end
     ctr = 1
     K = zeros(eltype(cache.y[1].du), M, stage)
     for i in 1:(length(mesh) - 1)
-
         h = mesh_dt[i]
 
         # Load interpolation residual
@@ -319,16 +319,30 @@ end
             K[:, j] = cache.y[ctr + j].du
         end
 
-        yᵢ = cache.y[ctr].du
-
-        z, z′ = eval_q(yᵢ, τ_star, h, q_coeff, K)
-
-        f(yᵢ, z, cache.p, mesh[i] + τ_star * h)
-
-        yᵢ .= (z′ .- yᵢ) ./ (abs.(yᵢ) .+ T(1))
-
-        defect[i] .= yᵢ
-        ctr += stage + 1
+        # Defect estimate from q(x) at y_i + τ* * h
+        yᵢ₁ = cache.y[ctr].du
+        yᵢ₂ = copy(yᵢ₁)
+        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, K)
+        if iip
+            f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
+        else
+            yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
+        end
+        yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+        est₁ = maximum(abs, yᵢ₁)
+        
+        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, K)
+        # Defect estimate from q(x) at y_i + (1-τ*) * h
+        if iip
+            f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+        else
+            yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+        end
+        yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+        est₂ = maximum(abs, yᵢ₂)
+        
+        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        ctr += stage + 1 # Advance one step
     end
 
     return maximum(Base.Fix1(maximum, abs), defect)

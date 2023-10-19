@@ -14,7 +14,7 @@ function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
     q_coeff = [1.0;;]
-    τ_star = 0.5
+    τ_star = 0.0
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
