@@ -197,6 +197,7 @@ function SciMLBase.solve!(cache::MIRKCache)
 end
 
 # Constructing the Nonlinear Problem
+<<<<<<< HEAD
 function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
@@ -208,11 +209,48 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
                 interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
             eval_bc_residual!(resid, cache.problem_type, cache.bc, bc_sol_, p, cache.mesh)
             return resid
+=======
+function construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
+    loss_bc = if !(cache.problem_type isa TwoPointBVProblem)
+        if iip
+            function loss_bc_internal!(resid::AbstractVector,
+                u::AbstractVector,
+                p = cache.p)
+                y_ = recursive_unflatten!(cache.y, u)
+                bc_sol_ = DiffEqBase.build_solution(cache.prob,
+                    cache.alg,
+                    cache.mesh,
+                    y_;
+                    interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
+                eval_bc_residual!(resid,
+                    cache.problem_type,
+                    cache.bc,
+                    bc_sol_,
+                    p,
+                    cache.mesh)
+                return resid
+            end
+        else
+            function loss_bc_internal(u::AbstractVector, p = cache.p)
+                y_ = recursive_unflatten!(cache.y, u)
+                return eval_bc_residual(cache.problem_type, cache.bc, y_, p, cache.mesh)
+            end
+>>>>>>> 991147b (add conditional for multipoint problem bc)
         end
     else
-        function loss_bc_internal(u::AbstractVector, p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            return eval_bc_residual(cache.problem_type, cache.bc, y_, p, cache.mesh)
+        if iip
+            function loss_bc_internal_2point!(resid::AbstractVector,
+                u::AbstractVector,
+                p = cache.p)
+                y_ = recursive_unflatten!(cache.y, u)
+                eval_bc_residual!(resid, cache.problem_type, cache.bc, y_, p, cache.mesh)
+                return resid
+            end
+        else
+            function loss_bc_internal_2point(u::AbstractVector, p = cache.p)
+                y_ = recursive_unflatten!(cache.y, u)
+                return eval_bc_residual(cache.problem_type, cache.bc, y_, p, cache.mesh)
+            end
         end
     end
 
