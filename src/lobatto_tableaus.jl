@@ -14,7 +14,7 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     b = [1 // 2, 1 // 2]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0; -0.5 0.5]
     τ_star = 0.5
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
@@ -32,7 +32,9 @@ function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
     b = [1 // 6, 2 // 3, 1 // 6]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0 0.0;
+               -1.5 2.0 -0.5;
+               0.6666666666666666 -1.3333333333333333 0.6666666666666666]
     τ_star = 0.21132486540518713
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
@@ -74,7 +76,11 @@ function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0 0.0 0.0 0.0;
+               -5.0 6.756502488724233 -2.6666666666666603 1.4101641779424228 -0.5;
+               10.0 -18.957449421892882 14.222222222222186 -8.264772800329274 3.0;
+               -8.75 19.006502488724166 -18.666666666666604 13.660164177942388 -5.25;
+               2.8 -6.533333333333296 7.466666666666636 -6.533333333333315 2.8]
     τ_star = 0.33000947820757126
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
@@ -98,7 +104,7 @@ function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
     b = [1 // 2, 1 // 2]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0; -0.5 0.5]
     τ_star = 0.5
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
@@ -116,7 +122,9 @@ function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
     b = [1 // 6, 2 // 3, 1 // 6]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0 0.0;
+               -1.5 2.0 -0.5;
+               0.6666666666666666 -1.3333333333333333 0.6666666666666666]
     τ_star = 0.21132486540518713
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
@@ -135,7 +143,10 @@ function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
     b = [1 // 12, 5 // 12, 5 // 12, 1 // 12]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0 0.0 0.0;
+               -3.0 4.04508497187474 -1.545084971874738 0.5;
+               3.3333333333333357 -6.423503277082812 4.756836610416144 -1.6666666666666674;
+               -1.25 2.7950849718747395 -2.795084971874738 1.25]
     τ_star = 0.5
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
@@ -155,7 +166,11 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = zeros(s,s)
+    q_coeff = [1.0 0.0 0.0 0.0 0.0;
+               -5.0 6.756502488724233 -2.6666666666666603 1.4101641779424228 -0.5;
+               10.0 -18.957449421892882 14.222222222222186 -8.264772800329274 3.0;
+               -8.75 19.006502488724166 -18.666666666666604 13.660164177942388 -5.25;
+               2.8 -6.533333333333296 7.466666666666636 -6.533333333333315 2.8]
     τ_star = 0.33000947820757126
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
