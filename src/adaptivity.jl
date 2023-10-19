@@ -23,8 +23,7 @@ interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::MIRKInterpTableau, t
 j = interval(mesh, t)
 if i == 1
     ctr_y0 = 0
-    ctr_y1 = 0
-    y[ctr_y0 + 1] = cache.y[ctr_y1 + 1].du 
+    y[ctr_y0 + 1] = [-1.5707963267948966, 0.0]
 else
     ctr_y0 = (i-2)*(ITU.stage + 1)+1
     ctr_y1 = (j-1)*(ITU.stage + 1)+1
