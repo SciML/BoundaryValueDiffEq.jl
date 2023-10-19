@@ -2,7 +2,6 @@
 *.jl.*.cov
 *.jl.mem
 Manifest.toml
-Project.toml
 .vscode
 .vscode/*
 wip
