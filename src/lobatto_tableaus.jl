@@ -13,13 +13,12 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     c = [0, 1]
     b = [1 // 2, 1 // 2]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [3 // 8, 1 // 8]
-    poly_max = 0.25
-    dn_coeffs = [-1, 1, 1]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.5
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -32,13 +31,12 @@ function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
     c = [0, 1 // 2, 1]
     b = [1 // 6, 2 // 3, 1 // 6]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [0.20833333333333337, 0.33333333333333337, -0.04166666666666667]
-    poly_max = 0.048112522432468816
-    dn_coeffs = [6, -12, 6, 1.5]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.21132486540518713
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -75,24 +73,12 @@ function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
     c = [0, 1 // 2 - Rational(√21) // 14, 1 // 2, 1 // 2 + Rational(√21) // 14, 1]
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [
-        0.04062499999999983,
-        0.30318418332304287,
-        0.17777777777777767,
-        -0.030961961100820418,
-        0.009374999999999994,
-    ]
-    poly_max = 0.0029409142833778648
-    dn_coeffs = [120.0,
-        -280.0,
-        320.0,
-        -280.0,
-        120.0,
-        0.3571428571428581]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.33000947820757126
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -111,13 +97,12 @@ function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
     c = [0, 1]
     b = [1 // 2, 1 // 2]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [3 // 8, 1 // 8]
-    poly_max = 0.25
-    dn_coeffs = [-1, 1, 1]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.5
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -130,13 +115,12 @@ function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
     c = [0, 1 // 2, 1]
     b = [1 // 6, 2 // 3, 1 // 6]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [0.20833333333333337, 0.33333333333333337, -0.04166666666666667]
-    poly_max = 0.048112522432468816
-    dn_coeffs = [6, -12, 6, 1.5]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.21132486540518713
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -150,22 +134,12 @@ function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
     c = [0, 1 // 2 - Rational(√5) // 10, 1 // 2 + Rational(√5) // 10, 1]
     b = [1 // 12, 5 // 12, 5 // 12, 1 // 12]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [
-        0.08854166666666657,
-        0.3830261440755047,
-        0.0336405225911624,
-        -0.005208333333333329,
-    ]
-    poly_max = 0.012499999999999997
-    dn_coeffs = [-24.0,
-        53.665631459994984,
-        -53.66563145999497,
-        24.0,
-        0.8]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.5
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -180,24 +154,11 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
     c = [0, 1 // 2 - Rational(√21) // 14, 1 // 2, 1 // 2 + Rational(√21) // 14, 1]
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
-    # Interpolant coefficients and p(x) max
-    poly_coeffs = [
-        0.04062499999999983,
-        0.30318418332304287,
-        0.17777777777777767,
-        -0.030961961100820418,
-        0.009374999999999994,
-    ]
-
-    poly_max = 0.0029409142833778648
-    dn_coeffs = [120,
-        -280.0,
-        320.0,
-        -280.0,
-        120.0,
-        0.3571428571428581]
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    q_coeff = zeros(s,s)
+    τ_star = 0.33000947820757126
 
     TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(poly_coeffs), T.(poly_max), T.(dn_coeffs), Int64(s), nested)
+    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
