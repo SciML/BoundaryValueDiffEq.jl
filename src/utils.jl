@@ -125,13 +125,13 @@ end
 function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0)
-    return True(), eltype(_u0), length(_u0), (length(u0) - 1), _u0
+    return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
 function __extract_problem_details(prob, u0; dt = 0.0, check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
-    return False(), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+    return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)

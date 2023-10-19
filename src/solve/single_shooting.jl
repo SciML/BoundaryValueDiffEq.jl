@@ -1,7 +1,7 @@
 function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
     nlsolve_kwargs = (;), verbose = true, kwargs...)
     ig, T, _, _, u0 = __extract_problem_details(prob; dt = 0.1)
-    known(ig) && verbose &&
+    _unwrap_val(ig) && verbose &&
         @warn "Initial guess provided, but will be ignored for Shooting!"
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)

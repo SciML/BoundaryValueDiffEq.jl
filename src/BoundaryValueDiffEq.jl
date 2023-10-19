@@ -1,7 +1,7 @@
 module BoundaryValueDiffEq
 
 using Adapt, BandedMatrices, ForwardDiff, LinearAlgebra, PreallocationTools,
-    RecursiveArrayTools, Reexport, Setfield, SparseArrays, Static
+    RecursiveArrayTools, Reexport, Setfield, SparseArrays
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType
@@ -10,7 +10,7 @@ import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import ForwardDiff: pickchunksize
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
-import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve
+import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack

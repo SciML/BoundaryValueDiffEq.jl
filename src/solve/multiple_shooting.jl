@@ -3,7 +3,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     @unpack f, tspan = prob
 
     ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
-    has_initial_guess = known(ig)
+    has_initial_guess = _unwrap_val(ig)
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
@@ -224,7 +224,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         odesolve_kwargs, nlsolve_kwargs, verbose, kwargs...)
 end
 
-@views function multiple_shooting_initialize(prob, alg::MultipleShooting, ::True,
+@views function multiple_shooting_initialize(prob, alg::MultipleShooting, ::Val{true},
     nshoots; odesolve_kwargs = (;), verbose = true, kwargs...)
     @unpack f, u0, tspan, p = prob
     @unpack ode_alg = alg
@@ -237,7 +237,7 @@ end
     return nodes, u_at_nodes
 end
 
-@views function multiple_shooting_initialize(prob, alg::MultipleShooting, ::False,
+@views function multiple_shooting_initialize(prob, alg::MultipleShooting, ::Val{false},
     nshoots; odesolve_kwargs = (;), verbose = true, kwargs...)
     @unpack f, u0, tspan, p = prob
     @unpack ode_alg = alg
@@ -278,7 +278,7 @@ end
     nshoots, old_nshoots, ig; odesolve_kwargs = (;), kwargs...)
     @unpack f, u0, tspan, p = prob
     nodes = range(tspan[1], tspan[2]; length = nshoots + 1)
-    N = known(ig) ? length(first(u0)) : length(u0)
+    N = _unwrap_val(ig) ? length(first(u0)) : length(u0)
 
     u_at_nodes = similar(u_at_nodes_prev, N + nshoots * N)
     u_at_nodes[1:N] .= u_at_nodes_prev[1:N]
