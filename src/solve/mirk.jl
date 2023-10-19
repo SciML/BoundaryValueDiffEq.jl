@@ -201,7 +201,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
-            bc_sol_ = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, y_; interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
+            bc_sol_ = DiffEqBase.build_solution(cache.prob,
+                cache.alg,
+                cache.mesh,
+                y_;
+                interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
             eval_bc_residual!(resid, cache.problem_type, cache.bc, bc_sol_, p, cache.mesh)
             return resid
         end
@@ -253,7 +257,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
             function loss_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
                 y_ = recursive_unflatten!(cache.y, u)
                 resids = [get_tmp(r, u) for r in cache.residual]
-                intern_sol_ = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, y_; interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
+                intern_sol_ = DiffEqBase.build_solution(cache.prob,
+                    cache.alg,
+                    cache.mesh,
+                    y_;
+                    interp = MIRKInterpolation(cache.mesh, y_, cache)) # build solution @ any time
                 eval_bc_residual!(resids[1], cache.problem_type, cache.bc, intern_sol_, p,
                     cache.mesh)
                 Φ!(resids[2:end], cache, y_, u, p)
@@ -308,7 +316,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
             sparse_jacobian!(@view(J[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
                 loss_bc, resid_bc, x)
             sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
-                cache_collocation, loss_collocation, resid_collocation, x) 
+                cache_collocation, loss_collocation, resid_collocation, x)
             return J
         end
     else

@@ -8,7 +8,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     w, w′ = interp_weights(τ, cache.alg)
-    sum_stages!(y, cache, w, i; u=u)
+    sum_stages!(y, cache, w, i; u = u)
     return y
 end
 
@@ -242,7 +242,14 @@ function sum_stages!(z, cache::MIRKCache, w, i::Int; u = cache.y₀, dt = cache.
     return z
 end
 
-@views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int; u = cache.y₀, dt = cache.mesh_dt[i])
+@views function sum_stages!(z,
+    z′,
+    cache::MIRKCache,
+    w,
+    w′,
+    i::Int;
+    u = cache.y₀,
+    dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 

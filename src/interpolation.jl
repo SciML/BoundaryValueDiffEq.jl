@@ -56,6 +56,6 @@ end
 @inline function interpolation(tval::Number, id::I, idxs, deriv::D, p,
     continuity::Symbol = :left) where {I, D}
     z = similar(id.cache.fᵢ₂_cache, typeof(id.u[1][1]))
-    interp_eval!(z, id.cache, id.u, tval, id.cache.mesh, id.cache.mesh_dt) 
+    interp_eval!(z, id.cache, id.u, tval, id.cache.mesh, id.cache.mesh_dt)
     return z
 end
