@@ -61,7 +61,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     has_initial_guess, T, M, n, X = __extract_problem_details(prob; dt,
-        check_positive_dt = true)
+                                                              check_positive_dt = true)
 
     stage = alg_stage(alg)
     TU, ITU = constructRK(alg, T)
@@ -69,7 +69,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     expanded_jac = isa(TU, RKTableau{false})
     chunksize = expanded_jac ? pickchunksize(M + M * n * (stage + 1)) :
                 pickchunksize(M * (n + 1))
-
 
     __alloc_diffcache = x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
@@ -92,14 +91,15 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse(adaptive, M, 0), ifelse(adaptive, ITU.s_star - stage, 0))
+    k_interp = [similar(X, ifelse((adaptive && !isa(TU, RKTableau)), M, 0),
+                        (adaptive && !isa(TU, RKTableau) ? ITU.s_star - stage : 0))
                 for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
     residual = if iip
         vcat([__alloc_diffcache(bcresid_prototype)],
-            __alloc_diffcache.(copy.(@view(y₀[2:end]))))
+             __alloc_diffcache.(copy.(@view(y₀[2:end]))))
     else
         nothing
     end
@@ -115,7 +115,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
             function __vecbc!(resid, sol, p, t)
                 prob.f.bc(reshape(resid, resid₁_size),
-                    map(Base.Fix2(reshape, size(X)), sol), p, t)
+                          map(Base.Fix2(reshape, size(X)), sol), p, t)
             end
         else
             function __vecbc_a!(resida, ua, p)
@@ -142,9 +142,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     end
 
     return RKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
-        prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
-        k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+                           prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
+                           k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
+                           (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -157,9 +157,9 @@ function __expand_cache!(cache::RKCache)
     Nₙ = length(cache.mesh)
     __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
     __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
-    __append_similar!(cache.y, Nₙ, cache.M)
-    __append_similar!(cache.y₀, Nₙ, cache.M)
-    __append_similar!(cache.residual, Nₙ, cache.M)
+    __append_similar!(cache.y, Nₙ, cache.M, cache.TU)
+    __append_similar!(cache.y₀, Nₙ, cache.M, cache.TU)
+    __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
     __append_similar!(cache.defect, Nₙ - 1, cache.M)
     __append_similar!(cache.new_stages, Nₙ - 1, cache.M)
     return cache
@@ -184,7 +184,7 @@ function SciMLBase.solve!(cache::RKCache)
         recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
         info = sol_nlprob.retcode
-
+        
         !adaptive && break
 
         if info == ReturnCode.Success
@@ -198,9 +198,9 @@ function SciMLBase.solve!(cache::RKCache)
                 # We construct a new mesh to equidistribute the defect
                 mesh, mesh_dt, _, info = mesh_selector!(cache)
                 if info == ReturnCode.Success
-                    __append_similar!(cache.y₀, length(cache.mesh), cache.M)
+                    __append_similar!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
                     for (i, m) in enumerate(cache.mesh)
-                        interp_eval!(cache.y₀[i], cache, id.cache.ITU, m, mesh, mesh_dt)
+                        interp_eval!(cache.y₀, i, cache, cache.ITU, m, mesh, mesh_dt)
                     end
                     __expand_cache!(cache)
                 end
@@ -246,7 +246,7 @@ function __construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {ii
 
     loss_collocation = if iip
         function loss_collocation_internal!(resid::AbstractVector, u::AbstractVector,
-            p = cache.p)
+                                            p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
             resids = [get_tmp(r, u) for r in cache.residual[2:end]]
             Φ!(resids, cache, y_, u, p)
@@ -288,48 +288,53 @@ function __construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {ii
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss,
-        cache.problem_type)
+                                 cache.problem_type)
 end
 
 function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
-    ::StandardBVProblem) where {iip}
+                               ::StandardBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
+    TU, ITU = constructRK(cache.alg, eltype(y))
+    expanded_jac = isa(TU, RKTableau{false})
+
     resid_bc = cache.bcresid_prototype
-    resid_collocation = similar(y, cache.M * (N - 1))
+    resid_collocation = expanded_jac ? similar(y, cache.M * (N - 1) * (TU.s + 1)) :
+                        similar(y, cache.M * (N - 1))
 
     sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
     cache_bc = __sparse_jacobian_cache(Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bc,
-        resid_bc, y)
+                                       resid_bc, y)
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-            cache.problem_type, y, cache.M, N))
+                                                                         cache.problem_type, y, cache.M, N))
     else
         NoSparsityDetection()
     end
     cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
-        sd_collocation, loss_collocation, resid_collocation, y)
+                                                sd_collocation, loss_collocation,
+                                                resid_collocation, y)
 
     jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
 
     jac = if iip
         function jac_internal!(J, x, p)
             sparse_jacobian!(@view(J[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
-                loss_bc, resid_bc, x)
+                             loss_bc, resid_bc, x)
             sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
-                cache_collocation, loss_collocation, resid_collocation, x)
+                             cache_collocation, loss_collocation, resid_collocation, x)
             return J
         end
     else
         J_ = jac_prototype
         function jac_internal(x, p)
             sparse_jacobian!(@view(J_[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
-                loss_bc, x)
+                             loss_bc, x)
             sparse_jacobian!(@view(J_[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
-                cache_collocation, loss_collocation, x)
+                             cache_collocation, loss_collocation, x)
             return J_
         end
     end
@@ -338,7 +343,7 @@ function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation
 end
 
 function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation, loss,
-    ::TwoPointBVProblem) where {iip}
+                               ::TwoPointBVProblem) where {iip}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
@@ -349,7 +354,7 @@ function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation
     # TODO: Remember to not reorder if we end up using that implementation
     sd = if jac_alg.diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-            cache.problem_type, resid.x[1], cache.M, N))
+                                                                         cache.problem_type, resid.x[1], cache.M, N))
     else
         NoSparsityDetection()
     end

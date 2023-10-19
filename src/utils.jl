@@ -93,7 +93,7 @@ end
 
 __append_similar!(::Nothing, n, _) = nothing
 
-function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
+function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU)
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
@@ -101,11 +101,47 @@ function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
     return x
 end
 
-function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
+function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M, TU)
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
     chunksize = pickchunksize(M * (N + length(x)))
+    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _) 
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, [similar(first(x)) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M) 
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    chunksize = pickchunksize(M * (N + length(x)))
+    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU::RKTableau{false})
+    @unpack s = TU
+    N = (n - 1) * (s + 1) + 1 - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, [similar(first(x)) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M, TU::RKTableau{false})
+    @unpack s = TU
+    N = (n - 1) * (s + 1) + 1 - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    chunksize = isa(TU, RKTableau{false}) ? pickchunksize(M * (N + length(x) * (s + 1))) : pickchunksize(M * (N + length(x)))
     append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
     return x
 end

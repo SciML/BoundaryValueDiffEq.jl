@@ -48,16 +48,14 @@ end
 
 @truncate_stacktrace RKTableau 1
 
-struct RKInterpTableau{nested, c, m, d}
-    poly_coeffs::c
-    poly_max::m
-    dn_coeffs::d
+struct RKInterpTableau{nested, c, m}
+    q_coeff::c
+    τ_star::m
     stage::Int
 
-    function RKInterpTableau(poly_coeffs, poly_max, dn_coeffs, stage, nested::Bool)
-        @assert eltype(poly_coeffs) == eltype(poly_max) == eltype(dn_coeffs)
-        return new{nested, typeof(poly_coeffs), typeof(poly_max), typeof(dn_coeffs)}(poly_coeffs,
-            poly_max, dn_coeffs, stage)
+    function RKInterpTableau(q_coeff, τ_star, stage, nested::Bool)
+        @assert eltype(q_coeff) == eltype(τ_star)
+        return new{nested, typeof(q_coeff), typeof(τ_star)}(q_coeff, τ_star, stage)
     end
 end
 

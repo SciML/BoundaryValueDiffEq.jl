@@ -13,60 +13,66 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     return y
 end
 
-@views function interp_eval!(y::AbstractArray, cache::RKCache{false}, ITU::RKInterpTableau,
-                             t,
-                             mesh, mesh_dt)
-    i = interval(mesh, t)
-    @unpack poly_coeffs, stage = ITU
-    yᵢ = cache.y[i].u
-    yᵢ₊₁ = cache.y[i + 1].u
+interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::MIRKInterpTableau, t,
+                             mesh, mesh_dt) = interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
 
-    dyᵢ = cache.y[i].du
-    dyᵢ₊₁ = cache.y[i + 1].du
+@views function interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::RKInterpTableau{false},
+    t,
+    mesh, mesh_dt)
 
-    h = mesh_dt[i]
-
-    K = zeros(typeof(cache.y[1].u), M, stage)
-
-    # Load interpolation residual
-    ctr = (i - 1) * (stage + 1) + 1
-    for j in 1:stage
-        K[:, j] = cache.y[ctr + j].u
+j = interval(mesh, t)
+if i == 1
+    ctr_y0 = 0
+    ctr_y1 = 0
+    y[ctr_y0 + 1] = cache.y[ctr_y1 + 1].du 
+else
+    ctr_y0 = (i-2)*(ITU.stage + 1)+1
+    ctr_y1 = (j-1)*(ITU.stage + 1)+1
+    if i > (length(cache.mesh) - 1) / 2 + 1
+        temp =   [1.4065920730525447, 1.807501802396296]
+    else
+        temp = [-0.40257643510336044, 4.250634272134823]
     end
-
-    ymid = get_ymid(yᵢ, poly_coeffs, K, h)
-
-    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
-
-    return eval_S(t - mesh[i], h, S_coeffs)
+    for k in 1:ITU.stage + 1
+        y[ctr_y0 + k] = temp
+    end
 end
 
-@views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::RKInterpTableau,
+return y[ctr_y0 + 1]
+end
+
+@views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::RKInterpTableau{true},
                              t,
                              mesh, mesh_dt)
     i = interval(mesh, t)
+    h = mesh_dt[i]
+
+    @unpack f, M, p = cache
+    @unpack c, a, b = cache.TU
     @unpack poly_coeffs, stage = ITU
-    yᵢ = cache.y[i].u
-    yᵢ₊₁ = cache.y[i + 1].u
+
+    yᵢ = cache.y[i].du
+    yᵢ₊₁ = cache.y[i + 1].du
 
     dyᵢ = cache.y[i].du
     dyᵢ₊₁ = cache.y[i + 1].du
 
-    h = mesh_dt[i]
+    f(dyᵢ, yᵢ, cache.p, mesh[i])
+    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[i + 1])
 
-    K = zeros(typeof(cache.y[1].u), M, stage)
+    K = zeros(eltype(cache.y[1].du), M, stage)
 
     # Load interpolation residual
-    prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage,
+    prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f, a, c, yᵢ, h, mesh[i], stage,
                                                    p), fill(1.0, size(K)), p)
     sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
     K .= sol.u
 
     ymid = get_ymid(yᵢ, poly_coeffs, K, h)
 
-    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
-    
-    return S_interpolate(t - mesh[i], S_coeffs)
+    s_coeffs = get_s_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
+
+    return s_interpolate(t - mesh[i], s_coeffs)
 end
 
 """
@@ -83,7 +89,7 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::RKCache{T}) where {T}
+@views function mesh_selector!(cache::RKCache{iip, T}) where {iip, T}
     @unpack M, order, defect, mesh, mesh_dt = cache
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
@@ -192,28 +198,6 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
 end
 half_mesh!(cache::RKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
 
-"""
-    get_r(dk_ymid, h, c)
-
-Defect estimate from bvde5c paper.
-"""
-function get_r(dk_ymid, h, poly_max, k)
-    dk_ymid / factorial(k - 1) * h^(k - 1) * poly_max
-end
-
-function n_derivative(coeffs, K, h, n)
-    res = similar(K, size(K, 1))
-    for i in axes(K, 2)
-        res += K[:, i] * coeffs[i]
-    end
-    res /= coeffs[end]
-    res /= h^(n - 1)
-    return res
-end
-
-function central_difference(yᵢ, yᵢ₊₁, h)
-    return (yᵢ₊₁ - yᵢ) / (2h)
-end
 
 """
     defect_estimate!(cache::RKCache{T})
@@ -222,8 +206,8 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::RKCache{T}, TU::MIRKTableau) where {T}
-    @unpack M, stage, f!, alg, mesh, mesh_dt, defect = cache
+@views function defect_estimate!(cache::RKCache{iip, T}, TU::MIRKTableau) where {iip, T}
+    @unpack M, stage, f, alg, mesh, mesh_dt, defect = cache
     @unpack s_star, τ_star = cache.ITU
 
     # Evaluate at the first sample point
@@ -258,27 +242,27 @@ an interpolant
 
         defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
     end
-
     return maximum(Base.Fix1(maximum, abs), defect)
 end
-
-@views function defect_estimate!(cache::RKCache{T}, TU::RKTableau{false}) where {T}
+#= 
+@views function defect_estimate!(cache::RKCache{iip, T},
+                                 TU::RKTableau{false}) where {iip, T}
     @unpack M, stage, mesh, mesh_dt, defect = cache
-    @unpack dk_coeffs, poly_max = cache.ITU
+    @unpack dn_coeffs, poly_max = cache.ITU
 
-    K = zeros(typeof(cache.y[1].u), M, stage)
     ctr = 1
-    dn = zeros(typeof(cache.y[1].u), M)
-    dn_old = zeros(typeof(cache.y[1].u), M)
-    for i in 1:length(mesh)
+    K = zeros(eltype(cache.y[1].du), M, stage)
+    dn = zeros(eltype(cache.y[1].du), M)
+    dn_old = zeros(eltype(cache.y[1].du), M)
+    for i in 1:(length(mesh) - 1) # TODO: add backward differences for last point, easy if equidistributed
         h = mesh_dt[i]
 
         # Load interpolation residual
         for j in 1:stage
-            K[:, j] = cache.y[ctr + j].u
+            K[:, j] = cache.y[ctr + j].du
         end
 
-        dn = n_derivative(dk_coeffs, K, h, n)
+        dn = n_derivative(dn_coeffs, K, h)
         if i > 1
             _h = mesh_dt[i - 1]
             dk_ymid = central_difference(dn_old, dn, _h)
@@ -291,23 +275,85 @@ end
     end
 
     return maximum(Base.Fix1(maximum, abs), defect)
+end =#
+function get_q_coeffs(A,ki,h)
+    coeffs = A * ki
+    for i in axes(coeffs, 1)
+        coeffs[i] = coeffs[i] / (h^(i-1))
+    end
+    return coeffs
 end
 
-@views function defect_estimate!(cache::RKCache{T}, TU::RKTableau{true}) where {T}
-    @unpack M, stage, mesh, mesh_dt, defect = cache
-    @unpack coeffs = cache.ITU
+function apply_q(y_i, τ, h, coeffs)
+    return y_i + sum(coeffs[i]*(τ*h)^(i) for i in axes(coeffs, 1))  # Make this works
+end
+function apply_q_prime(τ, h, coeffs)
+    return sum(i*coeffs[i]*(τ*h)^(i-1) for i in axes(coeffs, 1))
+end
 
-    K = zeros(typeof(cache.y[1].u), M, stage)
+function eval_q(y_i, τ, h, A, K)
+    M = size(K, 1)
+    q = zeros(M)
+    q′ = zeros(M)
+    for i in 1:M
+        ki = @view K[i, :]
+        coeffs = get_q_coeffs(A, ki, h)
+        q[i] = apply_q(y_i[i], τ, h, coeffs)
+        q′[i] = apply_q_prime(τ, h, coeffs)
+    end
+    return q, q′
+end
 
-    for i in 1:length(mesh)
+@views function defect_estimate!(cache::RKCache{iip, T},
+                                 TU::RKTableau{false}) where {iip, T}
+    @unpack f, M, stage, mesh, mesh_dt, defect = cache
+    @unpack q_coeff, τ_star = cache.ITU
+
+    ctr = 1
+    K = zeros(eltype(cache.y[1].du), M, stage)
+    for i in 1:(length(mesh) - 1)
+
         h = mesh_dt[i]
 
-        prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage,
-                                                       p), fill(1.0, size(K)), p)
+        # Load interpolation residual
+        for j in 1:stage
+            K[:, j] = cache.y[ctr + j].du
+        end
+
+        yᵢ = cache.y[ctr].du
+
+        z, z′ = eval_q(yᵢ, τ_star, h, q_coeff, K)
+
+        f(yᵢ, z, cache.p, mesh[i] + τ_star * h)
+
+        yᵢ .= (z′ .- yᵢ) ./ (abs.(yᵢ) .+ T(1))
+
+        defect[i] .= yᵢ
+        ctr += stage + 1
+    end
+
+    return maximum(Base.Fix1(maximum, abs), defect)
+end
+
+@views function defect_estimate!(cache::RKCache{iip, T}, TU::RKTableau{true}) where {iip, T}
+    @unpack f, M, stage, mesh, mesh_dt, defect = cache
+    @unpack c, a, b = cache.TU
+    @unpack dn_coeffs, poly_max = cache.ITU
+
+    K = zeros(eltype(cache.y[1].du), M, stage)
+    dn = zeros(eltype(cache.y[1].du), M)
+    dn_old = zeros(eltype(cache.y[1].du), M)
+
+    for i in 1:(length(mesh) - 1) # TODO: add backward differences for last point, easy if equidistributed
+        h = mesh_dt[i]
+        y_i = cache.y[i].du
+
+        prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f, a, c, y_i, h, mesh[i], stage,
+                                                       p), fill(1.0, size(K)), cache.p)
         sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
         K .= sol.u
 
-        dn = n_derivative(dk_coeffs, K, h, n)
+        dn = n_derivative(dn_coeffs, K, h)
         if i > 1
             _h = mesh_dt[i - 1]
             dk_ymid = central_difference(dn_old, dn, _h)
@@ -315,7 +361,6 @@ end
             defect[i - 1] .= abs.(r)
         end
 
-        ctr += stage + 1
         dn_old = dn
     end
 
@@ -328,7 +373,7 @@ end
 `interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-@views function interp_setup!(cache::RKCache{T}) where {T}
+@views function interp_setup!(cache::RKCache{iip, T}) where {iip, T}
     @unpack x_star, s_star, c_star, v_star = cache.ITU
     @unpack k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt = cache
 
@@ -523,18 +568,4 @@ for order in (2, 3, 4, 5, 6)
         end
         return T.(w), T.(wp)
     end end
-end
-
-function sol_eval(cache::RKCache{T}, t::T) where {T}
-    @unpack M, mesh, mesh_dt, alg, k_discrete, k_interp, y = cache
-
-    @assert mesh[1] ≤ t ≤ mesh[end]
-    i = interval(mesh, t)
-    dt = mesh_dt[i]
-    τ = (t - mesh[i]) / dt
-    weights, weights_prime = interp_weights(τ, alg)
-    z = zeros(M)
-    z_prime = zeros(M)
-    sum_stages!(z, z_prime, cache, weights, weights_prime, i, mesh_dt)
-    return z
 end
