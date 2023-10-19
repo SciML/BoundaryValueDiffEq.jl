@@ -63,7 +63,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
         resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
         bc2a!(resid_f[1], sol(tspan[1]), nothing)
         bc2b!(resid_f[2], sol(tspan[2]), nothing)
-        @test norm(reduce(vcat, resid_f)) < 1e-11
+        @test norm(reduce(vcat, resid_f)) < 1e-12
     end
 
     # Out of Place
@@ -76,7 +76,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
         sol = solve(bvp4, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         resid_f = reduce(vcat, (bc2a(sol(tspan[1]), nothing), bc2b(sol(tspan[2]), nothing)))
-        @test norm(resid_f) < 1e-11
+        @test norm(resid_f) < 1e-12
     end
 end
 

@@ -88,7 +88,7 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
 end
 
 @inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
-    return isbitstype(T) ? __default_nonsparse_ad(T) : __default_sparse_ad(first(x))
+    return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
 end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
 @inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()

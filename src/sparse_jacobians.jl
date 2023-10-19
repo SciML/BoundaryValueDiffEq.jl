@@ -96,11 +96,11 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVPr
 end
 
 function __generate_sparse_jacobian_prototype(alg::MultipleShooting, ::TwoPointBVProblem,
-    bcresid_prototype::ArrayPartition, u0, N::Int, nshoots::Int)
+    bcresid_prototype, u0, N::Int, nshoots::Int)
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
 
-    resida, residb = bcresid_prototype.x
+    resida, residb = bcresid_prototype.resida, bcresid_prototype.residb
     L₁, L₂ = length(resida), length(residb)
 
     J₁ = L₁ + L₂ + nshoots * N

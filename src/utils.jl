@@ -159,9 +159,9 @@ end
 @inline __ones_like(args...) = __fill_like(1, args...)
 
 @inline __safe_reshape(x, args...) = reshape(x, args...)
-@inline __safe_reshape(ca::ComponentArray, sizes) = __safe_reshape(NamedTuple(ca), sizes)
-@inline function __safe_reshape(x::NamedTuple{F}, sizes::NamedTuple{F}) where {F}
-    return NamedTuple{F}(__safe_reshape.(values(x), values(sizes)))
+@inline function __safe_reshape(ca::ComponentArray, sizes::NamedTuple{(:resida, :residb)})
+    return NamedTuple{(:resida, :residb)}((reshape(ca.resida, sizes.resida),
+        reshape(ca.residb, sizes.residb)))
 end
 
 @inline __safe_vec(x) = vec(x)
