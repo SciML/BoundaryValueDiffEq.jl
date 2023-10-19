@@ -19,8 +19,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     nshoots = alg.nshoots
 
     if prob.problem_type isa TwoPointBVProblem
-        resida_len = length(bcresid_prototype.resida)
-        residb_len = length(bcresid_prototype.residb)
+        resida_len = prod(resid_size[1])
+        residb_len = prod(resid_size[2])
     end
 
     # We will use colored AD for this part!
@@ -94,21 +94,19 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     end
 
     loss! = if prob.problem_type isa TwoPointBVProblem
-        @views function loss_tp!(resid_, us, p, cur_nshoots, nodes, resid_axes)
-            resid = ComponentArray(resid_, resid_axes)
+        @views function loss_tp!(resid, us, p, cur_nshoots, nodes)
+            solve_internal_odes!(resid[(resida_len + 1):(end - residb_len)],
+                us, p, cur_nshoots, nodes)
 
-            solve_internal_odes!(resid.nodes, us, p, cur_nshoots, nodes)
-
-            compute_bc_residual_tp!(resid.resida, resid.residb, us[1:N],
-                us[(end - N + 1):end], p, cur_nshoots, nodes)
+            compute_bc_residual_tp!(resid[1:resida_len], resid[(end - residb_len + 1):end],
+                us[1:N], us[(end - N + 1):end], p, cur_nshoots, nodes)
 
             return resid
         end
     else
-        @views function loss_mp!(resid_, us, p, cur_nshoots, nodes, resid_axes)
-            resid = ComponentArray(resid_, resid_axes)
-
-            resid_bc, resid_nodes = resid.bc, resid.nodes
+        @views function loss_mp!(resid, us, p, cur_nshoots, nodes)
+            resid_bc = resid[1:prod(resid_size)]
+            resid_nodes = resid[(prod(resid_size) + 1):end]
 
             _us, _ts = solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
 
@@ -170,20 +168,18 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         end
 
         if prob.problem_type isa TwoPointBVProblem
-            resid_prototype = ComponentArray(; bcresid_prototype.resida,
-                nodes = similar(u_at_nodes, cur_nshoot * N), bcresid_prototype.residb)
-            resid_nodes = __maybe_allocate_diffcache(resid_prototype.nodes,
+            resid_prototype = vcat(bcresid_prototype[1],
+                similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
+
+            resid_nodes = __maybe_allocate_diffcache(resid_prototype[(resida_len + 1):(resida_len + cur_nshoot * N)],
                 pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
 
-            resid_prototype_data = getdata(resid_prototype)
-            resid_axes = getaxes(resid_prototype)
-
-            loss_fn = (du, u, p = prob.p) -> loss!(du, u, p, cur_nshoot, nodes, resid_axes)
+            loss_fn = (du, u, p = prob.p) -> loss!(du, u, p, cur_nshoot, nodes)
 
             sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
                      PrecomputedJacobianColorvec(J_proto) : NoSparsityDetection()
 
-            resid_prototype_cached = similar(resid_prototype_data)
+            resid_prototype_cached = similar(resid_prototype)
             jac_cache = sparse_jacobian_cache(alg.jac_alg.diffmode, sd_bvp, loss_fn,
                 resid_prototype_cached, u_at_nodes)
             jac_prototype = init_jacobian(jac_cache)
@@ -191,15 +187,12 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             jac_fn = (J, us, p) -> jac!(J, us, p, jac_cache, loss_fn,
                 resid_prototype_cached)
         else
-            resid_prototype = ComponentArray(; bc = bcresid_prototype,
-                nodes = similar(u_at_nodes, cur_nshoot * N))
-            resid_nodes = __maybe_allocate_diffcache(resid_prototype.nodes,
+            resid_prototype = vcat(bcresid_prototype,
+                similar(u_at_nodes, cur_nshoot * N))
+            resid_nodes = __maybe_allocate_diffcache(resid_prototype[(end - cur_nshoot * N + 1):end],
                 pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
 
-            resid_prototype_data = getdata(resid_prototype)
-            resid_axes = getaxes(resid_prototype)
-
-            loss_fn = (du, u, p = prob.p) -> loss!(du, u, p, cur_nshoot, nodes, resid_axes)
+            loss_fn = (du, u, p = prob.p) -> loss!(du, u, p, cur_nshoot, nodes)
 
             ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
             sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
@@ -219,8 +212,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             jac_fn = (J, us, p) -> jac!(J, us, p, similar(bcresid_prototype), resid_nodes,
                 ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, cur_nshoot, nodes)
         end
-        loss_function! = NonlinearFunction{true}(loss_fn;
-            resid_prototype = resid_prototype_data, jac = jac_fn, jac_prototype)
+        loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
+            jac_prototype)
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
         sol_nlsolve = __solve(nlprob, alg.nlsolve; verbose, kwargs..., nlsolve_kwargs...)
         u_at_nodes = sol_nlsolve.u::typeof(u0)

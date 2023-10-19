@@ -100,7 +100,7 @@ function __generate_sparse_jacobian_prototype(alg::MultipleShooting, ::TwoPointB
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
 
-    resida, residb = bcresid_prototype.resida, bcresid_prototype.residb
+    resida, residb = bcresid_prototype
     L₁, L₂ = length(resida), length(residb)
 
     J₁ = L₁ + L₂ + nshoots * N

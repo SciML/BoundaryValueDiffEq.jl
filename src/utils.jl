@@ -15,15 +15,16 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray})
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
+    sizes)
     x_, xiter = Iterators.peel(x)
-    copyto!(y[1:length(x_.resida)], x_.resida)
-    i = length(x_.resida)
+    copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
+    i = prod(sizes[1])
     for xᵢ in xiter
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
         i += length(xᵢ)
     end
-    copyto!(y[(i + 1):(i + length(x_.residb))], x_.residb)
+    copyto!(y[(i + 1):(i + prod(sizes[2]))], x_[(end - prod(sizes[2]) + 1):end])
     return y
 end
 
@@ -89,6 +90,14 @@ eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
     bcb!(resid.residb, ub, p)
     return resid
 end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!), sol, p,
+    t)
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
+    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    bca!(resid[1], ua, p)
+    bcb!(resid[2], ub, p)
+    return resid
+end
 
 __append_similar!(::Nothing, n, _) = nothing
 
@@ -136,13 +145,11 @@ function __get_bcresid_prototype(prob::BVProblem, u)
 end
 function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     prototype = if prob.f.bcresid_prototype !== nothing
-        resida, residb = prob.f.bcresid_prototype.x
-        ComponentArray(; resida, residb)
+        prob.f.bcresid_prototype.x
     else
-        resida, residb = first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
-        ComponentArray(; resida, residb)
+        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
     end
-    return prototype, (; resida = size(prototype.resida), residb = size(prototype.residb))
+    return prototype, size.(prototype)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
@@ -158,21 +165,8 @@ end
 @inline __zeros_like(args...) = __fill_like(0, args...)
 @inline __ones_like(args...) = __fill_like(1, args...)
 
-@inline __safe_reshape(x, args...) = reshape(x, args...)
-@inline function __safe_reshape(ca::ComponentArray, sizes::NamedTuple{(:resida, :residb)})
-    return NamedTuple{(:resida, :residb)}((reshape(ca.resida, sizes.resida),
-        reshape(ca.residb, sizes.residb)))
-end
-
 @inline __safe_vec(x) = vec(x)
-@inline __safe_vec(x::ComponentArray) = getdata(x)
 @inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
 
-@inline __safe_getdata(x::AbstractArray) = x
-@inline __safe_getdata(x::ComponentArray) = getdata(x)
-
-@inline __maybe_componentarray(x::AbstractArray, ax) = ComponentArray(x, ax)
-@inline __maybe_componentarray(x::AbstractArray, ::Nothing) = x
-
-@inline __safe_getaxes(x::ComponentArray) = getaxes(x)
-@inline __safe_getaxes(x::AbstractArray) = nothing
+@inline __vec(x::AbstractArray) = vec(x)
+@inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)

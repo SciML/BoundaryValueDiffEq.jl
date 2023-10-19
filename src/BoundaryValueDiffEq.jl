@@ -1,7 +1,7 @@
 module BoundaryValueDiffEq
 
-using Adapt, BandedMatrices, ComponentArrays, ForwardDiff, LinearAlgebra,
-    PreallocationTools, RecursiveArrayTools, Reexport, Setfield, SparseArrays, Static
+using Adapt, BandedMatrices, ForwardDiff, LinearAlgebra, PreallocationTools,
+    RecursiveArrayTools, Reexport, Setfield, SparseArrays, Static
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 import ADTypes: AbstractADType

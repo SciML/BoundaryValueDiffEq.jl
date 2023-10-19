@@ -6,17 +6,20 @@ function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
-
-    bcresid_prototype_data = __safe_getdata(bcresid_prototype)
-    resid_axes = __safe_getaxes(bcresid_prototype)
+    resid_prototype = __vec(bcresid_prototype)
 
     loss_fn = if iip
-        function loss!(resid, u0_, p)
-            resid_ = __maybe_componentarray(resid, resid_axes)
+        function loss!(resid_, u0_, p)
+            if prob.problem_type isa TwoPointBVProblem
+                resida = @view resid_[1:prod(resid_size[1])]
+                residb = @view resid_[(prod(resid_size[1]) + 1):end]
+                resid = (reshape(resida, resid_size[1]), reshape(residb, resid_size[2]))
+            else
+                resid = reshape(resid_, resid_size)
+            end
             odeprob = ODEProblem{true}(prob.f, reshape(u0_, u0_size), prob.tspan, p)
             odesol = __solve(odeprob, alg.ode_alg; odesolve_kwargs..., verbose, kwargs...)
-            eval_bc_residual!(__safe_reshape(resid_, resid_size), prob.problem_type, bc,
-                odesol, p)
+            eval_bc_residual!(resid, prob.problem_type, bc, odesol, p)
             return nothing
         end
     else
@@ -27,7 +30,7 @@ function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
         end
     end
     opt = __solve(NonlinearProblem(NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype,
-                resid_prototype = bcresid_prototype_data), vec(u0), prob.p), alg.nlsolve;
+                resid_prototype), vec(u0), prob.p), alg.nlsolve;
         nlsolve_kwargs..., verbose, kwargs...)
     newprob = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan, prob.p)
     sol = __solve(newprob, alg.ode_alg; odesolve_kwargs..., verbose, kwargs...)
