@@ -81,7 +81,7 @@ end
     y[ctr_y0] = S_interpolate(τ * h, S_coeffs)
     if ctr_y0 < length(y)
         for (k, ci) in enumerate(c)
-            y[ctr_y0 + k] = dS_interpolate(τ + (1 - τ) * ci, S_coeffs)
+            y[ctr_y0 + k] = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs)
         end
     end
 
@@ -94,6 +94,10 @@ end
                              mesh, mesh_dt)
     j = interval(mesh, t)
     h = mesh_dt[j]
+    lf = (length(cache.y₀)-1) / (length(cache.y)-1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1 
+        h *=lf
+    end
     τ = (t - mesh[j]) / h
 
     @unpack f, M, p = cache
@@ -118,9 +122,9 @@ end
     K .= sol.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    y[i] = S_interpolate(τ, S_coeffs)
+    y[i] = S_interpolate(τ * h, S_coeffs)
 
     return y[i]
 end
