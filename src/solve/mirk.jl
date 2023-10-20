@@ -223,6 +223,11 @@ function SciMLBase.solve!(cache::RKCache)
         end
     end
 
+    # sync y and y0 caches
+    for i in axes(cache.y₀, 1)
+        cache.y[i].du .= cache.y₀[i]   
+    end
+
     u = [reshape(y, cache.in_size) for y in cache.y₀]
     if isa(TU, RKTableau{false})
         u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))

@@ -18,18 +18,18 @@ function interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::MIRKInterpT
     interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
 end
 
-function get_S_coeffs(yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
-    vals = vcat(yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
+    vals = vcat(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
     M = length(yᵢ)
-    A = s_constraints(M)
+    A = s_constraints(M, h)
     coeffs = reshape(A \ vals, 6, M)'
     return coeffs
 end
 
 # S forward Interpolation
-function S_interpolate(t, S_coeffs)
-    ts = [t^(i - 1) for i in axes(S_coeffs, 2)]
-    return S_coeffs * ts
+function S_interpolate(t, coeffs)
+    ts = [t^(i - 1) for i in axes(coeffs, 2)]
+    return coeffs * ts
 end
 
 function dS_interpolate(t, S_coeffs)
@@ -44,8 +44,13 @@ end
                              ITU::RKInterpTableau{false},
                              t,
                              mesh, mesh_dt)
+
     j = interval(mesh, t)
     h = mesh_dt[j]
+    lf = (length(cache.y₀)-1) / (length(cache.y)-1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1 
+        h *=lf
+    end
     τ = (t - mesh[j]) / h
 
     @unpack f, M, p = cache
@@ -66,14 +71,14 @@ end
     f(dyᵢ, yᵢ, cache.p, mesh[j])
     f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
     # Load interpolation residual
-    for j in 1:stage
-        K[:, j] = cache.y[ctr_y + j].du
+    for jj in 1:stage
+        K[:, jj] = cache.y[ctr_y + jj].du
     end
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    y[ctr_y0] = S_interpolate(τ, S_coeffs)
+    y[ctr_y0] = S_interpolate(τ * h, S_coeffs)
     if ctr_y0 < length(y)
         for (k, ci) in enumerate(c)
             y[ctr_y0 + k] = dS_interpolate(τ + (1 - τ) * ci, S_coeffs)
@@ -88,52 +93,36 @@ end
                              t,
                              mesh, mesh_dt)
     j = interval(mesh, t)
-    if i == 1
-        y[i] = [-1.5707963267948966, 0.0]
-    else
-        if i > (length(cache.mesh) - 1) / 2 + 1
-            temp = [1.4065920730525447, 1.807501802396296]
-        else
-            temp = [-0.40257643510336044, 4.250634272134823]
-        end
-        y[i] = temp
-    end
-
-    return y[i]
-end
-
-@views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::RKInterpTableau{true},
-                             t,
-                             mesh, mesh_dt)
-    i = interval(mesh, t)
-    h = mesh_dt[i]
+    h = mesh_dt[j]
+    τ = (t - mesh[j]) / h
 
     @unpack f, M, p = cache
     @unpack c, a, b = cache.TU
-    @unpack poly_coeffs, stage = ITU
-
-    yᵢ = cache.y[i].du
-    yᵢ₊₁ = cache.y[i + 1].du
-
-    dyᵢ = cache.y[i].du
-    dyᵢ₊₁ = cache.y[i + 1].du
-
-    f(dyᵢ, yᵢ, cache.p, mesh[i])
-    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[i + 1])
+    @unpack q_coeff, stage = ITU
 
     K = zeros(eltype(cache.y[1].du), M, stage)
 
+    yᵢ = cache.y[j].du
+    yᵢ₊₁ = cache.y[j + 1].du
+
+    dyᵢ = copy(yᵢ)
+    dyᵢ₊₁ = copy(yᵢ₊₁)
+
+    f(dyᵢ, yᵢ, cache.p, mesh[j])
+    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+
     # Load interpolation residual
-    prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f, a, c, yᵢ, h, mesh[i], stage,
+    prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f, a, c, yᵢ, h, mesh[j], stage,
                                                    p), fill(1.0, size(K)), p)
     sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
     K .= sol.u
 
-    ymid = get_ymid(yᵢ, poly_coeffs, K, h)
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    s_coeffs = get_s_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
+    y[i] = S_interpolate(τ, S_coeffs)
 
-    return s_interpolate(t - mesh[i], s_coeffs)
+    return y[i]
 end
 
 """
@@ -142,7 +131,13 @@ end
 Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
 """
 function interval(mesh, t)
-    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
+    if t in mesh
+        id = findfirst(isequal(t), mesh)
+
+        return clamp(id, 1, length(mesh) - 1)
+    else
+        return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
+    end
 end
 
 """

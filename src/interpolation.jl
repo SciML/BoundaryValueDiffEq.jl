@@ -34,7 +34,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, id.cache, id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, j, id.cache, id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
     return DiffEqArray(vals, tvals)
@@ -48,16 +48,16 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, id.cache, id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, j, id.cache, id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
 end
 
 @inline function interpolation(tval::Number, id::I, idxs, deriv::D, p,
                                continuity::Symbol = :left) where {I, D}
-    z = similar(id.cache.fᵢ₂_cache)
-    interp_eval!(z, id.cache, tval, id.cache.ITU, id.cache.mesh, id.cache.mesh_dt)
-    return z
+    z = [similar(id.cache.fᵢ₂_cache)]
+    interp_eval!(z, 1, id.cache, id.cache.ITU, tval, id.cache.mesh, id.cache.mesh_dt)
+    return z[1]
 end
 
 """
@@ -74,12 +74,12 @@ function get_ymid(yᵢ, coeffs, K, h)
 end
 
 """
-    s_constraints(M)
+    s_constraints(M, h)
 
 Form the quartic interpolation constraint matrix, see bvp5c paper.
 """
-function s_constraints(M)
-    t = vec(repeat([0.0, 1.0, 0.5, 0.0, 1.0, 0.5], 1, M))
+function s_constraints(M, h)
+    t = vec(repeat([0.0, 1.0*h, 0.5*h, 0.0, 1.0*h, 0.5*h], 1, M))
     A = zeros(6 * M, 6 * M)
     for i in 1:6
         row_start = (i - 1) * M + 1
