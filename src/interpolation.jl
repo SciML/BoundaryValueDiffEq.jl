@@ -79,20 +79,20 @@ end
 Form the quartic interpolation constraint matrix, see bvp5c paper.
 """
 function s_constraints(M)
-    t = vec(repeat([0.0, 1.0, 0.5, 0.0, 1.0], 1, M))
-    A = similar(t, 5 * M, 5 * M) .* 0.0
-    for i in 1:5
+    t = vec(repeat([0.0, 1.0, 0.5, 0.0, 1.0, 0.5], 1, M))
+    A = zeros(6 * M, 6 * M)
+    for i in 1:6
         row_start = (i - 1) * M + 1
         if i <= 3
             for k = 0:M-1
-                for j in 1:5
-                    A[row_start+k, j+k*5] = t[i+k*5]^(j - 1)
+                for j in 1:6
+                    A[row_start+k, j+k*6] = t[i+k*6]^(j - 1)
                 end
             end
         else
             for k = 0:M-1
-                for j in 1:5
-                    A[row_start+k, j+k*5] = j == 1.0 ? 0.0 : (j - 1) * t[i+k*5]^(j - 2)
+                for j in 1:6
+                    A[row_start+k, j+k*6] = j == 1.0 ? 0.0 : (j - 1) * t[i+k*6]^(j - 2)
                 end
             end
         end

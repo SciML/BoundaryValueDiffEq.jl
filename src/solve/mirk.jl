@@ -47,7 +47,7 @@ end
 function shrink_y(y, N, M, stage)
     y_shrink = similar(y, N)
     y_shrink[1] = y[1]
-    let ctr = 2
+    let ctr = stage + 2
         for i in 2:N
             y_shrink[i] = y[ctr]
             ctr += (stage + 1)
@@ -142,8 +142,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractRK; dt = 0.0,
     end
 
     return RKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
-                           prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
-                           k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
+                           prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh,
+                           mesh_dt,
+                           k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
+                           defect, new_stages,
                            (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
 end
 
@@ -181,10 +183,11 @@ function SciMLBase.solve!(cache::RKCache)
     while SciMLBase.successful_retcode(info) && defect_norm > abstol
         nlprob = __construct_nlproblem(cache, recursive_flatten(y₀))
         sol_nlprob = solve(nlprob, alg.nlsolve; abstol, kwargs...)
+
         recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
         info = sol_nlprob.retcode
-        
+
         !adaptive && break
 
         if info == ReturnCode.Success
@@ -218,7 +221,7 @@ function SciMLBase.solve!(cache::RKCache)
                 defect_norm = 2 * abstol
             end
         end
-            end
+    end
 
     u = [reshape(y, cache.in_size) for y in cache.y₀]
     if isa(TU, RKTableau{false})
@@ -310,7 +313,8 @@ function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-                                                                         cache.problem_type, y, cache.M, N))
+                                                                         cache.problem_type,
+                                                                         y, cache.M, N))
     else
         NoSparsityDetection()
     end
@@ -354,7 +358,9 @@ function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation
     # TODO: Remember to not reorder if we end up using that implementation
     sd = if jac_alg.diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-                                                                         cache.problem_type, resid.x[1], cache.M, N))
+                                                                         cache.problem_type,
+                                                                         resid.x[1],
+                                                                         cache.M, N))
     else
         NoSparsityDetection()
     end
