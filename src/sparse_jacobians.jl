@@ -82,19 +82,20 @@ function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::RKTable
 
     # Fill Is and Js
     row_size = M * (s + 1) * (N - 1)
-    let idx = 1, i_start = 0, i_step = M * (s + 2)
-        for k in 1:(N - 1) # Iterate over blocks
-            for i in 1:i_step
-                for j in 1:i_step
-                    if k == 1 || !(i <= M && j <= M) && i + i_start <= row_size
-                        Is[idx] = i + i_start
-                        Js[idx] = j + i_start
-                        idx += 1
-                    end
+    idx = 1
+    i_start = 0
+    i_step = M * (s + 2)
+    for k in 1:(N - 1) # Iterate over blocks
+        for i in 1:i_step
+            for j in 1:i_step
+                if k == 1 || !(i <= M && j <= M) && i + i_start <= row_size
+                    Is[idx] = i + i_start
+                    Js[idx] = j + i_start
+                    idx += 1
                 end
             end
-            i_start += i_step - M
         end
+        i_start += i_step - M
     end
 
     # Create sparse matrix from Is and Js
@@ -107,6 +108,40 @@ function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::RKTable
     row_colorvec = Vector{Int}(undef, size(J_c, 1))
     for i in eachindex(row_colorvec)
         row_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
+    end
+
+    return ColoredMatrix(J_c, row_colorvec, col_colorvec)
+end
+
+function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::RKTableau{true})
+    @unpack s = TU
+    # Get number of nonzeros
+    row_size = M * (N - 1)
+    l = 2 * row_size
+    # Initialize Is and Js
+    Is = Vector{Int}(undef, l)
+    Js = Vector{Int}(undef, l)
+
+    # Fill Is and Js
+    for i in 1:row_size
+        Is[i] = i
+        Js[i] = i
+
+        Is[i + row_size] = i
+        Js[i + row_size] = i + M
+    end
+
+    # Create sparse matrix from Is and Js
+    J_c = _sparse_like(Is, Js, y, row_size, row_size + M)
+
+    col_colorvec = Vector{Int}(undef, size(J_c, 2))
+    for i in eachindex(col_colorvec)
+        col_colorvec[i] = ((i-1) % (2 * M)) < M ? 1 : 2
+    end
+
+    row_colorvec = Vector{Int}(undef, size(J_c, 1))
+    for i in eachindex(row_colorvec)
+        row_colorvec[i] = ((i-1) % (2 * M)) < M ? 1 : 2
     end
 
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
