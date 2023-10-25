@@ -43,11 +43,11 @@ coloring.
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
 """
-function __generate_sparse_jacobian_prototype(cache::RKCache, y, M, N)
-    return __generate_sparse_jacobian_prototype(cache, cache.problem_type, y, M, N)
+function __generate_sparse_jacobian_prototype(cache::RKCache, y, M, N, TU::MIRKTableau)
+    return __generate_sparse_jacobian_prototype(cache, cache.problem_type, y, M, N, TU)
 end
 
-function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N)
+function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::MIRKTableau)
     l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
@@ -75,46 +75,45 @@ end
 function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::RKTableau{false})
     @unpack s = TU
     # Get number of nonzeros
-    l = M^2 * ((s + 2)^2 - 1) * (N - 1) - M * (s + 2)
+    l = M^2 * ((s + 2)^2 - 1) * (N - 1) - M * (s + 2) - s * M
     # Initialize Is and Js
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
 
     # Fill Is and Js
-    idx = 1
-    i_start = 0
-    i_step = M * (s + 2)
     row_size = M * (s + 1) * (N - 1)
-    for k in 1:(N - 1)
-        for i in 1:i_step
-            for j in 1:i_step
-                if k == 1 || !(i <= M && j <= M) && i + i_start <= row_size
-                    Is[idx] = i + i_start
-                    Js[idx] = j + i_start
-                    idx += 1
+    let idx = 1, i_start = 0, i_step = M * (s + 2)
+        for k in 1:(N - 1) # Iterate over blocks
+            for i in 1:i_step
+                for j in 1:i_step
+                    if k == 1 || !(i <= M && j <= M) && i + i_start <= row_size
+                        Is[idx] = i + i_start
+                        Js[idx] = j + i_start
+                        idx += 1
+                    end
                 end
             end
+            i_start += i_step - M
         end
-        i_start += i_step - M
     end
 
     # Create sparse matrix from Is and Js
-    J_c = _sparse_like(Is, Js, y, row_size, row_size + M) # Creates the banded matrix structure
+    J_c = _sparse_like(Is, Js, y, row_size, row_size + M)
 
     col_colorvec = Vector{Int}(undef, size(J_c, 2))
     for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, (2 * M * (s + 1)) + 1)
+        col_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
     end
     row_colorvec = Vector{Int}(undef, size(J_c, 1))
     for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, (2 * M * (s + 1)) + 1)
+        row_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
     end
 
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
 end
 
 function __generate_sparse_jacobian_prototype(::RKCache, ::TwoPointBVProblem,
-                                              y::ArrayPartition, M, N)
+                                              y::ArrayPartition, M, N, TU::MIRKTableau)
     resida, residb = y.x
 
     l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
