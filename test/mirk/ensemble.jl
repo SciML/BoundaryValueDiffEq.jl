@@ -23,7 +23,6 @@ ensemble_prob = EnsembleProblem(bvp; prob_func)
         BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
             nonbc_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        # Not sure why it is throwing so many warnings
         sol = solve(ensemble_prob, solver(; jac_alg); trajectories = 10, dt = 0.1)
         @test sol.converged
     end
