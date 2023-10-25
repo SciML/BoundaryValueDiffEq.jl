@@ -117,18 +117,21 @@ function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::RKTable
     @unpack s = TU
     # Get number of nonzeros
     row_size = M * (N - 1)
-    l = 2 * row_size
+    col_size = row_size + M
+    l = 2 * M * row_size - 1
     # Initialize Is and Js
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
 
     # Fill Is and Js
     for i in 1:row_size
-        Is[i] = i
-        Js[i] = i
-
-        Is[i + row_size] = i
-        Js[i + row_size] = i + M
+        for j in 1:2*M
+            if i + (j-1) > col_size
+                break
+            end
+            Is[i + row_size * (j-1)] = i
+            Js[i + row_size * (j-1)] = min(i + (j-1), col_size)
+        end
     end
 
     # Create sparse matrix from Is and Js
@@ -136,12 +139,12 @@ function __generate_sparse_jacobian_prototype(::RKCache, _, y, M, N, TU::RKTable
 
     col_colorvec = Vector{Int}(undef, size(J_c, 2))
     for i in eachindex(col_colorvec)
-        col_colorvec[i] = ((i-1) % (2 * M)) < M ? 1 : 2
+        col_colorvec[i] = (i-1) % (2 * M) + 1
     end
 
     row_colorvec = Vector{Int}(undef, size(J_c, 1))
     for i in eachindex(row_colorvec)
-        row_colorvec[i] = ((i-1) % (2 * M)) < M ? 1 : 2
+        row_colorvec[i] = (i-1) % (2 * M) + 1
     end
 
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
