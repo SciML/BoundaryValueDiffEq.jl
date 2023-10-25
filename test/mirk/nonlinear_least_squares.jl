@@ -1,9 +1,8 @@
 using BoundaryValueDiffEq, LinearAlgebra, Test
 
 @testset "Overconstrained BVP" begin
-    SOLVERS = [mirk(;
-        nlsolve = LevenbergMarquardt(; damping_initial = 1e-6,
-            α_geodesic = 0.9, b_uphill = 2.0)) for mirk in (MIRK4, MIRK5, MIRK6)]
+    SOLVERS = [mirk(; nlsolve) for mirk in (MIRK4, MIRK5, MIRK6),
+    nlsolve in (LevenbergMarquardt(), GaussNewton())]
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -20,8 +19,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp1, solver; verbose = false, dt = 1.0, abstol = 1e-3,
-            reltol = 1e-3, nlsolve_kwargs = (; maxiters = 50, abstol = 1e-2, reltol = 1e-2))
+        @time sol = solve(bvp1, solver; verbose = false, dt = 1.0)
         @test norm(bc1(sol, nothing, tspan)) < 1e-2
     end
 
@@ -45,8 +43,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp2, solver; verbose = false, dt = 1.0, abstol = 1e-3,
-            reltol = 1e-3, nlsolve_kwargs = (; maxiters = 50, abstol = 1e-3, reltol = 1e-3))
+        @time sol = solve(bvp2, solver; verbose = false, dt = 1.0)
         resid_f = Array{Float64}(undef, 3)
         bc1!(resid_f, sol, nothing, sol.t)
         @test norm(resid_f) < 1e-2
@@ -60,8 +57,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3,
-            reltol = 1e-3, nlsolve_kwargs = (; maxiters = 50, abstol = 1e-3, reltol = 1e-3))
+        @time sol = solve(bvp3, solver; verbose = false, dt = 1.0)
         @test norm(vcat(bc1a(sol[1], nothing), bc1b(sol[end], nothing))) < 1e-2
     end
 

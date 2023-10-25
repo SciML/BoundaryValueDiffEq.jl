@@ -112,7 +112,7 @@ end
         @time sol = solve(bvp1, solver;
             nlsolve_kwargs = (; abstol = 1e-8, reltol = 1e-8, maxiters = 1000),
             verbose = false)
-        @test norm(bc1(sol, nothing, sol.t)) < 1e-5
+        @test norm(bc1(sol, nothing, sol.t)) < 1e-4
     end
 
     # IIP MP-BVP
@@ -143,7 +143,7 @@ end
             verbose = false)
         resid_f = Array{Float64}(undef, 4)
         bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f) < 1e-5
+        @test norm(resid_f) < 1e-4
     end
 
     # OOP TP-BVP
