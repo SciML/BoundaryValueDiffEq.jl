@@ -170,3 +170,31 @@ end
 
 @inline __vec(x::AbstractArray) = vec(x)
 @inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
+
+# Restructure Non-Vector Inputs
+function __vec_f!(du, u, p, t, f!, u_size)
+    f!(reshape(du, u_size), reshape(u, u_size), p, t)
+    return nothing
+end
+
+__vec_f(u, p, t, f, u_size) = vec(f(reshape(u, u_size), p, t))
+
+function __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), __restructure_sol(sol, u_size), p, t)
+    return nothing
+end
+
+function __vec_bc!(resid, sol, p, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), reshape(sol, u_size), p)
+    return nothing
+end
+
+__vec_bc(sol, p, t, bc, u_size) = vec(bc(__restructure_sol(sol, u_size), p, t))
+__vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
+
+# Restructure Solution
+function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
+    return map(Base.Fix2(reshape, u_size), sol)
+end
+
+# TODO: Add dispatch for a ODESolution Type as well
