@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0-beta3"
 manifest_format = "2.0"
-project_hash = "dfe18707206157a9cf228f99e2e34681f3c28d5d"
+project_hash = "099b4545d831606407496953be7600d494b78218"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -559,9 +559,9 @@ version = "1.2.0"
 
 [[deps.NonlinearSolve]]
 deps = ["ADTypes", "ArrayInterface", "ConcreteStructs", "DiffEqBase", "EnumX", "FiniteDiff", "ForwardDiff", "LineSearches", "LinearAlgebra", "LinearSolve", "PrecompileTools", "RecursiveArrayTools", "Reexport", "SciMLBase", "SimpleNonlinearSolve", "SparseArrays", "SparseDiffTools", "StaticArraysCore", "UnPack"]
-git-tree-sha1 = "8fb5d48567c62e3dfcedaba76a56bb7b16358aa3"
-repo-rev = "master"
-repo-url = "https://github.com/SciML/NonlinearSolve.jl"
+git-tree-sha1 = "ccc624cd7ab240c90f53bb12906b12cf56997b42"
+repo-rev = "ap/patch"
+repo-url = "https://github.com/avik-pal/NonlinearSolve.jl"
 uuid = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 version = "2.5.0"
 
