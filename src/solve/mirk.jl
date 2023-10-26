@@ -92,10 +92,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     else
         vecf = @$ __vec_f(_, _, _, prob.f, size(X))
         vecbc = if !(prob.problem_type isa TwoPointBVProblem)
-            @$ __vec_bc(_, _, prob.f.bc, size(X))
+            @$ __vec_bc(_, _, _, prob.f.bc, size(X))
         else
-            (@$(__vec_bc(_, _, _, prob.f.bc[1], size(X))),
-                @$(__vec_bc(_, _, _, prob.f.bc[2], size(X))))
+            (@$(__vec_bc(_, _, prob.f.bc[1], size(X))),
+                @$(__vec_bc(_, _, prob.f.bc[2], size(X))))
         end
         vecf, vecbc
     end

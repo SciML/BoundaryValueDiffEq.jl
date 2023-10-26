@@ -104,7 +104,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
 
         # NOTE: u_at_nodes is updated inplace
         nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
-        __solve(nlprob, alg.nlsolve; verbose, kwargs..., nlsolve_kwargs..., alias_u0=true)
+        __solve(nlprob, alg.nlsolve; verbose, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     end
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
@@ -183,7 +183,8 @@ end
     return nothing
 end
 
-@views function __multiple_shooting_mpoint_loss_bc!(resid_bc, us, p, cur_nshoots::Int, nodes,
+@views function __multiple_shooting_mpoint_loss_bc!(resid_bc, us, p, cur_nshoots::Int,
+    nodes,
     ::Val{iip}, solve_internal_odes!, N, f, bc, u0_size, tspan, ode_alg) where {iip}
     _resid_nodes = similar(us, cur_nshoots * N)
 
