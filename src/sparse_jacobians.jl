@@ -31,10 +31,11 @@ Base.eltype(M::ColoredMatrix) = eltype(M.M)
 
 ColoredMatrix() = ColoredMatrix(nothing, nothing, nothing)
 
-function SparseDiffTools.PrecomputedJacobianColorvec(M::ColoredMatrix)
+function __sparsity_detection_alg(M::ColoredMatrix)
     return PrecomputedJacobianColorvec(; jac_prototype = M.M, M.row_colorvec,
         M.col_colorvec)
 end
+__sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
 
 # For MIRK Methods
 """
@@ -95,7 +96,7 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVPr
     return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
 end
 
-function __generate_sparse_jacobian_prototype(alg::MultipleShooting, ::TwoPointBVProblem,
+function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
     bcresid_prototype, u0, N::Int, nshoots::Int)
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")

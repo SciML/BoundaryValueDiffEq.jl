@@ -286,7 +286,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
         resid_bc, y)
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
-        PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
+        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
             cache.problem_type, y, y, cache.M, N))
     else
         NoSparsityDetection()
@@ -337,7 +337,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
         cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end])
 
     sd = if jac_alg.diffmode isa AbstractSparseADType
-        PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
+        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
             cache.problem_type, @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]), cache.M,
             N))

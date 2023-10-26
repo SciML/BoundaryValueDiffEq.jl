@@ -127,11 +127,17 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(prob, u0; dt = 0.0, check_positive_dt::Bool = false)
+function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
+    check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+end
+function __extract_problem_details(prob, ::Function; kwargs...)
+    throw(ArgumentError("passing `u0` as a function is not supported yet. Curently we only \
+                         support AbstractArray or Vector of AbstractArrays as input! \
+                         Use the latter format for passing in initial guess!"))
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
