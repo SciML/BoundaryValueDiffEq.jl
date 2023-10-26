@@ -47,6 +47,10 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "ODE Interface Tests" begin
                 include("misc/odeinterface_ex7.jl")
             end
+
+            @time @safetestset "Aqua: Quality Assurance" begin
+                include("misc/aqua.jl")
+            end
         end
     end
 end

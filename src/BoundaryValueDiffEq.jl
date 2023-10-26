@@ -18,12 +18,6 @@ import PrecompileTools: @compile_workload, @recompile_invalidations
     import SparseDiffTools: AbstractSparseADType
     import TruncatedStacktraces: @truncate_stacktrace
     import UnPack: @unpack
-
-    # FIXME: Upstream
-    function SciMLBase.numargs(::PartialFunctions.PartialFunction{KL, UL}) where {KL, UL}
-        return length(UL)
-    end
-    # FIXME: Upstream
 end
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
