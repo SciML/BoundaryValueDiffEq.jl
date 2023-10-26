@@ -1,19 +1,26 @@
 module BoundaryValueDiffEq
 
-using Adapt, BandedMatrices, ForwardDiff, LinearAlgebra, PreallocationTools,
-    RecursiveArrayTools, Reexport, Setfield, SparseArrays
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
+import PrecompileTools: @compile_workload, @recompile_invalidations
 
-import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
-import ConcreteStructs: @concrete
-import DiffEqBase: solve
-import ForwardDiff: pickchunksize
-import RecursiveArrayTools: ArrayPartition, DiffEqArray
-import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-import SparseDiffTools: AbstractSparseADType
-import TruncatedStacktraces: @truncate_stacktrace
-import UnPack: @unpack
+@recompile_invalidations begin
+    using ADTypes, Adapt, BandedMatrices, DiffEqBase, ForwardDiff, LinearAlgebra,
+        NonlinearSolve, PartialFunctions, PreallocationTools, RecursiveArrayTools, Reexport,
+        SciMLBase, Setfield, SparseArrays, SparseDiffTools
+
+    import ADTypes: AbstractADType
+    import ArrayInterface: matrix_colors,
+        parameterless_type, undefmatrix, fast_scalar_indexing
+    import ConcreteStructs: @concrete
+    import DiffEqBase: solve
+    import ForwardDiff: pickchunksize
+    import RecursiveArrayTools: ArrayPartition, DiffEqArray
+    import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
+    import SparseDiffTools: AbstractSparseADType
+    import TruncatedStacktraces: @truncate_stacktrace
+    import UnPack: @unpack
+end
+
+@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 include("types.jl")
 include("utils.jl")
