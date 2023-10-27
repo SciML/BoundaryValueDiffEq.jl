@@ -41,7 +41,7 @@ end
 
     @compile_workload begin
         for prob in probs, alg in (Shooting(Tsit5()), MultipleShooting(10, Tsit5()))
-            solve(prob, alg; dt = 0.2)
+            solve(prob, alg)
         end
     end
 end
