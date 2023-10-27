@@ -248,9 +248,9 @@ version = "1.0.4"
 
 [[deps.EnzymeCore]]
 deps = ["Adapt"]
-git-tree-sha1 = "d8701002a745c450c03b890f10d53636d1a8a7ea"
+git-tree-sha1 = "ab81396e4e7b61f5590db02fa1c17fae4f16d7ab"
 uuid = "f151be2c-9106-41f4-ab19-57ee4f262869"
-version = "0.6.2"
+version = "0.6.3"
 
 [[deps.ExprTools]]
 git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
@@ -561,7 +561,9 @@ version = "1.2.0"
 
 [[deps.NonlinearSolve]]
 deps = ["ADTypes", "ArrayInterface", "ConcreteStructs", "DiffEqBase", "EnumX", "FiniteDiff", "ForwardDiff", "LineSearches", "LinearAlgebra", "LinearSolve", "PrecompileTools", "RecursiveArrayTools", "Reexport", "SciMLBase", "SimpleNonlinearSolve", "SparseArrays", "SparseDiffTools", "StaticArraysCore", "UnPack"]
-git-tree-sha1 = "adbde57261effaa44b4d3d5942651a4bb22aefc3"
+git-tree-sha1 = "7091f222e9d601b64c19dd769aef47852d6df016"
+repo-rev = "ap/fixes"
+repo-url = "https://github.com/avik-pal/NonlinearSolve.jl"
 uuid = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 version = "2.5.0"
 
