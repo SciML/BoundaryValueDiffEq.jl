@@ -37,8 +37,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
                 kwargs..., verbose, odesolve_kwargs...)
         else
             u_at_nodes = __multiple_shooting_initialize!(nodes, u_at_nodes, prob, alg,
-                cur_nshoot, all_nshoots[i - 1], ig;
-                kwargs..., verbose, odesolve_kwargs...)
+                cur_nshoot, all_nshoots[i - 1], ig; kwargs..., verbose, odesolve_kwargs...)
         end
 
         if __any_sparse_ad(alg.jac_alg)

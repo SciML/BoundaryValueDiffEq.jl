@@ -31,7 +31,7 @@ end
 function __single_shooting_loss!(resid_, u0_, p, f, bc, u0_size, tspan,
     pt::TwoPointBVProblem, (resida_size, residb_size), alg::Shooting, kwargs)
     resida = @view resid_[1:prod(resida_size)]
-    residb = @view resid_[(prod(residb_size) + 1):end]
+    residb = @view resid_[(prod(resida_size) + 1):end]
     resid = (reshape(resida, resida_size), reshape(residb, residb_size))
 
     odeprob = ODEProblem{true}(f, reshape(u0_, u0_size), tspan, p)
