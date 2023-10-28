@@ -3,16 +3,18 @@ using Test, SafeTestsets
 const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
 
 @testset "Boundary Value Problem Tests" begin
-    if GROUP == "ALL" || GROUP == "SHOOTING"
-        @time @testset "Shooting Method Tests" begin
-            @time @safetestset "Shooting Tests" begin
-                include("shooting/shooting_tests.jl")
-            end
-            @time @safetestset "Ray Tracing BVP" begin
-                include("shooting/ray_tracing.jl")
-            end
-            @time @safetestset "Orbital" begin
-                include("shooting/orbital.jl")
+    if VERSION ≥ v"1.10-"
+        if GROUP == "ALL" || GROUP == "SHOOTING"
+            @time @testset "Shooting Method Tests" begin
+                @time @safetestset "Shooting Tests" begin
+                    include("shooting/shooting_tests.jl")
+                end
+                @time @safetestset "Ray Tracing BVP" begin
+                    include("shooting/ray_tracing.jl")
+                end
+                @time @safetestset "Orbital" begin
+                    include("shooting/orbital.jl")
+                end
             end
         end
     end
