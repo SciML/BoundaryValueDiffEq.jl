@@ -323,16 +323,14 @@ end
     return u_at_nodes
 end
 
-@inline function __get_all_nshoots(grid_coarsening, nshoots)
-    if grid_coarsening isa Bool
-        !grid_coarsening && return [nshoots]
-        update_fn = Base.Fix2(÷, 2)
-    elseif grid_coarsening isa Function
-        update_fn = grid_coarsening
-    else
-        grid_coarsening[1] == nshoots && return grid_coarsening
-        return vcat(nshoots, grid_coarsening)
-    end
+@inline function __get_all_nshoots(g::Bool, nshoots)
+    return g ? __get_all_nshoots(Base.Fix2(÷, 2)) : [nshoots]
+end
+@inline function __get_all_nshoots(g, nshoots)
+    first(g) == nshoots && return g
+    return vcat(nshoots, g)
+end
+@inline function __get_all_nshoots(update_fn::G, nshoots) where {G <: Function}
     nshoots_vec = Int[nshoots]
     next = update_fn(nshoots)
     while next > 1
