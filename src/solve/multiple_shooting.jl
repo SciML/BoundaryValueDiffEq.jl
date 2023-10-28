@@ -86,7 +86,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
                 ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
 
-            bc_fn = (du, u ) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p,
+            bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p,
                 cur_nshoot, nodes, Val(iip), solve_internal_odes!, N, f, bc, u0_size, tspan,
                 alg.ode_alg)
             sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?

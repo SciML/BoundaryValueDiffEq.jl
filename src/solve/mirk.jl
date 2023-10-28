@@ -83,7 +83,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     elseif iip
         vecf! = (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
-            (r, u, p, t) ->  __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
+            (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
         else
             ((r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[1], resid₁_size[1], size(X)),
                 (r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[2], resid₁_size[2], size(X)))
@@ -95,7 +95,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
             (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
         else
             ((u, p) -> __vec_bc(u, p, prob.f.bc[1], size(X))),
-                (u, p) -> __vec_bc(u, p, prob.f.bc[2], size(X))
+            (u, p) -> __vec_bc(u, p, prob.f.bc[2], size(X))
         end
         vecf, vecbc
     end
