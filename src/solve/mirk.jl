@@ -81,21 +81,21 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     f, bc = if X isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
-        vecf! = @$ __vec_f!(_, _, _, _, prob.f, size(X))
+        vecf! = (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
-            @$ __vec_bc!(_, _, _, _, prob.f.bc, resid₁_size, size(X))
+            (r, u, p, t) ->  __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
         else
-            (@$(__vec_bc!(_, _, _, prob.f.bc[1], resid₁_size[1], size(X))),
-                @$(__vec_bc!(_, _, _, prob.f.bc[2], resid₁_size[2], size(X))))
+            ((r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[1], resid₁_size[1], size(X)),
+                (r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[2], resid₁_size[2], size(X)))
         end
         vecf!, vecbc!
     else
-        vecf = @$ __vec_f(_, _, _, prob.f, size(X))
+        vecf = (u, p, t) -> __vec_f(u, p, t, prob.f, size(X))
         vecbc = if !(prob.problem_type isa TwoPointBVProblem)
-            @$ __vec_bc(_, _, _, prob.f.bc, size(X))
+            (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
         else
-            (@$(__vec_bc(_, _, prob.f.bc[1], size(X))),
-                @$(__vec_bc(_, _, prob.f.bc[2], size(X))))
+            ((u, p) -> __vec_bc(u, p, prob.f.bc[1], size(X))),
+                (u, p) -> __vec_bc(u, p, prob.f.bc[2], size(X))
         end
         vecf, vecbc
     end
@@ -189,21 +189,23 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
     pt = cache.problem_type
 
     loss_bc = if iip
-        @$ __mirk_loss_bc!(_, _, _, pt, cache.bc, cache.y, cache.mesh)
+        (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh)
     else
-        @$ __mirk_loss_bc(_, _, pt, cache.bc, cache.y, cache.mesh)
+        (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh)
     end
 
     loss_collocation = if iip
-        @$ __mirk_loss_collocation!(_, _, _, cache.y, cache.mesh, cache.residual, cache)
+        (du, u, p) -> __mirk_loss_collocation!(du, u, p, cache.y, cache.mesh,
+            cache.residual, cache)
     else
-        @$ __mirk_loss_collocation(_, _, cache.y, cache.mesh, cache.residual, cache)
+        (u, p) -> __mirk_loss_collocation(u, p, cache.y, cache.mesh, cache.residual, cache)
     end
 
     loss = if iip
-        @$ __mirk_loss!(_, _, _, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache)
+        (du, u, p) -> __mirk_loss!(du, u, p, cache.y, pt, cache.bc, cache.residual,
+            cache.mesh, cache)
     else
-        @$ __mirk_loss(_, _, cache.y, pt, cache.bc, cache.mesh, cache)
+        (u, p) -> __mirk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
@@ -276,9 +278,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
     resid_bc = cache.bcresid_prototype
     resid_collocation = similar(y, cache.M * (N - 1))
 
-    loss_bcₚ = iip ? @$(loss_bc(_, _, cache.p)) : @$(loss_bc(_, cache.p))
-    loss_collocationₚ = iip ? @$(loss_collocation(_, _, cache.p)) :
-                        @$(loss_collocation(_, cache.p))
+    loss_bcₚ = iip ? ((du, u) -> loss_bc(du, u, cache.p)) : (u -> loss_bc(u, cache.p))
+    loss_collocationₚ = iip ? ((du, u) -> loss_collocation(du, u, cache.p)) :
+                        (u -> loss_collocation(u, cache.p))
 
     sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
@@ -297,11 +299,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
     jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
 
     jac = if iip
-        @$ __mirk_mpoint_jacobian!(_, _, _, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc,
-            resid_collocation, cache.M)
+        (J, u, p) -> __mirk_mpoint_jacobian!(J, u, p, jac_alg.bc_diffmode,
+            jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
+            loss_collocationₚ, resid_bc, resid_collocation, cache.M)
     else
-        @$ __mirk_mpoint_jacobian(_, _, jac_prototype, jac_alg.bc_diffmode,
+        (u, p) -> __mirk_mpoint_jacobian(u, p, jac_prototype, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
             loss_collocationₚ, cache.M)
     end
@@ -330,7 +332,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
-    lossₚ = iip ? @$(loss(_, _, cache.p)) : @$(loss(_, cache.p))
+    lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
     resid = vcat(cache.bcresid_prototype[1:prod(cache.resid_size[1])],
         similar(y, cache.M * (N - 1)),
@@ -348,9 +350,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc, loss_collocati
     jac_prototype = init_jacobian(diffcache)
 
     jac = if iip
-        @$ __mirk_2point_jacobian!(_, _, _, jac_alg.diffmode, diffcache, lossₚ, resid)
+        (J, u, p) -> __mirk_2point_jacobian!(J, u, p, jac_alg.diffmode, diffcache, lossₚ,
+            resid)
     else
-        @$ __mirk_2point_jacobian(_, _, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
+        (u, p) -> __mirk_2point_jacobian(u, p, jac_prototype, jac_alg.diffmode, diffcache,
+            lossₚ)
     end
 
     return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)

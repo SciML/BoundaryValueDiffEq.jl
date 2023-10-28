@@ -10,11 +10,11 @@ function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
 
     ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
     loss_fn = if iip
-        @$ __single_shooting_loss!(_, _, _, prob.f, bc, u0_size, prob.tspan,
+        (du, u, p) -> __single_shooting_loss!(du, u, p, prob.f, bc, u0_size, prob.tspan,
             prob.problem_type, resid_size, alg, ode_kwargs)
     else
-        @$ __single_shooting_loss(_, _, prob.f, bc, u0_size, prob.tspan, prob.problem_type,
-            alg, ode_kwargs)
+        (u, p) -> __single_shooting_loss(u, p, prob.f, bc, u0_size, prob.tspan,
+            prob.problem_type, alg, ode_kwargs)
     end
 
     opt = __solve(NonlinearProblem(NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype,

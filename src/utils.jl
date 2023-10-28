@@ -134,7 +134,7 @@ function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
     t₀, t₁ = prob.tspan
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
-function __extract_problem_details(prob, ::Function; kwargs...)
+function __extract_problem_details(prob, ::F; kwargs...) where {F <: Function}
     throw(ArgumentError("passing `u0` as a function is not supported yet. Curently we only \
                          support AbstractArray or Vector of AbstractArrays as input! \
                          Use the latter format for passing in initial guess!"))

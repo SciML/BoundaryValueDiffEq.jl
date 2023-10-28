@@ -24,8 +24,9 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     end
 
     internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
-    solve_internal_odes! = @$ __multiple_shooting_solve_internal_odes!(_, _, _, Val(iip),
-        f, _, _, tspan, u0_size, N, alg, ensemblealg, internal_ode_kwargs)
+    solve_internal_odes! = (resid_nodes, us, p, cur_nshoot, nodes) -> __multiple_shooting_solve_internal_odes!(resid_nodes,
+        us, p, Val(iip), f, cur_nshoot, nodes, tspan, u0_size, N, alg, ensemblealg,
+        internal_ode_kwargs)
 
     # This gets all the nshoots except the final SingleShooting case
     all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
@@ -53,10 +54,10 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
                 pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.diffmode)
 
-            loss_fn = @$ __multiple_shooting_2point_loss!(_, _, _, cur_nshoot, nodes,
-                Val(iip), solve_internal_odes!, resida_len, residb_len, N, bc[1], bc[2])
-            loss_fnₚ = @$ __multiple_shooting_2point_loss!(_, _, prob.p, cur_nshoot, nodes,
-                Val(iip), solve_internal_odes!, resida_len, residb_len, N, bc[1], bc[2])
+            loss_fn = (du, u, p) -> __multiple_shooting_2point_loss!(du, u, p, cur_nshoot,
+                nodes, Val(iip), solve_internal_odes!, resida_len, residb_len, N, bc[1],
+                bc[2])
+            loss_fnₚ = (du, u) -> loss_fn(du, u, prob.p)
 
             sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
                      __sparsity_detection_alg(J_proto) : NoSparsityDetection()
@@ -66,8 +67,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
                 resid_prototype_cached, u_at_nodes)
             jac_prototype = init_jacobian(jac_cache)
 
-            jac_fn = @$ __multiple_shooting_2point_jacobian!(_, _, _, jac_cache, loss_fnₚ,
-                resid_prototype_cached, alg)
+            jac_fn = (J, u, p) -> __multiple_shooting_2point_jacobian!(J, u, p, jac_cache,
+                loss_fnₚ, resid_prototype_cached, alg)
         else
             resid_prototype = vcat(bcresid_prototype, similar(u_at_nodes, cur_nshoot * N))
 
@@ -75,9 +76,9 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
                 pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
 
-            loss_fn = @$ __multiple_shooting_mpoint_loss!(_, _, _, cur_nshoot, nodes,
-                Val(iip), solve_internal_odes!, prod(resid_size), N, f, bc, u0_size, tspan,
-                alg.ode_alg)
+            loss_fn = (du, u, p) -> __multiple_shooting_mpoint_loss!(du, u, p, cur_nshoot,
+                nodes, Val(iip), solve_internal_odes!, prod(resid_size), N, f, bc, u0_size,
+                tspan, alg.ode_alg)
 
             ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
             sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
@@ -85,8 +86,9 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
             ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
                 ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
 
-            bc_fn = @$ __multiple_shooting_mpoint_loss_bc!(_, _, prob.p, cur_nshoot, nodes,
-                Val(iip), solve_internal_odes!, N, f, bc, u0_size, tspan, alg.ode_alg)
+            bc_fn = (du, u ) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p,
+                cur_nshoot, nodes, Val(iip), solve_internal_odes!, N, f, bc, u0_size, tspan,
+                alg.ode_alg)
             sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
                     SymbolicsSparsityDetection() : NoSparsityDetection()
             bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
@@ -94,7 +96,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
 
             jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
 
-            jac_fn = @$ __multiple_shooting_mpoint_jacobian!(_, _, _,
+            jac_fn = (J, u, p) -> __multiple_shooting_mpoint_jacobian!(J, u, p,
                 similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
                 ode_fn, bc_fn, alg, N)
         end

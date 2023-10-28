@@ -2,13 +2,6 @@
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
-function __slow_first_run_warning(alg::Symbol)
-    @static if VERSION < v"1.10-"
-        @warn "Time To First Run for $alg is known to be very long in Julia v$(VERSION). \
-               Please update Julia to v1.10!" maxlog=1
-    end
-end
-
 """
     Shooting(ode_alg; nlsolve = NewtonRaphson())
 
@@ -19,10 +12,7 @@ struct Shooting{O, N} <: BoundaryValueDiffEqAlgorithm
     nlsolve::N
 end
 
-function Shooting(ode_alg; nlsolve = NewtonRaphson())
-    __slow_first_run_warning(:Shooting)
-    return Shooting(ode_alg, nlsolve)
-end
+Shooting(ode_alg; nlsolve = NewtonRaphson()) = Shooting(ode_alg, nlsolve)
 
 """
     MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
