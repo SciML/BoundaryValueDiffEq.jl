@@ -41,76 +41,107 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
                 cur_nshoot, all_nshoots[i - 1], ig; kwargs..., verbose, odesolve_kwargs...)
         end
 
-        if __any_sparse_ad(alg.jac_alg)
-            J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
-                bcresid_prototype, u0, N, cur_nshoot)
-        end
-
         if prob.problem_type isa TwoPointBVProblem
-            resid_prototype = vcat(bcresid_prototype[1],
-                similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
-
-            __resid_nodes = resid_prototype[(resida_len + 1):(resida_len + cur_nshoot * N)]
-            resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
-                pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.diffmode)
-
-            loss_fn = (du, u, p) -> __multiple_shooting_2point_loss!(du, u, p, cur_nshoot,
-                nodes, Val(iip), solve_internal_odes!, resida_len, residb_len, N, bc[1],
-                bc[2])
-            loss_fnₚ = (du, u) -> loss_fn(du, u, prob.p)
-
-            sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
-                     __sparsity_detection_alg(J_proto) : NoSparsityDetection()
-
-            resid_prototype_cached = similar(resid_prototype)
-            jac_cache = sparse_jacobian_cache(alg.jac_alg.diffmode, sd_bvp, loss_fnₚ,
-                resid_prototype_cached, u_at_nodes)
-            jac_prototype = init_jacobian(jac_cache)
-
-            jac_fn = (J, u, p) -> __multiple_shooting_2point_jacobian!(J, u, p, jac_cache,
-                loss_fnₚ, resid_prototype_cached, alg)
+            __solve_nlproblem!(alg, bcresid_prototype, u_at_nodes, nodes, cur_nshoot, N,
+                resida_len, residb_len, Val(iip), solve_internal_odes!, bc[1], bc[2], prob,
+                u0; verbose, kwargs..., nlsolve_kwargs...)
         else
-            resid_prototype = vcat(bcresid_prototype, similar(u_at_nodes, cur_nshoot * N))
-
-            __resid_nodes = resid_prototype[(end - cur_nshoot * N + 1):end]
-            resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
-                pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
-
-            loss_fn = (du, u, p) -> __multiple_shooting_mpoint_loss!(du, u, p, cur_nshoot,
-                nodes, Val(iip), solve_internal_odes!, prod(resid_size), N, f, bc, u0_size,
-                tspan, alg.ode_alg)
-
-            ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
-            sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
-                     __sparsity_detection_alg(J_proto) : NoSparsityDetection()
-            ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
-                ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
-
-            bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p,
-                cur_nshoot, nodes, Val(iip), solve_internal_odes!, N, f, bc, u0_size, tspan,
-                alg.ode_alg)
-            sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
-                    SymbolicsSparsityDetection() : NoSparsityDetection()
-            bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
-                sd_bc, bc_fn, similar(bcresid_prototype), u_at_nodes)
-
-            jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
-
-            jac_fn = (J, u, p) -> __multiple_shooting_mpoint_jacobian!(J, u, p,
-                similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
-                ode_fn, bc_fn, alg, N)
+            __solve_nlproblem!(alg, bcresid_prototype, u_at_nodes, nodes, cur_nshoot, N,
+                prod(resid_size), Val(iip), solve_internal_odes!, bc, prob, f, u0_size, u0;
+                verbose, kwargs..., nlsolve_kwargs...)
         end
-        loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
-            jac_prototype)
-
-        # NOTE: u_at_nodes is updated inplace
-        nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
-        __solve(nlprob, alg.nlsolve; verbose, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     end
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
     return __solve(single_shooting_prob, Shooting(alg.ode_alg; alg.nlsolve);
         odesolve_kwargs, nlsolve_kwargs, verbose, kwargs...)
+end
+
+function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes, nodes,
+    cur_nshoot, N, resida_len, residb_len, iip::Val, solve_internal_odes!::S, bca::B1,
+    bcb::B2, prob, u0; kwargs...) where {B1, B2, S}
+    if __any_sparse_ad(alg.jac_alg)
+        J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
+            bcresid_prototype, u0, N, cur_nshoot)
+    end
+
+    resid_prototype = vcat(bcresid_prototype[1],
+        similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
+
+    __resid_nodes = resid_prototype[(resida_len + 1):(resida_len + cur_nshoot * N)]
+    resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
+        pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.diffmode)
+
+    loss_fn = (du, u, p) -> __multiple_shooting_2point_loss!(du, u, p, cur_nshoot,
+        nodes, iip, solve_internal_odes!, resida_len, residb_len, N, bca,
+        bcb)
+    loss_fnₚ = (du, u) -> loss_fn(du, u, prob.p)
+
+    sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
+             __sparsity_detection_alg(J_proto) : NoSparsityDetection()
+
+    resid_prototype_cached = similar(resid_prototype)
+    jac_cache = sparse_jacobian_cache(alg.jac_alg.diffmode, sd_bvp, loss_fnₚ,
+        resid_prototype_cached, u_at_nodes)
+    jac_prototype = init_jacobian(jac_cache)
+
+    jac_fn = (J, u, p) -> __multiple_shooting_2point_jacobian!(J, u, p, jac_cache,
+        loss_fnₚ, resid_prototype_cached, alg)
+
+    loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
+        jac_prototype)
+
+    # NOTE: u_at_nodes is updated inplace
+    nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
+    __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
+
+    return nothing
+end
+
+function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes, nodes,
+    cur_nshoot, N, resid_size, iip::Val, solve_internal_odes!::S, bc::BC,
+    prob, f::F, u0_size, u0; kwargs...) where {BC, F, S}
+    if __any_sparse_ad(alg.jac_alg)
+        J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
+            bcresid_prototype, u0, N, cur_nshoot)
+    end
+    resid_prototype = vcat(bcresid_prototype, similar(u_at_nodes, cur_nshoot * N))
+
+    __resid_nodes = resid_prototype[(end - cur_nshoot * N + 1):end]
+    resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
+        pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
+
+    loss_fn = (du, u, p) -> __multiple_shooting_mpoint_loss!(du, u, p, cur_nshoot,
+        nodes, iip, solve_internal_odes!, prod(resid_size), N, f, bc, u0_size,
+        tspan, alg.ode_alg)
+
+    ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
+    sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
+             __sparsity_detection_alg(J_proto) : NoSparsityDetection()
+    ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
+        ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
+
+    bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p,
+        cur_nshoot, nodes, iip, solve_internal_odes!, N, f, bc, u0_size, tspan, alg.ode_alg)
+    sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
+            SymbolicsSparsityDetection() : NoSparsityDetection()
+    bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
+        sd_bc, bc_fn, similar(bcresid_prototype), u_at_nodes)
+
+    jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
+
+    jac_fn = (J, u, p) -> __multiple_shooting_mpoint_jacobian!(J, u, p,
+        similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
+        ode_fn, bc_fn, alg, N)
+
+    loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
+        jac_prototype)
+
+    # NOTE: u_at_nodes is updated inplace
+    nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
+    __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
+
+    return nothing
 end
 
 function __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, ::Val{iip}, f,
@@ -185,8 +216,7 @@ end
 end
 
 @views function __multiple_shooting_mpoint_loss_bc!(resid_bc, us, p, cur_nshoots::Int,
-    nodes,
-    ::Val{iip}, solve_internal_odes!, N, f, bc, u0_size, tspan, ode_alg) where {iip}
+    nodes, ::Val{iip}, solve_internal_odes!, N, f, bc, u0_size, tspan, ode_alg) where {iip}
     _resid_nodes = similar(us, cur_nshoots * N)
 
     # NOTE: We need to recompute this to correctly propagate the dual numbers / gradients
@@ -313,7 +343,9 @@ end
             idxs_prev = (N + (fpos - 2) * N .+ (1:N))
             ustart = u_at_nodes_prev[idxs_prev]
 
-            odeprob = ODEProblem(f, ustart, (t0, tstop), p)
+            # https://github.com/SciML/DifferentialEquations.jl/issues/975
+            # odeprob = ODEProblem(f, ustart, (t0, tstop), p)
+            odeprob = ODEProblem(f, copy(ustart), (t0, tstop), p)
             odesol = __solve(odeprob, alg.ode_alg; kwargs..., saveat = (), save_end = true)
 
             u_at_nodes[idxs] .= odesol.u[end]
@@ -324,7 +356,7 @@ end
 end
 
 @inline function __get_all_nshoots(g::Bool, nshoots)
-    return g ? __get_all_nshoots(Base.Fix2(÷, 2)) : [nshoots]
+    return g ? __get_all_nshoots(Base.Fix2(÷, 2), nshoots) : [nshoots]
 end
 @inline function __get_all_nshoots(g, nshoots)
     first(g) == nshoots && return g
