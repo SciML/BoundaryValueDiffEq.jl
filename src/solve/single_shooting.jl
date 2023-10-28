@@ -29,8 +29,7 @@ function __solve(prob::BVProblem, alg::Shooting; odesolve_kwargs = (;),
 end
 
 function __single_shooting_loss!(resid_, u0_, p, f::F, bc::BC, u0_size, tspan,
-    pt::TwoPointBVProblem, (resida_size, residb_size), alg::Shooting,
-    kwargs) where {F <: Function, BC <: Function}
+    pt::TwoPointBVProblem, (resida_size, residb_size), alg::Shooting, kwargs) where {F, BC}
     resida = @view resid_[1:prod(resida_size)]
     residb = @view resid_[(prod(resida_size) + 1):end]
     resid = (reshape(resida, resida_size), reshape(residb, residb_size))
@@ -43,8 +42,7 @@ function __single_shooting_loss!(resid_, u0_, p, f::F, bc::BC, u0_size, tspan,
 end
 
 function __single_shooting_loss!(resid_, u0_, p, f::F, bc::BC, u0_size, tspan,
-    pt::StandardBVProblem, resid_size, alg::Shooting,
-    kwargs) where {F <: Function, BC <: Function}
+    pt::StandardBVProblem, resid_size, alg::Shooting, kwargs) where {F, BC}
     resid = reshape(resid_, resid_size)
 
     odeprob = ODEProblem{true}(f, reshape(u0_, u0_size), tspan, p)
@@ -55,7 +53,7 @@ function __single_shooting_loss!(resid_, u0_, p, f::F, bc::BC, u0_size, tspan,
 end
 
 function __single_shooting_loss(u0_, p, f::F, bc::BC, u0_size, tspan, pt, alg::Shooting,
-    kwargs) where {F <: Function, BC <: Function}
+    kwargs) where {F, BC}
     odeprob = ODEProblem{false}(f, reshape(u0_, u0_size), tspan, p)
     odesol = __solve(odeprob, alg.ode_alg; kwargs...)
     return __safe_vec(eval_bc_residual(pt, bc, odesol, p))

@@ -212,7 +212,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
 end
 
 function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
-    cache) where {BC <: Function}
+    cache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     eval_bc_residual!(resids[1], pt, bc!, y_, p, mesh)
@@ -222,7 +222,7 @@ function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, 
 end
 
 function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
-    mesh, cache) where {BC1 <: Function, BC2 <: Function}
+    mesh, cache) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     resida = @view resids[1][1:prod(cache.resid_size[1])]
@@ -233,8 +233,7 @@ function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2
     return nothing
 end
 
-function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh,
-    cache) where {BC <: Function}
+function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_bc = eval_bc_residual(pt, bc, y_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
@@ -242,20 +241,20 @@ function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh,
 end
 
 function __mirk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh,
-    cache) where {BC1 <: Function, BC2 <: Function}
+    cache) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, y_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh) where {BC <: Function}
+function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh) where {BC}
     y_ = recursive_unflatten!(y, u)
     eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
     return nothing
 end
 
-function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh) where {BC <: Function}
+function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh) where {BC}
     y_ = recursive_unflatten!(y, u)
     return eval_bc_residual(pt, bc!, y_, p, mesh)
 end
@@ -275,7 +274,7 @@ function __mirk_loss_collocation(u, p, y, mesh, residual, cache)
 end
 
 function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-    loss::L, ::StandardBVProblem) where {iip, BC <: Function, C <: Function, L <: Function}
+    loss::L, ::StandardBVProblem) where {iip, BC, C, L}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
@@ -317,7 +316,7 @@ end
 
 function __mirk_mpoint_jacobian!(J, x, p, bc_diffmode, nonbc_diffmode, bc_diffcache,
     nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc, resid_collocation,
-    M::Int) where {BC <: Function, C <: Function}
+    M::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:M, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
     sparse_jacobian!(@view(J[(M + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, resid_collocation, x)
@@ -325,8 +324,7 @@ function __mirk_mpoint_jacobian!(J, x, p, bc_diffmode, nonbc_diffmode, bc_diffca
 end
 
 function __mirk_mpoint_jacobian(x, p, J, bc_diffmode, nonbc_diffmode, bc_diffcache,
-    nonbc_diffcache, loss_bc::BC, loss_collocation::C,
-    M::Int) where {BC <: Function, C <: Function}
+    nonbc_diffcache, loss_bc::BC, loss_collocation::C, M::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:M, :]), bc_diffmode, bc_diffcache, loss_bc, x)
     sparse_jacobian!(@view(J[(M + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, x)
@@ -334,7 +332,7 @@ function __mirk_mpoint_jacobian(x, p, J, bc_diffmode, nonbc_diffmode, bc_diffcac
 end
 
 function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-    loss::L, ::TwoPointBVProblem) where {iip, BC <: Function, C <: Function, L <: Function}
+    loss::L, ::TwoPointBVProblem) where {iip, BC, C, L}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
@@ -366,14 +364,12 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
 end
 
-function __mirk_2point_jacobian!(J, x, p, diffmode, diffcache, loss_fn::L,
-    resid) where {L <: Function}
+function __mirk_2point_jacobian!(J, x, p, diffmode, diffcache, loss_fn::L, resid) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
     return J
 end
 
-function __mirk_2point_jacobian(x, p, J, diffmode, diffcache,
-    loss_fn::L) where {L <: Function}
+function __mirk_2point_jacobian(x, p, J, diffmode, diffcache, loss_fn::L) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
     return J
 end
