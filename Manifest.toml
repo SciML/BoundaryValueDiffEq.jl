@@ -802,7 +802,7 @@ version = "1.10.0"
 
 [[deps.SparseDiffTools]]
 deps = ["ADTypes", "Adapt", "ArrayInterface", "Compat", "DataStructures", "FiniteDiff", "ForwardDiff", "Graphs", "LinearAlgebra", "PackageExtensionCompat", "Random", "Reexport", "SciMLOperators", "Setfield", "SparseArrays", "StaticArrayInterface", "StaticArrays", "Tricks", "UnPack", "VertexSafeGraphs"]
-git-tree-sha1 = "766a1f0d19232243de203b84d1a7713f6624a1e4"
+git-tree-sha1 = "fcc87cf2750372313d0f761b7dbd75b559c646a4"
 repo-rev = "patch-1"
 repo-url = "https://github.com/avik-pal/SparseDiffTools.jl"
 uuid = "47a9eef4-7e08-11e9-0b38-333d64bd3804"

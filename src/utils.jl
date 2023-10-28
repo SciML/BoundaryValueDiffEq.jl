@@ -71,9 +71,9 @@ function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
 end
 
 ## Easier to dispatch
-eval_bc_residual(pt, bc, sol, p) = eval_bc_residual(pt, bc, sol, p, sol.t)
-eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
-function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
+eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
+eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
+function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     resida = bca(ua, p)
@@ -81,17 +81,20 @@ function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
     return (resida, residb)
 end
 
-eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
-eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
+function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
+    return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
+end
+eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p,
+    t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!), sol, p,
-    t)
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol,
+    p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid[1], ua, p)

@@ -39,8 +39,17 @@ end
         TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
     ]
 
+    algs = [
+        Shooting(Tsit5()),
+        MultipleShooting(10,
+            Tsit5();
+            jac_alg = BVPJacobianAlgorithm(;
+                bc_diffmode = AutoForwardDiff(; chunksize = 2),
+                nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
+    ]
+
     @compile_workload begin
-        for prob in probs, alg in (Shooting(Tsit5()), MultipleShooting(10, Tsit5()))
+        for prob in probs, alg in algs
             solve(prob, alg)
         end
     end

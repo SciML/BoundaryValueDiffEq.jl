@@ -68,13 +68,8 @@ function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes
     resid_prototype = vcat(bcresid_prototype[1],
         similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
 
-    __resid_nodes = resid_prototype[(resida_len + 1):(resida_len + cur_nshoot * N)]
-    resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
-        pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.diffmode)
-
     loss_fn = (du, u, p) -> __multiple_shooting_2point_loss!(du, u, p, cur_nshoot,
-        nodes, iip, solve_internal_odes!, resida_len, residb_len, N, bca,
-        bcb)
+        nodes, iip, solve_internal_odes!, resida_len, residb_len, N, bca, bcb)
     loss_fnₚ = (du, u) -> loss_fn(du, u, prob.p)
 
     sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
@@ -113,7 +108,7 @@ function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes
 
     loss_fn = (du, u, p) -> __multiple_shooting_mpoint_loss!(du, u, p, cur_nshoot,
         nodes, iip, solve_internal_odes!, prod(resid_size), N, f, bc, u0_size,
-        tspan, alg.ode_alg)
+        tspan, alg.ode_alg, u0)
 
     ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
     sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
@@ -122,7 +117,8 @@ function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes
         ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
 
     bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p,
-        cur_nshoot, nodes, iip, solve_internal_odes!, N, f, bc, u0_size, tspan, alg.ode_alg)
+        cur_nshoot, nodes, iip, solve_internal_odes!, N, f, bc, u0_size, tspan, alg.ode_alg,
+        u0)
     sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
             SymbolicsSparsityDetection() : NoSparsityDetection()
     bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
@@ -144,9 +140,9 @@ function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes
     return nothing
 end
 
-function __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, ::Val{iip}, f,
+function __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, ::Val{iip}, f::F,
     cur_nshoots::Int, nodes, tspan, u0_size, N, alg::MultipleShooting,
-    ensemblealg, kwargs) where {iip}
+    ensemblealg, kwargs) where {iip, F}
     ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
 
@@ -194,7 +190,7 @@ function __multiple_shooting_mpoint_jacobian!(J, us, p, resid_bc, resid_nodes,
 end
 
 @views function __multiple_shooting_2point_loss!(resid, us, p, cur_nshoots::Int, nodes,
-    ::Val{iip}, solve_internal_odes!, resida_len, residb_len, N, bca, bcb) where {iip}
+    ::Val{iip}, solve_internal_odes!::S, resida_len, residb_len, N, bca, bcb) where {iip, S}
     resid_ = resid[(resida_len + 1):(end - residb_len)]
     solve_internal_odes!(resid_, us, p, cur_nshoots, nodes)
 
@@ -216,13 +212,14 @@ end
 end
 
 @views function __multiple_shooting_mpoint_loss_bc!(resid_bc, us, p, cur_nshoots::Int,
-    nodes, ::Val{iip}, solve_internal_odes!, N, f, bc, u0_size, tspan, ode_alg) where {iip}
+    nodes, ::Val{iip}, solve_internal_odes!::S, N, f, bc, u0_size, tspan,
+    ode_alg, u0) where {iip, S}
     _resid_nodes = similar(us, cur_nshoots * N)
 
     # NOTE: We need to recompute this to correctly propagate the dual numbers / gradients
     _us, _ts = solve_internal_odes!(_resid_nodes, us, p, cur_nshoots, nodes)
 
-    odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
+    odeprob = ODEProblem{iip}(f, u0, tspan, p)
     total_solution = SciMLBase.build_solution(odeprob, ode_alg, _ts, _us)
 
     if iip
@@ -235,14 +232,14 @@ end
 end
 
 @views function __multiple_shooting_mpoint_loss!(resid, us, p, cur_nshoots::Int, nodes,
-    ::Val{iip}, solve_internal_odes!, resid_len, N, f, bc, u0_size, tspan,
-    ode_alg) where {iip}
+    ::Val{iip}, solve_internal_odes!::S, resid_len, N, f, bc, u0_size, tspan,
+    ode_alg, u0) where {iip, S}
     resid_bc = resid[1:resid_len]
     resid_nodes = resid[(resid_len + 1):end]
 
     _us, _ts = solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
 
-    odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
+    odeprob = ODEProblem{iip}(f, u0, tspan, p)
     total_solution = SciMLBase.build_solution(odeprob, ode_alg, _ts, _us)
 
     if iip
