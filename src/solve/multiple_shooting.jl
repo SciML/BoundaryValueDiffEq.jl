@@ -1,5 +1,5 @@
 function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
-    nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
+        nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     @unpack f, tspan = prob
 
     ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
@@ -58,8 +58,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
 end
 
 function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes, nodes,
-    cur_nshoot, N, resida_len, residb_len, iip::Val, solve_internal_odes!::S, bca::B1,
-    bcb::B2, prob, u0; kwargs...) where {B1, B2, S}
+        cur_nshoot, N, resida_len, residb_len, iip::Val, solve_internal_odes!::S, bca::B1,
+        bcb::B2, prob, u0; kwargs...) where {B1, B2, S}
     if __any_sparse_ad(alg.jac_alg)
         J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
             bcresid_prototype, u0, N, cur_nshoot)
@@ -94,8 +94,8 @@ function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes
 end
 
 function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes, nodes,
-    cur_nshoot, N, resid_size, iip::Val, solve_internal_odes!::S, bc::BC,
-    prob, f::F, u0_size, u0; kwargs...) where {BC, F, S}
+        cur_nshoot, N, resid_size, iip::Val, solve_internal_odes!::S, bc::BC,
+        prob, f::F, u0_size, u0; kwargs...) where {BC, F, S}
     if __any_sparse_ad(alg.jac_alg)
         J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
             bcresid_prototype, u0, N, cur_nshoot)
@@ -141,8 +141,8 @@ function __solve_nlproblem!(alg::MultipleShooting, bcresid_prototype, u_at_nodes
 end
 
 function __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, ::Val{iip}, f::F,
-    cur_nshoots::Int, nodes, tspan, u0_size, N, alg::MultipleShooting,
-    ensemblealg, kwargs) where {iip, F}
+        cur_nshoots::Int, nodes, tspan, u0_size, N, alg::MultipleShooting,
+        ensemblealg, kwargs) where {iip, F}
     ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
 
@@ -172,13 +172,13 @@ function __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, ::Val{iip}
 end
 
 function __multiple_shooting_2point_jacobian!(J, us, p, jac_cache, loss_fn, resid,
-    alg::MultipleShooting)
+        alg::MultipleShooting)
     sparse_jacobian!(J, alg.jac_alg.diffmode, jac_cache, loss_fn, resid, us)
     return nothing
 end
 
 function __multiple_shooting_mpoint_jacobian!(J, us, p, resid_bc, resid_nodes,
-    ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, alg::MultipleShooting, N::Int)
+        ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, alg::MultipleShooting, N::Int)
     J_bc = @view(J[1:N, :])
     J_c = @view(J[(N + 1):end, :])
 
@@ -190,7 +190,8 @@ function __multiple_shooting_mpoint_jacobian!(J, us, p, resid_bc, resid_nodes,
 end
 
 @views function __multiple_shooting_2point_loss!(resid, us, p, cur_nshoots::Int, nodes,
-    ::Val{iip}, solve_internal_odes!::S, resida_len, residb_len, N, bca, bcb) where {iip, S}
+        ::Val{iip}, solve_internal_odes!::S, resida_len, residb_len, N, bca,
+        bcb) where {iip, S}
     resid_ = resid[(resida_len + 1):(end - residb_len)]
     solve_internal_odes!(resid_, us, p, cur_nshoots, nodes)
 
@@ -212,8 +213,8 @@ end
 end
 
 @views function __multiple_shooting_mpoint_loss_bc!(resid_bc, us, p, cur_nshoots::Int,
-    nodes, ::Val{iip}, solve_internal_odes!::S, N, f, bc, u0_size, tspan,
-    ode_alg, u0) where {iip, S}
+        nodes, ::Val{iip}, solve_internal_odes!::S, N, f, bc, u0_size, tspan,
+        ode_alg, u0) where {iip, S}
     _resid_nodes = similar(us, cur_nshoots * N)
 
     # NOTE: We need to recompute this to correctly propagate the dual numbers / gradients
@@ -232,8 +233,8 @@ end
 end
 
 @views function __multiple_shooting_mpoint_loss!(resid, us, p, cur_nshoots::Int, nodes,
-    ::Val{iip}, solve_internal_odes!::S, resid_len, N, f, bc, u0_size, tspan,
-    ode_alg, u0) where {iip, S}
+        ::Val{iip}, solve_internal_odes!::S, resid_len, N, f, bc, u0_size, tspan,
+        ode_alg, u0) where {iip, S}
     resid_bc = resid[1:resid_len]
     resid_nodes = resid[(resid_len + 1):end]
 
@@ -253,7 +254,7 @@ end
 
 # Problem has initial guess
 @views function __multiple_shooting_initialize!(nodes, prob, alg, ::Val{true}, nshoots;
-    kwargs...)
+        kwargs...)
     @unpack u0, tspan = prob
 
     resize!(nodes, nshoots + 1)
@@ -268,7 +269,7 @@ end
 
 # No initial guess
 @views function __multiple_shooting_initialize!(nodes, prob, alg::MultipleShooting,
-    ::Val{false}, nshoots; verbose, kwargs...)
+        ::Val{false}, nshoots; verbose, kwargs...)
     @unpack f, u0, tspan, p = prob
     @unpack ode_alg = alg
 
@@ -306,7 +307,7 @@ end
 
 # Grid coarsening
 @views function __multiple_shooting_initialize!(nodes, u_at_nodes_prev, prob, alg,
-    nshoots, old_nshoots, ig; kwargs...)
+        nshoots, old_nshoots, ig; kwargs...)
     @unpack f, u0, tspan, p = prob
     prev_nodes = copy(nodes)
 

@@ -41,7 +41,7 @@ function update_nshoots(alg::MultipleShooting, nshoots::Int)
 end
 
 function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
-    grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
+        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
             grid_coarsening isa AbstractVector{<:Integer} ||
             grid_coarsening isa NTuple{N, <:Integer} where {N}

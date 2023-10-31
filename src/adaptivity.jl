@@ -84,7 +84,7 @@ end
 Generate a new mesh based on the `ŝ`.
 """
 function redistribute!(cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh,
-    mesh_dt) where {iip, T}
+        mesh_dt) where {iip, T}
     N = length(mesh)
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0

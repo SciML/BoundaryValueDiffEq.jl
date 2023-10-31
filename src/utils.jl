@@ -16,7 +16,7 @@ end
     return y
 end
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
-    sizes)
+        sizes)
     x_, xiter = Iterators.peel(x)
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
@@ -86,7 +86,7 @@ function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
 end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
 @views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p,
-    t) where {BC}
+        t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid.resida, ua, p)
@@ -94,7 +94,7 @@ eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, 
     return resid
 end
 @views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol,
-    p, t) where {BC}
+        p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid[1], ua, p)
@@ -131,7 +131,7 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
 function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
-    check_positive_dt::Bool = false)
+        check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan

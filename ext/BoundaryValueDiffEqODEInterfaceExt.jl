@@ -66,7 +66,7 @@ end
 # BVPSOL
 #-------
 function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3,
-    dt = 0.0, verbose = true, kwargs...)
+        dt = 0.0, verbose = true, kwargs...)
     _test_bvpm2_bvpsol_problem_criteria(prob, prob.problem_type, :BVPSOL)
     @assert isa(prob.p, SciMLBase.NullParameters) "BVPSOL only supports NullParameters!"
     @assert isa(prob.u0, AbstractVector{<:AbstractArray}) "BVPSOL requires a vector of initial guesses!"

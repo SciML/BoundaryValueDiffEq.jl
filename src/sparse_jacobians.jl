@@ -54,7 +54,7 @@ function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
 end
 
 function __generate_sparse_jacobian_prototype(::MIRKCache, ::StandardBVProblem, ya, yb, M,
-    N)
+        N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M))
@@ -62,7 +62,7 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, ::StandardBVProblem, 
 end
 
 function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
-    ya, yb, M, N)
+        ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
@@ -86,7 +86,7 @@ Returns a 3-Tuple:
   Two-Point Problem) else `nothing`.
 """
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
-    bcresid_prototype, u0, N::Int, nshoots::Int)
+        bcresid_prototype, u0, N::Int, nshoots::Int)
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = nshoots * N
@@ -97,7 +97,7 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVPr
 end
 
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
-    bcresid_prototype, u0, N::Int, nshoots::Int)
+        bcresid_prototype, u0, N::Int, nshoots::Int)
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
 
