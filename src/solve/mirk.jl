@@ -139,7 +139,7 @@ function SciMLBase.solve!(cache::MIRKCache)
 
     while SciMLBase.successful_retcode(info) && defect_norm > abstol
         nlprob = __construct_nlproblem(cache, recursive_flatten(y₀))
-        sol_nlprob = solve(nlprob, alg.nlsolve; abstol, kwargs...)
+        sol_nlprob = __solve(nlprob, alg.nlsolve; abstol, kwargs...)
         recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
         info = sol_nlprob.retcode

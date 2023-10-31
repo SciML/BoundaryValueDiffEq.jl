@@ -74,8 +74,13 @@ end
         TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
     ]
 
+    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+
     @compile_workload begin
-        for prob in probs, alg in (MIRK2(), MIRK3(), MIRK4(), MIRK5(), MIRK6())
+        for prob in probs,
+            alg in (MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
+                MIRK5(; jac_alg), MIRK6(; jac_alg))
+
             solve(prob, alg; dt = 0.2)
         end
     end
