@@ -40,9 +40,11 @@ end
     ]
 
     algs = [
-        Shooting(Tsit5()),
+        Shooting(Tsit5();
+            nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2))),
         MultipleShooting(10,
             Tsit5();
+            nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)),
             jac_alg = BVPJacobianAlgorithm(;
                 bc_diffmode = AutoForwardDiff(; chunksize = 2),
                 nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
