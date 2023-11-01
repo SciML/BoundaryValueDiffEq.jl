@@ -46,7 +46,7 @@ function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
 end
 
 function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
-    bc_diffmode = missing)
+        bc_diffmode = missing)
     if diffmode !== missing
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
@@ -75,7 +75,7 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProb
 end
 
 function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
-    prob::BVProblem, alg)
+        prob::BVProblem, alg)
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(prob.u0) :
                jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
@@ -87,13 +87,21 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
+struct BoundaryValueDiffEqTag end
+
+function ForwardDiff.checktag(::Type{<:ForwardDiff.Tag{<:BoundaryValueDiffEqTag, <:T}},
+        f::F, x::AbstractArray{T}) where {T, F}
+    return true
+end
+
 @inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
     return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
 end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
 @inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()
-@inline function __default_sparse_ad(T::Type)
-    return ForwardDiff.can_dual(T) ? AutoSparseForwardDiff() : AutoSparseFiniteDiff()
+@inline function __default_sparse_ad(::Type{T}) where {T}
+    return ForwardDiff.can_dual(T) ?
+           AutoSparseForwardDiff(; tag = BoundaryValueDiffEqTag()) : AutoSparseFiniteDiff()
 end
 
 @inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
@@ -101,8 +109,9 @@ end
 end
 @inline __default_nonsparse_ad(x::T) where {T} = __default_nonsparse_ad(T)
 @inline __default_nonsparse_ad(::Type{<:Complex}) = AutoFiniteDiff()
-@inline function __default_nonsparse_ad(T::Type)
-    return ForwardDiff.can_dual(T) ? AutoForwardDiff() : AutoFiniteDiff()
+@inline function __default_nonsparse_ad(::Type{T}) where {T}
+    return ForwardDiff.can_dual(T) ? AutoForwardDiff(; tag = BoundaryValueDiffEqTag()) :
+           AutoFiniteDiff()
 end
 
 # This can cause Type Instability
@@ -112,7 +121,7 @@ function concretize_jacobian_algorithm(alg, prob)
 end
 
 function MIRKJacobianComputationAlgorithm(diffmode = missing;
-    collocation_diffmode = missing, bc_diffmode = missing)
+        collocation_diffmode = missing, bc_diffmode = missing)
     Base.depwarn("`MIRKJacobianComputationAlgorithm` has been deprecated in favor of \
         `BVPJacobianAlgorithm`. Replace `collocation_diffmode` with `nonbc_diffmode",
         :MIRKJacobianComputationAlgorithm)

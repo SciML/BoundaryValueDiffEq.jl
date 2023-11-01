@@ -16,7 +16,7 @@ end
     return y
 end
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
-    sizes)
+        sizes)
     x_, xiter = Iterators.peel(x)
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
@@ -71,9 +71,9 @@ function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
 end
 
 ## Easier to dispatch
-eval_bc_residual(pt, bc, sol, p) = eval_bc_residual(pt, bc, sol, p, sol.t)
-eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
-function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
+eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
+eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
+function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     resida = bca(ua, p)
@@ -81,17 +81,20 @@ function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
     return (resida, residb)
 end
 
-eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
-eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
+function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
+    return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
+end
+eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p,
+        t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!), sol, p,
-    t)
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol,
+        p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid[1], ua, p)
@@ -127,11 +130,17 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(prob, u0; dt = 0.0, check_positive_dt::Bool = false)
+function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
+        check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+end
+function __extract_problem_details(prob, ::F; kwargs...) where {F <: Function}
+    throw(ArgumentError("passing `u0` as a function is not supported yet. Curently we only \
+                         support AbstractArray or Vector of AbstractArrays as input! \
+                         Use the latter format for passing in initial guess!"))
 end
 
 __initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
@@ -170,3 +179,31 @@ end
 
 @inline __vec(x::AbstractArray) = vec(x)
 @inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
+
+# Restructure Non-Vector Inputs
+function __vec_f!(du, u, p, t, f!, u_size)
+    f!(reshape(du, u_size), reshape(u, u_size), p, t)
+    return nothing
+end
+
+__vec_f(u, p, t, f, u_size) = vec(f(reshape(u, u_size), p, t))
+
+function __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), __restructure_sol(sol, u_size), p, t)
+    return nothing
+end
+
+function __vec_bc!(resid, sol, p, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), reshape(sol, u_size), p)
+    return nothing
+end
+
+__vec_bc(sol, p, t, bc, u_size) = vec(bc(__restructure_sol(sol, u_size), p, t))
+__vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
+
+# Restructure Solution
+function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
+    return map(Base.Fix2(reshape, u_size), sol)
+end
+
+# TODO: Add dispatch for a ODESolution Type as well

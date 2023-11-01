@@ -1,5 +1,5 @@
 function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
-    nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
+        nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     @unpack f, tspan = prob
 
     ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
@@ -23,200 +23,35 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         residb_len = prod(resid_size[2])
     end
 
-    # We will use colored AD for this part!
-    @views function solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
-        ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
-        us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
-
-        function prob_func(probᵢ, i, repeat)
-            return remake(probᵢ; u0 = reshape(us[((i - 1) * N + 1):(i * N)], u0_size),
-                tspan = (nodes[i], nodes[i + 1]))
-        end
-
-        function reduction(u, data, I)
-            for i in I
-                u.us[i] = data[i].u
-                u.ts[i] = data[i].t
-                u.resid[((i - 1) * N + 1):(i * N)] .= vec(us[(i * N + 1):((i + 1) * N)]) .-
-                                                      vec(data[i].u[end])
-            end
-            return (u, false)
-        end
-
-        odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
-
-        ensemble_prob = EnsembleProblem(odeprob; prob_func, reduction, safetycopy = false,
-            u_init = (; us = us_, ts = ts_, resid = resid_nodes))
-        ensemble_sol = __solve(ensemble_prob, alg.ode_alg, ensemblealg; verbose, kwargs...,
-            odesolve_kwargs..., save_end = true, save_everystep = false,
-            trajectories = cur_nshoots)
-
-        return reduce(vcat, ensemble_sol.u.us), reduce(vcat, ensemble_sol.u.ts)
-    end
-
-    compute_bc_residual! = if prob.problem_type isa TwoPointBVProblem
-        @views function compute_bc_residual_tp!(resid_bc_a, resid_bc_b, ua, ub,
-            p, cur_nshoots, nodes, resid_nodes::Union{Nothing, MaybeDiffCache} = nothing)
-            if iip
-                bc[1](resid_bc_a, ua, p)
-                bc[2](resid_bc_b, ub, p)
-            else
-                resid_bc_a .= bc[1](ua, p)
-                resid_bc_b .= bc[2](ub, p)
-            end
-            return nothing
-        end
-    else
-        @views function compute_bc_residual_mp!(resid_bc, us, p, cur_nshoots, nodes,
-            resid_nodes::Union{Nothing, MaybeDiffCache} = nothing)
-            if resid_nodes === nothing
-                _resid_nodes = similar(us, cur_nshoots * N)  # This might be Dual based on `us`
-            else
-                _resid_nodes = get_tmp(resid_nodes, us)
-            end
-
-            # NOTE: We need to recompute this to correctly propagate the dual numbers / gradients
-            _us, _ts = solve_internal_odes!(_resid_nodes, us, p, cur_nshoots, nodes)
-
-            # Boundary conditions
-            # Builds an ODESolution object to keep the framework for bc(,,) consistent
-            odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
-            total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
-
-            if iip
-                eval_bc_residual!(resid_bc, prob.problem_type, bc, total_solution, p)
-            else
-                resid_bc .= eval_bc_residual(prob.problem_type, bc, total_solution, p)
-            end
-
-            return resid_bc
-        end
-    end
-
-    loss! = if prob.problem_type isa TwoPointBVProblem
-        @views function loss_tp!(resid, us, p, cur_nshoots, nodes)
-            solve_internal_odes!(resid[(resida_len + 1):(end - residb_len)],
-                us, p, cur_nshoots, nodes)
-
-            compute_bc_residual_tp!(resid[1:resida_len], resid[(end - residb_len + 1):end],
-                us[1:N], us[(end - N + 1):end], p, cur_nshoots, nodes)
-
-            return resid
-        end
-    else
-        @views function loss_mp!(resid, us, p, cur_nshoots, nodes)
-            resid_bc = resid[1:prod(resid_size)]
-            resid_nodes = resid[(prod(resid_size) + 1):end]
-
-            _us, _ts = solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
-
-            # Boundary conditions
-            # Builds an ODESolution object to keep the framework for bc(,,) consistent
-            odeprob = ODEProblem{iip}(f, reshape(us[1:N], u0_size), tspan, p)
-            total_solution = SciMLBase.build_solution(odeprob, alg.ode_alg, _ts, _us)
-
-            if iip
-                eval_bc_residual!(resid_bc, prob.problem_type, bc, total_solution, p)
-            else
-                resid_bc .= eval_bc_residual(prob.problem_type, bc, total_solution, p)
-            end
-
-            return resid
-        end
-    end
-
-    jac! = if prob.problem_type isa TwoPointBVProblem
-        @views function jac_tp!(J::AbstractMatrix, us, p, jac_cache, loss_fn, resid)
-            sparse_jacobian!(J, alg.jac_alg.diffmode, jac_cache, loss_fn, resid, us)
-            return nothing
-        end
-    else
-        @views function jac_mp!(J::AbstractMatrix, us, p, resid_bc,
-            resid_nodes::MaybeDiffCache, ode_jac_cache, bc_jac_cache, ode_fn, bc_fn,
-            cur_nshoot, nodes)
-            J_bc = J[1:N, :]
-            J_c = J[(N + 1):end, :]
-
-            sparse_jacobian!(J_c, alg.jac_alg.nonbc_diffmode, ode_jac_cache, ode_fn,
-                resid_nodes.du, us)
-
-            # For BC
-            sparse_jacobian!(J_bc, alg.jac_alg.bc_diffmode, bc_jac_cache, bc_fn, resid_bc,
-                us)
-
-            return nothing
-        end
+    internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
+    function solve_internal_odes!(resid_nodes::T1, us::T2, p::T3, cur_nshoot::Int,
+            nodes::T4) where {T1, T2, T3, T4}
+        return __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, prob, f,
+            cur_nshoot, nodes, tspan, u0_size, N, alg, ensemblealg, internal_ode_kwargs)
     end
 
     # This gets all the nshoots except the final SingleShooting case
-    all_nshoots = get_all_nshoots(alg.grid_coarsening, nshoots)
+    all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
     u_at_nodes, nodes = similar(u0, 0), typeof(first(tspan))[]
 
     for (i, cur_nshoot) in enumerate(all_nshoots)
         if i == 1
-            nodes, u_at_nodes = multiple_shooting_initialize(prob, alg, ig, nshoots;
-                odesolve_kwargs, verbose, kwargs...)
+            u_at_nodes = __multiple_shooting_initialize!(nodes, prob, alg, ig, nshoots;
+                kwargs..., verbose, odesolve_kwargs...)
         else
-            nodes, u_at_nodes = multiple_shooting_initialize(u_at_nodes, prob, alg, nodes,
-                cur_nshoot, all_nshoots[i - 1]::Int, ig; odesolve_kwargs, verbose,
-                kwargs...)
-        end
-
-        if __any_sparse_ad(alg.jac_alg)
-            J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
-                bcresid_prototype, u0, N, cur_nshoot)
+            u_at_nodes = __multiple_shooting_initialize!(nodes, u_at_nodes, prob, alg,
+                cur_nshoot, all_nshoots[i - 1], ig; kwargs..., verbose, odesolve_kwargs...)
         end
 
         if prob.problem_type isa TwoPointBVProblem
-            resid_prototype = vcat(bcresid_prototype[1],
-                similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
-
-            resid_nodes = __maybe_allocate_diffcache(resid_prototype[(resida_len + 1):(resida_len + cur_nshoot * N)],
-                pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
-
-            loss_fn = (du, u, p = prob.p) -> loss!(du, u, p, cur_nshoot, nodes)
-
-            sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
-                     PrecomputedJacobianColorvec(J_proto) : NoSparsityDetection()
-
-            resid_prototype_cached = similar(resid_prototype)
-            jac_cache = sparse_jacobian_cache(alg.jac_alg.diffmode, sd_bvp, loss_fn,
-                resid_prototype_cached, u_at_nodes)
-            jac_prototype = init_jacobian(jac_cache)
-
-            jac_fn = (J, us, p) -> jac!(J, us, p, jac_cache, loss_fn,
-                resid_prototype_cached)
+            __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
+                cur_nshoot, N, resida_len, residb_len, solve_internal_odes!, bc[1], bc[2],
+                prob, u0; verbose, kwargs..., nlsolve_kwargs...)
         else
-            resid_prototype = vcat(bcresid_prototype,
-                similar(u_at_nodes, cur_nshoot * N))
-            resid_nodes = __maybe_allocate_diffcache(resid_prototype[(end - cur_nshoot * N + 1):end],
-                pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
-
-            loss_fn = (du, u, p = prob.p) -> loss!(du, u, p, cur_nshoot, nodes)
-
-            ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
-            sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
-                     PrecomputedJacobianColorvec(J_proto) : NoSparsityDetection()
-            ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
-                ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
-
-            bc_fn = (du, u) -> compute_bc_residual_mp!(du, u, prob.p, cur_nshoot, nodes,
-                resid_nodes)
-            sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
-                    SymbolicsSparsityDetection() : NoSparsityDetection()
-            bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
-                sd_bc, bc_fn, similar(bcresid_prototype), u_at_nodes)
-
-            jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
-
-            jac_fn = (J, us, p) -> jac!(J, us, p, similar(bcresid_prototype), resid_nodes,
-                ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, cur_nshoot, nodes)
+            __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
+                cur_nshoot, N, prod(resid_size), solve_internal_odes!, bc, prob, f,
+                u0_size, u0; verbose, kwargs..., nlsolve_kwargs...)
         end
-        loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
-            jac_prototype)
-        nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
-        sol_nlsolve = __solve(nlprob, alg.nlsolve; verbose, kwargs..., nlsolve_kwargs...)
-        u_at_nodes = sol_nlsolve.u::typeof(u0)
     end
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
@@ -224,25 +59,227 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         odesolve_kwargs, nlsolve_kwargs, verbose, kwargs...)
 end
 
-@views function multiple_shooting_initialize(prob, alg::MultipleShooting, ::Val{true},
-    nshoots; odesolve_kwargs = (;), verbose = true, kwargs...)
-    @unpack f, u0, tspan, p = prob
-    @unpack ode_alg = alg
+function __solve_nlproblem!(::TwoPointBVProblem, alg::MultipleShooting, bcresid_prototype,
+        u_at_nodes, nodes, cur_nshoot::Int, N::Int, resida_len::Int, residb_len::Int,
+        solve_internal_odes!::S, bca::B1, bcb::B2, prob, u0; kwargs...) where {B1, B2, S}
+    if __any_sparse_ad(alg.jac_alg)
+        J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
+            bcresid_prototype, u0, N, cur_nshoot)
+    end
 
-    nodes = range(tspan[1], tspan[2]; length = nshoots + 1)
-    N = length(first(u0))
+    resid_prototype = vcat(bcresid_prototype[1],
+        similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
 
-    u_at_nodes = similar(first(u0), (nshoots + 1) * N)
-    recursive_flatten!(u_at_nodes, u0)
-    return nodes, u_at_nodes
+    loss_fn = (du, u, p) -> __multiple_shooting_2point_loss!(du, u, p, cur_nshoot,
+        nodes, prob, solve_internal_odes!, resida_len, residb_len, N, bca, bcb)
+    loss_fnₚ = (du, u) -> loss_fn(du, u, prob.p)
+
+    sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
+             __sparsity_detection_alg(J_proto) : NoSparsityDetection()
+
+    resid_prototype_cached = similar(resid_prototype)
+    jac_cache = sparse_jacobian_cache(alg.jac_alg.diffmode, sd_bvp, loss_fnₚ,
+        resid_prototype_cached, u_at_nodes)
+    jac_prototype = init_jacobian(jac_cache)
+
+    jac_fn = (J, u, p) -> __multiple_shooting_2point_jacobian!(J, u, p, jac_cache,
+        loss_fnₚ, resid_prototype_cached, alg)
+
+    loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
+        jac_prototype)
+
+    # NOTE: u_at_nodes is updated inplace
+    nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
+    __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
+
+    return nothing
 end
 
-@views function multiple_shooting_initialize(prob, alg::MultipleShooting, ::Val{false},
-    nshoots; odesolve_kwargs = (;), verbose = true, kwargs...)
+function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_prototype,
+        u_at_nodes, nodes, cur_nshoot, N, resid_len::Int, solve_internal_odes!::S, bc::BC,
+        prob, f::F, u0_size, u0; kwargs...) where {BC, F, S}
+    if __any_sparse_ad(alg.jac_alg)
+        J_proto = __generate_sparse_jacobian_prototype(alg, prob.problem_type,
+            bcresid_prototype, u0, N, cur_nshoot)
+    end
+    resid_prototype = vcat(bcresid_prototype, similar(u_at_nodes, cur_nshoot * N))
+
+    __resid_nodes = resid_prototype[(end - cur_nshoot * N + 1):end]
+    resid_nodes = __maybe_allocate_diffcache(__resid_nodes,
+        pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
+
+    loss_fn = (du, u, p) -> __multiple_shooting_mpoint_loss!(du, u, p, cur_nshoot,
+        nodes, prob, solve_internal_odes!, resid_len, N, f, bc, u0_size, prob.tspan,
+        alg.ode_alg, u0)
+
+    ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes)
+    sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
+             __sparsity_detection_alg(J_proto) : NoSparsityDetection()
+    ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode,
+        ode_fn, similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
+
+    bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p, cur_nshoot, nodes,
+        prob, solve_internal_odes!, N, f, bc, u0_size, tspan, alg.ode_alg, u0)
+    sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
+            SymbolicsSparsityDetection() : NoSparsityDetection()
+    bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
+        sd_bc, bc_fn, similar(bcresid_prototype), u_at_nodes)
+
+    jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
+
+    jac_fn = (J, u, p) -> __multiple_shooting_mpoint_jacobian!(J, u, p,
+        similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
+        ode_fn, bc_fn, alg, N)
+
+    loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
+        jac_prototype)
+
+    # NOTE: u_at_nodes is updated inplace
+    nlprob = NonlinearProblem(loss_function!, u_at_nodes, prob.p)
+    __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
+
+    return nothing
+end
+
+function __multiple_shooting_solve_internal_odes!(resid_nodes, us, p, _prob, f::F,
+        cur_nshoots::Int, nodes, tspan, u0_size, N, alg::MultipleShooting,
+        ensemblealg, kwargs) where {F}
+    iip = isinplace(_prob)
+    ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
+    us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
+
+    function prob_func(probᵢ, i, _)
+        return remake(probᵢ; u0 = reshape(@view(us[((i - 1) * N + 1):(i * N)]), u0_size),
+            tspan = (nodes[i], nodes[i + 1]))
+    end
+
+    function reduction(u, data, I)
+        for i in I
+            u.us[i] = data[i].u
+            u.ts[i] = data[i].t
+            u.resid[((i - 1) * N + 1):(i * N)] .= vec(@view(us[(i * N + 1):((i + 1) * N)])) .-
+                                                  vec(data[i].u[end])
+        end
+        return (u, false)
+    end
+
+    odeprob = ODEProblem{iip}(f, reshape(@view(us[1:N]), u0_size), tspan, p)
+
+    ensemble_prob = EnsembleProblem(odeprob; prob_func, reduction, safetycopy = false,
+        u_init = (; us = us_, ts = ts_, resid = resid_nodes))
+    ensemble_sol = __solve(ensemble_prob, alg.ode_alg, ensemblealg; kwargs...,
+        trajectories = cur_nshoots)
+
+    return reduce(vcat, ensemble_sol.u.us), reduce(vcat, ensemble_sol.u.ts)
+end
+
+function __multiple_shooting_2point_jacobian!(J, us, p, jac_cache, loss_fn::F, resid,
+        alg::MultipleShooting) where {F}
+    sparse_jacobian!(J, alg.jac_alg.diffmode, jac_cache, loss_fn, resid, us)
+    return nothing
+end
+
+function __multiple_shooting_mpoint_jacobian!(J, us, p, resid_bc, resid_nodes,
+        ode_jac_cache, bc_jac_cache, ode_fn::F1, bc_fn::F2, alg::MultipleShooting,
+        N::Int) where {F1, F2}
+    J_bc = @view(J[1:N, :])
+    J_c = @view(J[(N + 1):end, :])
+
+    sparse_jacobian!(J_c, alg.jac_alg.nonbc_diffmode, ode_jac_cache, ode_fn,
+        resid_nodes.du, us)
+    sparse_jacobian!(J_bc, alg.jac_alg.bc_diffmode, bc_jac_cache, bc_fn, resid_bc, us)
+
+    return nothing
+end
+
+@views function __multiple_shooting_2point_loss!(resid, us, p, cur_nshoots::Int, nodes,
+        prob, solve_internal_odes!::S, resida_len, residb_len, N, bca::BCA,
+        bcb::BCB) where {S, BCA, BCB}
+    resid_ = resid[(resida_len + 1):(end - residb_len)]
+    solve_internal_odes!(resid_, us, p, cur_nshoots, nodes)
+
+    resid_bc_a = resid[1:resida_len]
+    resid_bc_b = resid[(end - residb_len + 1):end]
+
+    ua = us[1:N]
+    ub = us[(end - N + 1):end]
+
+    if isinplace(prob)
+        bca(resid_bc_a, ua, p)
+        bcb(resid_bc_b, ub, p)
+    else
+        resid_bc_a .= bca(ua, p)
+        resid_bc_b .= bcb(ub, p)
+    end
+
+    return nothing
+end
+
+@views function __multiple_shooting_mpoint_loss_bc!(resid_bc, us, p, cur_nshoots::Int,
+        nodes, prob, solve_internal_odes!::S, N, f::F, bc::BC, u0_size, tspan,
+        ode_alg, u0) where {S, F, BC}
+    iip = isinplace(prob)
+    _resid_nodes = similar(us, cur_nshoots * N)
+
+    # NOTE: We need to recompute this to correctly propagate the dual numbers / gradients
+    _us, _ts = solve_internal_odes!(_resid_nodes, us, p, cur_nshoots, nodes)
+
+    odeprob = ODEProblem{iip}(f, u0, tspan, p)
+    total_solution = SciMLBase.build_solution(odeprob, ode_alg, _ts, _us)
+
+    if iip
+        eval_bc_residual!(resid_bc, StandardBVProblem(), bc, total_solution, p)
+    else
+        resid_bc .= eval_bc_residual(StandardBVProblem(), bc, total_solution, p)
+    end
+
+    return nothing
+end
+
+@views function __multiple_shooting_mpoint_loss!(resid, us, p, cur_nshoots::Int, nodes,
+        prob, solve_internal_odes!::S, resid_len, N, f::F, bc::BC, u0_size, tspan,
+        ode_alg, u0) where {S, F, BC}
+    iip = isinplace(prob)
+    resid_bc = resid[1:resid_len]
+    resid_nodes = resid[(resid_len + 1):end]
+
+    _us, _ts = solve_internal_odes!(resid_nodes, us, p, cur_nshoots, nodes)
+
+    odeprob = ODEProblem{iip}(f, u0, tspan, p)
+    total_solution = SciMLBase.build_solution(odeprob, ode_alg, _ts, _us)
+
+    if iip
+        eval_bc_residual!(resid_bc, StandardBVProblem(), bc, total_solution, p)
+    else
+        resid_bc .= eval_bc_residual(StandardBVProblem(), bc, total_solution, p)
+    end
+
+    return nothing
+end
+
+# Problem has initial guess
+@views function __multiple_shooting_initialize!(nodes, prob, alg, ::Val{true}, nshoots;
+        kwargs...)
+    @unpack u0, tspan = prob
+
+    resize!(nodes, nshoots + 1)
+    nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
+
+    N = length(first(u0))
+    u_at_nodes = similar(first(u0), (nshoots + 1) * N)
+    recursive_flatten!(u_at_nodes, u0)
+
+    return u_at_nodes
+end
+
+# No initial guess
+@views function __multiple_shooting_initialize!(nodes, prob, alg::MultipleShooting,
+        ::Val{false}, nshoots; verbose, kwargs...)
     @unpack f, u0, tspan, p = prob
     @unpack ode_alg = alg
 
-    nodes = range(tspan[1], tspan[2]; length = nshoots + 1)
+    resize!(nodes, nshoots + 1)
+    nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
     N = length(u0)
 
     # Ensures type stability in case the parameters are dual numbers
@@ -257,8 +294,7 @@ end
 
     # Assumes no initial guess for now
     start_prob = ODEProblem{isinplace(prob)}(f, u0, tspan, p)
-    sol = __solve(start_prob, ode_alg; verbose, kwargs..., odesolve_kwargs...,
-        saveat = nodes)
+    sol = __solve(start_prob, ode_alg; verbose, kwargs..., saveat = nodes)
 
     if SciMLBase.successful_retcode(sol)
         u_at_nodes[1:N] .= vec(sol.u[1])
@@ -267,20 +303,24 @@ end
         end
     else
         @warn "Initialization using odesolve failed. Initializing using 0s. It is \
-               recommended to provide an `initial_guess` function in this case."
+               recommended to provide an `initial_guess` in this case."
         fill!(u_at_nodes, 0)
     end
 
-    return nodes, u_at_nodes
+    return u_at_nodes
 end
 
-@views function multiple_shooting_initialize(u_at_nodes_prev, prob, alg, prev_nodes,
-    nshoots, old_nshoots, ig; odesolve_kwargs = (;), kwargs...)
+# Grid coarsening
+@views function __multiple_shooting_initialize!(nodes, u_at_nodes_prev, prob, alg,
+        nshoots, old_nshoots, ig; kwargs...)
     @unpack f, u0, tspan, p = prob
-    nodes = range(tspan[1], tspan[2]; length = nshoots + 1)
+    prev_nodes = copy(nodes)
+
+    resize!(nodes, nshoots + 1)
+    nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
     N = _unwrap_val(ig) ? length(first(u0)) : length(u0)
 
-    u_at_nodes = similar(u_at_nodes_prev, N + nshoots * N)
+    u_at_nodes = similar(_unwrap_val(ig) ? first(u0) : u0, N + nshoots * N)
     u_at_nodes[1:N] .= u_at_nodes_prev[1:N]
     u_at_nodes[(end - N + 1):end] .= u_at_nodes_prev[(end - N + 1):end]
 
@@ -306,27 +346,26 @@ end
             idxs_prev = (N + (fpos - 2) * N .+ (1:N))
             ustart = u_at_nodes_prev[idxs_prev]
 
-            odeprob = ODEProblem(f, ustart, (t0, tstop), p)
-            odesol = __solve(odeprob, alg.ode_alg; kwargs..., odesolve_kwargs...,
-                saveat = (), save_end = true)
+            # https://github.com/SciML/DifferentialEquations.jl/issues/975
+            # odeprob = ODEProblem(f, ustart, (t0, tstop), p)
+            odeprob = ODEProblem(f, copy(ustart), (t0, tstop), p)
+            odesol = __solve(odeprob, alg.ode_alg; kwargs..., saveat = (), save_end = true)
 
             u_at_nodes[idxs] .= odesol.u[end]
         end
     end
 
-    return nodes, u_at_nodes
+    return u_at_nodes
 end
 
-@inline function get_all_nshoots(grid_coarsening, nshoots)
-    if grid_coarsening isa Bool
-        !grid_coarsening && return [nshoots]
-        update_fn = Base.Fix2(÷, 2)
-    elseif grid_coarsening isa Function
-        update_fn = grid_coarsening
-    else
-        grid_coarsening[1] == nshoots && return grid_coarsening
-        return vcat(nshoots, grid_coarsening)
-    end
+@inline function __get_all_nshoots(g::Bool, nshoots)
+    return g ? __get_all_nshoots(Base.Fix2(÷, 2), nshoots) : [nshoots]
+end
+@inline function __get_all_nshoots(g, nshoots)
+    first(g) == nshoots && return g
+    return vcat(nshoots, g)
+end
+@inline function __get_all_nshoots(update_fn::G, nshoots) where {G <: Function}
     nshoots_vec = Int[nshoots]
     next = update_fn(nshoots)
     while next > 1

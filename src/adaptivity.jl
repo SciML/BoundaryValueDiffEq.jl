@@ -84,7 +84,7 @@ end
 Generate a new mesh based on the `ŝ`.
 """
 function redistribute!(cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh,
-    mesh_dt) where {iip, T}
+        mesh_dt) where {iip, T}
     N = length(mesh)
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
@@ -229,7 +229,7 @@ function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
     sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
 
-function sum_stages!(z, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
