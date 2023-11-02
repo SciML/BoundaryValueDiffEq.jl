@@ -274,7 +274,7 @@ function __mirk_loss_collocation(u, p, y, mesh, residual, cache)
 end
 
 function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-        loss::L, ::StandardBVProblem) where {iip, BC, C, L}
+        loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
@@ -335,7 +335,7 @@ function __mirk_mpoint_jacobian(x, p, J, bc_diffmode, nonbc_diffmode, bc_diffcac
 end
 
 function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-        loss::L, ::TwoPointBVProblem) where {iip, BC, C, L}
+        loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
