@@ -283,7 +283,7 @@ end
     N = length(u0)
 
     # Ensures type stability in case the parameters are dual numbers
-    if !(typeof(p) <: SciMLBase.NullParameters)
+    if !(p isa SciMLBase.NullParameters)
         if !isconcretetype(eltype(p)) && verbose
             @warn "Type inference will fail if eltype(p) is not a concrete type"
         end
