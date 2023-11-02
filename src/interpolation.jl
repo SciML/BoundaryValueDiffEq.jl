@@ -24,9 +24,9 @@ end
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
-    if typeof(idxs) <: Number
+    if idxs isa Number
         vals = Vector{eltype(first(u))}(undef, length(tvals))
-    elseif typeof(idxs) <: AbstractVector
+    elseif idxs isa AbstractVector
         vals = Vector{Vector{eltype(first(u))}}(undef, length(tvals))
     else
         vals = Vector{eltype(u)}(undef, length(tvals))
