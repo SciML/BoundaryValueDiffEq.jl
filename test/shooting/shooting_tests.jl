@@ -82,11 +82,9 @@ end
 
 @testset "Overconstrained BVP" begin
     SOLVERS = [
-        Shooting(Tsit5();
-            nlsolve = LevenbergMarquardt(; linsolve = CholeskyFactorization())),
+        Shooting(Tsit5(); nlsolve = LevenbergMarquardt()),
         Shooting(Tsit5(); nlsolve = GaussNewton()),
-        MultipleShooting(10, Tsit5();
-            nlsolve = LevenbergMarquardt(; linsolve = CholeskyFactorization())),
+        MultipleShooting(10, Tsit5(); nlsolve = LevenbergMarquardt()),
         MultipleShooting(10, Tsit5(); nlsolve = GaussNewton())]
 
     # OOP MP-BVP
