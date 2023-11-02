@@ -44,8 +44,8 @@ end
 
     if @load_preference("PrecompileShooting", true)
         push!(algs,
-            Shooting(Tsit5();
-                nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2))))
+            Shooting(Tsit5(); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))))
     end
 
     if @load_preference("PrecompileMultipleShooting", true)

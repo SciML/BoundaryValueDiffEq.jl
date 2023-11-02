@@ -3,7 +3,7 @@ abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
 """
-    Shooting(ode_alg; nlsolve = NewtonRaphson())
+    Shooting(ode_alg; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
 
@@ -15,19 +15,33 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
 ## Keyword Arguments
 
   - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-    `NonlinearProblem` interface can be used.
+    `NonlinearProblem` interface can be used.Note that any autodiff argument for the solver
+    will be ignored and a custom jacobian algorithm will be used.
+  - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+    `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
+    on the input types and problem type. Only `diffmode` is used (defaults to
+    `AutoForwardDiff` if possible else `AutoFiniteDiff`).
 
 !!! note
-    For type-stability, you need to specify the chunksize for autodiff. This can be done
-    via `NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = <chunksize>))`.
-    Alternatively, you can use other ADTypes!
+    For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
+    must be provided.
 """
-struct Shooting{O, N} <: BoundaryValueDiffEqAlgorithm
+struct Shooting{O, N, L <: BVPJacobianAlgorithm} <: BoundaryValueDiffEqAlgorithm
     ode_alg::O
     nlsolve::N
+    jac_alg::L
 end
 
-Shooting(ode_alg; nlsolve = NewtonRaphson()) = Shooting(ode_alg, nlsolve)
+function concretize_jacobian_algorithm(alg::Shooting, prob)
+    jac_alg = alg.jac_alg
+    diffmode = jac_alg.diffmode === nothing ? __default_nonsparse_ad(prob.u0) :
+               jac_alg.diffmode
+    return Shooting(alg.ode_alg, alg.nlsolve, BVPJacobianAlgorithm(diffmode))
+end
+
+function Shooting(ode_alg; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
+    return Shooting(ode_alg, nlsolve, jac_alg)
+end
 
 """
     MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
