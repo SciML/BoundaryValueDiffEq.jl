@@ -133,7 +133,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     jac_fn = (J, u, p) -> __multiple_shooting_mpoint_jacobian!(J, u, p,
         similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
-        ode_fn, bc_fn, alg, N)
+        ode_fn, bc_fn, alg, N, M)
 
     loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype, jac = jac_fn,
         jac_prototype)
@@ -186,9 +186,9 @@ end
 
 function __multiple_shooting_mpoint_jacobian!(J, us, p, resid_bc, resid_nodes,
         ode_jac_cache, bc_jac_cache, ode_fn::F1, bc_fn::F2, alg::MultipleShooting,
-        N::Int) where {F1, F2}
-    J_bc = @view(J[1:N, :])
-    J_c = @view(J[(N + 1):end, :])
+        N::Int, M::Int) where {F1, F2}
+    J_bc = @view(J[1:M, :])
+    J_c = @view(J[(M + 1):end, :])
 
     sparse_jacobian!(J_c, alg.jac_alg.nonbc_diffmode, ode_jac_cache, ode_fn,
         resid_nodes.du, us)

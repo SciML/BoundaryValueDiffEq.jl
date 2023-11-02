@@ -305,11 +305,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     jac = if iip
         (J, u, p) -> __mirk_mpoint_jacobian!(J, u, p, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
-            loss_collocationₚ, resid_bc, resid_collocation, cache.M)
+            loss_collocationₚ, resid_bc, resid_collocation, cache.M, L)
     else
         (u, p) -> __mirk_mpoint_jacobian(u, p, jac_prototype, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
-            loss_collocationₚ, cache.M)
+            loss_collocationₚ, cache.M, L)
     end
 
     nlf = NonlinearFunction{iip}(loss; resid_prototype = vcat(resid_bc, resid_collocation),
@@ -319,17 +319,17 @@ end
 
 function __mirk_mpoint_jacobian!(J, x, p, bc_diffmode, nonbc_diffmode, bc_diffcache,
         nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc, resid_collocation,
-        M::Int) where {BC, C}
-    sparse_jacobian!(@view(J[1:M, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
-    sparse_jacobian!(@view(J[(M + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
+        M::Int, L::Int) where {BC, C}
+    sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
+    sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, resid_collocation, x)
     return nothing
 end
 
 function __mirk_mpoint_jacobian(x, p, J, bc_diffmode, nonbc_diffmode, bc_diffcache,
-        nonbc_diffcache, loss_bc::BC, loss_collocation::C, M::Int) where {BC, C}
-    sparse_jacobian!(@view(J[1:M, :]), bc_diffmode, bc_diffcache, loss_bc, x)
-    sparse_jacobian!(@view(J[(M + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
+        nonbc_diffcache, loss_bc::BC, loss_collocation::C, M::Int, L::Int) where {BC, C}
+    sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, x)
+    sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, x)
     return J
 end
@@ -341,9 +341,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
-    resid = vcat(cache.bcresid_prototype[1:prod(cache.resid_size[1])],
+    resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
         similar(y, cache.M * (N - 1)),
-        cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end])
+        @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
     sd = if jac_alg.diffmode isa AbstractSparseADType

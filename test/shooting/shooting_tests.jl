@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
+using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
 
 @testset "Basic Shooting Tests" begin
     SOLVERS = [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
@@ -83,12 +83,10 @@ end
 @testset "Overconstrained BVP" begin
     SOLVERS = [
         Shooting(Tsit5();
-            nlsolve = LevenbergMarquardt(; damping_initial = 1e-6,
-                α_geodesic = 0.9, b_uphill = 2.0)),
+            nlsolve = LevenbergMarquardt(; linsolve = CholeskyFactorization())),
         Shooting(Tsit5(); nlsolve = GaussNewton()),
         MultipleShooting(10, Tsit5();
-            nlsolve = LevenbergMarquardt(; damping_initial = 1e-6,
-                α_geodesic = 0.9, b_uphill = 2.0)),
+            nlsolve = LevenbergMarquardt(; linsolve = CholeskyFactorization())),
         MultipleShooting(10, Tsit5(); nlsolve = GaussNewton())]
 
     # OOP MP-BVP
