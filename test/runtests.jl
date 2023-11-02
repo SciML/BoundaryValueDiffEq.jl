@@ -14,6 +14,11 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Orbital" begin
                 include("shooting/orbital.jl")
             end
+            if VERSION ≥ v"1.10-"
+                @time @safetestset "Shooting NLLS Tests" begin
+                    include("shooting/nonlinear_least_squares.jl")
+                end
+            end
         end
     end
 
@@ -31,8 +36,10 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Interpolation Tests" begin
                 include("mirk/interpolation_test.jl")
             end
-            @time @safetestset "MIRK Nonlinear Least Squares Tests" begin
-                include("mirk/nonlinear_least_squares.jl")
+            if VERSION ≥ v"1.10-"
+                @time @safetestset "MIRK NLLS Tests" begin
+                    include("mirk/nonlinear_least_squares.jl")
+                end
             end
         end
     end

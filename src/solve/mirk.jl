@@ -303,13 +303,13 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
 
     jac = if iip
-        (J, u, p) -> __mirk_mpoint_jacobian!(J, u, p, jac_alg.bc_diffmode,
+        (J, u, p) -> __mirk_mpoint_jacobian!(J, u, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
-            loss_collocationₚ, resid_bc, resid_collocation, cache.M, L)
+            loss_collocationₚ, resid_bc, resid_collocation, L)
     else
-        (u, p) -> __mirk_mpoint_jacobian(u, p, jac_prototype, jac_alg.bc_diffmode,
+        (u, p) -> __mirk_mpoint_jacobian(jac_prototype, u, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
-            loss_collocationₚ, cache.M, L)
+            loss_collocationₚ, L)
     end
 
     nlf = NonlinearFunction{iip}(loss; resid_prototype = vcat(resid_bc, resid_collocation),
@@ -317,17 +317,17 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
-function __mirk_mpoint_jacobian!(J, x, p, bc_diffmode, nonbc_diffmode, bc_diffcache,
+function __mirk_mpoint_jacobian!(J, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
         nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc, resid_collocation,
-        M::Int, L::Int) where {BC, C}
+        L::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
     sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, resid_collocation, x)
     return nothing
 end
 
-function __mirk_mpoint_jacobian(x, p, J, bc_diffmode, nonbc_diffmode, bc_diffcache,
-        nonbc_diffcache, loss_bc::BC, loss_collocation::C, M::Int, L::Int) where {BC, C}
+function __mirk_mpoint_jacobian(J, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
+        nonbc_diffcache, loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, x)
     sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, x)
@@ -358,10 +358,10 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     jac_prototype = init_jacobian(diffcache)
 
     jac = if iip
-        (J, u, p) -> __mirk_2point_jacobian!(J, u, p, jac_alg.diffmode, diffcache, lossₚ,
+        (J, u, p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, lossₚ,
             resid)
     else
-        (u, p) -> __mirk_2point_jacobian(u, p, jac_prototype, jac_alg.diffmode, diffcache,
+        (u, p) -> __mirk_2point_jacobian(u, jac_prototype, jac_alg.diffmode, diffcache,
             lossₚ)
     end
 
@@ -370,12 +370,12 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
-function __mirk_2point_jacobian!(J, x, p, diffmode, diffcache, loss_fn::L, resid) where {L}
+function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
     return J
 end
 
-function __mirk_2point_jacobian(x, p, J, diffmode, diffcache, loss_fn::L) where {L}
+function __mirk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
     return J
 end
