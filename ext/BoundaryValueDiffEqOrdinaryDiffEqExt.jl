@@ -64,69 +64,78 @@ end
         end
     end
 
-    if VERSION ≥ v"1.10-"
-        function f1_nlls!(du, u, p, t)
-            du[1] = u[2]
-            du[2] = -u[1]
-        end
+    function f1_nlls!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -u[1]
+    end
 
-        f1_nlls(u, p, t) = [u[2], -u[1]]
+    f1_nlls(u, p, t) = [u[2], -u[1]]
 
-        function bc1_nlls!(resid, sol, p, t)
-            solₜ₁ = sol(0.0)
-            solₜ₂ = sol(100.0)
-            resid[1] = solₜ₁[1]
-            resid[2] = solₜ₂[1] - 1
-            resid[3] = solₜ₂[2] + 1.729109
-            return nothing
-        end
-        bc1_nlls(sol, p, t) = [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
+    function bc1_nlls!(resid, sol, p, t)
+        solₜ₁ = sol(0.0)
+        solₜ₂ = sol(100.0)
+        resid[1] = solₜ₁[1]
+        resid[2] = solₜ₂[1] - 1
+        resid[3] = solₜ₂[2] + 1.729109
+        return nothing
+    end
+    bc1_nlls(sol, p, t) = [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
-        bc1_nlls_a!(resid, ua, p) = (resid[1] = ua[1])
-        bc1_nlls_b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
+    bc1_nlls_a!(resid, ua, p) = (resid[1] = ua[1])
+    bc1_nlls_b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
-        bc1_nlls_a(ua, p) = [ua[1]]
-        bc1_nlls_b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
+    bc1_nlls_a(ua, p) = [ua[1]]
+    bc1_nlls_b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-        tspan = (0.0, 100.0)
-        u0 = [0.0, 1.0]
-        bcresid_prototype1 = Array{Float64}(undef, 3)
-        bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
+    tspan = (0.0, 100.0)
+    u0 = [0.0, 1.0]
+    bcresid_prototype1 = Array{Float64}(undef, 3)
+    bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
 
-        probs = [
-            BVProblem(BVPFunction(f1_nlls!, bc1_nlls!; bcresid_prototype = bcresid_prototype1),
-                u0, tspan),
-            BVProblem(BVPFunction(f1_nlls, bc1_nlls; bcresid_prototype = bcresid_prototype1),
-                u0, tspan),
-            TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
-                bcresid_prototype = bcresid_prototype2),
-            TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
-                bcresid_prototype = bcresid_prototype2),
-        ]
+    probs = [
+        BVProblem(BVPFunction(f1_nlls!, bc1_nlls!; bcresid_prototype = bcresid_prototype1),
+            u0, tspan),
+        BVProblem(BVPFunction(f1_nlls, bc1_nlls; bcresid_prototype = bcresid_prototype1),
+            u0, tspan),
+        TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
+            bcresid_prototype = bcresid_prototype2),
+        TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
+            bcresid_prototype = bcresid_prototype2),
+    ]
 
-        algs = [
-            Shooting(Tsit5();
-                nlsolve = LevenbergMarquardt(; autodiff = AutoForwardDiff(chunksize = 2))),
-            Shooting(Tsit5();
-                nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2))),
-            MultipleShooting(10,
-                Tsit5();
-                nlsolve = LevenbergMarquardt(; autodiff = AutoForwardDiff(chunksize = 2)),
-                jac_alg = BVPJacobianAlgorithm(;
-                    bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                    nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
-            MultipleShooting(10,
-                Tsit5();
-                nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2)),
-                jac_alg = BVPJacobianAlgorithm(;
-                    bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                    nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
-        ]
+    algs = []
 
-        @compile_workload begin
-            for prob in probs, alg in algs
-                solve(prob, alg)
-            end
+    if @load_preference("PrecompileShootingNLLS", VERSION≥v"1.10-")
+        append!(algs,
+            [
+                Shooting(Tsit5();
+                    nlsolve = LevenbergMarquardt(;
+                        autodiff = AutoForwardDiff(chunksize = 2))),
+                Shooting(Tsit5();
+                    nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2))),
+            ])
+    end
+
+    if @load_preference("PrecompileMultipleShootingNLLS", VERSION≥v"1.10-")
+        append!(algs,
+            [
+                MultipleShooting(10, Tsit5();
+                    nlsolve = LevenbergMarquardt(;
+                        autodiff = AutoForwardDiff(chunksize = 2)),
+                    jac_alg = BVPJacobianAlgorithm(;
+                        bc_diffmode = AutoForwardDiff(; chunksize = 2),
+                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
+                MultipleShooting(10, Tsit5();
+                    nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2)),
+                    jac_alg = BVPJacobianAlgorithm(;
+                        bc_diffmode = AutoForwardDiff(; chunksize = 2),
+                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
+            ])
+    end
+
+    @compile_workload begin
+        for prob in probs, alg in algs
+            solve(prob, alg)
         end
     end
 end

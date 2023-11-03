@@ -133,12 +133,21 @@ end
 
     nlsolvers = [LevenbergMarquardt(), GaussNewton()]
 
-    @compile_workload begin
-        for prob in probs, nlsolve in nlsolvers,
-            alg in (MIRK2(; jac_alg, nlsolve), MIRK3(; jac_alg, nlsolve),
-                MIRK4(; jac_alg, nlsolve), MIRK5(; jac_alg, nlsolve),
-                MIRK6(; jac_alg, nlsolve))
+    algs = []
 
+    if Preferences.@load_preference("PrecompileMIRKNLLS", VERSION≥v"1.10-")
+        for nlsolve in nlsolvers
+            append!(algs,
+                [
+                    MIRK2(; jac_alg, nlsolve), MIRK3(; jac_alg, nlsolve),
+                    MIRK4(; jac_alg, nlsolve), MIRK5(; jac_alg, nlsolve),
+                    MIRK6(; jac_alg, nlsolve),
+                ])
+        end
+    end
+
+    @compile_workload begin
+        for prob in probs, alg in algs
             solve(prob, alg; dt = 0.2)
         end
     end
