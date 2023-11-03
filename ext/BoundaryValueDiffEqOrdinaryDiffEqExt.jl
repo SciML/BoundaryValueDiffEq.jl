@@ -3,6 +3,7 @@ module BoundaryValueDiffEqOrdinaryDiffEqExt
 # This extension doesn't add any new feature atm but is used to precompile some common
 # shooting workflows
 
+import Preferences: @load_preference
 import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidations
 
 @recompile_invalidations begin
@@ -39,16 +40,23 @@ end
         TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
     ]
 
-    algs = [
-        Shooting(Tsit5();
-            nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2))),
-        MultipleShooting(10,
-            Tsit5();
-            nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)),
-            jac_alg = BVPJacobianAlgorithm(;
-                bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
-    ]
+    algs = []
+
+    if @load_preference("PrecompileShooting", true)
+        push!(algs,
+            Shooting(Tsit5();
+                nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2))))
+    end
+
+    if @load_preference("PrecompileMultipleShooting", true)
+        push!(algs,
+            MultipleShooting(10,
+                Tsit5();
+                nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)),
+                jac_alg = BVPJacobianAlgorithm(;
+                    bc_diffmode = AutoForwardDiff(; chunksize = 2),
+                    nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))))
+    end
 
     @compile_workload begin
         for prob in probs, alg in algs
