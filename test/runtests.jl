@@ -11,8 +11,10 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Ray Tracing BVP" begin
                 include("shooting/ray_tracing.jl")
             end
-            @time @safetestset "Orbital" begin
-                include("shooting/orbital.jl")
+            if VERSION ≥ v"1.10-"
+                @time @safetestset "Orbital" begin
+                    include("shooting/orbital.jl")
+                end
             end
             if VERSION ≥ v"1.10-"
                 @time @safetestset "Shooting NLLS Tests" begin

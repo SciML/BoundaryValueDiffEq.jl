@@ -77,14 +77,12 @@ for autodiff in (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val
     @test norm(resid_f, Inf) < 0.005
 
     # Older versions take too long on the first run
-    if VERSION ≥ v"1.10-"
-        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
-        @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
-            force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false)
-        cur_bc!(resid_f, sol, nothing, sol.t)
-        @info "Multiple Shooting Lambert's Problem: $(norm(resid_f, Inf))"
-        @test norm(resid_f, Inf) < 0.005
-    end
+    jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
+    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+        force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false)
+    cur_bc!(resid_f, sol, nothing, sol.t)
+    @info "Multiple Shooting Lambert's Problem: $(norm(resid_f, Inf))"
+    @test norm(resid_f, Inf) < 0.005
 end
 
 ### Using the TwoPoint BVP Structure
@@ -102,13 +100,11 @@ for autodiff in (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val
     @test norm(reduce(vcat, resid_f_2p), Inf) < 0.005
 
     # Older versions take too long on the first run
-    if VERSION ≥ v"1.10-"
-        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
-        @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
-            force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false)
-        cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
-        cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
-        @info "Multiple Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
-        @test norm(reduce(vcat, resid_f_2p), Inf) < 0.005
-    end
+    jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
+    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+        force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false)
+    cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
+    cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
+    @info "Multiple Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
+    @test norm(reduce(vcat, resid_f_2p), Inf) < 0.005
 end
