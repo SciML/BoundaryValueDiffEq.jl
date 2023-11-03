@@ -27,20 +27,14 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     # NOTE: We pass in a separate Jacobian Function because that allows us to cache the
     #       the internal ode solve cache. This cache needs to be distinct from the regular
     #       residual function cache
-    loss_fnₚ = ifelse(iip, (du, u) -> loss_fn(du, u, prob.p), (u) -> loss_fn(u, prob.p))
-
-    # TODO: We probably won't be able to support Symbolics through ODE Solver but we should
-    #       be able to allow prespecified coloring.
-    if alg.jac_alg.diffmode isa AbstractSparseADType
-        error("Single Shooting doesn't support sparse AD yet!")
-    end
-    sd = NoSparsityDetection()
+    sd = alg.jac_alg.diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+         NoSparsityDetection()
     y_ = similar(resid_prototype)
 
     jac_cache = if iip
-        sparse_jacobian_cache(alg.jac_alg.diffmode, sd, loss_fnₚ, y_, vec(u0))
+        sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, y_, vec(u0))
     else
-        sparse_jacobian_cache(alg.jac_alg.diffmode, sd, loss_fnₚ, vec(u0); fx = y_)
+        sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, vec(u0); fx = y_)
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(internal_prob, jac_cache,
@@ -48,7 +42,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
 
     jac_prototype = init_jacobian(jac_cache)
 
-    loss_fn2ₚ = if iip
+    loss_fnₚ = if iip
         (du, u) -> __single_shooting_loss!(du, u, prob.p, ode_cache_jac_fn, bc, u0_size,
             prob.problem_type, resid_size)
     else
@@ -58,10 +52,10 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
 
     jac_fn = if iip
         (J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache, alg.jac_alg.diffmode,
-            loss_fn2ₚ, y_)
+            loss_fnₚ, y_)
     else
         (u, p) -> __single_shooting_jacobian(jac_prototype, u, jac_cache,
-            alg.jac_alg.diffmode, loss_fn2ₚ)
+            alg.jac_alg.diffmode, loss_fnₚ)
     end
 
     nlf = NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype, resid_prototype,
@@ -133,9 +127,10 @@ function __single_shooting_jacobian_ode_cache(prob, jac_cache,
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
-        prob_ = remake(prob; u0 = xduals)
-        return SciMLBase.__init(prob_, ode_alg; kwargs...)
     else
-        error("Single Shooting doesn't support sparse AD yet!")
+        xduals = cache.t
     end
+    fill!(xduals, 0)
+    prob_ = remake(prob; u0 = xduals)
+    return SciMLBase.__init(prob_, ode_alg; kwargs...)
 end
