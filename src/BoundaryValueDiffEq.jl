@@ -76,13 +76,13 @@ end
 
     algs = []
 
+    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+
     if Preferences.@load_preference("PrecompileMIRK", true)
         append!(algs,
             [MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
                 MIRK5(; jac_alg), MIRK6(; jac_alg)])
     end
-
-    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
 
     @compile_workload begin
         for prob in probs, alg in algs

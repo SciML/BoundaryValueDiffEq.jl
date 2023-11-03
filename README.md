@@ -48,3 +48,11 @@ Precompilation can be controlled via `Preferences.jl`
 - `PrecompileMIRK` -- Precompile the MIRK2 - MIRK6 algorithms (default: `true`).
 - `PrecompileShooting` -- Precompile the single shooting algorithms (default: `true`). This is triggered when `OrdinaryDiffEq` is loaded.
 - `PrecompileMultipleShooting` -- Precompile the multiple shooting algorithms (default: `true`). This is triggered when `OrdinaryDiffEq` is loaded.
+
+To set these preferences before loading the package, do the following (replacing `PrecompileShooting` with the preference you want to set, or pass in multiple pairs to set them together):
+
+```julia
+using Preferences, UUIDs
+Preferences.set_preferences!(UUID("764a87c0-6b3e-53db-9096-fe964310641d"),
+                             "PrecompileShooting" => false)
+```
