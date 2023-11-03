@@ -204,8 +204,7 @@ function __multiple_shooting_init_jacobian_odecache(ensemblealg, prob, jac_cache
 end
 
 function __multiple_shooting_init_jacobian_odecache(ensemblealg, prob, jac_cache,
-        ::Union{AutoForwardDiff, AutoSparseForwardDiff}, alg, nshoots, u;
-        kwargs...)
+        ::Union{AutoForwardDiff, AutoSparseForwardDiff}, alg, nshoots, u; kwargs...)
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = reshape(cache.duals[2][1:length(u)], size(u))
@@ -390,9 +389,9 @@ end
     sol = solve!(odecache)
 
     if SciMLBase.successful_retcode(sol)
-        u_at_nodes[1:N] .= vec(sol.u[1])
-        for i in 2:(nshoots + 1)
-            u_at_nodes[(N + (i - 2) * N) .+ (1:N)] .= vec(sol.u[i])
+        res = sol(nodes).u
+        for i in 1:length(nodes)
+            u_at_nodes[(i - 1) * N .+ (1:N)] .= vec(res[i])
         end
     else
         @warn "Initialization using odesolve failed. Initializing using 0s. It is \

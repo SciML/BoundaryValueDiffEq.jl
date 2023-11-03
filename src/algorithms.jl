@@ -39,6 +39,10 @@ function concretize_jacobian_algorithm(alg::Shooting, prob)
     return Shooting(alg.ode_alg, alg.nlsolve, BVPJacobianAlgorithm(diffmode))
 end
 
+function Shooting(ode_alg, nlsolve; jac_alg = BVPJacobianAlgorithm())
+    return Shooting(ode_alg, nlsolve, jac_alg)
+end
+
 function Shooting(ode_alg; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
     return Shooting(ode_alg, nlsolve, jac_alg)
 end

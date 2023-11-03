@@ -38,7 +38,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(internal_prob, jac_cache,
-        alg.jac_alg.diffmode, vec(u0), alg.ode_alg; ode_kwargs...)
+        alg.jac_alg.diffmode, u0, alg.ode_alg; ode_kwargs...)
 
     jac_prototype = init_jacobian(jac_cache)
 
@@ -131,6 +131,6 @@ function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         xduals = cache.t
     end
     fill!(xduals, 0)
-    prob_ = remake(prob; u0 = xduals)
+    prob_ = remake(prob; u0 = reshape(xduals, size(u0)))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)
 end
