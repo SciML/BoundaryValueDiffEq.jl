@@ -4,8 +4,8 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
 
 @recompile_invalidations begin
     using ADTypes, Adapt, BandedMatrices, DiffEqBase, ForwardDiff, LinearAlgebra,
-        NonlinearSolve, PreallocationTools, RecursiveArrayTools, Reexport, SciMLBase,
-        Setfield, SparseArrays, SparseDiffTools
+        NonlinearSolve, PreallocationTools, Preferences, RecursiveArrayTools, Reexport,
+        SciMLBase, Setfield, SparseArrays, SparseDiffTools
 
     import ADTypes: AbstractADType
     import ArrayInterface: matrix_colors,
@@ -74,13 +74,18 @@ end
         TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
     ]
 
+    algs = []
+
+    if Preferences.@load_preference("PrecompileMIRK", true)
+        append!(algs,
+            [MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
+                MIRK5(; jac_alg), MIRK6(; jac_alg)])
+    end
+
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
 
     @compile_workload begin
-        for prob in probs,
-            alg in (MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
-                MIRK5(; jac_alg), MIRK6(; jac_alg))
-
+        for prob in probs, alg in algs
             solve(prob, alg; dt = 0.2)
         end
     end

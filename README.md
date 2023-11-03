@@ -40,3 +40,11 @@ sol = solve(prob, MIRK4(), dt = 0.05)
 ## Available Solvers
 
 For the list of available solvers, please refer to the [DifferentialEquations.jl BVP Solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/bvp_solve/). For options for the `solve` command, see the [common solver options page](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/).
+
+## Controlling Precompilation
+
+Precompilation can be controlled via `Preferences.jl`
+
+- `PrecompileMIRK` -- Precompile the MIRK2 - MIRK6 algorithms (default: `true`).
+- `PrecompileShooting` -- Precompile the single shooting algorithms (default: `true`). This is triggered when `OrdinaryDiffEq` is loaded.
+- `PrecompileMultipleShooting` -- Precompile the multiple shooting algorithms (default: `true`). This is triggered when `OrdinaryDiffEq` is loaded.
