@@ -63,7 +63,7 @@ end
 """
     MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
         grid_coarsening = true, jac_alg = BVPJacobianAlgorithm(),
-        static_auto_nodes::Val = Val(false))
+        auto_static_nodes::Val = Val(false))
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
 Significantly more stable than Single Shooting.
@@ -98,9 +98,13 @@ Significantly more stable than Single Shooting.
     - `Function`: Takes the current number of shooting points and returns the next number
       of shooting points. For example, if `nshoots = 10` and
       `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
-  - `static_auto_nodes`: Automatically detect the timepoints used in the boundary condition
+
+## Experimental Features
+
+  - `auto_static_nodes`: Automatically detect the timepoints used in the boundary condition
     and use a faster version of the algorithm! This particular keyword argument should be
-    considered experimental and should be used with care!
+    considered experimental and should be used with care! (Note that we ignore
+    `grid_coarsening` if this is set to `Val(true)`. We plan to support this in the future.)
 
 !!! note
     For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
@@ -125,13 +129,23 @@ function update_nshoots(alg::MultipleShooting, nshoots::Int)
         alg.grid_coarsening)
 end
 
+function __without_static_nodes(ms::MultipleShooting{S}) where {S}
+    return MultipleShooting{false}(ms.ode_alg, ms.nlsolve, ms.jac_alg, ms.nshoots,
+        ms.grid_coarsening)
+end
+
 function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm(),
-        static_auto_nodes::Val{S} = Val(false)) where {S}
-    @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
-            grid_coarsening isa AbstractVector{<:Integer} ||
-            grid_coarsening isa NTuple{N, <:Integer} where {N}
-    @assert S isa Bool
+        grid_coarsening = missing, jac_alg = BVPJacobianAlgorithm(),
+        auto_static_nodes::Val{S} = Val(false)) where {S}
+    @assert S isa Bool "`auto_static_nodes` must be either `Val(true)` or `Val(false)`."
+    if S
+        @assert grid_coarsening === missing||(grid_coarsening isa Bool && !grid_coarsening) "`auto_static_nodes` doesn't support grid_coarsening."
+    else
+        grid_coarsening === missing && (grid_coarsening = false)
+        @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
+                grid_coarsening isa AbstractVector{<:Integer} ||
+                grid_coarsening isa NTuple{N, <:Integer} where {N}
+    end
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)

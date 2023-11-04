@@ -249,3 +249,45 @@ function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
 end
 
 # TODO: Add dispatch for a ODESolution Type as well
+
+# Fake ODE Solution to capture calls to the solution object
+@concrete struct __FakeODESolution2
+    sol
+    nodes
+end
+
+__FakeODESolutionXXX = __FakeODESolution2
+
+function __construct_fake_ode_solution(prob::ODEProblem, alg)
+    nodes = Vector{promote_type(typeof(prob.tspan[1]), typeof(prob.tspan[2]))}()
+    return __FakeODESolutionXXX(SciMLBase.build_solution(prob, alg,
+            [prob.tspan[1], prob.tspan[2]], [prob.u0, prob.u0]), nodes)
+end
+
+function __finalize_nodes!(sol::__FakeODESolutionXXX)
+    sort!(sol.nodes)
+    unique!(sol.nodes)
+    return sol
+end
+
+function (s::__FakeODESolutionXXX)(t::T, args...; kwargs...) where {T <: Number}
+    push!(s.nodes, t)
+    return s.sol(t, args...; kwargs...)
+end
+
+function (s::__FakeODESolutionXXX)(t::T, args...; kwargs...) where {T <: AbstractVector}
+    append!(s.nodes, t)
+    return s.sol(t, args...; kwargs...)
+end
+
+function Base.getindex(::__FakeODESolutionXXX, args...)
+    throw(ArgumentError("`static_auto_nodes = Val(true)` doesn't support indexing into \
+                         the solution object. Please rewrite your code to call the \
+                         solution object with the time points you want to evaluate at \
+                         or use `static_auto_nodes = Val(false)`"))
+end
+
+function Base.show(io::IO, sol::__FakeODESolutionXXX)
+    print(io, "ODESolution evaluated @ nodes: $(sol.nodes)")
+    return
+end

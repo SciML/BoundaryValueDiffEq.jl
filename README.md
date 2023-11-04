@@ -52,9 +52,6 @@ Precompilation can be controlled via `Preferences.jl`
   - `PrecompileMIRKNLLS` -- Precompile the MIRK2 - MIRK6 algorithms for under-determined and over-determined BVPs (default: `true` on Julia Version 1.10 and above).
   - `PrecompileShootingNLLS` -- Precompile the single shooting algorithms for under-determined and over-determined BVPs (default: `true` on Julia Version 1.10 and above). This is triggered when `OrdinaryDiffEq` is loaded.
   - `PrecompileMultipleShootingNLLS` -- Precompile the multiple shooting algorithms for under-determined and over-determined BVPs (default: `true` on Julia Version 1.10 and above). This is triggered when `OrdinaryDiffEq` is loaded.
-    =======
-
-> > > > > > > 5d53c01 (Add documentation about the solvers)
 
 To set these preferences before loading the package, do the following (replacing `PrecompileShooting` with the preference you want to set, or pass in multiple pairs to set them together):
 
