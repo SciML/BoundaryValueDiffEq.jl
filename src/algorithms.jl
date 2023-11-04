@@ -9,13 +9,13 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
 
 ## Arguments
 
-  - `ode_alg`: ODE algorithm to use for solving the IVP. Any `OrdinaryDiffEq.jl` or solvers
-    that work with `SciMLBase.__solve(::ODEProblem, alg, args...; kwargs...)` can be used!
+  - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
+    SciML `ODEProblem` interface can be used!
 
 ## Keyword Arguments
 
-  - `nlsolve`: Internal Nonlinear solver. Any `NonlinearSolve.jl` solver or solvers that
-    work with `SciMLBase.__solve(::NonlinearProblem, alg, args...; kwargs...)` can be used!
+  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+    `NonlinearProblem` interface can be used.
 
 !!! note
     For type-stability, you need to specify the chunksize for autodiff. This can be done
@@ -39,15 +39,14 @@ Significantly more stable than Single Shooting.
 ## Arguments
 
   - `nshoots`: Number of shooting points.
-  - `ode_alg`: ODE algorithm to use for solving the IVP. Any `OrdinaryDiffEq.jl` or solvers
-    that work with `SciMLBase.__solve(::ODEProblem, alg, args...; kwargs...)` can be used!
+  - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
+    SciML `ODEProblem` interface can be used!
 
 ## Keyword Arguments
 
-  - `nlsolve`: Internal Nonlinear solver. Any `NonlinearSolve.jl` solver or solvers that
-    work with `SciMLBase.__solve(::NonlinearProblem, alg, args...; kwargs...)` can be used!
-    Note that any autodiff argument for the solver will be ignored and a custom jacobian
-    algorithm will be used.
+  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+    `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
+    will be ignored and a custom jacobian algorithm will be used.
   - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
     `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
     on the input types and problem type.
@@ -115,9 +114,9 @@ for order in (2, 3, 4, 5, 6)
 
         ## Keyword Arguments
 
-          - `nlsolve`: Internal Nonlinear solver. Any `NonlinearSolve.jl` solver or
-            solvers that work with
-            `SciMLBase.__solve(::NonlinearProblem, alg, args...; kwargs...)` can be used!
+          - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+            `NonlinearProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
