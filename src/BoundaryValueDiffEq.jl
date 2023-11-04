@@ -22,31 +22,6 @@ end
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
-# TODO: Upstream
-# For BVPs we want to propagate even a function u0
-function DiffEqBase.get_concrete_u0(prob::BVProblem, isadapt, t0, kwargs)
-    if haskey(kwargs, :u0)
-        u0 = kwargs[:u0]
-    else
-        u0 = prob.u0
-    end
-
-    isadapt && eltype(u0) <: Integer && (u0 = float.(u0))
-
-    _u0 = DiffEqBase.handle_distribution_u0(u0)
-
-    if isinplace(prob) && (_u0 isa Number || _u0 isa DiffEqBase.SArray)
-        throw(DiffEqBase.IncompatibleInitialConditionError())
-    end
-
-    if _u0 isa Tuple
-        throw(DiffEqBase.TupleStateError())
-    end
-
-    return _u0
-end
-# End of Upstream
-
 include("types.jl")
 include("utils.jl")
 include("algorithms.jl")

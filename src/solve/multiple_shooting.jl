@@ -2,7 +2,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting{true}; odesolve_kwargs 
         nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     # For TwoPointBVPs there is nothing to do. Forward to general multiple shooting
     prob.problem_type isa TwoPointBVProblem &&
-        return __solve_internal(prob, _alg; kwargs...)
+        return __solve_internal(prob, _alg; odesolve_kwargs, nlsolve_kwargs, ensemblealg,
+            verbose, kwargs...)
 
     # Extract the time-points used in BC
     _prob = ODEProblem{isinplace(prob)}(prob.f, prob.u0, prob.tspan, prob.p)
