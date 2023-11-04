@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
+using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
 
 @testset "Basic Shooting Tests" begin
     SOLVERS = [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]

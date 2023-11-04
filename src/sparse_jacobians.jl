@@ -68,6 +68,8 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
     J₁ = length(ya) + length(yb) + M * (N - 1)
     J₂ = M * N
     J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
+    # for underdetermined systems we don't have banded qr implemented. use sparse
+    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
     return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
 
@@ -111,5 +113,7 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVPr
     #        We should be able to use that particular structure.
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (max(L₁, L₂) + N - 1, N + 1))
 
+    # for underdetermined systems we don't have banded qr implemented. use sparse
+    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
     return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
