@@ -139,16 +139,37 @@ function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
     t₀, t₁ = prob.tspan
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
-function __extract_problem_details(prob, ::F; kwargs...) where {F <: Function}
-    throw(ArgumentError("passing `u0` as a function is not supported yet. Curently we only \
-                         support AbstractArray or Vector of AbstractArrays as input! \
-                         Use the latter format for passing in initial guess!"))
+function __extract_problem_details(prob, f::F; dt = 0.0,
+        check_positive_dt::Bool = false) where {F <: Function}
+    # Problem passes in a initial guess function
+    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    u0 = __initial_guess(f, prob.p, prob.tspan[1])
+    t₀, t₁ = prob.tspan
+    return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end
 
-__initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
-__initial_state_from_prob(u0::AbstractArray, mesh) = [copy(vec(u0)) for _ in mesh]
-function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
+function __initial_guess(f::F, p::P, t::T) where {F, P, T}
+    if static_hasmethod(f, Tuple{P, T})
+        return f(p, t)
+    elseif static_hasmethod(f, Tuple{T})
+        return f(t)
+    else
+        throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)` or \
+                             `f(t)`"))
+    end
+end
+
+function __initial_state_from_prob(prob::BVProblem, mesh)
+    return __initial_state_from_prob(prob, prob.u0, mesh)
+end
+function __initial_state_from_prob(::BVProblem, u0::AbstractArray, mesh)
+    return [copy(vec(u0)) for _ in mesh]
+end
+function __initial_state_from_prob(::BVProblem, u0::AbstractVector{<:AbstractVector}, _)
     return [copy(vec(u)) for u in u0]
+end
+function __initial_state_from_prob(prob::BVProblem, f::F, mesh) where {F}
+    return [__initial_guess(f, prob.p, t) for t in mesh]
 end
 
 function __get_bcresid_prototype(prob::BVProblem, u)

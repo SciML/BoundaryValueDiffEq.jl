@@ -49,8 +49,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
                 ode_cache_loss_fn; kwargs..., verbose, odesolve_kwargs...)
         else
             u_at_nodes = __multiple_shooting_initialize!(nodes, u_at_nodes, prob, alg,
-                cur_nshoot, all_nshoots[i - 1], ig, ode_cache_loss_fn; kwargs..., verbose,
-                odesolve_kwargs...)
+                cur_nshoot, all_nshoots[i - 1], ig, ode_cache_loss_fn, u0; kwargs...,
+                verbose, odesolve_kwargs...)
         end
 
         if prob.problem_type isa TwoPointBVProblem
@@ -362,9 +362,13 @@ end
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
 
-    N = length(first(u0))
-    u_at_nodes = similar(first(u0), (nshoots + 1) * N)
-    recursive_flatten!(u_at_nodes, u0)
+    # NOTE: We don't check `u0 isa Function` since `u0` in-principle can be a callable
+    #       struct
+    u0_ = u0 isa AbstractArray ? u0 : [__initial_guess(u0, prob.p, t) for t in nodes]
+
+    N = length(first(u0_))
+    u_at_nodes = similar(first(u0_), (nshoots + 1) * N)
+    recursive_flatten!(u_at_nodes, u0_)
 
     return u_at_nodes
 end
@@ -401,7 +405,8 @@ end
         end
     else
         @warn "Initialization using odesolve failed. Initializing using 0s. It is \
-               recommended to provide an `initial_guess` in this case."
+               recommended to provide an initial guess function via \
+               `u0 = <function>(p, t)` or `u0 = <function>(t)` in this case."
         fill!(u_at_nodes, 0)
     end
 
@@ -410,16 +415,16 @@ end
 
 # Grid coarsening
 @views function __multiple_shooting_initialize!(nodes, u_at_nodes_prev, prob, alg,
-        nshoots, old_nshoots, ig, odecache_; kwargs...)
+        nshoots, old_nshoots, ig, odecache_, u0; kwargs...)
     @unpack f, u0, tspan, p = prob
     prev_nodes = copy(nodes)
     odecache = odecache_ isa Vector ? first(odecache_) : odecache_
 
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
-    N = _unwrap_val(ig) ? length(first(u0)) : length(u0)
+    N = length(u0)
 
-    u_at_nodes = similar(_unwrap_val(ig) ? first(u0) : u0, N + nshoots * N)
+    u_at_nodes = similar(u0, N + nshoots * N)
     u_at_nodes[1:N] .= u_at_nodes_prev[1:N]
     u_at_nodes[(end - N + 1):end] .= u_at_nodes_prev[(end - N + 1):end]
 
