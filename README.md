@@ -8,7 +8,7 @@
 [![Package Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/BoundaryValueDiffEq)](https://pkgs.genieframework.com?packages=BoundaryValueDiffEq)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
-[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
+[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
 BoundaryValueDiffEq.jl is a component package in the DifferentialEquations ecosystem. It holds the
@@ -57,5 +57,5 @@ To set these preferences before loading the package, do the following (replacing
 ```julia
 using Preferences, UUIDs
 Preferences.set_preferences!(UUID("764a87c0-6b3e-53db-9096-fe964310641d"),
-                             "PrecompileShooting" => false)
+    "PrecompileShooting" => false)
 ```
