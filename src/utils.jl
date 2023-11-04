@@ -203,6 +203,25 @@ end
 __vec_bc(sol, p, t, bc, u_size) = vec(bc(__restructure_sol(sol, u_size), p, t))
 __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
+__get_non_sparse_ad(ad::AbstractADType) = ad
+function __get_non_sparse_ad(ad::AbstractSparseADType)
+    if ad isa AutoSparseForwardDiff
+        return AutoForwardDiff{__get_chunksize(ad), typeof(ad.tag)}(ad.tag)
+    elseif ad isa AutoSparseEnzyme
+        return AutoEnzyme()
+    elseif ad isa AutoSparseFiniteDiff
+        return AutoFiniteDiff()
+    elseif ad isa AutoSparseReverseDiff
+        return AutoReverseDiff(ad.compile)
+    elseif ad isa AutoSparseZygote
+        return AutoZygote()
+    else
+        throw(ArgumentError("Unknown AD Type"))
+    end
+end
+
+__get_chunksize(::AutoSparseForwardDiff{CK}) where {CK} = CK
+
 # Restructure Solution
 function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)

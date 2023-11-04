@@ -161,3 +161,12 @@ end
     bc_flow!(resid, sol_msshooting, p, sol_msshooting.t)
     @test norm(resid, Inf) < 1e-6
 end
+
+@testset "Testing Deprecations" begin
+    @test_deprecated Shooting(Tsit5();
+        nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)))
+
+    alg = Shooting(Tsit5();
+        nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)))
+    @test alg.jac_alg.diffmode == AutoForwardDiff(chunksize = 2)
+end
