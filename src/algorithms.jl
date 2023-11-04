@@ -62,7 +62,8 @@ end
 
 """
     MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
+        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm(),
+        static_auto_nodes::Val = Val(false))
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
 Significantly more stable than Single Shooting.
@@ -97,12 +98,15 @@ Significantly more stable than Single Shooting.
     - `Function`: Takes the current number of shooting points and returns the next number
       of shooting points. For example, if `nshoots = 10` and
       `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
+  - `static_auto_nodes`: Automatically detect the timepoints used in the boundary condition
+    and use a faster version of the algorithm! This particular keyword argument should be
+    considered experimental and should be used with care!
 
 !!! note
     For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
     must be provided.
 """
-@concrete struct MultipleShooting{J <: BVPJacobianAlgorithm}
+@concrete struct MultipleShooting{S, J <: BVPJacobianAlgorithm}
     ode_alg
     nlsolve
     jac_alg::J
@@ -110,9 +114,9 @@ Significantly more stable than Single Shooting.
     grid_coarsening
 end
 
-function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
+function concretize_jacobian_algorithm(alg::MultipleShooting{S}, prob) where {S}
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    return MultipleShooting(alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots,
+    return MultipleShooting{S}(alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots,
         alg.grid_coarsening)
 end
 
@@ -122,16 +126,18 @@ function update_nshoots(alg::MultipleShooting, nshoots::Int)
 end
 
 function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
+        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm(),
+        static_auto_nodes::Val{S} = Val(false)) where {S}
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
             grid_coarsening isa AbstractVector{<:Integer} ||
             grid_coarsening isa NTuple{N, <:Integer} where {N}
+    @assert S isa Bool
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(ode_alg, nlsolve, jac_alg, nshoots, grid_coarsening)
+    return MultipleShooting{S}(ode_alg, nlsolve, jac_alg, nshoots, grid_coarsening)
 end
 
 for order in (2, 3, 4, 5, 6)
