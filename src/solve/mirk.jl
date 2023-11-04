@@ -39,7 +39,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     _, T, M, n, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     # NOTE: Assumes the user provided initial guess is on a uniform mesh
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
-
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(M * (n + 1))
