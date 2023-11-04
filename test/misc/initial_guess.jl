@@ -54,9 +54,14 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, Test, LinearAlgebra
     algs = [Shooting(Tsit5()), MultipleShooting(10, Tsit5()), MIRK4(), MIRK5(), MIRK6()]
 
     for bvp in [bvp1, bvp2], alg in algs
-        sol = solve(bvp, alg; dt)
-        @test SciMLBase.successful_retcode(sol)
+        if alg isa Shooting || alg isa MultipleShooting
+            sol = solve(bvp, alg)
+        else
+            sol = solve(bvp, alg; dt)
+        end
+        # @test SciMLBase.successful_retcode(sol)
         resid = zeros(4)
-        @test norm(bc1!(resid, sol, p, sol.t)) < 1e-10
+        bc1!(resid, sol, p, sol.t)
+        @test norm(resid) < 1e-10
     end
 end

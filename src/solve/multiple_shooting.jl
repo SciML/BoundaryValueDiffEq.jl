@@ -416,7 +416,7 @@ end
 # Grid coarsening
 @views function __multiple_shooting_initialize!(nodes, u_at_nodes_prev, prob, alg,
         nshoots, old_nshoots, ig, odecache_, u0; kwargs...)
-    @unpack f, u0, tspan, p = prob
+    @unpack f, tspan, p = prob
     prev_nodes = copy(nodes)
     odecache = odecache_ isa Vector ? first(odecache_) : odecache_
 
