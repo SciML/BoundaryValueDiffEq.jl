@@ -66,9 +66,17 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         end
     end
 
+    if prob.problem_type isa TwoPointBVProblem
+        diffmode_shooting = __get_non_sparse_ad(alg.jac_alg.diffmode)
+    else
+        diffmode_shooting = __get_non_sparse_ad(alg.jac_alg.bc_diffmode)
+    end
+    shooting_alg = Shooting(alg.ode_alg, alg.nlsolve,
+        BVPJacobianAlgorithm(diffmode_shooting))
+
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
-    return __solve(single_shooting_prob, Shooting(alg.ode_alg; alg.nlsolve);
-        odesolve_kwargs, nlsolve_kwargs, verbose, kwargs...)
+    return __solve(single_shooting_prob, shooting_alg; odesolve_kwargs, nlsolve_kwargs,
+        verbose, kwargs...)
 end
 
 # TODO: We can save even more memory by hoisting the preallocated caches for the ODEs
@@ -150,10 +158,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         internal_ode_kwargs...)
 
     # BC Part
-    if alg.jac_alg.bc_diffmode isa AbstractSparseADType
-        error("Multiple Shooting doesn't support sparse AD for Boundary Conditions yet!")
-    end
-    sd_bc = NoSparsityDetection()
+    sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
+            SymbolicsSparsityDetection() : NoSparsityDetection()
     bc_jac_cache = sparse_jacobian_cache(alg.jac_alg.bc_diffmode,
         sd_bc, nothing, similar(bcresid_prototype), u_at_nodes)
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(ensemblealg, prob,
