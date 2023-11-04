@@ -6,6 +6,21 @@ abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
     Shooting(ode_alg; nlsolve = NewtonRaphson())
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
+
+## Arguments
+
+  - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
+    SciML `ODEProblem` interface can be used!
+
+## Keyword Arguments
+
+  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+    `NonlinearProblem` interface can be used.
+
+!!! note
+    For type-stability, you need to specify the chunksize for autodiff. This can be done
+    via `NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = <chunksize>))`.
+    Alternatively, you can use other ADTypes!
 """
 struct Shooting{O, N} <: BoundaryValueDiffEqAlgorithm
     ode_alg::O
@@ -16,10 +31,45 @@ Shooting(ode_alg; nlsolve = NewtonRaphson()) = Shooting(ode_alg, nlsolve)
 
 """
     MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
-        grid_coarsening = true)
+        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
 Significantly more stable than Single Shooting.
+
+## Arguments
+
+  - `nshoots`: Number of shooting points.
+  - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
+    SciML `ODEProblem` interface can be used!
+
+## Keyword Arguments
+
+  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+    `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
+    will be ignored and a custom jacobian algorithm will be used.
+  - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+    `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
+    on the input types and problem type.
+    - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+      `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+    - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
+      defaults to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
+      `bc_diffmode`, defaults to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
+  - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
+    solution. Possible Choices:
+    - `true`: Halve the grid size, till we reach a grid size of 1.
+    - `false`: Do not coarsen the grid. Solve a Multiple Shooting Problem and finally
+      solve a Single Shooting Problem.
+    - `AbstractVector{<:Int}` or `Ntuple{N, <:Integer}`: Use the provided grid coarsening.
+      For example, if `nshoots = 10` and `grid_coarsening = [5, 2]`, then the grid will be
+      coarsened to `[5, 2]`. Note that `1` should not be present in the grid coarsening.
+    - `Function`: Takes the current number of shooting points and returns the next number
+      of shooting points. For example, if `nshoots = 10` and
+      `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
+
+!!! note
+    For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
+    must be provided.
 """
 @concrete struct MultipleShooting{J <: BVPJacobianAlgorithm}
     ode_alg
@@ -61,6 +111,25 @@ for order in (2, 3, 4, 5, 6)
             $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
 
         $($order)th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
+
+        ## Keyword Arguments
+
+          - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+            `NonlinearProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
+          - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+            `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+            use based on the input types and problem type.
+            - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+              `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+            - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+              `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
+              `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+              possible else `AutoFiniteDiff`.
+
+        !!! note
+            For type-stability, the chunksizes for ForwardDiff ADTypes in
+            `BVPJacobianAlgorithm` must be provided.
 
         ## References
 
