@@ -51,15 +51,15 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Non Vector Inputs" begin
                 include("misc/non_vector_inputs.jl")
             end
-
             @time @safetestset "Type Stability" begin
                 include("misc/type_stability.jl")
             end
-
             @time @safetestset "ODE Interface Tests" begin
                 include("misc/odeinterface_ex7.jl")
             end
-
+            @time @safetestset "Initial Guess Function" begin
+                include("misc/initial_guess.jl")
+            end
             @time @safetestset "Aqua: Quality Assurance" begin
                 include("misc/aqua.jl")
             end
