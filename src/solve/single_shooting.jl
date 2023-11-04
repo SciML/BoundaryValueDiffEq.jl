@@ -58,8 +58,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
             alg.jac_alg.diffmode, loss_fnₚ)
     end
 
-    nlf = NonlinearFunction{iip}(loss_fn; prob.f.jac_prototype, resid_prototype,
-        jac = jac_fn)
+    nlf = NonlinearFunction{iip}(loss_fn; jac_prototype, resid_prototype, jac = jac_fn)
     nlprob = if length(resid_prototype) == length(u0)
         NonlinearProblem(nlf, vec(u0), prob.p)
     else

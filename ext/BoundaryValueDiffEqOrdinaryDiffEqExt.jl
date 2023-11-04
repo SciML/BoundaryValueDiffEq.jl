@@ -108,11 +108,10 @@ end
     if @load_preference("PrecompileShootingNLLS", VERSION≥v"1.10-")
         append!(algs,
             [
-                Shooting(Tsit5();
-                    nlsolve = LevenbergMarquardt(;
-                        autodiff = AutoForwardDiff(chunksize = 2))),
-                Shooting(Tsit5();
-                    nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2))),
+                Shooting(Tsit5(); nlsolve = LevenbergMarquardt(),
+                    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
+                Shooting(Tsit5(); nlsolve = GaussNewton(),
+                    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
             ])
     end
 
