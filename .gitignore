@@ -9,3 +9,4 @@ wip
 /benchmark/*.json
 *.json
 *.json.tmp
+*.pdf
