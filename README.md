@@ -59,3 +59,13 @@ using Preferences, UUIDs
 Preferences.set_preferences!(UUID("764a87c0-6b3e-53db-9096-fe964310641d"),
     "PrecompileShooting" => false)
 ```
+
+## Running Benchmarks Locally
+
+We include a small set of benchmarks in the `benchmarks` folder. These are not extensive and mainly used to track regressions during development. For more extensive benchmarks, see the [SciMLBenchmarks](https://github.com/SciML/SciMLBenchmarks.jl) repository.
+
+To run benchmarks locally install [AirspeedVelocity.jl](https://github.com/MilesCranmer/AirspeedVelocity.jl) and run the following command in the package directory:
+
+```bash
+benchpkg BoundaryValueDiffEq --rev="master,<git sha for your commit>" --bench-on="master"
+```
