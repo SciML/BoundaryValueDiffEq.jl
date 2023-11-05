@@ -5,3 +5,5 @@ Manifest.toml
 .vscode
 .vscode/*
 wip
+/.benchmarkci
+/benchmark/*.json
