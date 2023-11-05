@@ -7,3 +7,5 @@ Manifest.toml
 wip
 /.benchmarkci
 /benchmark/*.json
+*.json
+*.json.tmp
