@@ -49,17 +49,32 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, Test, LinearAlgebra
     tspan = (0.0, 1.0)
 
     bvp1 = BVProblem(chart_log_problem!, bc1!, initial_guess_1, tspan, p)
-    bvp2 = BVProblem(chart_log_problem!, bc1!, initial_guess_2, tspan, p)
 
     algs = [Shooting(Tsit5()), MultipleShooting(10, Tsit5()), MIRK4(), MIRK5(), MIRK6()]
 
-    for bvp in [bvp1, bvp2], alg in algs
+    for alg in algs
         if alg isa Shooting || alg isa MultipleShooting
-            sol = solve(bvp, alg)
+            sol = solve(bvp1, alg)
         else
-            sol = solve(bvp, alg; dt)
+            sol = solve(bvp1, alg; dt)
         end
-        # @test SciMLBase.successful_retcode(sol)
+        @test SciMLBase.successful_retcode(sol)
+        resid = zeros(4)
+        bc1!(resid, sol, p, sol.t)
+        @test norm(resid) < 1e-10
+    end
+
+    bvp2 = BVProblem(chart_log_problem!, bc1!, initial_guess_2, tspan, p)
+
+    for alg in algs
+        if alg isa Shooting || alg isa MultipleShooting
+            sol = solve(bvp2, alg)
+            @test_deprecated solve(bvp2, alg)
+        else
+            sol = solve(bvp2, alg; dt)
+            @test_deprecated solve(bvp2, alg; dt)
+        end
+        @test SciMLBase.successful_retcode(sol)
         resid = zeros(4)
         bc1!(resid, sol, p, sol.t)
         @test norm(resid) < 1e-10

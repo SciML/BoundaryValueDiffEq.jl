@@ -152,10 +152,12 @@ function __initial_guess(f::F, p::P, t::T) where {F, P, T}
     if static_hasmethod(f, Tuple{P, T})
         return f(p, t)
     elseif static_hasmethod(f, Tuple{T})
+        Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
+                     `t`. The single argument version has been deprecated and will be \
+                     removed in the next major release of SciMLBase.", :__initial_guess)
         return f(t)
     else
-        throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)` or \
-                             `f(t)`"))
+        throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))
     end
 end
 
