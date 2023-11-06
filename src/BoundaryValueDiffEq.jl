@@ -5,7 +5,7 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
 @recompile_invalidations begin
     using ADTypes, Adapt, BandedMatrices, DiffEqBase, ForwardDiff, LinearAlgebra,
         NonlinearSolve, PreallocationTools, Preferences, RecursiveArrayTools, Reexport,
-        SciMLBase, Setfield, SparseArrays, SparseDiffTools
+        SciMLBase, Setfield, SparseArrays, SparseDiffTools, Tricks
 
     import ADTypes: AbstractADType
     import ArrayInterface: matrix_colors,

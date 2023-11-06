@@ -35,17 +35,18 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         abstol = 1e-3, adaptive = true, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
+
     _, T, M, n, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    # NOTE: Assumes the user provided initial guess is on a uniform mesh
+    mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
+    mesh_dt = diff(mesh)
+
     chunksize = pickchunksize(M * (n + 1))
 
     __alloc = x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
     fᵢ_cache = __alloc(similar(X))
     fᵢ₂_cache = vec(similar(X))
-
-    # NOTE: Assumes the user provided initial guess is on a uniform mesh
-    mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
-    mesh_dt = diff(mesh)
 
     defect_threshold = T(0.1)  # TODO: Allow user to specify these
     MxNsub = 3000              # TODO: Allow user to specify these
@@ -100,7 +101,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         vecf, vecbc
     end
 
-    return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+
+    return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
         resid₁_size, (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
