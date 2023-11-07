@@ -53,8 +53,9 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
     retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure
 
     x_mesh = bvpm2_get_x(sol)
+    evalsol = evalSolution(sol, x_mesh)
     sol_final = DiffEqBase.build_solution(prob, alg, x_mesh,
-        eachcol(evalSolution(sol, x_mesh)); retcode, stats)
+        collect(Vector{eltype(evalsol)}, eachcol(evalsol)); retcode, stats)
 
     bvpm2_destroy(initial_guess)
     bvpm2_destroy(sol)
@@ -112,7 +113,8 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3,
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, sol_t, eachcol(sol_x);
+    return DiffEqBase.build_solution(prob, alg, sol_t,
+        collect(Vector{eltype(sol_x)}, eachcol(sol_x));
         retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure, stats)
 end
 
