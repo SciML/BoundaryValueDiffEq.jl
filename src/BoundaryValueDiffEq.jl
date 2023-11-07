@@ -3,9 +3,12 @@ module BoundaryValueDiffEq
 import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidations
 
 @recompile_invalidations begin
-    using ADTypes, Adapt, BandedMatrices, DiffEqBase, ForwardDiff, LinearAlgebra,
-        NonlinearSolve, PreallocationTools, Preferences, RecursiveArrayTools, Reexport,
-        SciMLBase, Setfield, SparseArrays, SparseDiffTools, Tricks
+    using ADTypes, Adapt, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
+        PreallocationTools, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+        SparseDiffTools, Tricks
+
+    # Special Matrix Types
+    using BandedMatrices, FastAlmostBandedMatrices
 
     import ADTypes: AbstractADType
     import ArrayInterface: matrix_colors,
