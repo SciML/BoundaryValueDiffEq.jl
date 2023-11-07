@@ -76,12 +76,12 @@ end
 
 function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
         prob::BVProblem, alg)
-    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(prob.u0) :
-               jac_alg.diffmode
+    u0 = prob.u0 isa AbstractArray ? prob.u0 : __initial_guess(prob.u0, prob.p, first(prob.tspan))
+    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
-                   __default_nonsparse_ad)(prob.u0) : jac_alg.bc_diffmode
-    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(prob.u0) :
+                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
 
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
