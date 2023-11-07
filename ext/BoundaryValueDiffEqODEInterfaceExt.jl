@@ -113,7 +113,7 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3,
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, sol_t, eachcol(sol_x);
+    return DiffEqBase.build_solution(prob, alg, sol_t, Vector{eltype(sol_x)}[eachcol(sol_x)...];
         retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure, stats)
 end
 
