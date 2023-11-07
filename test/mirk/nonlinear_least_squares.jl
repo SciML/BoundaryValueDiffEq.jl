@@ -2,7 +2,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
 
 @testset "Overconstrained BVP" begin
     SOLVERS = [mirk(; nlsolve) for mirk in (MIRK4, MIRK5, MIRK6),
-    nlsolve in (LevenbergMarquardt(), GaussNewton())]
+    nlsolve in (LevenbergMarquardt(), GaussNewton(), nothing)]
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]

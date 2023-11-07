@@ -2,8 +2,10 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
 
 @testset "Overconstrained BVP" begin
     SOLVERS = [
+        Shooting(Tsit5()),
         Shooting(Tsit5(); nlsolve = LevenbergMarquardt()),
         Shooting(Tsit5(); nlsolve = GaussNewton()),
+        MultipleShooting(10, Tsit5()),
         MultipleShooting(10, Tsit5(); nlsolve = LevenbergMarquardt()),
         MultipleShooting(10, Tsit5(); nlsolve = GaussNewton())]
 

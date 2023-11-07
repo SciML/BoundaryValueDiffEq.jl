@@ -3,14 +3,15 @@ abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
 """
-    Shooting(ode_alg; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
+    Shooting(ode_alg = nothing; nlsolve = nothing, jac_alg = BVPJacobianAlgorithm())
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
 
 ## Arguments
 
   - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
-    SciML `ODEProblem` interface can be used!
+    SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
+    poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
 
 ## Keyword Arguments
 
@@ -39,7 +40,7 @@ function concretize_jacobian_algorithm(alg::Shooting, prob)
     return Shooting(alg.ode_alg, alg.nlsolve, BVPJacobianAlgorithm(diffmode))
 end
 
-function Shooting(ode_alg; nlsolve = NewtonRaphson(), jac_alg = nothing)
+function Shooting(ode_alg = nothing; nlsolve = nothing, jac_alg = nothing)
     jac_alg === nothing && (jac_alg = __propagate_nlsolve_ad_to_jac_alg(nlsolve))
     return Shooting(ode_alg, nlsolve, jac_alg)
 end
@@ -61,7 +62,7 @@ function __propagate_nlsolve_ad_to_jac_alg(nlsolve::N) where {N}
 end
 
 """
-    MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
+    MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
         grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
@@ -71,7 +72,8 @@ Significantly more stable than Single Shooting.
 
   - `nshoots`: Number of shooting points.
   - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
-    SciML `ODEProblem` interface can be used!
+    SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
+    poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
 
 ## Keyword Arguments
 
@@ -121,7 +123,7 @@ function update_nshoots(alg::MultipleShooting, nshoots::Int)
         alg.grid_coarsening)
 end
 
-function MultipleShooting(nshoots::Int, ode_alg; nlsolve = NewtonRaphson(),
+function MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
         grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
             grid_coarsening isa AbstractVector{<:Integer} ||
@@ -141,7 +143,7 @@ for order in (2, 3, 4, 5, 6)
         """
             $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
 
-        $($order)th order Monotonic Implicit Runge Kutta method, with Newton Raphson nonlinear solver as default.
+        $($order)th order Monotonic Implicit Runge Kutta method.
 
         ## Keyword Arguments
 
@@ -173,13 +175,9 @@ for order in (2, 3, 4, 5, 6)
             pages={479-497}
         }
         """
-        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
-            nlsolve::N
-            jac_alg::J
-        end
-
-        function $(alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
-            return $(alg)(nlsolve, jac_alg)
+        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
+            nlsolve::N = nothing
+            jac_alg::J = BVPJacobianAlgorithm()
         end
     end
 end
