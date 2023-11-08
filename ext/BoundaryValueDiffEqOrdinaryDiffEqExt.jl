@@ -74,7 +74,7 @@ end
 
     function bc1_nlls!(resid, sol, p, t)
         solₜ₁ = sol(0.0)
-        solₜ₂ = sol(100.0)
+        solₜ₂ = sol(1.0)
         resid[1] = solₜ₁[1]
         resid[2] = solₜ₂[1] - 1
         resid[3] = solₜ₂[2] + 1.729109
@@ -88,7 +88,7 @@ end
     bc1_nlls_a(ua, p) = [ua[1]]
     bc1_nlls_b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    tspan = (0.0, 100.0)
+    tspan = (0.0, 1.0)
     u0 = [0.0, 1.0]
     bcresid_prototype1 = Array{Float64}(undef, 3)
     bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
