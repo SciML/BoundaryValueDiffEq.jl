@@ -241,7 +241,7 @@ version = "0.1.10"
 
 [[deps.FastAlmostBandedMatrices]]
 deps = ["ArrayInterface", "ArrayLayouts", "BandedMatrices", "ConcreteStructs", "LazyArrays", "LinearAlgebra", "MatrixFactorizations", "PrecompileTools", "Reexport"]
-git-tree-sha1 = "6fbf5add171afcc5fec6fc77ed0bc930fef6e8fe"
+git-tree-sha1 = "178316d87f883f0702e79d9c83a8049484c9f619"
 repo-rev = "main"
 repo-url = "https://github.com/avik-pal/FastAlmostBandedMatrices.jl"
 uuid = "9d29842c-ecb8-4973-b1e9-a27b1157504e"
