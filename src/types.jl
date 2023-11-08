@@ -76,7 +76,8 @@ end
 
 function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
         prob::BVProblem, alg)
-    u0 = prob.u0 isa AbstractArray ? prob.u0 : __initial_guess(prob.u0, prob.p, first(prob.tspan))
+    u0 = prob.u0 isa AbstractArray ? prob.u0 :
+         __initial_guess(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointBVProblem ? __default_sparse_ad :

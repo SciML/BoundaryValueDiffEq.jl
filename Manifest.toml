@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0-rc1"
 manifest_format = "2.0"
-project_hash = "fa866500f68f15b5b808b8f2683f272751ead086"
+project_hash = "acf5ee7f10cb597c5e05b1736af6e72299d82bd7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -82,22 +82,6 @@ deps = ["Static"]
 git-tree-sha1 = "0c5f81f47bbbcf4aea7b2959135713459170798b"
 uuid = "62783981-4cbd-42fc-bca8-16325de8dc4b"
 version = "0.1.5"
-
-[[deps.BlockArrays]]
-deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra"]
-git-tree-sha1 = "54cd829dd26330c42e1cf9df68470dd4df602c61"
-uuid = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
-version = "0.16.38"
-
-[[deps.BlockBandedMatrices]]
-deps = ["ArrayLayouts", "BandedMatrices", "BlockArrays", "FillArrays", "LinearAlgebra", "MatrixFactorizations"]
-git-tree-sha1 = "1739feac21722a63267b3426e28b36d922d10fcd"
-uuid = "ffab5731-97b5-5995-9138-79e8c1846df0"
-version = "0.12.8"
-weakdeps = ["SparseArrays"]
-
-    [deps.BlockBandedMatrices.extensions]
-    BlockBandedMatricesSparseArraysExt = "SparseArrays"
 
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Static"]
@@ -257,7 +241,7 @@ version = "0.1.10"
 
 [[deps.FastAlmostBandedMatrices]]
 deps = ["ArrayInterface", "ArrayLayouts", "BandedMatrices", "ConcreteStructs", "LazyArrays", "LinearAlgebra", "MatrixFactorizations", "PrecompileTools", "Reexport"]
-git-tree-sha1 = "d2338144c8635b2735b0a2803bfe481674e1431f"
+git-tree-sha1 = "6fbf5add171afcc5fec6fc77ed0bc930fef6e8fe"
 repo-rev = "main"
 repo-url = "https://github.com/avik-pal/FastAlmostBandedMatrices.jl"
 uuid = "9d29842c-ecb8-4973-b1e9-a27b1157504e"
@@ -294,12 +278,16 @@ deps = ["ArrayInterface", "LinearAlgebra", "Requires", "Setfield", "SparseArrays
 git-tree-sha1 = "c6e4a1fbe73b31a3dea94b1da449503b8830c306"
 uuid = "6a86dc24-6348-571c-b903-95158fe2bd41"
 version = "2.21.1"
-weakdeps = ["BandedMatrices", "BlockBandedMatrices", "StaticArrays"]
 
     [deps.FiniteDiff.extensions]
     FiniteDiffBandedMatricesExt = "BandedMatrices"
     FiniteDiffBlockBandedMatricesExt = "BlockBandedMatrices"
     FiniteDiffStaticArraysExt = "StaticArrays"
+
+    [deps.FiniteDiff.weakdeps]
+    BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
+    BlockBandedMatrices = "ffab5731-97b5-5995-9138-79e8c1846df0"
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
@@ -457,11 +445,11 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[deps.LinearSolve]]
 deps = ["ArrayInterface", "ConcreteStructs", "DocStringExtensions", "EnumX", "EnzymeCore", "FastLapackInterface", "GPUArraysCore", "InteractiveUtils", "KLU", "Krylov", "Libdl", "LinearAlgebra", "MKL", "MKL_jll", "PrecompileTools", "Preferences", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "SciMLOperators", "Setfield", "SparseArrays", "Sparspak", "SuiteSparse", "UnPack"]
-git-tree-sha1 = "ecbb755d8a3f4940bd0f18ac19e0b5a6397b0b4b"
+git-tree-sha1 = "e6d923b163da6b2b127003eb9767c8cfb92bd8d4"
 repo-rev = "ap/almost_banded_matrices"
 repo-url = "https://github.com/avik-pal/LinearSolve.jl"
 uuid = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-version = "2.17.0"
+version = "2.18.0"
 
     [deps.LinearSolve.extensions]
     LinearSolveBandedMatricesExt = "BandedMatrices"
@@ -593,9 +581,9 @@ version = "1.2.0"
 
 [[deps.NonlinearSolve]]
 deps = ["ADTypes", "ArrayInterface", "ConcreteStructs", "DiffEqBase", "EnumX", "FastBroadcast", "FiniteDiff", "ForwardDiff", "LineSearches", "LinearAlgebra", "LinearSolve", "PrecompileTools", "RecursiveArrayTools", "Reexport", "SciMLBase", "SimpleNonlinearSolve", "SparseArrays", "SparseDiffTools", "StaticArraysCore", "UnPack"]
-git-tree-sha1 = "6e7919a71af529fd58af4a7f5fd5a612f53f54a7"
+git-tree-sha1 = "f400009287afedef175058e64aadf7d41f593fef"
 uuid = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
-version = "2.7.0"
+version = "2.8.0"
 
     [deps.NonlinearSolve.extensions]
     NonlinearSolveBandedMatricesExt = "BandedMatrices"

@@ -295,8 +295,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         resid_bc, y)
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
-        J_full_band = BandedMatrix(Ones{eltype(y)}(cache.M * N, cache.M * N),
-            (cache.M + 1, cache.M))
+        J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
+            (L + 1, cache.M))
         __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
             cache.problem_type, y, y, cache.M, N))
     else

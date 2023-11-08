@@ -80,7 +80,7 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls(sol, p, t) = [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
+    bc1_nlls(sol, p, t) = [sol(0.0)[1], sol(1.0)[1] - 1, sol(1.0)[2] + 1.729109]
 
     bc1_nlls_a!(resid, ua, p) = (resid[1] = ua[1])
     bc1_nlls_b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
