@@ -116,7 +116,7 @@ end
     bc1_nlls_a(ua, p) = [ua[1]]
     bc1_nlls_b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    tspan = (0.0, 1.0)
+    tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
     bcresid_prototype1 = Array{Float64}(undef, 3)
     bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
@@ -138,7 +138,7 @@ end
 
     algs = []
 
-    if Preferences.@load_preference("PrecompileMIRKNLLS", VERSION≥v"1.10-")
+    if Preferences.@load_preference("PrecompileMIRKNLLS", false)
         for nlsolve in nlsolvers
             append!(algs,
                 [
