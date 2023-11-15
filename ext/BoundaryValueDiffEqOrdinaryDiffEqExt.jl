@@ -3,7 +3,8 @@ module BoundaryValueDiffEqOrdinaryDiffEqExt
 # This extension doesn't add any new feature atm but is used to precompile some common
 # shooting workflows
 
-import Preferences: @load_preference
+# We can't use @load_preference since this is a different module
+import Preferences: load_preference
 import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidations
 
 @recompile_invalidations begin
@@ -42,13 +43,13 @@ end
 
     algs = []
 
-    if @load_preference("PrecompileShooting", true)
+    if load_preference(BoundaryValueDiffEq, "PrecompileShooting", true)
         push!(algs,
             Shooting(Tsit5(); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))))
     end
 
-    if @load_preference("PrecompileMultipleShooting", true)
+    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShooting", true)
         push!(algs,
             MultipleShooting(10,
                 Tsit5();
@@ -79,7 +80,7 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls(sol, p, t) = [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
+    bc1_nlls(sol, p, t) = [sol(0.0)[1], sol(100.0)[1] - 1, sol(1.0)[2] + 1.729109]
 
     bc1_nlls_a!(resid, ua, p) = (resid[1] = ua[1])
     bc1_nlls_b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
@@ -105,7 +106,7 @@ end
 
     algs = []
 
-    if @load_preference("PrecompileShootingNLLS", VERSION≥v"1.10-")
+    if load_preference(BoundaryValueDiffEq, "PrecompileShootingNLLS", false)
         append!(algs,
             [
                 Shooting(Tsit5(); nlsolve = LevenbergMarquardt(),
@@ -115,7 +116,7 @@ end
             ])
     end
 
-    if @load_preference("PrecompileMultipleShootingNLLS", VERSION≥v"1.10-")
+    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShootingNLLS", false)
         append!(algs,
             [
                 MultipleShooting(10, Tsit5();

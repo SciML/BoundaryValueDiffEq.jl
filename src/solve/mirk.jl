@@ -295,22 +295,40 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         resid_bc, y)
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
-        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
-            cache.problem_type, y, y, cache.M, N))
+        if L < cache.M
+            # For underdetermined problems we use sparse since we don't have banded qr
+            colored_matrix = __generate_sparse_jacobian_prototype(cache,
+                cache.problem_type, y, y, cache.M, N)
+            J_full_band = nothing
+            __sparsity_detection_alg(ColoredMatrix(sparse(colored_matrix.M),
+                colored_matrix.row_colorvec, colored_matrix.col_colorvec))
+        else
+            J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
+                (L + 1, cache.M + max(cache.M - L, 0)))
+            __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
+                cache.problem_type, y, y, cache.M, N))
+        end
     else
+        J_full_band = nothing
         NoSparsityDetection()
     end
     cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
         sd_collocation, loss_collocationₚ, resid_collocation, y)
 
-    jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
+    J_bc = init_jacobian(cache_bc)
+    J_c = init_jacobian(cache_collocation)
+    if J_full_band === nothing
+        jac_prototype = vcat(J_bc, J_c)
+    else
+        jac_prototype = AlmostBandedMatrix{eltype(cache)}(J_full_band, J_bc)
+    end
 
     jac = if iip
-        (J, u, p) -> __mirk_mpoint_jacobian!(J, u, jac_alg.bc_diffmode,
+        (J, u, p) -> __mirk_mpoint_jacobian!(J, J_c, u, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
             loss_collocationₚ, resid_bc, resid_collocation, L)
     else
-        (u, p) -> __mirk_mpoint_jacobian(jac_prototype, u, jac_alg.bc_diffmode,
+        (u, p) -> __mirk_mpoint_jacobian(jac_prototype, J_c, u, jac_alg.bc_diffmode,
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
             loss_collocationₚ, L)
     end
@@ -320,7 +338,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
-function __mirk_mpoint_jacobian!(J, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
+function __mirk_mpoint_jacobian!(J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
         nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc, resid_collocation,
         L::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
@@ -329,11 +347,34 @@ function __mirk_mpoint_jacobian!(J, x, bc_diffmode, nonbc_diffmode, bc_diffcache
     return nothing
 end
 
-function __mirk_mpoint_jacobian(J, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
+function __mirk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+        bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc,
+        resid_collocation, L::Int) where {BC, C}
+    J_bc = fillpart(J)
+    sparse_jacobian!(J_bc, bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
+    sparse_jacobian!(J_c, nonbc_diffmode, nonbc_diffcache,
+        loss_collocation, resid_collocation, x)
+    exclusive_bandpart(J) .= J_c
+    finish_part_setindex!(J)
+    return nothing
+end
+
+function __mirk_mpoint_jacobian(J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
         nonbc_diffcache, loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, x)
     sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
         loss_collocation, x)
+    return J
+end
+
+function __mirk_mpoint_jacobian(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+        bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C,
+        L::Int) where {BC, C}
+    J_bc = fillpart(J)
+    sparse_jacobian!(J_bc, bc_diffmode, bc_diffcache, loss_bc, x)
+    sparse_jacobian!(J_c, nonbc_diffmode, nonbc_diffcache, loss_collocation, x)
+    exclusive_bandpart(J) .= J_c
+    finish_part_setindex!(J)
     return J
 end
 

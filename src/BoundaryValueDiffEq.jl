@@ -3,9 +3,12 @@ module BoundaryValueDiffEq
 import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidations
 
 @recompile_invalidations begin
-    using ADTypes, Adapt, BandedMatrices, DiffEqBase, ForwardDiff, LinearAlgebra,
-        NonlinearSolve, PreallocationTools, Preferences, RecursiveArrayTools, Reexport,
-        SciMLBase, Setfield, SparseArrays, SparseDiffTools, Tricks
+    using ADTypes, Adapt, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
+        PreallocationTools, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+        SparseDiffTools, Tricks
+
+    # Special Matrix Types
+    using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
     import ADTypes: AbstractADType
     import ArrayInterface: matrix_colors,
@@ -135,7 +138,7 @@ end
 
     algs = []
 
-    if Preferences.@load_preference("PrecompileMIRKNLLS", VERSION≥v"1.10-")
+    if Preferences.@load_preference("PrecompileMIRKNLLS", false)
         for nlsolve in nlsolvers
             append!(algs,
                 [
