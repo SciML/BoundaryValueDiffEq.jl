@@ -75,7 +75,7 @@ probArr = [
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
         bcresid_prototype),
     BVProblem(odef1!, boundaryy!, u0, tspan),
-    BVProblem(odef2!, boundaryy!, u0, tspan)
+    BVProblem(odef2!, boundaryy!, u0, tspan),
 ];
 
 testTol = 0.2
@@ -115,7 +115,7 @@ end
 
 # FIXME: This is a really bad test. Needs interpolation
 function bc_pendulum!(residual, u, p, t)
-    residual[1] = u(last(t)/2)[1] + π / 2 # the solution at the middle of the time span should be -pi/2
+    residual[1] = u(last(t) / 2)[1] + π / 2 # the solution at the middle of the time span should be -pi/2
     residual[2] = u(last(t))[1] - π / 2 # the solution at the end of the time span should be pi/2
 end
 

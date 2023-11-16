@@ -57,7 +57,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(zeros(eltype(X), M, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(zeros(eltype(X), M, stage),
+        chunksize,
+        alg.jac_alg)
                   for _ in 1:n]
     k_interp = [similar(X, M, ITU.s_star - stage)
                 for _ in 1:n]
