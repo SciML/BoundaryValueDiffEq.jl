@@ -25,6 +25,11 @@ function boundary!(residual, u, p, t)
 end
 boundary(u, p, t) = [u[1][1] - 5, u[end][1]]
 
+function boundaryy!(residual, u, p, t)
+    residual[1] = u(first(t))[1] - 5
+    residual[2] = u(last(t))[1]
+end
+
 function boundary_two_point_a!(resida, ua, p)
     resida[1] = ua[1] - 5
 end
@@ -69,6 +74,8 @@ probArr = [
         bcresid_prototype),
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
         bcresid_prototype),
+    BVProblem(odef1!, boundaryy!, u0, tspan),
+    BVProblem(odef2!, boundaryy!, u0, tspan)
 ];
 
 testTol = 0.2
@@ -76,17 +83,17 @@ affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
 @testset "Affineness" begin
-    @testset "Problem: $i" for i in (1, 2, 5, 6)
+    @testset "Problem: $i" for i in (1, 2, 5, 6, 9)
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             @time sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol(0)[1] - 5) < affineTol
         end
     end
 end
 
 @testset "Convergence on Linear" begin
-    @testset "Problem: $i" for i in (3, 4, 7, 8)
+    @testset "Problem: $i" for i in (3, 4, 7, 8, 10)
         prob = probArr[i]
         @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
             @time sim = test_convergence(dts, prob, mirk_solver(Val(order));
@@ -108,8 +115,8 @@ end
 
 # FIXME: This is a really bad test. Needs interpolation
 function bc_pendulum!(residual, u, p, t)
-    residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-    residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
+    residual[1] = u(last(t)/2)[1] + π / 2 # the solution at the middle of the time span should be -pi/2
+    residual[2] = u(last(t))[1] - π / 2 # the solution at the end of the time span should be pi/2
 end
 
 u0 = MVector{2}([pi / 2, pi / 2])
