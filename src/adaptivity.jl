@@ -3,12 +3,16 @@
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-@views function interp_eval!(y::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt)
+@views function interp_eval!(y::AbstractArray, cache::MIRKCache, u, t, mesh, mesh_dt)
+    if t == mesh[end]
+        y .= u[end]
+        return y
+    end
     i = interval(mesh, t)
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     w, w′ = interp_weights(τ, cache.alg)
-    sum_stages!(y, cache, w, i)
+    sum_stages!(y, cache, w, i; u = u)
     return y
 end
 
@@ -18,7 +22,7 @@ end
 Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
 """
 function interval(mesh, t)
-    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
+    return clamp(searchsortedlast(mesh, t), 1, length(mesh) - 1)
 end
 
 """
@@ -225,11 +229,16 @@ end
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 """
-function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
-    sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
+function sum_stages!(cache::MIRKCache, w, w′, i::Int; u = cache.y₀, dt = cache.mesh_dt[i])
+    sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i; u, dt)
 end
 
-function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(z::AbstractArray,
+        cache::MIRKCache,
+        w,
+        i::Int;
+        u = cache.y₀,
+        dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
@@ -237,12 +246,19 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true)
-    z .= z .* dt .+ cache.y₀[i]
+    z .= z .* dt .+ u[i]
 
     return z
 end
 
-@views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+@views function sum_stages!(z,
+        z′,
+        cache::MIRKCache,
+        w,
+        w′,
+        i::Int;
+        u = cache.y₀,
+        dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
@@ -254,7 +270,7 @@ end
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
     __maybe_matmul!(z′, k_interp[i][:, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true)
-    z .= z .* dt[1] .+ cache.y₀[i]
+    z .= z .* dt[1] .+ u[i]
 
     return z, z′
 end
@@ -398,6 +414,6 @@ function sol_eval(cache::MIRKCache{T}, t::T) where {T}
     weights, weights_prime = interp_weights(τ, alg)
     z = zeros(M)
     z_prime = zeros(M)
-    sum_stages!(z, z_prime, cache, weights, weights_prime, i, mesh_dt)
+    sum_stages!(z, z_prime, cache, weights, weights_prime, i, dt = mesh_dt)
     return z
 end
