@@ -57,9 +57,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(zeros(eltype(X), M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse(adaptive, M, 0), ifelse(adaptive, ITU.s_star - stage, 0))
+    k_interp = [similar(X, M, ITU.s_star - stage)
                 for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -75,7 +75,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     end
 
     defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
-    new_stages = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
+    new_stages = [similar(X, M) for _ in 1:n]
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -192,7 +192,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
     pt = cache.problem_type
 
     loss_bc = if iip
-        (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh)
+        (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     else
         (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh)
     end
@@ -218,7 +218,14 @@ function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, 
         cache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    eval_bc_residual!(resids[1], pt, bc!, y_, p, mesh)
+    interp_setup!(cache)
+    intern_sol_ = DiffEqBase.build_solution(cache.prob,
+        cache.alg,
+        cache.mesh,
+        y_;
+        interp = MIRKInterpolation(cache.mesh, y_, cache),
+        calculate_error = false)
+    eval_bc_residual!(resids[1], pt, bc!, intern_sol_, p, mesh)
     Φ!(resids[2:end], cache, y_, u, p)
     recursive_flatten!(resid, resids)
     return nothing
@@ -251,9 +258,16 @@ function __mirk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh,
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh) where {BC}
+function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
+    interp_setup!(cache) ###
+    bc_sol_ = DiffEqBase.build_solution(cache.prob,
+        cache.alg,
+        cache.mesh,
+        y_;
+        interp = MIRKInterpolation(cache.mesh, y_, cache),
+        calculate_error = false)
+    eval_bc_residual!(resid, pt, bc!, bc_sol_, p, mesh)
     return nothing
 end
 
