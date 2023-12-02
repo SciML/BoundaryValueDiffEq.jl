@@ -183,7 +183,6 @@ function SciMLBase.solve!(cache::RKCache)
     while SciMLBase.successful_retcode(info) && defect_norm > abstol
         nlprob = __construct_nlproblem(cache, recursive_flatten(y₀))
         sol_nlprob = solve(nlprob, alg.nlsolve; abstol, kwargs...)
-
         recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
         info = sol_nlprob.retcode
@@ -225,7 +224,7 @@ function SciMLBase.solve!(cache::RKCache)
 
     # sync y and y0 caches
     for i in axes(cache.y₀, 1)
-        cache.y[i].du .= cache.y₀[i]   
+        cache.y[i].du .= cache.y₀[i]
     end
 
     u = [reshape(y, cache.in_size) for y in cache.y₀]
@@ -238,7 +237,7 @@ function SciMLBase.solve!(cache::RKCache)
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}
+function __construct_nlproblem(cache::RKCache{iip}, y::AbstractVector) where {iip}   
     loss_bc = if iip
         function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
             y_ = recursive_unflatten!(cache.y, u)
@@ -319,7 +318,7 @@ function __construct_nlproblem(cache::RKCache{iip}, y, loss_bc, loss_collocation
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
         PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
                                                                          cache.problem_type,
-                                                                         y, cache.M, N))
+                                                                         y, cache.M, N, TU))
     else
         NoSparsityDetection()
     end
