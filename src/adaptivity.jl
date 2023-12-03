@@ -1,9 +1,9 @@
 """
-    interp_eval!(y::AbstractArray, cache::RKCache, t)
+    interp_eval!(y::AbstractArray, cache::AbstractRKCache, t)
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-@views function interp_eval!(y::AbstractArray, cache::RKCache, ITU::MIRKInterpTableau, t,
+@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache, ITU::MIRKInterpTableau, t,
                              mesh, mesh_dt)
     i = interval(mesh, t)
     dt = mesh_dt[i]
@@ -13,7 +13,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     return y
 end
 
-function interp_eval!(y::AbstractArray, i::Int, cache::RKCache, ITU::MIRKInterpTableau, t,
+function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache, ITU::MIRKInterpTableau, t,
                       mesh, mesh_dt)
     interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
 end
@@ -40,8 +40,8 @@ function dS_interpolate(t, S_coeffs)
     return S_coeffs * ts
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::RKCache,
-                             ITU::RKInterpTableau{false},
+@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache,
+                             ITU::FIRKInterpTableau{false},
                              t,
                              mesh, mesh_dt)
 
@@ -88,8 +88,8 @@ end
     return y[ctr_y0]
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::RKCache,
-                             ITU::RKInterpTableau{true},
+@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache,
+                             ITU::FIRKInterpTableau{true},
                              t,
                              mesh, mesh_dt)
     j = interval(mesh, t)
@@ -145,11 +145,11 @@ function interval(mesh, t)
 end
 
 """
-    mesh_selector!(cache::RKCache{T})
+    mesh_selector!(cache::AbstractRKCache{T})
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::RKCache{iip, T}) where {iip, T}
+@views function mesh_selector!(cache::AbstractRKCache{iip, T}) where {iip, T}
     @unpack M, order, defect, mesh, mesh_dt = cache
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
@@ -202,11 +202,11 @@ Generate new mesh based on the defect.
 end
 
 """
-    redistribute!(cache::RKCache{T}, Nsub_star, ŝ, mesh, mesh_dt) where {T}
+    redistribute!(cache::AbstractRKCache{T}, Nsub_star, ŝ, mesh, mesh_dt) where {T}
 
 Generate a new mesh based on the `ŝ`.
 """
-function redistribute!(cache::RKCache{T}, Nsub_star, ŝ, mesh, mesh_dt) where {T}
+function redistribute!(cache::AbstractRKCache{T}, Nsub_star, ŝ, mesh, mesh_dt) where {T}
     N = length(mesh)
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
@@ -236,7 +236,7 @@ end
 
 """
     half_mesh!(mesh, mesh_dt)
-    half_mesh!(cache::RKCache)
+    half_mesh!(cache::AbstractRKCache)
 
 The input mesh has length of `n + 1`. Divide the original subinterval into two equal length
 subinterval. The `mesh` and `mesh_dt` are modified in place.
@@ -256,16 +256,16 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
     end
     return mesh, mesh_dt
 end
-half_mesh!(cache::RKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
+half_mesh!(cache::AbstractRKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
 
 """
-    defect_estimate!(cache::RKCache{T})
+    defect_estimate!(cache::AbstractRKCache{T})
 
 defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::RKCache{iip, T}, TU::MIRKTableau) where {iip, T}
+@views function defect_estimate!(cache::AbstractRKCache{iip, T}, TU::MIRKTableau) where {iip, T}
     @unpack M, stage, f, alg, mesh, mesh_dt, defect = cache
     @unpack s_star, τ_star = cache.ITU
 
@@ -332,8 +332,8 @@ function eval_q(y_i, τ, h, A, K)
     return q, q′
 end
 
-@views function defect_estimate!(cache::RKCache{iip, T},
-                                 TU::RKTableau{false}) where {iip, T}
+@views function defect_estimate!(cache::FIRKCache{iip, T},
+                                 TU::FIRKTableau{false}) where {iip, T}
     @unpack f, M, stage, mesh, mesh_dt, defect = cache
     @unpack q_coeff, τ_star = cache.ITU
 
@@ -376,7 +376,7 @@ end
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::RKCache{iip, T}, TU::RKTableau{true}) where {iip, T}
+@views function defect_estimate!(cache::AbstractRKCache{iip, T}, TU::FIRKTableau{true}) where {iip, T}
     @unpack f, M, stage, mesh, mesh_dt, defect = cache
     @unpack a, c = cache.TU
     @unpack q_coeff, τ_star = cache.ITU
@@ -419,12 +419,12 @@ end
 end
 
 """
-    interp_setup!(cache::RKCache)
+    interp_setup!(cache::AbstractRKCache)
 
 `interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-@views function interp_setup!(cache::RKCache{iip, T}) where {iip, T}
+@views function interp_setup!(cache::AbstractRKCache{iip, T}) where {iip, T}
     @unpack x_star, s_star, c_star, v_star = cache.ITU
     @unpack k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt = cache
 
@@ -456,15 +456,15 @@ Here, the ki_interp is the stages in one subinterval.
 end
 
 """
-    sum_stages!(cache::RKCache, w, w′, i::Int)
+    sum_stages!(cache::AbstractRKCache, w, w′, i::Int)
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 """
-function sum_stages!(cache::RKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(cache::AbstractRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
     sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
 
-function sum_stages!(z, cache::RKCache, w, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(z, cache::AbstractRKCache, w, i::Int, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 
@@ -477,7 +477,7 @@ function sum_stages!(z, cache::RKCache, w, i::Int, dt = cache.mesh_dt[i])
     return z
 end
 
-@views function sum_stages!(z, z′, cache::RKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+@views function sum_stages!(z, z′, cache::AbstractRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 

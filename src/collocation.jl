@@ -1,6 +1,11 @@
-function Φ!(residual, cache::RKCache, y, u, p = cache.p)
+function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
     return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
               y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+end
+
+function Φ!(residual, cache::FIRKCache, y, u, p = cache.p)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
+              y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
 end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
@@ -29,8 +34,8 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau{false}, y, u, p,
-                   mesh, mesh_dt, stage::Int)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
+                   mesh, mesh_dt, stage::Int, cache)
     @unpack c, a, b = TU
     tmp1 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal
@@ -62,21 +67,7 @@ end
     end
 end
 
-#= function FIRK_nlsolve(K, f!, a, c, yᵢ, h, mesh_i, stage, p)
-    res = copy(K)
-    T = eltype(K)
-    tmp1 = similar(K, size(K, 1))
-
-    for r in 1:stage
-        @. tmp1 = yᵢ
-        __maybe_matmul!(tmp1, K[:, 1:stage], a[r, 1:stage], h, T(1))
-        f!(@view(res[:, r]), tmp1, p, mesh_i + c[r] * h)
-        res[:, r] .-= K[:, r]
-    end
-    return res
-end =#
-
-function FIRK_nlsolve(res, K, p_nlsolve, f!, a, c, h, stage, p_f!)
+function FIRK_nlsolve!(res, K, p_nlsolve, f!, a, c, h, stage, p_f!)
     mesh_i = p_nlsolve[1]
     yᵢ = @view p_nlsolve[2:end]
 
@@ -92,33 +83,43 @@ function FIRK_nlsolve(res, K, p_nlsolve, f!, a, c, h, stage, p_f!)
     return nothing
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau{true}, y, u, p,
-                   mesh, mesh_dt, stage::Int)
+#= # Hacky way to initialize problem
+@unpack c, a, b, = TU
+K = get_tmp(k_discrete[1], u)
+yᵢ = get_tmp(y[1], u)
+y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
+h = mesh_dt[1]
+p_nestprob = vcat(promote(mesh[1], one(eltype(y_i)))[1], y_i)
+K0 = fill(1.0, size(K))
+nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve(res, K, p_nestprob, f!,
+                                                                 a, c, h, stage, p),
+                            K0, p_nestprob)
+
+nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
+                  reltol = 1e-4,
+                  maxiters = 10) =#
+
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+                   mesh, mesh_dt, stage::Int, cache)
     @unpack c, a, b, = TU
+    @unpack nest_cache, p_nestprob = cache
     T = eltype(u)
 
-    # Hacky way to initialize problem
-    K = get_tmp(k_discrete[1], u)
-    yᵢ = get_tmp(y[1], u)
-    y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
-    h = mesh_dt[1]
-    p_nestprob = vcat(promote(mesh[1], one(eltype(y_i)))[1], y_i)
-    nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve(res, K, p_nestprob, f!,
-                                                                     a, c, h, stage, p),
-                                fill(1.0, size(K)), p_nestprob)
+    #p_nestprob = vcat(promote(mesh[1], one(eltype(y_i)))[1], y_i)
 
-    nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
-                      reltol = 1e-4,
-                      maxiters = 10)
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
-        #h = mesh_dt[i] we have h in the cache and we always assume equal h
+        h = mesh_dt[i]
 
         #= if isdefined(Main, :Infiltrator)
             Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
         end =#
 
         K = get_tmp(k_discrete[i], u)
+        if minimum(abs.(K)) < 1e-2
+            K = fill(1.0, size(K))
+        end
+        #K0 = fill(1.0, size(K))
         yᵢ = get_tmp(y[i], u)
         yᵢ₊₁ = get_tmp(y[i + 1], u)
         y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
@@ -126,7 +127,7 @@ end
 
         p_nestprob[1] = promote(mesh[i], one(eltype(y_i)))[1]
         p_nestprob[2:end] = y_i
-        reinit!(nest_cache, fill(1.0, size(K)), p = p_nestprob)
+        reinit!(nest_cache, K, p = p_nestprob)
         solve!(nest_cache) #pass kwargs in initialization # Doesn't work with forwarddiff atm
 
         # Update residual
@@ -135,7 +136,7 @@ end
     end
 end
 
-function Φ(cache::RKCache, y, u, p = cache.p)
+function Φ(cache::AbstractRKCache, y, u, p = cache.p) # TODO: fix this
     return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, p, cache.mesh,
              cache.mesh_dt, cache.stage)
 end
@@ -168,7 +169,7 @@ end
     return residuals
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f!, TU::RKTableau, y, u, p,
+@views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
                   mesh, mesh_dt, stage::Int)
     @unpack c, a, b = TU
     residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
@@ -203,7 +204,8 @@ end
     return residuals
 end
 
-@views function Φ(residual, fᵢ_cache, k_discrete, f!, TU::RKTableau{true}, y, u, p,
+# TODO: Make this work
+@views function Φ(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
                   mesh, mesh_dt, stage::Int)
     @unpack c, a, b = TU
     residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]

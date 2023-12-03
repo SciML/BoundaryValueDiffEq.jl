@@ -16,8 +16,8 @@ function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
     q_coeff = [1.0;;]
     τ_star = 0.0
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -34,8 +34,8 @@ function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
                -0.75 0.75]
     τ_star = 0.0
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -54,8 +54,8 @@ function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
                0.8052720793239877 -1.9163831904350983 1.1111111111111107]
     τ_star = 0.0
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -92,8 +92,8 @@ function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
                2.282881805816463 -7.033077888895508 10.750066442463563 -11.039870359384485 5.0399999999999725]
     τ_star = 0.0
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -139,7 +139,7 @@ function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
                11.456081588332877 -37.62732723293888 65.57712817877311 -86.63425000191717 93.83554041389372 -81.6275811094104 35.020408163266595]
     τ_star = 0.0
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end

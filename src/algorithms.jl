@@ -1,6 +1,9 @@
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractRK <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractFIRK <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractRKCache{iip, T} end
 
 """
     Shooting(ode_alg; nlsolve = NewtonRaphson())
@@ -73,7 +76,7 @@ for order in (2, 3, 4, 5, 6)
             pages={479-497}
         }
         """
-        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
             nlsolve::N
             jac_alg::J
         end
@@ -98,7 +101,7 @@ for order in (1, 3, 5, 9, 13)
         TODO
         }
         """
-        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
             nlsolve::N
             jac_alg::J
             nested_nlsolve::Bool
@@ -127,7 +130,7 @@ for order in (2, 3, 4, 5)
         TODO
         }
         """
-        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
             nlsolve::N
             jac_alg::J
             nested_nlsolve::Bool
@@ -155,7 +158,7 @@ for order in (2, 3, 4, 5)
         TODO
         }
         """
-        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractRK
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
             nlsolve::N
             jac_alg::J
             nested_nlsolve::Bool

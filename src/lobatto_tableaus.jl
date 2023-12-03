@@ -14,11 +14,11 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     b = [1 // 2, 1 // 2]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    q_coeff = [1.0 0.0; -0.5 0.5]
-    τ_star = 0.5
+    #q_coeff = [1.0 0.0; -0.5 0.5]
+    #τ_star = 0.5
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -37,8 +37,8 @@ function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
                0.6666666666666666 -1.3333333333333333 0.6666666666666666]
     τ_star = 0.21132486540518713
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -59,8 +59,8 @@ function constructLobattoIIIa4(::Type{T}, nested::Bool) where {T}
                -1.25 2.7950849718747395 -2.795084971874738 1.25]
     τ_star = 0.5
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -83,8 +83,8 @@ function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
                2.8 -6.533333333333296 7.466666666666636 -6.533333333333315 2.8]
     τ_star = 0.33000947820757126
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -107,8 +107,8 @@ function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
     q_coeff = [1.0 0.0; -0.5 0.5]
     τ_star = 0.5
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -127,8 +127,8 @@ function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
                0.6666666666666666 -1.3333333333333333 0.6666666666666666]
     τ_star = 0.21132486540518713
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -149,8 +149,8 @@ function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
                -1.25 2.7950849718747395 -2.795084971874738 1.25]
     τ_star = 0.5
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
 
@@ -173,7 +173,7 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
                2.8 -6.533333333333296 7.466666666666636 -6.533333333333315 2.8]
     τ_star = 0.33000947820757126
 
-    TU = RKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
-    ITU = RKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
