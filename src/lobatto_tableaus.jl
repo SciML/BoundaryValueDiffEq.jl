@@ -14,8 +14,8 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     b = [1 // 2, 1 // 2]
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
-    #q_coeff = [1.0 0.0; -0.5 0.5]
-    #τ_star = 0.5
+    q_coeff = [1.0 0.0; -0.5 0.5]
+    τ_star = 0.5
 
     TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
     ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
