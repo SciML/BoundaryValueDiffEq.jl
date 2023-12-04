@@ -86,7 +86,7 @@ function shrink_y(y, N, M, stage)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-                          abstol = 1e-3, adaptive = true, kwargs...)
+                          abstol = 1e-3, adaptive = true, nlsolve_kwargs = (; abstol = 1e-3, reltol = 1e-3, maxiters = 10), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
@@ -177,8 +177,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     # Initialize internal nonlinear problem cache
     @unpack c, a, b, s = TU
     h = mesh_dt[1] # Assume uniformly divided h
-    p_nestprob = zeros(eltype(y), M + 1)
-    K0 = fill(1.0, (M, s))
+    p_nestprob = zeros(T, M + 1)
+    K0 = fill(one(T), (M, s))
     if iip
         nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res, K,
                                                                           p_nestprob, f,
@@ -195,13 +195,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
         nestprob = NonlinearProblem(nlf,
                                     K0, p_nestprob)
     end
-    nest_cache = init(nestprob, NewtonRaphson(), abstol = 1e-4,
-                      reltol = 1e-4,
-                      maxiters = 10)
-    #= nest_cache = init(nestprob, NewtonRaphson(), abstol = 1e-4,
-    reltol = 1e-4,
-    maxiters = 10) =#
-    odesolve_kwargs = (; a)
+    nest_cache = init(nestprob, NewtonRaphson(); nlsolve_kwargs...)
 
     return FIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
                              prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype,
