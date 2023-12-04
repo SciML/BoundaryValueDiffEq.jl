@@ -47,6 +47,7 @@ export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 export RadauIIa1, RadauIIa3, RadauIIa5,RadauIIa9,RadauIIa13
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
+export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
 export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
 # From ODEInterface.jl
 export BVPM2, BVPSOL
