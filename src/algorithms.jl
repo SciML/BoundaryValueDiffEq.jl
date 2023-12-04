@@ -109,7 +109,7 @@ for order in (1, 3, 5, 9, 13)
 
         function $(alg)(; nlsolve = NewtonRaphson(),
             jac_alg = BVPJacobianAlgorithm(),
-            nested_nlsolve = false)
+            nested_nlsolve = true)
             return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
     end
@@ -138,7 +138,7 @@ for order in (2, 3, 4, 5)
 
         function $(alg)(; nlsolve = NewtonRaphson(),
             jac_alg = BVPJacobianAlgorithm(),
-            nested_nlsolve = false)
+            nested_nlsolve = true)
             return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
     end
@@ -166,7 +166,7 @@ for order in (2, 3, 4, 5)
 
         function $(alg)(; nlsolve = NewtonRaphson(),
             jac_alg = BVPJacobianAlgorithm(),
-            nested_nlsolve = false)
+            nested_nlsolve = true)
             return $(alg)(nlsolve, jac_alg, nested_nlsolve)
         end
     end
