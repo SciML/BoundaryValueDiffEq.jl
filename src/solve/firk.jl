@@ -170,13 +170,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     end
 
     # Initialize internal nonlinear problem cache
-    @unpack c, a, b, = TU
-    K = get_tmp(k_discrete[1], X)
-    yᵢ = get_tmp(y[1], X)
-    y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
-    h = mesh_dt[1]
-    p_nestprob = vcat(promote(mesh[1], one(eltype(y_i)))[1], y_i)
-    K0 = fill(1.0, size(K))
+    @unpack c, a, b, s = TU
+    h = mesh_dt[1] # Assume uniformly divided h
+    p_nestprob = zeros(eltype(y), M+1)
+    K0 = fill(1.0, (M, s))
     if iip
         nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res, K,
                                                                           p_nestprob, f,
@@ -192,10 +189,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
         nestprob = NonlinearProblem(nlf,
                                     K0, p_nestprob)
     end 
-    if isdefined(Main, :Infiltrator)
-    Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-        end
-    nest_cache = init(nestprob, SimpleNewtonRaphson(), abstol = 1e-4,
+    nest_cache = init(nestprob, NewtonRaphson(), abstol = 1e-4,
     reltol = 1e-4,
     maxiters = 10)
     #= nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
