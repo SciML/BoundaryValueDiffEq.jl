@@ -28,36 +28,36 @@ end
     #nest_cache # cache for the nested nonlinear solve
     #p_nestprob =#
 
-    @concrete struct FIRKCache{iip, T} <: AbstractRKCache{iip, T}
-        order::Int                 # The order of MIRK method
-        stage::Int                 # The state of MIRK method
-        M::Int                     # The number of equations
-        in_size
-        f
-        bc
-        prob                       # BVProblem
-        problem_type               # StandardBVProblem
-        p                          # Parameters
-        alg                        # MIRK methods
-        TU                         # MIRK Tableau
-        ITU                        # MIRK Interpolation Tableau
-        bcresid_prototype
-        # Everything below gets resized in adaptive methods
-        mesh                       # Discrete mesh
-        mesh_dt                    # Step size
-        k_discrete                 # Stage information associated with the discrete Runge-Kutta method
-        k_interp                   # Stage information associated with the discrete Runge-Kutta method
-        y
-        y₀
-        residual
-        # The following 2 caches are never resized
-        fᵢ_cache
-        fᵢ₂_cache
-        defect
-        p_nestprob
-        nest_cache
-        kwargs
-    end
+@concrete struct FIRKCache{iip, T} <: AbstractRKCache{iip, T}
+    order::Int                 # The order of MIRK method
+    stage::Int                 # The state of MIRK method
+    M::Int                     # The number of equations
+    in_size
+    f
+    bc
+    prob                       # BVProblem
+    problem_type               # StandardBVProblem
+    p                          # Parameters
+    alg                        # MIRK methods
+    TU                         # MIRK Tableau
+    ITU                        # MIRK Interpolation Tableau
+    bcresid_prototype
+    # Everything below gets resized in adaptive methods
+    mesh                       # Discrete mesh
+    mesh_dt                    # Step size
+    k_discrete                 # Stage information associated with the discrete Runge-Kutta method
+    k_interp                   # Stage information associated with the discrete Runge-Kutta method
+    y
+    y₀
+    residual
+    # The following 2 caches are never resized
+    fᵢ_cache
+    fᵢ₂_cache
+    defect
+    p_nestprob
+    nest_cache
+    kwargs
+end
 
 function extend_y(y, N, stage)
     y_extended = similar(y, (N - 1) * (stage + 1) + 1)
@@ -88,6 +88,11 @@ end
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
                           abstol = 1e-3, adaptive = true, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+
+    if adaptive && isa(alg, FIRKNoAdaptivity)
+        error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
+    end
+
     iip = isinplace(prob)
     has_initial_guess, T, M, n, X = __extract_problem_details(prob; dt,
                                                               check_positive_dt = true)
@@ -172,12 +177,13 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     # Initialize internal nonlinear problem cache
     @unpack c, a, b, s = TU
     h = mesh_dt[1] # Assume uniformly divided h
-    p_nestprob = zeros(eltype(y), M+1)
+    p_nestprob = zeros(eltype(y), M + 1)
     K0 = fill(1.0, (M, s))
     if iip
         nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res, K,
                                                                           p_nestprob, f,
-                                                                          a, c, h, stage, prob.p),
+                                                                          a, c, h, stage,
+                                                                          prob.p),
                                     K0, p_nestprob)
     else
         nlf = function (K, p_nestprob)
@@ -188,13 +194,14 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
         end
         nestprob = NonlinearProblem(nlf,
                                     K0, p_nestprob)
-    end 
+    end
     nest_cache = init(nestprob, NewtonRaphson(), abstol = 1e-4,
-    reltol = 1e-4,
-    maxiters = 10)
-    #= nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
+                      reltol = 1e-4,
+                      maxiters = 10)
+    #= nest_cache = init(nestprob, NewtonRaphson(), abstol = 1e-4,
     reltol = 1e-4,
     maxiters = 10) =#
+    odesolve_kwargs = (; a)
 
     return FIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
                              prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype,
