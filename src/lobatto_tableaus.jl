@@ -177,3 +177,88 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
     ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
     return TU, ITU
 end
+
+# LobattoIIIb
+for order in (2, 3, 4, 5)
+    alg = Symbol("LobattoIIIc$(order)")
+    f = Symbol("constructLobattoIIIc$(order)")
+    @eval constructRK(_alg::$(alg), ::Type{T}) where {T} = $(f)(T, _alg.nested_nlsolve)
+end
+
+function constructLobattoIIIc2(::Type{T}, nested::Bool) where {T}
+    # RK coefficients tableau
+    s = 2
+    a = [1//2 -1//2
+         1//2 1//2]
+    c = [0, 1]
+    b = [1 // 2, 1 // 2]
+
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    # TODO
+    q_coeff = [1.0 0.0; -0.5 0.5]
+    τ_star = 0.5
+
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    return TU, ITU
+end
+
+function constructLobattoIIIc3(::Type{T}, nested::Bool) where {T}
+    # RK coefficients tableau
+    s = 3
+    a = [1//6 -1//3 1//6
+         1//6 5//12 -1//12
+         1//6 2//3 1//6]
+    c = [0, 1 // 2, 1]
+    b = [1 // 6, 2 // 3, 1 // 6]
+
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    # TODO
+    q_coeff = [1.0 0.0; -0.5 0.5]
+    τ_star = 0.5
+
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    return TU, ITU
+end
+
+function constructLobattoIIIc4(::Type{T}, nested::Bool) where {T}
+    # RK coefficients tableau
+    s = 4
+    a = [1//12 -Rational(sqrt(5))//12 Rational(sqrt(5))//12 -1//12
+         1//12 1//4 (10 - 7 * Rational(sqrt(5)))//60 Rational(sqrt(5))//60
+         1//12 (10 + 7 * Rational(sqrt(5)))//60 1//4 -Rational(sqrt(5))//60
+         1//12 5//12 5//12 1//12]
+    c = [0, 1 // 2 - Rational(sqrt(5)) // 10, 1 // 2 + Rational(sqrt(5)) // 10, 1]
+    b = [1 // 12, 5 // 12, 5 // 12, 1//12]
+
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    # TODO
+    q_coeff = [1.0 0.0; -0.5 0.5]
+    τ_star = 0.5
+
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    return TU, ITU
+end
+
+function constructLobattoIIIc5(::Type{T}, nested::Bool) where {T}
+    # RK coefficients tableau
+    s = 5
+    a = [1//20 -7//60 2//15 -7//60 1//20
+    1//20 29//180 (47-15*Rational(sqrt(21)))//315 (203-30*Rational(sqrt(21)))//1260 -3//140
+    1//20 (329+105*Rational(sqrt(21)))//2880 73//360 (329-105*Rational(sqrt(21)))//2880 3//160
+    1//20 (203+30*Rational(sqrt(21)))//1260 (47 + 15*Rational(sqrt(21)))//315 29//180 -3//140
+    1//20 49//180 16//45 49//180 1//20]
+    c = [0, 1//2-Rational(sqrt(21))//14, 1//2, 1//2+Rational(sqrt(21))//14, 1]
+    b = [1//20, 49//180, 16//45, 49//180, 1//20]
+
+    # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
+    # TODO
+    q_coeff = [1.0 0.0; -0.5 0.5]
+    τ_star = 0.5
+
+    TU = FIRKTableau(Int64(s), T.(a), T.(c), T.(b), nested)
+    ITU = FIRKInterpTableau(T.(q_coeff), T.(τ_star), Int64(s), nested)
+    return TU, ITU
+end

@@ -172,6 +172,35 @@ for order in (2, 3, 4, 5)
     end
 end
 
+
+for order in (2, 3, 4, 5)
+    alg = Symbol("LobattoIIIc$(order)")
+
+    @eval begin
+        """
+            $($alg)(; nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm())
+
+        $($order)th order LobattoIIIc method, with Newton Raphson nonlinear solver as default.
+
+        ## References
+        TODO
+        }
+        """
+        struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
+            nlsolve::N
+            jac_alg::J
+            nested_nlsolve::Bool
+        end
+
+        function $(alg)(; nlsolve = NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(),
+            nested_nlsolve = true)
+            return $(alg)(nlsolve, jac_alg, nested_nlsolve)
+        end
+    end
+end
+
 # FIRK Algorithms that don't use adaptivity
 const FIRKNoAdaptivity = Union{LobattoIIIb2, RadauIIa1}
 
