@@ -105,25 +105,18 @@ nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
     @unpack nest_cache, p_nestprob = cache
     T = eltype(u)
 
-    #p_nestprob = vcat(promote(mesh[1], one(eltype(y_i)))[1], y_i)
-
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
         h = mesh_dt[i]
-
-        #= if isdefined(Main, :Infiltrator)
-            Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-        end =#
 
         K = get_tmp(k_discrete[i], u)
         if minimum(abs.(K)) < 1e-2
             K = fill(1.0, size(K))
         end
-        #K0 = fill(1.0, size(K))
+
         yᵢ = get_tmp(y[i], u)
         yᵢ₊₁ = get_tmp(y[i + 1], u)
         y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
-        #prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f!, a, c, y_i, h, mesh[i], stage, p), fill(1.0, size(K)), p);
 
         p_nestprob[1] = promote(mesh[i], one(eltype(y_i)))[1]
         p_nestprob[2:end] = y_i
