@@ -67,9 +67,10 @@ end
     end
 end
 
-function FIRK_nlsolve!(res, K, p_nlsolve, f!, a, c, h, stage, p_f!)
+function FIRK_nlsolve!(res, K, p_nlsolve, f!, a, c, stage, p_f!)
     mesh_i = p_nlsolve[1]
-    yᵢ = @view p_nlsolve[2:end]
+    h = p_nlsolve[2]
+    yᵢ = @view p_nlsolve[3:end]
 
     T = eltype(K)
     tmp1 = similar(K, size(K, 1)) # Optimize by removing this allocation
@@ -109,20 +110,20 @@ nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
         residᵢ = residual[i]
         h = mesh_dt[i]
 
-        K = get_tmp(k_discrete[i], u)
-        if minimum(abs.(K)) < 1e-2
+        K = copy(get_tmp(k_discrete[i], u))
+        #if minimum(abs.(K)) < 1e-2
             K = fill(1.0, size(K))
-        end
+        #end
 
-        yᵢ = get_tmp(y[i], u)
-        yᵢ₊₁ = get_tmp(y[i + 1], u)
+        yᵢ = copy(get_tmp(y[i], u))
+        yᵢ₊₁ = copy(get_tmp(y[i + 1], u))
         y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
 
-        p_nestprob[1] = promote(mesh[i], one(eltype(y_i)))[1]
-        p_nestprob[2:end] = y_i
+        p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
+        p_nestprob[3:end] = y_i
         reinit!(nest_cache, K, p = p_nestprob)
         solve!(nest_cache) #pass kwargs in initialization # Doesn't work with forwarddiff atm
-
+        #@. K = nest_cache.u
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nest_cache.u[:, 1:stage], b[1:stage], -h, T(1))

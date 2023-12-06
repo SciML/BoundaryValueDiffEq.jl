@@ -3,7 +3,8 @@
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
-@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache, ITU::MIRKInterpTableau, t,
+@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache,
+                             ITU::MIRKInterpTableau, t,
                              mesh, mesh_dt)
     i = interval(mesh, t)
     dt = mesh_dt[i]
@@ -13,7 +14,8 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     return y
 end
 
-function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache, ITU::MIRKInterpTableau, t,
+function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache,
+                      ITU::MIRKInterpTableau, t,
                       mesh, mesh_dt)
     interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
 end
@@ -44,12 +46,11 @@ end
                              ITU::FIRKInterpTableau{false},
                              t,
                              mesh, mesh_dt)
-
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀)-1) / (length(cache.y)-1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
-    if lf > 1 
-        h *=lf
+    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1
+        h *= lf
     end
     τ = (t - mesh[j]) / h
 
@@ -94,20 +95,19 @@ end
                              mesh, mesh_dt)
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀)-1) / (length(cache.y)-1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
-    if lf > 1 
-        h *=lf
+    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1
+        h *= lf
     end
     τ = (t - mesh[j]) / h
 
     @unpack f, M, p = cache
     @unpack c, a, b = cache.TU
     @unpack q_coeff, stage = ITU
+    @unpack nest_cache, p_nestprob = cache
 
-    K = zeros(eltype(cache.y[1].du), M, stage)
-
-    yᵢ = cache.y[j].du
-    yᵢ₊₁ = cache.y[j + 1].du
+    yᵢ = copy(cache.y[j].du)
+    yᵢ₊₁ = copy(cache.y[j + 1].du)
 
     dyᵢ = copy(yᵢ)
     dyᵢ₊₁ = copy(yᵢ₊₁)
@@ -116,10 +116,21 @@ end
     f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
 
     # Load interpolation residual
-    prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f, a, c, yᵢ, h, mesh[j], stage,
-                                                   p), fill(1.0, size(K)), p)
-    sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
-    K .= sol.u
+    y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
+
+    
+    p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
+    p_nestprob[3:end] .= y_i
+
+    K0 = copy(cache.k_discrete[j].du)
+
+    #if minimum(abs.(K0)) < 1e-2
+    K0 = fill(one(eltype(K0)), size(K0))
+    #end
+
+    reinit!(nest_cache, K0, p = p_nestprob)
+    solve!(nest_cache)
+    K = nest_cache.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
@@ -265,7 +276,8 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::AbstractRKCache{iip, T}, TU::MIRKTableau) where {iip, T}
+@views function defect_estimate!(cache::AbstractRKCache{iip, T},
+                                 TU::MIRKTableau) where {iip, T}
     @unpack M, stage, f, alg, mesh, mesh_dt, defect = cache
     @unpack s_star, τ_star = cache.ITU
 
@@ -376,24 +388,32 @@ end
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::AbstractRKCache{iip, T}, TU::FIRKTableau{true}) where {iip, T}
+@views function defect_estimate!(cache::AbstractRKCache{iip, T},
+                                 TU::FIRKTableau{true}) where {iip, T}
     @unpack f, M, stage, mesh, mesh_dt, defect = cache
     @unpack a, c = cache.TU
     @unpack q_coeff, τ_star = cache.ITU
-
-    K = zeros(eltype(cache.y[1].du), M, stage)
-    for i in 1:(length(mesh) - 1) # TODO: add backward differences for last point, easy if equidistributed
+    @unpack nest_cache, p_nestprob = cache
+    for i in 1:(length(mesh) - 1)
         h = mesh_dt[i]
-        yᵢ₁ = cache.y[i].du
+        yᵢ₁ = copy(cache.y[i].du)
         yᵢ₂ = copy(yᵢ₁)
 
-        prob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, f, a, c, yᵢ₁, h, mesh[i], stage,
-                                                       p), fill(1.0, size(K)), cache.p)
-        sol = solve(prob, NewtonRaphson(), reltol = 1e-4, maxiters = 10)
-        K .= sol.u
+        K = cache.k_discrete[i].du
+
+        if minimum(abs.(K)) < 1e-2
+            K = fill(one(eltype(K)), size(K))
+        end
+
+        y_i = eltype(yᵢ₁) == Float64 ? yᵢ₁ : [y.value for y in yᵢ₁]
+
+        p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
+        p_nestprob[3:end] = y_i
+        reinit!(nest_cache, K, p = p_nestprob)
+        solve!(nest_cache)
 
         # Defect estimate from q(x) at y_i + τ* * h
-        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, K)
+        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)
         if iip
             f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
         else
@@ -403,7 +423,7 @@ end
         est₁ = maximum(abs, yᵢ₁)
 
         # Defect estimate from q(x) at y_i + (1-τ*) * h
-        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, K)
+        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, nest_cache.u)
         if iip
             f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         else
@@ -477,7 +497,8 @@ function sum_stages!(z, cache::AbstractRKCache, w, i::Int, dt = cache.mesh_dt[i]
     return z
 end
 
-@views function sum_stages!(z, z′, cache::AbstractRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+@views function sum_stages!(z, z′, cache::AbstractRKCache, w, w′, i::Int,
+                            dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
 

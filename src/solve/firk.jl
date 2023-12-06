@@ -176,20 +176,19 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     # Initialize internal nonlinear problem cache
     @unpack c, a, b, s = TU
-    h = mesh_dt[1] # Assume uniformly divided h
-    p_nestprob = zeros(T, M + 1)
+    p_nestprob = zeros(T, M + 2)
     K0 = fill(one(T), (M, s))
     if iip
         nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res, K,
                                                                           p_nestprob, f,
-                                                                          a, c, h, stage,
+                                                                          a, c, stage,
                                                                           prob.p),
                                     K0, p_nestprob)
     else
         nlf = function (K, p_nestprob)
             res = zero(K)
             FIRK_nlsolve!(res, K, p_nestprob, f,
-                          a, c, h, stage, prob.p)
+                          a, c, stage, prob.p)
             return res
         end
         nestprob = NonlinearProblem(nlf,
