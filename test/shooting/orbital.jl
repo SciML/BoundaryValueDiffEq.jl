@@ -66,8 +66,8 @@ resid_f_2p = (Array{Float64, 1}(undef, 3), Array{Float64, 1}(undef, 3))
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital!, cur_bc!, y0, tspan)
-for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
-    AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
+for autodiff in (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+    AutoSparseForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
     nlsolve = TrustRegion(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
@@ -76,9 +76,10 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     @info "Single Shooting Lambert's Problem: $(norm(resid_f, Inf))"
     @test norm(resid_f, Inf) < 0.005
 
+    # Older versions take too long on the first run
     jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
-    @time sol = solve(bvp, MultipleShooting(10, AutoVern7(Rodas5P()); nlsolve, jac_alg);
-        abstol = 1e-6, reltol = 1e-6, verbose = false)
+    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+        force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false)
     cur_bc!(resid_f, sol, nothing, sol.t)
     @info "Multiple Shooting Lambert's Problem: $(norm(resid_f, Inf))"
     @test norm(resid_f, Inf) < 0.005
@@ -87,8 +88,8 @@ end
 ### Using the TwoPoint BVP Structure
 bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
     bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)))
-for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
-    AutoSparseForwardDiff(), AutoFiniteDiff(; fdtype = Val(:forward)),
+for autodiff in (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+    AutoSparseForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
     nlsolve = TrustRegion(; autodiff)
     @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-13,
@@ -98,9 +99,10 @@ for autodiff in (AutoForwardDiff(), AutoFiniteDiff(; fdtype = Val(:central)),
     @info "Single Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
     @test norm(reduce(vcat, resid_f_2p), Inf) < 0.005
 
+    # Older versions take too long on the first run
     jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
-    @time sol = solve(bvp, MultipleShooting(10, AutoVern7(Rodas5P()); nlsolve, jac_alg);
-        abstol = 1e-6, reltol = 1e-6, verbose = false)
+    @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+        force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false)
     cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
     cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
     @info "Multiple Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"

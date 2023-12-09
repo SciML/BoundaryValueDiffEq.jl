@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
+using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
 
 @testset "Basic Shooting Tests" begin
     SOLVERS = [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
@@ -63,7 +63,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
         resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
         bc2a!(resid_f[1], sol(tspan[1]), nothing)
         bc2b!(resid_f[2], sol(tspan[2]), nothing)
-        @test norm(reduce(vcat, resid_f)) < 1e-11
+        @test norm(reduce(vcat, resid_f)) < 1e-12
     end
 
     # Out of Place
@@ -76,7 +76,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
         sol = solve(bvp4, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         resid_f = reduce(vcat, (bc2a(sol(tspan[1]), nothing), bc2b(sol(tspan[2]), nothing)))
-        @test norm(resid_f) < 1e-11
+        @test norm(resid_f) < 1e-12
     end
 end
 
@@ -100,11 +100,8 @@ end
     bvp = BVProblem(f1!, bc1!, u0, tspan)
     resid_f = Array{ComplexF64}(undef, 2)
 
-    nlsolve = NewtonRaphson(; autodiff = AutoFiniteDiff())
-    jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
-        nonbc_diffmode = AutoSparseFiniteDiff())
-    for solver in [Shooting(Tsit5(); nlsolve),
-        MultipleShooting(10, Tsit5(); nlsolve, jac_alg)]
+    # We will automatically use FiniteDiff if we can't use dual numbers
+    for solver in [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
         sol = solve(bvp, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         bc1!(resid_f, sol, nothing, sol.t)
@@ -163,4 +160,13 @@ end
     resid = zeros(8)
     bc_flow!(resid, sol_msshooting, p, sol_msshooting.t)
     @test norm(resid, Inf) < 1e-6
+end
+
+@testset "Testing Deprecations" begin
+    @test_deprecated Shooting(Tsit5();
+        nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)))
+
+    alg = Shooting(Tsit5();
+        nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)))
+    @test alg.jac_alg.diffmode == AutoForwardDiff(chunksize = 2)
 end
