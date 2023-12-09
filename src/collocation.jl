@@ -72,11 +72,12 @@ function FIRK_nlsolve!(res, K, p_nlsolve, f!, a, c, stage, p_f!)
     h = p_nlsolve[2]
     yᵢ = @view p_nlsolve[3:end]
 
-    T = eltype(K)
-    tmp1 = similar(K, size(K, 1)) # Optimize by removing this allocation
+    T = promote_type(eltype(K), eltype(yᵢ))
+    tmp1 = similar(K, T, size(K, 1)) # Optimize by removing this allocation
+    t_yᵢ = T.(yᵢ)
 
     for r in 1:stage
-        @. tmp1 = yᵢ
+        @. tmp1 = t_yᵢ
         __maybe_matmul!(tmp1, @view(K[:, 1:stage]), @view(a[r, 1:stage]), h, T(1))
         f!(@view(res[:, r]), tmp1, p_f!, mesh_i + c[r] * h)
         @views res[:, r] .-= K[:, r]
@@ -103,26 +104,30 @@ nest_cache = init(nestprob, NewtonRaphson(autodiff = false), abstol = 1e-4,
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
                    mesh, mesh_dt, stage::Int, cache)
     @unpack c, a, b, = TU
-    @unpack nest_cache, p_nestprob = cache
+    #@unpack nest_cache, p_nestprob, prob = cache
+    @unpack nest_cache, prob = cache
     T = eltype(u)
 
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
         h = mesh_dt[i]
 
-        K = copy(get_tmp(k_discrete[i], u))
+        #K = copy(get_tmp(k_discrete[i], u))
         #if minimum(abs.(K)) < 1e-2
-            K = fill(1.0, size(K))
+        #K = fill(one(eltype(K)), size(K))
         #end
 
         yᵢ = copy(get_tmp(y[i], u))
         yᵢ₊₁ = copy(get_tmp(y[i + 1], u))
         y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
 
-        p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
-        p_nestprob[3:end] = y_i
-        reinit!(nest_cache, K, p = p_nestprob)
-        solve!(nest_cache) #pass kwargs in initialization # Doesn't work with forwarddiff atm
+        #= p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
+        p_nestprob[3:end] = y_i =#
+
+        p_nestprob = vcat(promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]..., y_i)
+
+        solve_cache!(nest_cache, p_nestprob)
+
         #@. K = nest_cache.u
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ

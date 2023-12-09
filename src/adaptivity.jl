@@ -104,7 +104,7 @@ end
     @unpack f, M, p = cache
     @unpack c, a, b = cache.TU
     @unpack q_coeff, stage = ITU
-    @unpack nest_cache, p_nestprob = cache
+    @unpack nest_cache, p_nestprob, prob = cache
 
     yᵢ = copy(cache.y[j].du)
     yᵢ₊₁ = copy(cache.y[j + 1].du)
@@ -128,8 +128,7 @@ end
     K0 = fill(one(eltype(K0)), size(K0))
     #end
 
-    reinit!(nest_cache, K0, p = p_nestprob)
-    solve!(nest_cache)
+    solve_cache!(nest_cache, K0, p_nestprob)
     K = nest_cache.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
@@ -393,7 +392,7 @@ end
     @unpack f, M, stage, mesh, mesh_dt, defect = cache
     @unpack a, c = cache.TU
     @unpack q_coeff, τ_star = cache.ITU
-    @unpack nest_cache, p_nestprob = cache
+    @unpack nest_cache, p_nestprob, prob = cache
     for i in 1:(length(mesh) - 1)
         h = mesh_dt[i]
         yᵢ₁ = copy(cache.y[i].du)
@@ -409,8 +408,7 @@ end
 
         p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
         p_nestprob[3:end] = y_i
-        reinit!(nest_cache, K, p = p_nestprob)
-        solve!(nest_cache)
+        solve_cache!(nest_cache, K, p_nestprob)
 
         # Defect estimate from q(x) at y_i + τ* * h
         z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)

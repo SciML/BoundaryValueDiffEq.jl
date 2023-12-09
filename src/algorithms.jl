@@ -202,7 +202,7 @@ for order in (2, 3, 4, 5)
 end
 
 # FIRK Algorithms that don't use adaptivity
-const FIRKNoAdaptivity = Union{LobattoIIIb2, RadauIIa1}
+const FIRKNoAdaptivity = Union{LobattoIIIb2, RadauIIa1, LobattoIIIc2}
 
 """
     BVPM2(; max_num_subintervals = 3000, method_choice = 4, diagnostic_output = 1,

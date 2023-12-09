@@ -8,14 +8,14 @@ import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, undefmatrix
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
-import ForwardDiff: pickchunksize
+import ForwardDiff: pickchunksize, Dual
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve
 import RecursiveArrayTools: ArrayPartition
 import SparseDiffTools: AbstractSparseADType
 import TruncatedStacktraces: @truncate_stacktrace
 import UnPack: @unpack
-import SimpleNonlinearSolve: SimpleNewtonRaphson
+import StaticArraysCore: SVector
 
 include("types.jl")
 include("utils.jl")

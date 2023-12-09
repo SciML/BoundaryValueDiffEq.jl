@@ -86,7 +86,9 @@ function shrink_y(y, N, M, stage)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-                          abstol = 1e-3, adaptive = true, nlsolve_kwargs = (; abstol = 1e-3, reltol = 1e-3, maxiters = 10), kwargs...)
+                          abstol = 1e-3, adaptive = true,
+                          nlsolve_kwargs = (; abstol = 1e-3, reltol = 1e-3, maxiters = 10),
+                          kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
@@ -96,7 +98,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     iip = isinplace(prob)
     has_initial_guess, T, M, n, X = __extract_problem_details(prob; dt,
                                                               check_positive_dt = true)
-
     stage = alg_stage(alg)
     TU, ITU = constructRK(alg, T)
 
@@ -219,4 +220,73 @@ function __expand_cache!(cache::FIRKCache)
     __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
     __append_similar!(cache.defect, Nₙ - 1, cache.M)
     return cache
+end
+
+#= function solve_cache!(nest_cache, u, p_nest)
+    reinit!(nest_cache, u, p = p_nest);
+    return solve!(nest_cache)
+end =#
+
+function solve_cache!(nest_cache, p_nest)
+    K = fill(one(eltype(nest_cache.u)), size(nest_cache.u))
+    reinit!(nest_cache, K, p = p_nest)
+    return solve!(nest_cache)
+end
+
+function _scalar_nlsolve_∂f_∂p(f, res, u, p)
+    ff = p isa Number ? ForwardDiff.derivative :
+         (u isa Number ? ForwardDiff.gradient : ForwardDiff.jacobian)
+    return ff((y, x) -> f(y, u, x), res, p)
+end
+
+function _scalar_nlsolve_∂f_∂u(f, res, u, p)
+    ff = u isa Number ? ForwardDiff.derivative : ForwardDiff.jacobian
+    return ff((y, x) -> f(y, x, p), res, u)
+end
+
+function _scalar_nlsolve_cache_ad(nest_cache, u, p_nest)
+    _p_nest = ForwardDiff.value(p_nest)
+    reinit!(nest_cache, ForwardDiff.value.(u), p = _p_nest)
+    sol = solve!(nest_cache)
+    uu = sol.u
+    res = zero(uu)
+    f_p = _scalar_nlsolve_∂f_∂p(nest_cache.f, res, uu, _p_nest)
+    f_x = _scalar_nlsolve_∂f_∂u(nest_cache.f, res, uu, _p_nest)
+
+    z_arr = -inv(f_x) * f_p
+
+    pp = p_nest
+    sumfun = ((z, p),) -> map(zᵢ -> zᵢ * ForwardDiff.partials(p), z)
+    if uu isa Number
+        partials = sum(sumfun, zip(z_arr, pp))
+    elseif _p_nest isa Number
+        partials = sumfun((z_arr, pp))
+    else
+        partials = sum(sumfun, zip(eachcol(z_arr), pp))
+    end
+
+    return sol, partials
+end
+
+#= function solve_cache!(nest_cache, u::AbstractArray,
+                      p_nest::AbstractArray{<:Dual{T, V, P}}) where {T, V, P}
+
+    sol, partials = _scalar_nlsolve_cache_ad(nest_cache, u, p_nest)
+    if isdefined(Main, :Infiltrator)
+        Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+          end
+    #dual_soln = NonlinearSolve.scalar_nlsolve_dual_soln(sol.u, partials, p_nest)
+    dual_soln =  map(((uᵢ, pᵢ),) -> Dual{T, V, P}(uᵢ, pᵢ), zip(sol.u, partials))
+    return SciMLBase.build_solution(nest_cache.prob, nest_cache.alg, dual_soln, sol.resid;
+                                    sol.retcode)
+end =#
+
+function solve_cache!(nest_cache,
+                      p_nest::AbstractArray{<:Dual{T, V, P}}) where {T, V, P}
+    K = fill(one(eltype(nest_cache.u)), size(nest_cache.u))
+    sol, partials = _scalar_nlsolve_cache_ad(nest_cache, K, p_nest)
+    #dual_soln = NonlinearSolve.scalar_nlsolve_dual_soln(sol.u, partials, p_nest)
+    dual_soln = map(((uᵢ, pᵢ),) -> Dual{T, V, P}(uᵢ, pᵢ), zip(sol.u, partials))
+    return SciMLBase.build_solution(nest_cache.prob, nest_cache.alg, dual_soln, sol.resid;
+                                    sol.retcode)
 end
