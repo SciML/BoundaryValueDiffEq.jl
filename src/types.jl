@@ -68,8 +68,14 @@ end
     diffmode
 end
 
+__any_sparse_ad(ad) = ad isa AbstractSparseADType
+function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
+    __any_sparse_ad(jac_alg.bc_diffmode) || __any_sparse_ad(jac_alg.nonbc_diffmode) ||
+        __any_sparse_ad(jac_alg.diffmode)
+end
+
 function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
-    bc_diffmode = missing)
+        bc_diffmode = missing)
     if diffmode !== missing
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
@@ -97,25 +103,45 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProb
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::StandardBVProblem,
-    prob::BVProblem, alg)
-    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
-    bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoForwardDiff() : jac_alg.bc_diffmode
-    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
+        prob::BVProblem, alg)
+    u0 = prob.u0 isa AbstractArray ? prob.u0 :
+         __initial_guess(prob.u0, prob.p, first(prob.tspan))
+    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
+    bc_diffmode = jac_alg.bc_diffmode === nothing ?
+                  (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
+                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
 
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, ::TwoPointBVProblem,
-    prob::BVProblem, alg)
-    diffmode = jac_alg.diffmode === nothing ? AutoSparseForwardDiff() : jac_alg.diffmode
-    bc_diffmode = jac_alg.bc_diffmode === nothing ? AutoSparseForwardDiff() :
-                  jac_alg.bc_diffmode
-    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? AutoSparseForwardDiff() :
-                     jac_alg.nonbc_diffmode
+struct BoundaryValueDiffEqTag end
 
-    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
+function ForwardDiff.checktag(::Type{<:ForwardDiff.Tag{<:BoundaryValueDiffEqTag, <:T}},
+        f::F, x::AbstractArray{T}) where {T, F}
+    return true
+end
+
+@inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
+    return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
+end
+@inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
+@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()
+@inline function __default_sparse_ad(::Type{T}) where {T}
+    return ForwardDiff.can_dual(T) ?
+           AutoSparseForwardDiff(; tag = BoundaryValueDiffEqTag()) : AutoSparseFiniteDiff()
+end
+
+@inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
+    return isbitstype(T) ? __default_nonsparse_ad(T) : __default_nonsparse_ad(first(x))
+end
+@inline __default_nonsparse_ad(x::T) where {T} = __default_nonsparse_ad(T)
+@inline __default_nonsparse_ad(::Type{<:Complex}) = AutoFiniteDiff()
+@inline function __default_nonsparse_ad(::Type{T}) where {T}
+    return ForwardDiff.can_dual(T) ? AutoForwardDiff(; tag = BoundaryValueDiffEqTag()) :
+           AutoFiniteDiff()
 end
 
 # This can cause Type Instability
@@ -125,7 +151,7 @@ function concretize_jacobian_algorithm(alg, prob)
 end
 
 function MIRKJacobianComputationAlgorithm(diffmode = missing;
-    collocation_diffmode = missing, bc_diffmode = missing)
+        collocation_diffmode = missing, bc_diffmode = missing)
     Base.depwarn("`MIRKJacobianComputationAlgorithm` has been deprecated in favor of \
         `BVPJacobianAlgorithm`. Replace `collocation_diffmode` with `nonbc_diffmode",
         :MIRKJacobianComputationAlgorithm)
