@@ -15,16 +15,16 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray})
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
+        sizes)
     x_, xiter = Iterators.peel(x)
-    # x_ will be an ArrayPartition
-    copyto!(y[1:length(x_.x[1])], x_.x[1])
-    i = length(x_.x[1])
+    copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
+    i = prod(sizes[1])
     for xᵢ in xiter
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
         i += length(xᵢ)
     end
-    copyto!(y[(i + 1):(i + length(x_.x[2]))], x_.x[2])
+    copyto!(y[(i + 1):(i + prod(sizes[2]))], x_[(end - prod(sizes[2]) + 1):end])
     return y
 end
 
@@ -71,33 +71,46 @@ function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
 end
 
 ## Easier to dispatch
-eval_bc_residual(pt, bc, sol, p) = eval_bc_residual(pt, bc, sol, p, sol.t)
-eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
-function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
+eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
+eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
+function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    resid₀ = bca(ua, p)
-    resid₁ = bcb(ub, p)
-    return ArrayPartition(resid₀, resid₁)
+    resida = bca(ua, p)
+    residb = bcb(ub, p)
+    return (resida, residb)
 end
 
-eval_bc_residual!(resid, pt, bc!, sol, p) = eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
-eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
+function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
+    return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
+end
+eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p,
+        t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    bca!(resid.x[1], ua, p)
-    bcb!(resid.x[2], ub, p)
+    bca!(resid.resida, ua, p)
+    bcb!(resid.residb, ub, p)
+    return resid
+end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol,
+        p, t) where {BC}
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
+    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    bca!(resid[1], ua, p)
+    bcb!(resid[2], ub, p)
     return resid
 end
 
 __append_similar!(::Nothing, n, _) = nothing
 
+# NOTE: We use `last` since the `first` might not conform to the same structure. For eg,
+#       in the case of residuals
 function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU)
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [similar(first(x)) for _ in 1:N])
+    append!(x, [similar(last(x)) for _ in 1:N])
     return x
 end
 
@@ -106,24 +119,7 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M, TU)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
     chunksize = pickchunksize(M * (N + length(x)))
-    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
-    return x
-end
-
-function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _) 
-    N = n - length(x)
-    N == 0 && return x
-    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [similar(first(x)) for _ in 1:N])
-    return x
-end
-
-function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M) 
-    N = n - length(x)
-    N == 0 && return x
-    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    chunksize = pickchunksize(M * (N + length(x)))
-    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
     return x
 end
 
@@ -132,7 +128,7 @@ function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTab
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [similar(first(x)) for _ in 1:N])
+    append!(x, [similar(last(x)) for _ in 1:N])
     return x
 end
 
@@ -142,7 +138,7 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M, TU::FIRKTa
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
     chunksize = isa(TU, FIRKTableau{false}) ? pickchunksize(M * (N + length(x) * (s + 1))) : pickchunksize(M * (N + length(x)))
-    append!(x, [__maybe_allocate_diffcache(first(x), chunksize) for _ in 1:N])
+    append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
     return x
 end
 
@@ -153,33 +149,60 @@ end
 function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0)
-    return True(), eltype(_u0), length(_u0), (length(u0) - 1), _u0
+    return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(prob, u0; dt = 0.0, check_positive_dt::Bool = false)
+function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
+        check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
-    return False(), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+    return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+end
+function __extract_problem_details(prob, f::F; dt = 0.0,
+        check_positive_dt::Bool = false) where {F <: Function}
+    # Problem passes in a initial guess function
+    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    u0 = __initial_guess(f, prob.p, prob.tspan[1])
+    t₀, t₁ = prob.tspan
+    return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end
 
-__initial_state_from_prob(prob::BVProblem, mesh) = __initial_state_from_prob(prob.u0, mesh)
-__initial_state_from_prob(u0::AbstractArray, mesh) = [copy(vec(u0)) for _ in mesh]
-function __initial_state_from_prob(u0::AbstractVector{<:AbstractVector}, _)
+function __initial_guess(f::F, p::P, t::T) where {F, P, T}
+    if static_hasmethod(f, Tuple{P, T})
+        return f(p, t)
+    elseif static_hasmethod(f, Tuple{T})
+        Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
+                     `t`. The single argument version has been deprecated and will be \
+                     removed in the next major release of SciMLBase.", :__initial_guess)
+        return f(t)
+    else
+        throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))
+    end
+end
+
+function __initial_state_from_prob(prob::BVProblem, mesh)
+    return __initial_state_from_prob(prob, prob.u0, mesh)
+end
+function __initial_state_from_prob(::BVProblem, u0::AbstractArray, mesh)
+    return [copy(vec(u0)) for _ in mesh]
+end
+function __initial_state_from_prob(::BVProblem, u0::AbstractVector{<:AbstractVector}, _)
     return [copy(vec(u)) for u in u0]
+end
+function __initial_state_from_prob(prob::BVProblem, f::F, mesh) where {F}
+    return [__initial_guess(f, prob.p, t) for t in mesh]
 end
 
 function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
 function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
-    prototype = if isinplace(prob)
-        prob.f.bcresid_prototype
-    elseif prob.f.bcresid_prototype !== nothing
-        prob.f.bcresid_prototype
+    prototype = if prob.f.bcresid_prototype !== nothing
+        prob.f.bcresid_prototype.x
     else
-        ArrayPartition(first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p))
+        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
     end
-    return prototype, size.(prototype.x)
+    return prototype, size.(prototype)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
@@ -187,15 +210,63 @@ function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     return prototype, size(prototype)
 end
 
-function __fill_like(v, x, args...)
+@inline function __fill_like(v, x, args...)
     y = similar(x, args...)
     fill!(y, v)
     return y
 end
-__zeros_like(args...) = __fill_like(0, args...)
-__ones_like(args...) = __fill_like(1, args...)
+@inline __zeros_like(args...) = __fill_like(0, args...)
+@inline __ones_like(args...) = __fill_like(1, args...)
 
-__safe_reshape(x, args...) = reshape(x, args...)
-function __safe_reshape(x::ArrayPartition, sizes::NTuple)
-    return ArrayPartition(__safe_reshape.(x.x, sizes))
+@inline __safe_vec(x) = vec(x)
+@inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
+
+@inline __vec(x::AbstractArray) = vec(x)
+@inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
+
+# Restructure Non-Vector Inputs
+function __vec_f!(du, u, p, t, f!, u_size)
+    f!(reshape(du, u_size), reshape(u, u_size), p, t)
+    return nothing
 end
+
+__vec_f(u, p, t, f, u_size) = vec(f(reshape(u, u_size), p, t))
+
+function __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), __restructure_sol(sol, u_size), p, t)
+    return nothing
+end
+
+function __vec_bc!(resid, sol, p, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), reshape(sol, u_size), p)
+    return nothing
+end
+
+__vec_bc(sol, p, t, bc, u_size) = vec(bc(__restructure_sol(sol, u_size), p, t))
+__vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
+
+__get_non_sparse_ad(ad::AbstractADType) = ad
+function __get_non_sparse_ad(ad::AbstractSparseADType)
+    if ad isa AutoSparseForwardDiff
+        return AutoForwardDiff{__get_chunksize(ad), typeof(ad.tag)}(ad.tag)
+    elseif ad isa AutoSparseEnzyme
+        return AutoEnzyme()
+    elseif ad isa AutoSparseFiniteDiff
+        return AutoFiniteDiff()
+    elseif ad isa AutoSparseReverseDiff
+        return AutoReverseDiff(ad.compile)
+    elseif ad isa AutoSparseZygote
+        return AutoZygote()
+    else
+        throw(ArgumentError("Unknown AD Type"))
+    end
+end
+
+__get_chunksize(::AutoSparseForwardDiff{CK}) where {CK} = CK
+
+# Restructure Solution
+function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
+    return map(Base.Fix2(reshape, u_size), sol)
+end
+
+# TODO: Add dispatch for a ODESolution Type as well

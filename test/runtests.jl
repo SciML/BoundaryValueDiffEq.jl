@@ -11,8 +11,15 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Ray Tracing BVP" begin
                 include("shooting/ray_tracing.jl")
             end
-            @time @safetestset "Orbital" begin
-                include("shooting/orbital.jl")
+            if VERSION ≥ v"1.10-"
+                @time @safetestset "Orbital" begin
+                    include("shooting/orbital.jl")
+                end
+            end
+            if VERSION ≥ v"1.10-"
+                @time @safetestset "Shooting NLLS Tests" begin
+                    include("shooting/nonlinear_least_squares.jl")
+                end
             end
         end
     end
@@ -28,6 +35,14 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Vector of Vector" begin
                 include("mirk/vectorofvector_initials.jl")
             end
+            @time @safetestset "Interpolation Tests" begin
+                include("mirk/interpolation_test.jl")
+            end
+            if VERSION ≥ v"1.10-"
+                @time @safetestset "MIRK NLLS Tests" begin
+                    include("mirk/nonlinear_least_squares.jl")
+                end
+            end
         end
     end
 
@@ -36,20 +51,18 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Non Vector Inputs" begin
                 include("misc/non_vector_inputs.jl")
             end
-
             @time @safetestset "Type Stability" begin
                 include("misc/type_stability.jl")
             end
-
             @time @safetestset "ODE Interface Tests" begin
                 include("misc/odeinterface_ex7.jl")
             end
-        end
-    end
-    
-    @time @testset "Interpolation Tests" begin
-        @time @safetestset "MIRK Interpolation Test" begin
-            include("interpolation_test.jl")
+            @time @safetestset "Initial Guess Function" begin
+                include("misc/initial_guess.jl")
+            end
+            @time @safetestset "Aqua: Quality Assurance" begin
+                include("misc/aqua.jl")
+            end
         end
     end
 end
