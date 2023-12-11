@@ -156,3 +156,8 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVPr
     J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
     return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
+
+function SparseDiffTools.PrecomputedJacobianColorvec(M::ColoredMatrix)
+    return PrecomputedJacobianColorvec(; jac_prototype = M.M, M.row_colorvec,
+                                       M.col_colorvec)
+end

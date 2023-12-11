@@ -46,7 +46,6 @@ end
     mesh                       # Discrete mesh
     mesh_dt                    # Step size
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
-    k_interp                   # Stage information associated with the discrete Runge-Kutta method
     y
     y₀
     residual
@@ -78,7 +77,6 @@ end
     mesh                       # Discrete mesh
     mesh_dt                    # Step size
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
-    k_interp                   # Stage information associated with the discrete Runge-Kutta method
     y
     y₀
     residual
@@ -116,10 +114,10 @@ function shrink_y(y, N, M, stage)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-    abstol = 1e-3, adaptive = true, kwargs...)
+    abstol = 1e-3, adaptive = true, nlsolve_kwargs = (; abstol = 1e-4, reltol = 1e-4, maxiters = 10), kwargs...)
 if alg.nested_nlsolve
     return init_nested(prob, alg; dt = dt,
-    abstol = abstol, adaptive = adaptive, kwargs...)
+    abstol = abstol, adaptive = adaptive, nlsolve_kwargs = nlsolve_kwargs, kwargs...)
 else
     return init_expanded(prob, alg; dt = dt,
     abstol = abstol, adaptive = adaptive, kwargs...)
@@ -127,7 +125,7 @@ end
 end
 
 function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-                          abstol = 1e-3, adaptive = true, kwargs...)
+                          abstol = 1e-3, adaptive = true, nlsolve_kwargs, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
 
@@ -158,8 +156,6 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse(adaptive, M, 0), ifelse(adaptive, ITU.s_star - stage, 0))
-                for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -174,7 +170,6 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     end
 
     defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
-    new_stages = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -227,7 +222,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     return FIRKCacheNested{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
                              prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype,
                              mesh, mesh_dt,
-                             k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
+                             k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
                              defect, p_nestprob, nest_cache,
                              resid₁_size,
                              (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
@@ -274,9 +269,6 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse((adaptive && !isa(TU, FIRKTableau)), M, 0),
-                        (adaptive && !isa(TU, FIRKTableau) ? ITU.s_star - stage : 0))
-                for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -328,7 +320,7 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
                                    bcresid_prototype,
                                    mesh,
                                    mesh_dt,
-                                   k_discrete, k_interp, y, y₀, residual, fᵢ_cache,
+                                   k_discrete, y, y₀, residual, fᵢ_cache,
                                    fᵢ₂_cache,
                                    defect,
                                    (; defect_threshold, MxNsub, abstol, dt, adaptive,
