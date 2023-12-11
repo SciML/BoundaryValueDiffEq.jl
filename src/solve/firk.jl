@@ -335,11 +335,11 @@ match the length of the new mesh.
 """
 function __expand_cache!(cache::Union{FIRKCacheNested, FIRKCacheExpand})
     Nₙ = length(cache.mesh)
-    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
+    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
     __append_similar!(cache.y, Nₙ, cache.M, cache.TU)
     __append_similar!(cache.y₀, Nₙ, cache.M, cache.TU)
     __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
-    __append_similar!(cache.defect, Nₙ - 1, cache.M)
+    __append_similar!(cache.defect, Nₙ - 1, cache.M, cache.TU)
     return cache
 end
 
@@ -404,7 +404,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
         !adaptive && break
 
         if info == ReturnCode.Success
-            defect_norm = defect_estimate!(cache, TU)
+            defect_norm = defect_estimate!(cache)
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end

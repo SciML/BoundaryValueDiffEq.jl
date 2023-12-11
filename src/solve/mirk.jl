@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T}
+@concrete struct MIRKCache{iip, T} <: AbstractRKCache{iip, T}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -29,7 +29,7 @@
     kwargs
 end
 
-Base.eltype(::Union{MIRKCache{iip, T},FIRKCacheExpand{iip, T},FIRKCacheNested{iip, T}}) where {iip, T} = T
+Base.eltype(::AbstractRKCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         abstol = 1e-3, adaptive = true, kwargs...)
@@ -59,7 +59,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse(adaptive, M, 0), ifelse(adaptive, ITU.s_star - stage, 0))
+    k_interp = [similar(X,  M, ITU.s_star - stage)
                 for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -117,13 +117,13 @@ match the length of the new mesh.
 """
 function __expand_cache!(cache::MIRKCache)
     Nₙ = length(cache.mesh)
-    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
-    __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
-    __append_similar!(cache.y, Nₙ, cache.M)
-    __append_similar!(cache.y₀, Nₙ, cache.M)
-    __append_similar!(cache.residual, Nₙ, cache.M)
-    __append_similar!(cache.defect, Nₙ - 1, cache.M)
-    __append_similar!(cache.new_stages, Nₙ - 1, cache.M)
+    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
+    __append_similar!(cache.k_interp, Nₙ - 1, cache.M, cache.TU)
+    __append_similar!(cache.y, Nₙ, cache.M, cache.TU)
+    __append_similar!(cache.y₀, Nₙ, cache.M, cache.TU)
+    __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
+    __append_similar!(cache.defect, Nₙ - 1, cache.M, cache.TU)
+    __append_similar!(cache.new_stages, Nₙ - 1, cache.M, cache.TU)
     return cache
 end
 
@@ -160,9 +160,9 @@ function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
                 # We construct a new mesh to equidistribute the defect
                 mesh, mesh_dt, _, info = mesh_selector!(cache)
                 if info == ReturnCode.Success
-                    __append_similar!(cache.y₀, length(cache.mesh), cache.M)
+                    __append_similar!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
                     for (i, m) in enumerate(cache.mesh)
-                        interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                        interp_eval!(cache.y₀, i, cache, cache.ITU, m, mesh, mesh_dt)
                     end
                     __expand_cache!(cache)
                 end

@@ -41,7 +41,8 @@ end
     K = get_tmp(k_discrete[1], u) # Not optimal
     T = eltype(u)
     ctr = 1
-    for i in eachindex(k_discrete)
+
+    for i in eachindex(mesh_dt)
         h = mesh_dt[i]
         yᵢ = get_tmp(y[ctr], u)
         yᵢ₊₁ = get_tmp(y[ctr + stage + 1], u)
@@ -111,12 +112,12 @@ end
 
 function Φ(cache::Union{MIRKCache, FIRKCacheExpand}, y, u, p = cache.p)
     return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-              y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+             y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
 function Φ(cache::FIRKCacheNested, y, u, p = cache.p)
     return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-              y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
+             y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
 end
 
 @views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt,

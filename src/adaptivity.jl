@@ -104,7 +104,7 @@ end
     K0 = fill(one(eltype(K0)), size(K0))
     #end
 
-    solve_cache!(nest_cache, K0, p_nestprob)
+    solve_cache!(nest_cache, p_nestprob)
     K = nest_cache.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
@@ -113,6 +113,90 @@ end
     y[i] = S_interpolate(τ * h, S_coeffs)
 
     return y[i]
+end
+
+@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache,
+                             ITU::FIRKInterpTableau{false},
+                             t,
+                             mesh, mesh_dt)
+    j = interval(mesh, t)
+    h = mesh_dt[j]
+    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1
+        h *= lf
+    end
+    τ = (t - mesh[j]) / h
+
+    @unpack f, M, p = cache
+    @unpack c, a, b = cache.TU
+    @unpack q_coeff, stage = ITU
+
+    K = zeros(eltype(cache.y[1].du), M, stage)
+
+    ctr_y = (j - 1) * (ITU.stage + 1) + 1
+
+    yᵢ = cache.y[ctr_y].du
+    yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
+
+    dyᵢ = copy(yᵢ)
+    dyᵢ₊₁ = copy(yᵢ₊₁)
+
+    f(dyᵢ, yᵢ, cache.p, mesh[j])
+    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+    # Load interpolation residual
+    for jj in 1:stage
+        K[:, jj] = cache.y[ctr_y + jj].du
+    end
+
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+
+    y = S_interpolate(τ * h, S_coeffs)
+
+    return y
+end
+
+@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache,
+                             ITU::FIRKInterpTableau{true},
+                             t,
+                             mesh, mesh_dt)
+    j = interval(mesh, t)
+    h = mesh_dt[j]
+    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1
+        h *= lf
+    end
+    τ = (t - mesh[j]) / h
+
+    @unpack f, M, p = cache
+    @unpack c, a, b = cache.TU
+    @unpack q_coeff, stage = ITU
+    @unpack nest_cache, p_nestprob, prob = cache
+
+    yᵢ = copy(cache.y[j].du)
+    yᵢ₊₁ = copy(cache.y[j + 1].du)
+
+    dyᵢ = copy(yᵢ)
+    dyᵢ₊₁ = copy(yᵢ₊₁)
+
+    f(dyᵢ, yᵢ, cache.p, mesh[j])
+    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+
+    # Load interpolation residual
+    y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
+
+    p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
+    p_nestprob[3:end] .= y_i
+
+    solve_cache!(nest_cache, p_nestprob)
+    K = nest_cache.u
+
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+
+    y = S_interpolate(τ * h, S_coeffs)
+
+    return y
 end
 
 function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
@@ -371,7 +455,7 @@ end
 
         p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
         p_nestprob[3:end] = y_i
-        solve_cache!(nest_cache, K, p_nestprob)
+        solve_cache!(nest_cache, p_nestprob)
 
         # Defect estimate from q(x) at y_i + τ* * h
         z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)
@@ -477,7 +561,9 @@ end
 function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
-
+    if isdefined(Main, :Infiltrator)
+        Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+    end
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)],
