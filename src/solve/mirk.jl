@@ -29,7 +29,7 @@
     kwargs
 end
 
-Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
+Base.eltype(::Union{MIRKCache{iip, T},FIRKCacheExpand{iip, T},FIRKCacheNested{iip, T}}) where {iip, T} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         abstol = 1e-3, adaptive = true, kwargs...)
