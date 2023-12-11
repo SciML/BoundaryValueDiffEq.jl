@@ -6,6 +6,11 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     return sparse(I′, J′, V, m, n)
 end
 
+# NOTE: We don't retain the Banded Structure in non-TwoPoint BVP cases since vcat/hcat makes
+# it into a dense array. Instead we can atleast exploit sparsity!
+
+# FIXME: Fix the cases where fast_scalar_indexing is not possible
+
 # Helpers for IIP/OOP functions
 function __sparse_jacobian_cache(::Val{iip}, ad, sd, fn, fx, y) where {iip}
     if iip
@@ -26,16 +31,17 @@ Base.eltype(M::ColoredMatrix) = eltype(M.M)
 
 ColoredMatrix() = ColoredMatrix(nothing, nothing, nothing)
 
-function SparseDiffTools.PrecomputedJacobianColorvec(M::ColoredMatrix)
+function __sparsity_detection_alg(M::ColoredMatrix)
     return PrecomputedJacobianColorvec(; jac_prototype = M.M, M.row_colorvec,
                                        M.col_colorvec)
 end
+__sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
 
-# For MIRK Methods
+# For RK Methods
 """
-    __generate_sparse_jacobian_prototype(::AbstractRKCache, y, M, N)
-    __generate_sparse_jacobian_prototype(::AbstractRKCache, _, y, M, N)
-    __generate_sparse_jacobian_prototype(::AbstractRKCache, ::TwoPointBVProblem, y, M, N)
+    __generate_sparse_jacobian_prototype(::MIRKCache, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::MIRKCache, _, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
 
 Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
 coloring.
@@ -43,36 +49,29 @@ coloring.
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
 """
-function __generate_sparse_jacobian_prototype(cache::AbstractRKCache, y, M, N, TU::MIRKTableau)
-    return __generate_sparse_jacobian_prototype(cache, cache.problem_type, y, M, N, TU)
+
+function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested}, ::StandardBVProblem, ya,
+                                              yb, M,
+                                              N)
+    fast_scalar_indexing(ya) ||
+        error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
+    J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M))
+    return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
 end
 
-function __generate_sparse_jacobian_prototype(::AbstractRKCache, _, y, M, N, TU::MIRKTableau)
-    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
-    Is = Vector{Int}(undef, l)
-    Js = Vector{Int}(undef, l)
-    idx = 1
-    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
-        Is[idx] = i
-        Js[idx] = j
-        idx += 1
-    end
-
-    J_c = _sparse_like(Is, Js, y, M * (N - 1), M * N)
-
-    col_colorvec = Vector{Int}(undef, size(J_c, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-    row_colorvec = Vector{Int}(undef, size(J_c, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-
-    return ColoredMatrix(J_c, row_colorvec, col_colorvec)
+function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested}, ::TwoPointBVProblem,
+                                              ya, yb, M, N)
+    fast_scalar_indexing(ya) ||
+        error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
+    J₁ = length(ya) + length(yb) + M * (N - 1)
+    J₂ = M * N
+    J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
+    # for underdetermined systems we don't have banded qr implemented. use sparse
+    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
+    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
 
-function __generate_sparse_jacobian_prototype(::AbstractRKCache, _, y, M, N, TU::FIRKTableau{false})
+function __generate_sparse_jacobian_prototype(::FIRKCacheExpand, _, y, M, N, TU::FIRKTableau{false})
     @unpack s = TU
     # Get number of nonzeros
     l = M^2 * ((s + 2)^2 - 1) * (N - 1) - M * (s + 2) - s * M
@@ -113,85 +112,6 @@ function __generate_sparse_jacobian_prototype(::AbstractRKCache, _, y, M, N, TU:
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
 end
 
-function __generate_sparse_jacobian_prototype(::AbstractRKCache, _, y, M, N, TU::FIRKTableau{true})
-    @unpack s = TU
-    # Get number of nonzeros
-    row_size = M * (N - 1)
-    col_size = row_size + M
-    l = 2 * M * row_size - 1
-    # Initialize Is and Js
-    Is = Vector{Int}(undef, l)
-    Js = Vector{Int}(undef, l)
-
-    # Fill Is and Js
-    for i in 1:row_size
-        for j in 1:2*M
-            if i + (j-1) > col_size
-                break
-            end
-            Is[i + row_size * (j-1)] = i
-            Js[i + row_size * (j-1)] = min(i + (j-1), col_size)
-        end
-    end
-
-    # Create sparse matrix from Is and Js
-    J_c = _sparse_like(Is, Js, y, row_size, row_size + M)
-
-    col_colorvec = Vector{Int}(undef, size(J_c, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = (i-1) % (2 * M) + 1
-    end
-
-    row_colorvec = Vector{Int}(undef, size(J_c, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = (i-1) % (2 * M) + 1
-    end
-
-    return ColoredMatrix(J_c, row_colorvec, col_colorvec)
-end
-
-function __generate_sparse_jacobian_prototype(::AbstractRKCache, ::TwoPointBVProblem,
-                                              y::ArrayPartition, M, N, TU::MIRKTableau)
-    resida, residb = y.x
-
-    l = sum(i -> min(2M + i, M * N) - max(1, i - 1) + 1, 1:(M * (N - 1)))
-    l_top = M * length(resida)
-    l_bot = M * length(residb)
-
-    Is = Vector{Int}(undef, l + l_top + l_bot)
-    Js = Vector{Int}(undef, l + l_top + l_bot)
-
-    idx = 1
-    for i in 1:length(resida), j in 1:M
-        Is[idx] = i
-        Js[idx] = j
-        idx += 1
-    end
-    for i in 1:(M * (N - 1)), j in max(1, i - 1):min(2M + i, M * N)
-        Is[idx] = i + length(resida)
-        Js[idx] = j
-        idx += 1
-    end
-    for i in 1:length(residb), j in 1:M
-        Is[idx] = i + length(resida) + M * (N - 1)
-        Js[idx] = j + M * (N - 1)
-        idx += 1
-    end
-
-    J = _sparse_like(Is, Js, y, M * N, M * N)
-
-    col_colorvec = Vector{Int}(undef, size(J, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-    row_colorvec = Vector{Int}(undef, size(J, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, min(2M + 1, M * N) + 1)
-    end
-
-    return ColoredMatrix(J, row_colorvec, col_colorvec)
-end
-
 # For Multiple Shooting
 """
     __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
@@ -208,77 +128,31 @@ Returns a 3-Tuple:
 """
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
                                               bcresid_prototype, u0, N::Int, nshoots::Int)
-    Is = Vector{Int}(undef, (N^2 + N) * nshoots)
-    Js = Vector{Int}(undef, (N^2 + N) * nshoots)
+    fast_scalar_indexing(u0) ||
+        error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
+    J₁ = nshoots * N
+    J₂ = (nshoots + 1) * N
+    J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (N - 1, N + 1))
 
-    idx = 1
-    for i in 1:nshoots
-        for (i₁, i₂) in Iterators.product(1:N, 1:N)
-            Is[idx] = i₁ + ((i - 1) * N)
-            Js[idx] = i₂ + ((i - 1) * N)
-            idx += 1
-        end
-        Is[idx:(idx + N - 1)] .= (1:N) .+ ((i - 1) * N)
-        Js[idx:(idx + N - 1)] .= (1:N) .+ (i * N)
-        idx += N
-    end
-
-    J_c = _sparse_like(Is, Js, u0)
-
-    col_colorvec = Vector{Int}(undef, size(J_c, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, 2N)
-    end
-    row_colorvec = Vector{Int}(undef, size(J_c, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, 2N)
-    end
-
-    return nothing, ColoredMatrix(J_c, row_colorvec, col_colorvec), nothing
+    return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
 end
 
-function __generate_sparse_jacobian_prototype(alg::MultipleShooting, ::TwoPointBVProblem,
-                                              bcresid_prototype::ArrayPartition, u0, N::Int,
-                                              nshoots::Int)
-    resida, residb = bcresid_prototype.x
+function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
+                                              bcresid_prototype, u0, N::Int, nshoots::Int)
+    fast_scalar_indexing(u0) ||
+        error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
+
+    resida, residb = bcresid_prototype
     L₁, L₂ = length(resida), length(residb)
 
-    _, J_c, _ = __generate_sparse_jacobian_prototype(alg, StandardBVProblem(),
-                                                     bcresid_prototype, u0, N, nshoots)
+    J₁ = L₁ + L₂ + nshoots * N
+    J₂ = (nshoots + 1) * N
 
-    Is_bc = Vector{Int}(undef, (L₁ + L₂) * N)
-    Js_bc = Vector{Int}(undef, (L₁ + L₂) * N)
-    idx = 1
-    for i in 1:L₁, j in 1:N
-        Is_bc[idx] = i
-        Js_bc[idx] = j
-        idx += 1
-    end
-    for i in 1:L₂, j in 1:N
-        Is_bc[idx] = i + L₁
-        Js_bc[idx] = j + N
-        idx += 1
-    end
+    # FIXME: There is a stronger structure than BandedMatrix here.
+    #        We should be able to use that particular structure.
+    J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (max(L₁, L₂) + N - 1, N + 1))
 
-    col_colorvec_bc = Vector{Int}(undef, 2N)
-    row_colorvec_bc = Vector{Int}(undef, L₁ + L₂)
-    col_colorvec_bc[1:N] .= 1:N
-    col_colorvec_bc[(N + 1):end] .= 1:N
-    for i in 1:max(L₁, L₂)
-        i ≤ L₁ && (row_colorvec_bc[i] = i)
-        i ≤ L₂ && (row_colorvec_bc[i + L₁] = i)
-    end
-
-    J_bc = ColoredMatrix(_sparse_like(Is_bc, Js_bc, bcresid_prototype), row_colorvec_bc,
-                         col_colorvec_bc)
-
-    J_full = _sparse_like(Int[], Int[], u0, size(J_bc, 1) + size(J_c, 1),
-                          size(J_c, 2))
-
-    J_full[(L₁ + L₂ + 1):end, :] .= J_c.M
-    J_full[1:L₁, 1:N] .= J_bc.M[1:L₁, 1:N]
-    J_full[(L₁ + 1):(L₁ + L₂), (end - 2N + 1):(end - N)] .= J_bc.M[(L₁ + 1):(L₁ + L₂),
-                                                                   (N + 1):(2N)]
-
-    return J_full, J_c, J_bc
+    # for underdetermined systems we don't have banded qr implemented. use sparse
+    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
+    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end

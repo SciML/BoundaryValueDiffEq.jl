@@ -5,7 +5,7 @@ struct RKInterpolation{T1, T2} <: AbstractDiffEqInterpolation
 end
 
 function DiffEqBase.interp_summary(interp::RKInterpolation)
-    return "MIRK Order $(interp.cache.order) Interpolation"
+    return "Runge-Kutta Order $(interp.cache.order) Interpolation"
 end
 
 function (id::RKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
@@ -19,14 +19,14 @@ end
 # FIXME: Fix the interpolation outside the tspan
 
 @inline function interpolation(tvals, id::I, idxs, deriv::D, p,
-                               continuity::Symbol = :left) where {I, D}
+        continuity::Symbol = :left) where {I, D}
     @unpack t, u, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
-    if typeof(idxs) <: Number
+    if idxs isa Number
         vals = Vector{eltype(first(u))}(undef, length(tvals))
-    elseif typeof(idxs) <: AbstractVector
+    elseif idxs isa AbstractVector
         vals = Vector{Vector{eltype(first(u))}}(undef, length(tvals))
     else
         vals = Vector{eltype(u)}(undef, length(tvals))
@@ -34,31 +34,32 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, j, id.cache, id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
     return DiffEqArray(vals, tvals)
 end
 
 @inline function interpolation!(vals, tvals, id::I, idxs, deriv::D, p,
-                                continuity::Symbol = :left) where {I, D}
+        continuity::Symbol = :left) where {I, D}
     @unpack t, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, j, id.cache, id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
 end
 
 @inline function interpolation(tval::Number, id::I, idxs, deriv::D, p,
-                               continuity::Symbol = :left) where {I, D}
-    z = [similar(id.cache.fᵢ₂_cache)]
-    interp_eval!(z, 1, id.cache, id.cache.ITU, tval, id.cache.mesh, id.cache.mesh_dt)
-    return z[1]
+        continuity::Symbol = :left) where {I, D}
+    z = similar(id.cache.fᵢ₂_cache)
+    interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
+    return z
 end
+
 
 """
     get_ymid(yᵢ, coeffs, K, h)

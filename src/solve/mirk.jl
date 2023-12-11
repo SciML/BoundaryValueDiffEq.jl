@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T} <: AbstractRKCache{iip, T}
+@concrete struct MIRKCache{iip, T}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -25,55 +25,51 @@
     fᵢ₂_cache
     defect
     new_stages
+    resid_size
     kwargs
 end
 
-Base.eltype(::AbstractRKCache{iip, T}) where {iip, T} = T
+Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
-                          abstol = 1e-3, adaptive = true, kwargs...)
+        abstol = 1e-3, adaptive = true, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
-    has_initial_guess, T, M, n, X = __extract_problem_details(prob; dt,
-                                                              check_positive_dt = true)
 
-    stage = alg_stage(alg)
-    TU, ITU = constructRK(alg, T)
-
-    expanded_jac = isa(TU, FIRKTableau{false})
-    chunksize = expanded_jac ? pickchunksize(M + M * n * (stage + 1)) :
-                pickchunksize(M * (n + 1))
-
-    __alloc_diffcache = x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
-
-    fᵢ_cache = __alloc_diffcache(similar(X))
-    fᵢ₂_cache = vec(similar(X))
-
+    _, T, M, n, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     # NOTE: Assumes the user provided initial guess is on a uniform mesh
     mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
     mesh_dt = diff(mesh)
+
+    chunksize = pickchunksize(M * (n + 1))
+
+    __alloc = x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+
+    fᵢ_cache = __alloc(similar(X))
+    fᵢ₂_cache = vec(similar(X))
 
     defect_threshold = T(0.1)  # TODO: Allow user to specify these
     MxNsub = 3000              # TODO: Allow user to specify these
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = expanded_jac ?
-         extend_y(__initial_state_from_prob(prob, mesh), n + 1, alg_stage(alg)) :
-         __initial_state_from_prob(prob, mesh)
-
-    y = __alloc_diffcache.(copy.(y₀))
+    y₀ = __initial_state_from_prob(prob, mesh)
+    y = __alloc.(copy.(y₀))
+    TU, ITU = constructRK(alg, T)
+    stage = alg_stage(alg)
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse((adaptive && !isa(TU, FIRKTableau)), M, 0),
-                        (adaptive && !isa(TU, FIRKTableau) ? ITU.s_star - stage : 0))
+    k_interp = [similar(X, ifelse(adaptive, M, 0), ifelse(adaptive, ITU.s_star - stage, 0))
                 for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
     residual = if iip
-        vcat([__alloc_diffcache(bcresid_prototype)],
-             __alloc_diffcache.(copy.(@view(y₀[2:end]))))
+        if prob.problem_type isa TwoPointBVProblem
+            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
+        else
+            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
+        end
     else
         nothing
     end
@@ -82,46 +78,35 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     new_stages = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
 
     # Transform the functions to handle non-vector inputs
+    bcresid_prototype = __vec(bcresid_prototype)
     f, bc = if X isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
-        vecf!(du, u, p, t) = prob.f(reshape(du, size(X)), reshape(u, size(X)), p, t)
+        vecf! = (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
-            function __vecbc!(resid, sol, p, t)
-                prob.f.bc(reshape(resid, resid₁_size),
-                          map(Base.Fix2(reshape, size(X)), sol), p, t)
-            end
+            (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
         else
-            function __vecbc_a!(resida, ua, p)
-                prob.f.bc[1](reshape(resida, resid₁_size[1]), reshape(ua, size(X)), p)
-            end
-            function __vecbc_b!(residb, ub, p)
-                prob.f.bc[2](reshape(residb, resid₁_size[2]), reshape(ub, size(X)), p)
-            end
-            (__vecbc_a!, __vecbc_b!)
+            ((r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[1], resid₁_size[1], size(X)),
+                (r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[2], resid₁_size[2], size(X)))
         end
-        bcresid_prototype = vec(bcresid_prototype)
         vecf!, vecbc!
     else
-        vecf(u, p, t) = vec(prob.f(reshape(u, size(X)), p, t))
+        vecf = (u, p, t) -> __vec_f(u, p, t, prob.f, size(X))
         vecbc = if !(prob.problem_type isa TwoPointBVProblem)
-            __vecbc(sol, p, t) = vec(prob.f.bc(map(Base.Fix2(reshape, size(X)), sol), p, t))
+            (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
         else
-            __vecbc_a(ua, p) = vec(prob.f.bc[1](reshape(ua, size(X)), p))
-            __vecbc_b(ub, p) = vec(prob.f.bc[2](reshape(ub, size(X)), p))
-            (__vecbc_a, __vecbc_b)
+            ((u, p) -> __vec_bc(u, p, prob.f.bc[1], size(X))),
+            (u, p) -> __vec_bc(u, p, prob.f.bc[2], size(X))
         end
-        bcresid_prototype = vec(bcresid_prototype)
         vecf, vecbc
     end
 
-    return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob,
-                             prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype,
-                             mesh,
-                             mesh_dt,
-                             k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
-                             defect, new_stages,
-                             (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+
+    return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
+        prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
+        k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
+        resid₁_size, (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -134,30 +119,30 @@ function __expand_cache!(cache::MIRKCache)
     Nₙ = length(cache.mesh)
     __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
     __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
-    __append_similar!(cache.y, Nₙ, cache.M, cache.TU)
-    __append_similar!(cache.y₀, Nₙ, cache.M, cache.TU)
-    __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
+    __append_similar!(cache.y, Nₙ, cache.M)
+    __append_similar!(cache.y₀, Nₙ, cache.M)
+    __append_similar!(cache.residual, Nₙ, cache.M)
     __append_similar!(cache.defect, Nₙ - 1, cache.M)
     __append_similar!(cache.new_stages, Nₙ - 1, cache.M)
     return cache
 end
 
 function __split_mirk_kwargs(; defect_threshold, MxNsub, abstol, dt, adaptive = true,
-                             kwargs...)
+        kwargs...)
     return ((defect_threshold, MxNsub, abstol, adaptive, dt),
-            (; abstol, adaptive, kwargs...))
+        (; abstol, adaptive, kwargs...))
 end
 
-function SciMLBase.solve!(cache::AbstractRKCache)
+function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
     (defect_threshold, MxNsub, abstol, adaptive, _), kwargs = __split_mirk_kwargs(;
-                                                                                  cache.kwargs...)
+        cache.kwargs...)
     @unpack y, y₀, prob, alg, mesh, mesh_dt, TU, ITU = cache
     info::ReturnCode.T = ReturnCode.Success
     defect_norm = 2 * abstol
 
     while SciMLBase.successful_retcode(info) && defect_norm > abstol
         nlprob = __construct_nlproblem(cache, recursive_flatten(y₀))
-        sol_nlprob = solve(nlprob, alg.nlsolve; abstol, kwargs...)
+        sol_nlprob = __solve(nlprob, alg.nlsolve; abstol, kwargs...)
         recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
         info = sol_nlprob.retcode
@@ -165,7 +150,7 @@ function SciMLBase.solve!(cache::AbstractRKCache)
         !adaptive && break
 
         if info == ReturnCode.Success
-            defect_norm = defect_estimate!(cache, TU)
+            defect_norm = defect_estimate!(cache)
             # The defect is greater than 10%, the solution is not acceptable
             defect_norm > defect_threshold && (info = ReturnCode.Failure)
         end
@@ -175,9 +160,9 @@ function SciMLBase.solve!(cache::AbstractRKCache)
                 # We construct a new mesh to equidistribute the defect
                 mesh, mesh_dt, _, info = mesh_selector!(cache)
                 if info == ReturnCode.Success
-                    __append_similar!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
+                    __append_similar!(cache.y₀, length(cache.mesh), cache.M)
                     for (i, m) in enumerate(cache.mesh)
-                        interp_eval!(cache.y₀, i, cache, cache.ITU, m, mesh, mesh_dt)
+                        interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
                     end
                     __expand_cache!(cache)
                 end
@@ -197,170 +182,244 @@ function SciMLBase.solve!(cache::AbstractRKCache)
         end
     end
 
-    # sync y and y0 caches
-    for i in axes(cache.y₀, 1)
-        cache.y[i].du .= cache.y₀[i]
-    end
-
     u = [reshape(y, cache.in_size) for y in cache.y₀]
-    if isa(TU, FIRKTableau{false})
-        u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))
-    end
     return DiffEqBase.build_solution(prob, alg, cache.mesh,
-                                     u; interp = RKInterpolation(cache.mesh, u, cache),
-                                     retcode = info)
+        u; interp = RKInterpolation(cache.mesh, u, cache), retcode = info)
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::AbstractRKCache{iip}, y::AbstractVector) where {iip}
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y::AbstractVector) where {iip}
+    pt = cache.problem_type
+
     loss_bc = if iip
-        function loss_bc_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            eval_bc_residual!(resid, cache.problem_type, cache.bc, y_, p, cache.mesh)
-            return resid
-        end
+        (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh)
     else
-        function loss_bc_internal(u::AbstractVector, p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            return eval_bc_residual(cache.problem_type, cache.bc, y_, p, cache.mesh)
-        end
+        (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh)
     end
 
     loss_collocation = if iip
-        function loss_collocation_internal!(resid::AbstractVector, u::AbstractVector,
-                                            p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            resids = [get_tmp(r, u) for r in cache.residual[2:end]]
-            Φ!(resids, cache, y_, u, p)
-            recursive_flatten!(resid, resids)
-            return resid
-        end
+        (du, u, p) -> __mirk_loss_collocation!(du, u, p, cache.y, cache.mesh,
+            cache.residual, cache)
     else
-        function loss_collocation_internal(u::AbstractVector, p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            resids = Φ(cache, y_, u, p)
-            return mapreduce(vec, vcat, resids)
-        end
+        (u, p) -> __mirk_loss_collocation(u, p, cache.y, cache.mesh, cache.residual, cache)
     end
 
     loss = if iip
-        function loss_internal!(resid::AbstractVector, u::AbstractVector, p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            resids = [get_tmp(r, u) for r in cache.residual]
-            eval_bc_residual!(resids[1], cache.problem_type, cache.bc, y_, p, cache.mesh)
-            Φ!(resids[2:end], cache, y_, u, p)
-            if cache.problem_type isa TwoPointBVProblem
-                recursive_flatten_twopoint!(resid, resids)
-            else
-                recursive_flatten!(resid, resids)
-            end
-            return resid
-        end
+        (du, u, p) -> __mirk_loss!(du, u, p, cache.y, pt, cache.bc, cache.residual,
+            cache.mesh, cache)
     else
-        function loss_internal(u::AbstractVector, p = cache.p)
-            y_ = recursive_unflatten!(cache.y, u)
-            resid_bc = eval_bc_residual(cache.problem_type, cache.bc, y_, p, cache.mesh)
-            resid_co = Φ(cache, y_, u, p)
-            if cache.problem_type isa TwoPointBVProblem
-                return vcat(resid_bc.x[1], mapreduce(vec, vcat, resid_co), resid_bc.x[2])
-            else
-                return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
-            end
-        end
+        (u, p) -> __mirk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
     end
 
-    return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss,
-                                 cache.problem_type)
+    return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
 end
 
-function __construct_nlproblem(cache::AbstractRKCache{iip}, y, loss_bc, loss_collocation,
-                               loss,
-                               ::StandardBVProblem) where {iip}
+function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
+        cache) where {BC}
+    y_ = recursive_unflatten!(y, u)
+    resids = [get_tmp(r, u) for r in residual]
+    eval_bc_residual!(resids[1], pt, bc!, y_, p, mesh)
+    Φ!(resids[2:end], cache, y_, u, p)
+    recursive_flatten!(resid, resids)
+    return nothing
+end
+
+function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
+        mesh, cache) where {BC1, BC2}
+    y_ = recursive_unflatten!(y, u)
+    resids = [get_tmp(r, u) for r in residual]
+    resida = @view resids[1][1:prod(cache.resid_size[1])]
+    residb = @view resids[1][(prod(cache.resid_size[1]) + 1):end]
+    eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
+    Φ!(resids[2:end], cache, y_, u, p)
+    recursive_flatten_twopoint!(resid, resids, cache.resid_size)
+    return nothing
+end
+
+function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
+    y_ = recursive_unflatten!(y, u)
+    resid_bc = eval_bc_residual(pt, bc, y_, p, mesh)
+    resid_co = Φ(cache, y_, u, p)
+    return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
+end
+
+function __mirk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh,
+        cache) where {BC1, BC2}
+    y_ = recursive_unflatten!(y, u)
+    resid_bca, resid_bcb = eval_bc_residual(pt, bc, y_, p, mesh)
+    resid_co = Φ(cache, y_, u, p)
+    return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
+end
+
+function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh) where {BC}
+    y_ = recursive_unflatten!(y, u)
+    eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
+    return nothing
+end
+
+function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh) where {BC}
+    y_ = recursive_unflatten!(y, u)
+    return eval_bc_residual(pt, bc!, y_, p, mesh)
+end
+
+function __mirk_loss_collocation!(resid, u, p, y, mesh, residual, cache)
+    y_ = recursive_unflatten!(y, u)
+    resids = [get_tmp(r, u) for r in residual[2:end]]
+    Φ!(resids, cache, y_, u, p)
+    recursive_flatten!(resid, resids)
+    return nothing
+end
+
+function __mirk_loss_collocation(u, p, y, mesh, residual, cache)
+    y_ = recursive_unflatten!(y, u)
+    resids = Φ(cache, y_, u, p)
+    return mapreduce(vec, vcat, resids)
+end
+
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y, loss_bc::BC, loss_collocation::C,
+        loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
-    TU, ITU = constructRK(cache.alg, eltype(y))
-
-    expanded_jac = isa(TU, FIRKTableau{false})
-
     resid_bc = cache.bcresid_prototype
-    resid_collocation = expanded_jac ? similar(y, cache.M * (N - 1) * (TU.s + 1)) :
-                        similar(y, cache.M * (N - 1))
+    L = length(resid_bc)
+    resid_collocation = similar(y, cache.M * (N - 1))
+
+    loss_bcₚ = iip ? ((du, u) -> loss_bc(du, u, cache.p)) : (u -> loss_bc(u, cache.p))
+    loss_collocationₚ = iip ? ((du, u) -> loss_collocation(du, u, cache.p)) :
+                        (u -> loss_collocation(u, cache.p))
 
     sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
-    cache_bc = __sparse_jacobian_cache(Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bc,
-                                       resid_bc, y)
+    cache_bc = __sparse_jacobian_cache(Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bcₚ,
+        resid_bc, y)
 
     sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
-        PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-                                                                         cache.problem_type,
-                                                                         y, cache.M, N, TU))
+        if L < cache.M
+            # For underdetermined problems we use sparse since we don't have banded qr
+            colored_matrix = __generate_sparse_jacobian_prototype(cache,
+                cache.problem_type, y, y, cache.M, N)
+            J_full_band = nothing
+            __sparsity_detection_alg(ColoredMatrix(sparse(colored_matrix.M),
+                colored_matrix.row_colorvec, colored_matrix.col_colorvec))
+        else
+            J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
+                (L + 1, cache.M + max(cache.M - L, 0)))
+            __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
+                cache.problem_type, y, y, cache.M, N))
+        end
     else
+        J_full_band = nothing
         NoSparsityDetection()
     end
     cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
-                                                sd_collocation, loss_collocation,
-                                                resid_collocation, y)
+        sd_collocation, loss_collocationₚ, resid_collocation, y)
 
-    jac_prototype = vcat(init_jacobian(cache_bc), init_jacobian(cache_collocation))
-
-    jac = if iip
-        function jac_internal!(J, x, p)
-            sparse_jacobian!(@view(J[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
-                             loss_bc, resid_bc, x)
-            sparse_jacobian!(@view(J[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
-                             cache_collocation, loss_collocation, resid_collocation, x)
-            return J
-        end
+    J_bc = init_jacobian(cache_bc)
+    J_c = init_jacobian(cache_collocation)
+    if J_full_band === nothing
+        jac_prototype = vcat(J_bc, J_c)
     else
-        J_ = jac_prototype
-        function jac_internal(x, p)
-            sparse_jacobian!(@view(J_[1:(cache.M), :]), jac_alg.bc_diffmode, cache_bc,
-                             loss_bc, x)
-            sparse_jacobian!(@view(J_[(cache.M + 1):end, :]), jac_alg.nonbc_diffmode,
-                             cache_collocation, loss_collocation, x)
-            return J_
-        end
+        jac_prototype = AlmostBandedMatrix{eltype(cache)}(J_full_band, J_bc)
     end
 
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    jac = if iip
+        (J, u, p) -> __mirk_mpoint_jacobian!(J, J_c, u, jac_alg.bc_diffmode,
+            jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
+            loss_collocationₚ, resid_bc, resid_collocation, L)
+    else
+        (u, p) -> __mirk_mpoint_jacobian(jac_prototype, J_c, u, jac_alg.bc_diffmode,
+            jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
+            loss_collocationₚ, L)
+    end
+
+    nlf = NonlinearFunction{iip}(loss; resid_prototype = vcat(resid_bc, resid_collocation),
+        jac, jac_prototype)
+    return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
-function __construct_nlproblem(cache::AbstractRKCache{iip}, y, loss_bc, loss_collocation,
-                               loss,
-                               ::TwoPointBVProblem) where {iip}
+function __mirk_mpoint_jacobian!(J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
+        nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc, resid_collocation,
+        L::Int) where {BC, C}
+    sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
+    sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
+        loss_collocation, resid_collocation, x)
+    return nothing
+end
+
+function __mirk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+        bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc,
+        resid_collocation, L::Int) where {BC, C}
+    J_bc = fillpart(J)
+    sparse_jacobian!(J_bc, bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
+    sparse_jacobian!(J_c, nonbc_diffmode, nonbc_diffcache,
+        loss_collocation, resid_collocation, x)
+    exclusive_bandpart(J) .= J_c
+    finish_part_setindex!(J)
+    return nothing
+end
+
+function __mirk_mpoint_jacobian(J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
+        nonbc_diffcache, loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
+    sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, x)
+    sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache,
+        loss_collocation, x)
+    return J
+end
+
+function __mirk_mpoint_jacobian(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+        bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C,
+        L::Int) where {BC, C}
+    J_bc = fillpart(J)
+    sparse_jacobian!(J_bc, bc_diffmode, bc_diffcache, loss_bc, x)
+    sparse_jacobian!(J_c, nonbc_diffmode, nonbc_diffcache, loss_collocation, x)
+    exclusive_bandpart(J) .= J_c
+    finish_part_setindex!(J)
+    return J
+end
+
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y, loss_bc::BC, loss_collocation::C,
+        loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     @unpack nlsolve, jac_alg = cache.alg
     N = length(cache.mesh)
 
-    resid = ArrayPartition(cache.bcresid_prototype, similar(y, cache.M * (N - 1)))
+    lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
-    # TODO: We can splitup the computation here as well similar to the Multiple Shooting
-    # TODO: code. That way for the BC part the actual jacobian computation is even cheaper
-    # TODO: Remember to not reorder if we end up using that implementation
+    resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+        similar(y, cache.M * (N - 1)),
+        @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
+    L = length(cache.bcresid_prototype)
+
     sd = if jac_alg.diffmode isa AbstractSparseADType
-        PrecomputedJacobianColorvec(__generate_sparse_jacobian_prototype(cache,
-                                                                         cache.problem_type,
-                                                                         resid.x[1],
-                                                                         cache.M, N))
+        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
+            cache.problem_type, @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+            @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]), cache.M,
+            N))
     else
         NoSparsityDetection()
     end
-    diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, loss, resid, y)
+    diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
     jac_prototype = init_jacobian(diffcache)
 
     jac = if iip
-        function jac_internal!(J, x, p)
-            sparse_jacobian!(J, jac_alg.diffmode, diffcache, loss, resid, x)
-            return J
-        end
+        (J, u, p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, lossₚ,
+            resid)
     else
-        J_ = jac_prototype
-        function jac_internal(x, p)
-            sparse_jacobian!(J_, jac_alg.diffmode, diffcache, loss, x)
-            return J_
-        end
+        (u, p) -> __mirk_2point_jacobian(u, jac_prototype, jac_alg.diffmode, diffcache,
+            lossₚ)
     end
 
-    return NonlinearProblem(NonlinearFunction{iip}(loss; jac, jac_prototype), y, cache.p)
+    nlf = NonlinearFunction{iip}(loss; resid_prototype = copy(resid), jac, jac_prototype)
+
+    return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
+end
+
+function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
+    sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
+    return J
+end
+
+function __mirk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
+    sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
+    return J
 end

@@ -1,9 +1,9 @@
-function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
+function Φ!(residual, cache::Union{MIRKCache, FIRKCacheExpand}, y, u, p = cache.p)
     return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
               y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
-function Φ!(residual, cache::FIRKCache, y, u, p = cache.p)
+function Φ!(residual, cache::FIRKCacheNested, y, u, p = cache.p)
     return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
               y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
 end
@@ -35,7 +35,7 @@ end
 end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-                   mesh, mesh_dt, stage::Int, cache)
+                   mesh, mesh_dt, stage::Int)
     @unpack c, a, b = TU
     tmp1 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal
@@ -109,9 +109,14 @@ end
     end
 end
 
-function Φ(cache::AbstractRKCache, y, u, p = cache.p) # TODO: fix this
-    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, p, cache.mesh,
-             cache.mesh_dt, cache.stage)
+function Φ(cache::Union{MIRKCache, FIRKCacheExpand}, y, u, p = cache.p)
+    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
+              y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+end
+
+function Φ(cache::FIRKCacheNested, y, u, p = cache.p)
+    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
+              y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
 end
 
 @views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt,
