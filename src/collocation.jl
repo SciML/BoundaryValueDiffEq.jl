@@ -78,7 +78,7 @@ function FIRK_nlsolve!(res, K, p_nlsolve, f!, a, c, stage, p_f!)
 
     for r in 1:stage
         @. tmp1 = yᵢ
-        __maybe_matmul!(tmp1, @view(K[:, 1:stage]), @view(a[r, 1:stage]), h, T(1))
+        __maybe_matmul!(tmp1, K, @view(a[r, :]), h, T(1))
         f!(@view(res[:, r]), tmp1, p_f!, mesh_i + c[r] * h)
         @views res[:, r] .-= K[:, r]
     end

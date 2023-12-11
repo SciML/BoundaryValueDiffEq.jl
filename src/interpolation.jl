@@ -23,7 +23,6 @@ end
     @unpack t, u, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
-
     if idxs isa Number
         vals = Vector{eltype(first(u))}(undef, length(tvals))
     elseif idxs isa AbstractVector
@@ -34,7 +33,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, id.cache,id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
     return DiffEqArray(vals, tvals)
@@ -45,10 +44,9 @@ end
     @unpack t, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
-
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, id.cache,id.cache.ITU, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
 end
@@ -59,7 +57,6 @@ end
     interp_eval!(z, id.cache, id.cache.ITU, tval, id.cache.mesh, id.cache.mesh_dt)
     return z
 end
-
 
 """
     get_ymid(yᵢ, coeffs, K, h)

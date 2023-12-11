@@ -151,7 +151,7 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    y = S_interpolate(τ * h, S_coeffs)
+    y .= S_interpolate(τ * h, S_coeffs)
 
     return y
 end
@@ -194,7 +194,7 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    y = S_interpolate(τ * h, S_coeffs)
+    y .= S_interpolate(τ * h, S_coeffs)
 
     return y
 end
@@ -561,9 +561,6 @@ end
 function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
     @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
     @unpack s_star = cache.ITU
-    if isdefined(Main, :Infiltrator)
-        Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-    end
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(z, k_interp[i][:, 1:(s_star - stage)],
