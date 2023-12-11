@@ -114,18 +114,21 @@ function shrink_y(y, N, M, stage)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-    abstol = 1e-3, adaptive = true, nlsolve_kwargs = (; abstol = 1e-4, reltol = 1e-4, maxiters = 10), kwargs...)
-if alg.nested_nlsolve
-    return init_nested(prob, alg; dt = dt,
-    abstol = abstol, adaptive = adaptive, nlsolve_kwargs = nlsolve_kwargs, kwargs...)
-else
-    return init_expanded(prob, alg; dt = dt,
-    abstol = abstol, adaptive = adaptive, kwargs...)
-end
+                          abstol = 1e-3, adaptive = true,
+                          nlsolve_kwargs = (; abstol = 1e-4, reltol = 1e-4, maxiters = 10),
+                          kwargs...)
+    if alg.nested_nlsolve
+        return init_nested(prob, alg; dt = dt,
+                           abstol = abstol, adaptive = adaptive,
+                           nlsolve_kwargs = nlsolve_kwargs, kwargs...)
+    else
+        return init_expanded(prob, alg; dt = dt,
+                             abstol = abstol, adaptive = adaptive, kwargs...)
+    end
 end
 
 function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-                          abstol = 1e-3, adaptive = true, nlsolve_kwargs, kwargs...)
+                     abstol = 1e-3, adaptive = true, nlsolve_kwargs, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
 
@@ -159,14 +162,10 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
-    residual = if iip
-        if prob.problem_type isa TwoPointBVProblem
-            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
-        else
-            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
-        end
+    residual = if prob.problem_type isa TwoPointBVProblem
+        vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
     else
-        nothing
+        vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
     end
 
     defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
@@ -208,30 +207,29 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
                                                                           prob.p),
                                     K0, p_nestprob)
     else
-        nlf = function (K, p_nestprob)
-            res = zero(K)
-            FIRK_nlsolve!(res, K, p_nestprob, f,
-                          a, c, stage, prob.p)
-            return res
-        end
-        nestprob = NonlinearProblem(nlf,
+        nestprob = NonlinearProblem((K, p_nestprob) -> FIRK_nlsolve(K,
+                                                                    p_nestprob, f,
+                                                                    a, c, stage,
+                                                                    prob.p),
                                     K0, p_nestprob)
     end
     nest_cache = init(nestprob, NewtonRaphson(); nlsolve_kwargs...)
 
     return FIRKCacheNested{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
-                             prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype,
-                             mesh, mesh_dt,
-                             k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
-                             defect, p_nestprob, nest_cache,
-                             resid₁_size,
-                             (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+                                   prob.problem_type, prob.p, alg, TU, ITU,
+                                   bcresid_prototype,
+                                   mesh, mesh_dt,
+                                   k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
+                                   defect, p_nestprob, nest_cache,
+                                   resid₁_size,
+                                   (; defect_threshold, MxNsub, abstol, dt, adaptive,
+                                    kwargs...))
 end
 
 function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-                          abstol = 1e-3, adaptive = true,
-                          nlsolve_kwargs = (; abstol = 1e-3, reltol = 1e-3, maxiters = 10),
-                          kwargs...)
+                       abstol = 1e-3, adaptive = true,
+                       nlsolve_kwargs = (; abstol = 1e-3, reltol = 1e-3, maxiters = 10),
+                       kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
@@ -272,12 +270,8 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
-    residual = if iip
-        vcat([__alloc_diffcache(bcresid_prototype)],
-             __alloc_diffcache.(copy.(@view(y₀[2:end]))))
-    else
-        nothing
-    end
+    residual = vcat([__alloc_diffcache(bcresid_prototype)],
+                    __alloc_diffcache.(copy.(@view(y₀[2:end]))))
 
     defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
 
@@ -356,14 +350,20 @@ function _scalar_nlsolve_∂f_∂u(f, res, u, p)
     return ForwardDiff.jacobian((y, x) -> f(y, x, p), res, u)
 end
 
-function _scalar_nlsolve_cache_ad(nest_cache, p_nest)
+function _scalar_nlsolve_cache_ad(nest_cache::NonlinearSolve.NewtonRaphsonCache{iip}, p_nest) where {iip}
     _p_nest = ForwardDiff.value.(p_nest)
     reinit!(nest_cache, p = _p_nest)
     sol = solve!(nest_cache)
     uu = sol.u
     res = zero(uu)
-    f_p = _scalar_nlsolve_∂f_∂p(nest_cache.f, res, uu, _p_nest)
-    f_x = _scalar_nlsolve_∂f_∂u(nest_cache.f, res, uu, _p_nest)
+
+    if iip
+        f_p = _scalar_nlsolve_∂f_∂p(nest_cache.f, res, uu, _p_nest)
+        f_x = _scalar_nlsolve_∂f_∂u(nest_cache.f, res, uu, _p_nest)
+    else
+        f_p = NonlinearSolve.scalar_nlsolve_∂f_∂p(nest_cache.f, uu, _p_nest)
+        f_x = NonlinearSolve.scalar_nlsolve_∂f_∂u(nest_cache.f, uu, _p_nest)
+    end
 
     z_arr = -inv(f_x) * f_p
 
@@ -379,6 +379,8 @@ function _scalar_nlsolve_cache_ad(nest_cache, p_nest)
     return sol, partials
 end
 
+
+#TODO: iip overload
 function solve_cache!(nest_cache,
                       p_nest::AbstractArray{<:Dual{T, V, P}}) where {T, V, P}
     sol, partials = _scalar_nlsolve_cache_ad(nest_cache, p_nest)

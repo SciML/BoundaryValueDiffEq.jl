@@ -64,15 +64,12 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
-    residual = if iip
+    residual = 
         if prob.problem_type isa TwoPointBVProblem
             vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
         else
             vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
         end
-    else
-        nothing
-    end
 
     defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
     new_stages = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
@@ -332,6 +329,7 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
             jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ,
             loss_collocationₚ, L)
     end
+
 
     nlf = NonlinearFunction{iip}(loss; resid_prototype = vcat(resid_bc, resid_collocation),
         jac, jac_prototype)

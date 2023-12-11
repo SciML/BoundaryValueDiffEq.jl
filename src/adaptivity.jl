@@ -19,10 +19,10 @@ function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache,
     interp_eval!(y[i], cache, ITU, t, mesh, mesh_dt)
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache,
+@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache{iip},
                              ITU::FIRKInterpTableau{false},
                              t,
-                             mesh, mesh_dt)
+                             mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -43,11 +43,17 @@ end
     yᵢ = cache.y[ctr_y].du
     yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
 
-    dyᵢ = copy(yᵢ)
-    dyᵢ₊₁ = copy(yᵢ₊₁)
+    if iip
+        dyᵢ = copy(yᵢ)
+        dyᵢ₊₁ = copy(yᵢ₊₁)
 
-    f(dyᵢ, yᵢ, cache.p, mesh[j])
-    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+        f(dyᵢ, yᵢ, cache.p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+    else
+        dyᵢ = f(yᵢ, cache.p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
+    end
+
     # Load interpolation residual
     for jj in 1:stage
         K[:, jj] = cache.y[ctr_y + jj].du
@@ -66,10 +72,10 @@ end
     return y[ctr_y0]
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache,
+@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache{iip},
                              ITU::FIRKInterpTableau{true},
                              t,
-                             mesh, mesh_dt)
+                             mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -86,23 +92,22 @@ end
     yᵢ = copy(cache.y[j].du)
     yᵢ₊₁ = copy(cache.y[j + 1].du)
 
-    dyᵢ = copy(yᵢ)
-    dyᵢ₊₁ = copy(yᵢ₊₁)
+    if iip
+        dyᵢ = copy(yᵢ)
+        dyᵢ₊₁ = copy(yᵢ₊₁)
 
-    f(dyᵢ, yᵢ, cache.p, mesh[j])
-    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+        f(dyᵢ, yᵢ, cache.p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+    else
+        dyᵢ = f(yᵢ, cache.p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
+    end
 
     # Load interpolation residual
     y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
 
     p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
     p_nestprob[3:end] .= y_i
-
-    K0 = copy(cache.k_discrete[j].du)
-
-    #if minimum(abs.(K0)) < 1e-2
-    K0 = fill(one(eltype(K0)), size(K0))
-    #end
 
     solve_cache!(nest_cache, p_nestprob)
     K = nest_cache.u
@@ -115,10 +120,10 @@ end
     return y[i]
 end
 
-@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache,
+@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache{iip},
                              ITU::FIRKInterpTableau{false},
                              t,
-                             mesh, mesh_dt)
+                             mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -138,11 +143,16 @@ end
     yᵢ = cache.y[ctr_y].du
     yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
 
-    dyᵢ = copy(yᵢ)
-    dyᵢ₊₁ = copy(yᵢ₊₁)
+    if iip
+        dyᵢ = copy(yᵢ)
+        dyᵢ₊₁ = copy(yᵢ₊₁)
 
-    f(dyᵢ, yᵢ, cache.p, mesh[j])
-    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+        f(dyᵢ, yᵢ, cache.p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+    else
+        dyᵢ = f(yᵢ, cache.p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
+    end
     # Load interpolation residual
     for jj in 1:stage
         K[:, jj] = cache.y[ctr_y + jj].du
@@ -156,10 +166,10 @@ end
     return y
 end
 
-@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache,
+@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache{iip},
                              ITU::FIRKInterpTableau{true},
                              t,
-                             mesh, mesh_dt)
+                             mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -176,11 +186,16 @@ end
     yᵢ = copy(cache.y[j].du)
     yᵢ₊₁ = copy(cache.y[j + 1].du)
 
-    dyᵢ = copy(yᵢ)
-    dyᵢ₊₁ = copy(yᵢ₊₁)
+    if iip
+        dyᵢ = copy(yᵢ)
+        dyᵢ₊₁ = copy(yᵢ₊₁)
 
-    f(dyᵢ, yᵢ, cache.p, mesh[j])
-    f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+        f(dyᵢ, yᵢ, cache.p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+    else
+        dyᵢ = f(yᵢ, cache.p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
+    end
 
     # Load interpolation residual
     y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
