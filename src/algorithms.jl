@@ -118,16 +118,16 @@ end
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return MultipleShooting(alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots,
-        alg.grid_coarsening)
+                            alg.grid_coarsening)
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
     return MultipleShooting(alg.ode_alg, alg.nlsolve, alg.jac_alg, nshoots,
-        alg.grid_coarsening)
+                            alg.grid_coarsening)
 end
 
 function MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
+                          grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
     @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
             grid_coarsening isa AbstractVector{<:Integer} ||
             grid_coarsening isa NTuple{N, <:Integer} where {N}
@@ -142,137 +142,360 @@ end
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
 
-    @eval begin
-        """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
+    @eval begin """
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
 
-        $($order)th order Monotonic Implicit Runge Kutta method.
+                $($order)th order Monotonic Implicit Runge Kutta method.
 
-        ## Keyword Arguments
+                ## Keyword Arguments
 
-          - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-            `NonlinearProblem` interface can be used. Note that any autodiff argument for
-            the solver will be ignored and a custom jacobian algorithm will be used.
-          - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
-            `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
-            use based on the input types and problem type.
-            - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-              `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
-            - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-              `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
-              `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
-              possible else `AutoFiniteDiff`.
+                  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+                    `NonlinearProblem` interface can be used. Note that any autodiff argument for
+                    the solver will be ignored and a custom jacobian algorithm will be used.
+                  - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+                    `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+                    use based on the input types and problem type.
+                    - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                      `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+                    - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                      `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
+                      `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                      possible else `AutoFiniteDiff`.
 
-        !!! note
-            For type-stability, the chunksizes for ForwardDiff ADTypes in
-            `BVPJacobianAlgorithm` must be provided.
+                !!! note
+                    For type-stability, the chunksizes for ForwardDiff ADTypes in
+                    `BVPJacobianAlgorithm` must be provided.
 
-        ## References
+                ## References
 
-        @article{Enright1996RungeKuttaSW,
-            title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
-            author={Wayne H. Enright and Paul H. Muir},
-            journal={SIAM J. Sci. Comput.},
-            year={1996},
-            volume={17},
-            pages={479-497}
-        }
-        """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
-            nlsolve::N = nothing
-            jac_alg::J = BVPJacobianAlgorithm()
-        end
-    end
+                @article{Enright1996RungeKuttaSW,
+                    title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
+                    author={Wayne H. Enright and Paul H. Muir},
+                    journal={SIAM J. Sci. Comput.},
+                    year={1996},
+                    volume={17},
+                    pages={479-497}
+                }
+                """
+    Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
+        nlsolve::N = nothing
+        jac_alg::J = BVPJacobianAlgorithm()
+    end end
 end
-
 
 for order in (1, 3, 5, 9, 13)
     alg = Symbol("RadauIIa$(order)")
 
-    @eval begin
-        """
-            $($alg)(; nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm())
+    @eval begin """
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = true)
 
-        $($order)th order RadauIIa method, with Newton Raphson nonlinear solver as default.
+                $($order)th order RadauIIa method.
 
-        ## References
-        TODO
-        }
-        """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
-            nlsolve::N = nothing
-            jac_alg::J = BVPJacobianAlgorithm()
-            nested_nlsolve::Bool = true
-        end
-    end
+                ## Keyword Arguments
+
+                - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+                  `NonlinearProblem` interface can be used. Note that any autodiff argument for
+                  the solver will be ignored and a custom jacobian algorithm will be used.
+                - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+                  `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+                  use based on the input types and problem type.
+                  - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                    `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+                  - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                    `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
+                    `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                    possible else `AutoFiniteDiff`.
+                - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the 
+                implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
+                solved as a part of the global residual. The general recommendation is to choose 
+                `true` for larger problems and `false` for smaller ones.
+
+              !!! note
+                  For type-stability, the chunksizes for ForwardDiff ADTypes in
+                  `BVPJacobianAlgorithm` must be provided.
+
+              ## References
+                    Reference for Lobatto and Radau methods:
+
+                        @incollection{Jay2015,
+                        author="Jay, Laurent O.",
+                        editor="Engquist, Bj{\"o}rn",
+                        title="Lobatto Methods",
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        year="2015",
+                        publisher="Springer Berlin Heidelberg",
+                        }
+                        @incollection{engquist_radau_2015,
+                        author = {Hairer, Ernst and Wanner, Gerhard},
+                        editor={Engquist, Bj{\"o}rn},
+                        title = {Radau {Methods}},
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        publisher = {Springer Berlin Heidelberg},
+                        year = {2015},
+                    }
+              References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+
+                @article{shampine_solving_nodate,
+                title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+                author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+                year = {2000},
+            }
+            
+            @article{kierzenka_bvp_2008,
+                title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+                author = {Kierzenka, J and Shampine, L F},
+                year = {2008},
+            }
+            
+            @article{russell_adaptive_1978,
+                title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+                journal = {SIAM Journal on Numerical Analysis},
+                author = {Russell, R. D. and Christiansen, J.},
+                year = {1978},
+            }
+                """
+    Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
+        nlsolve::N = nothing
+        jac_alg::J = BVPJacobianAlgorithm()
+        nested_nlsolve::Bool = true
+    end end
 end
 
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIa$(order)")
 
-    @eval begin
-        """
-            $($alg)(; nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm())
+    @eval begin """
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = true)
 
-        $($order)th order LobattoIIIa method, with Newton Raphson nonlinear solver as default.
+                $($order)th order LobattoIIIa method.
 
-        ## References
-        TODO
-        }
-        """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
-            nlsolve::N = nothing
-            jac_alg::J = BVPJacobianAlgorithm()
-            nested_nlsolve::Bool = true
-        end
-    end
+                ## Keyword Arguments
+
+                - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+                  `NonlinearProblem` interface can be used. Note that any autodiff argument for
+                  the solver will be ignored and a custom jacobian algorithm will be used.
+                - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+                  `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+                  use based on the input types and problem type.
+                  - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                    `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+                  - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                    `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
+                    `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                    possible else `AutoFiniteDiff`.
+                - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the 
+                implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
+                solved as a part of the global residual. The general recommendation is to choose 
+                `true` for larger problems and `false` for smaller ones.
+
+              !!! note
+                  For type-stability, the chunksizes for ForwardDiff ADTypes in
+                  `BVPJacobianAlgorithm` must be provided.
+
+              ## References
+                    Reference for Lobatto and Radau methods:
+
+                        @Inbook{Jay2015,
+                        author="Jay, Laurent O.",
+                        editor="Engquist, Bj{\"o}rn",
+                        title="Lobatto Methods",
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        year="2015",
+                        publisher="Springer Berlin Heidelberg",
+                        }
+                        @incollection{engquist_radau_2015,
+                        author = {Hairer, Ernst and Wanner, Gerhard},
+                        title = {Radau {Methods}},
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        publisher = {Springer Berlin Heidelberg},
+                        editor="Engquist, Bj{\"o}rn",
+                        year = {2015},
+                    }
+              References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+
+                @article{shampine_solving_nodate,
+                title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+                author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+                year = {2000},
+            }
+            
+            @article{kierzenka_bvp_2008,
+                title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+                author = {Kierzenka, J and Shampine, L F},
+                year = {2008},
+            }
+            
+            @article{russell_adaptive_1978,
+                title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+                journal = {SIAM Journal on Numerical Analysis},
+                author = {Russell, R. D. and Christiansen, J.},
+                year = {1978},
+                file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+            }
+                """
+    Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
+        nlsolve::N = nothing
+        jac_alg::J = BVPJacobianAlgorithm()
+        nested_nlsolve::Bool = true
+    end end
 end
 
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIb$(order)")
 
-    @eval begin
-        """
-            $($alg)(; nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm())
+    @eval begin """
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = true)
 
-        $($order)th order LobattoIIIb method, with Newton Raphson nonlinear solver as default.
+                $($order)th order LobattoIIIb method.
 
-        ## References
-        TODO
-        }
-        """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
-            nlsolve::N = nothing
-            jac_alg::J = BVPJacobianAlgorithm()
-            nested_nlsolve::Bool = true
-        end
-    end
+                ## Keyword Arguments
+
+                - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+                  `NonlinearProblem` interface can be used. Note that any autodiff argument for
+                  the solver will be ignored and a custom jacobian algorithm will be used.
+                - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+                  `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+                  use based on the input types and problem type.
+                  - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                    `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+                  - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                    `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
+                    `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                    possible else `AutoFiniteDiff`.
+                - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the 
+                implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
+                solved as a part of the global residual. The general recommendation is to choose 
+                `true` for larger problems and `false` for smaller ones.
+
+              !!! note
+                  For type-stability, the chunksizes for ForwardDiff ADTypes in
+                  `BVPJacobianAlgorithm` must be provided.
+
+              ## References
+                    Reference for Lobatto and Radau methods:
+
+                        @Inbook{Jay2015,
+                        author="Jay, Laurent O.",
+                        editor="Engquist, Bj{\"o}rn",
+                        title="Lobatto Methods",
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        year="2015",
+                        publisher="Springer Berlin Heidelberg",
+                        }
+                        @incollection{engquist_radau_2015,
+                        author = {Hairer, Ernst and Wanner, Gerhard},
+                        title = {Radau {Methods}},
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        publisher = {Springer Berlin Heidelberg},
+                        editor="Engquist, Bj{\"o}rn",
+                        year = {2015},
+                    }
+              References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+
+                @article{shampine_solving_nodate,
+                title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+                author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+                year = {2000},
+            }
+            
+            @article{kierzenka_bvp_2008,
+                title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+                author = {Kierzenka, J and Shampine, L F},
+                year = {2008},
+            }
+            
+            @article{russell_adaptive_1978,
+                title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+                journal = {SIAM Journal on Numerical Analysis},
+                author = {Russell, R. D. and Christiansen, J.},
+                year = {1978},
+                file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+            }
+                """
+    Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
+        nlsolve::N = nothing
+        jac_alg::J = BVPJacobianAlgorithm()
+        nested_nlsolve::Bool = true
+    end end
 end
-
 
 for order in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIc$(order)")
 
-    @eval begin
-        """
-            $($alg)(; nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm())
+    @eval begin """
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = true)
 
-        $($order)th order LobattoIIIc method, with Newton Raphson nonlinear solver as default.
+                $($order)th order LobattoIIIc method.
 
-        ## References
-        TODO
-        }
-        """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
-            nlsolve::N = nothing
-            jac_alg::J = BVPJacobianAlgorithm()
-            nested_nlsolve::Bool = true
-        end
-    end
+                ## Keyword Arguments
+
+                - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+                  `NonlinearProblem` interface can be used. Note that any autodiff argument for
+                  the solver will be ignored and a custom jacobian algorithm will be used.
+                - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+                  `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+                  use based on the input types and problem type.
+                  - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                    `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+                  - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                    `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
+                    `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                    possible else `AutoFiniteDiff`.
+                - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the 
+                implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
+                solved as a part of the global residual. The general recommendation is to choose 
+                `true` for larger problems and `false` for smaller ones.
+
+              !!! note
+                  For type-stability, the chunksizes for ForwardDiff ADTypes in
+                  `BVPJacobianAlgorithm` must be provided.
+
+              ## References
+                    Reference for Lobatto and Radau methods:
+
+                        @Inbook{Jay2015,
+                        author="Jay, Laurent O.",
+                        editor="Engquist, Bj{\"o}rn",
+                        title="Lobatto Methods",
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        year="2015",
+                        publisher="Springer Berlin Heidelberg",
+                        }
+                        @incollection{engquist_radau_2015,
+                        author = {Hairer, Ernst and Wanner, Gerhard},
+                        title = {Radau {Methods}},
+                        booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+                        publisher = {Springer Berlin Heidelberg},
+                        editor="Engquist, Bj{\"o}rn",
+                        year = {2015},
+                    }
+              References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+
+                @article{shampine_solving_nodate,
+                title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+                author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+                year = {2000},
+            }
+            
+            @article{kierzenka_bvp_2008,
+                title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+                author = {Kierzenka, J and Shampine, L F},
+                year = {2008},
+            }
+            
+            @article{russell_adaptive_1978,
+                title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+                journal = {SIAM Journal on Numerical Analysis},
+                author = {Russell, R. D. and Christiansen, J.},
+                year = {1978},
+                file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+            }
+                """
+    Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractFIRK
+        nlsolve::N = nothing
+        jac_alg::J = BVPJacobianAlgorithm()
+        nested_nlsolve::Bool = true
+    end end
 end
 
 # FIRK Algorithms that don't use adaptivity
