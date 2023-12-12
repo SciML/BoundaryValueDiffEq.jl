@@ -46,6 +46,26 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
         end
     end
 
+    if GROUP == "ALL" || GROUP == "FIRK"
+        @time @testset "Fully Implicit Collocation Method (FIRK) Tests" begin
+            @time @safetestset "Ensemble" begin
+                include("firk/ensemble.jl")
+            end
+            @time @safetestset "Radau Convergence Tests" begin
+                include("firk/radau_convergence_tests.jl")
+            end
+            @time @safetestset "Lobatto Convergence Tests" begin
+                include("firk/lobatto_convergence_tests.jl")
+            end
+            @time @safetestset "Vector of Vector" begin
+                include("firk/vectorofvector_initials.jl")
+            end
+            @time @safetestset "Interpolation Tests" begin
+                include("firk/interpolation_test.jl")
+            end
+        end
+    end
+
     if GROUP == "ALL" || GROUP == "OTHERS"
         @time @testset "Miscelleneous" begin
             @time @safetestset "Non Vector Inputs" begin
