@@ -55,7 +55,9 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
                 include("firk/radau_convergence_tests.jl")
             end
             @time @safetestset "Lobatto Convergence Tests" begin
-                include("firk/lobatto_convergence_tests.jl")
+                include("firk/lobattoIIIa_convergence_tests.jl")
+                include("firk/lobattoIIIb_convergence_tests.jl")
+                include("firk/lobattoIIIc_convergence_tests.jl")
             end
             @time @safetestset "Vector of Vector" begin
                 include("firk/vectorofvector_initials.jl")
