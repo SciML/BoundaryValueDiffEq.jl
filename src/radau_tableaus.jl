@@ -8,7 +8,7 @@ end
 function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 1
-    a = [1]
+    a = [1]'
     c = [1]
     b = [1]
 
@@ -25,7 +25,7 @@ function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [5//12 -1//12
-         3//4 1//4]
+         3//4 1//4]'
     c = [1 // 3, 1]
     b = [3 // 4, 1 // 4]
 
@@ -44,7 +44,7 @@ function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
     s = 3
     a = [11 // 45-7 * Rational(√6) // 360 37 // 225-169 * Rational(√6) // 1800 -2 // 225+Rational(√6) // 75
          37 // 225+169 * Rational(√6) // 1800 11 // 45+7 * Rational(√6) // 360 -2 // 225-Rational(√6) // 75
-         4 // 9-Rational(√6) // 36 4 // 9+Rational(√6) // 36 1//9]
+         4 // 9-Rational(√6) // 36 4 // 9+Rational(√6) // 36 1//9]'
     c = [2 // 5 - Rational(√6) // 10, 2 // 5 + Rational(√6) // 10, 1]
     b = [4 // 9 - Rational(√6) // 36, 4 // 9 + Rational(√6) // 36, 1 // 9]
 
@@ -61,7 +61,7 @@ end
 
 function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
-    s = 5
+    s = 5'
     c = [
         0.5710419611451768219312e-01,
         0.2768430136381238276800e+00,
@@ -99,7 +99,7 @@ end
 
 function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
-    s = 7
+    s = 7'
     c = [
         0.2931642715978489197205e-01,
         0.1480785996684842918500e+00,

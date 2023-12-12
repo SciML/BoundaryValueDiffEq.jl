@@ -9,7 +9,7 @@ function constructLobattoIIIa2(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [0 0
-         1//2 1//2]
+         1//2 1//2]'
     c = [0, 1]
     b = [1 // 2, 1 // 2]
 
@@ -27,7 +27,7 @@ function constructLobattoIIIa3(::Type{T}, nested::Bool) where {T}
     s = 3
     a = [0 0 0
          5//24 1//3 -1//24
-         1//6 2//3 1//6]
+         1//6 2//3 1//6]'
     c = [0, 1 // 2, 1]
     b = [1 // 6, 2 // 3, 1 // 6]
 
@@ -48,7 +48,7 @@ function constructLobattoIIIa4(::Type{T}, nested::Bool) where {T}
     a = [0 0 0 0
          (11 + Rational(√5))//120 (25 - Rational(√5))//120 (25 - 13 * Rational(√5))//120 (-1 + Rational(√5))//120
          (11 - Rational(√5))//120 (25 + 13 * Rational(√5))//120 (25 + Rational(√5))//120 (-1 - Rational(√5))//120
-         1//12 5//12 5//12 1//12]
+         1//12 5//12 5//12 1//12]'
     c = [0, 1 // 2 - Rational(√5) // 10, 1 // 2 + Rational(√5) // 10, 1]
     b = [1 // 12, 5 // 12, 5 // 12, 1 // 12]
 
@@ -71,7 +71,7 @@ function constructLobattoIIIa5(::Type{T}, nested::Bool) where {T}
          (119 + 3 * Rational(√21))//1960 (343 - 9 * Rational(√21))//2520 (392 - 96 * Rational(√21))//2205 (343 - 69 * Rational(√21))//2520 (-21 + 3 * Rational(√21))//1960
          13//320 (392 + 105 * Rational(√21))//2880 8//45 (392 - 105 * Rational(√21))//2880 3//320
          (119 - 3 * Rational(√21))//1960 (343 + 69 * Rational(√21))//2520 (392 + 96 * Rational(√21))//2205 (343 + 9 * Rational(√21))//2520 (-21 - 3 * Rational(√21))//1960
-         1//20 49//180 16//45 49//180 1//20]
+         1//20 49//180 16//45 49//180 1//20]'
     c = [0, 1 // 2 - Rational(√21) // 14, 1 // 2, 1 // 2 + Rational(√21) // 14, 1]
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
@@ -99,7 +99,7 @@ function constructLobattoIIIb2(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [1//2 0
-         1//2 0]
+         1//2 0]'
     c = [0, 1]
     b = [1 // 2, 1 // 2]
 
@@ -117,7 +117,7 @@ function constructLobattoIIIb3(::Type{T}, nested::Bool) where {T}
     s = 3
     a = [1//6 -1//6 0
          1//6 1//3 0
-         1//6 5//6 0]
+         1//6 5//6 0]'
     c = [0, 1 // 2, 1]
     b = [1 // 6, 2 // 3, 1 // 6]
 
@@ -138,7 +138,7 @@ function constructLobattoIIIb4(::Type{T}, nested::Bool) where {T}
     a = [1//12 (-1 - Rational(√5))//24 (-1 + Rational(√5))//24 0
          1//12 (25 + Rational(√5))//120 (25 - 13 * Rational(√5))//120 0
          1//12 (25 + 13 * Rational(√5))//120 (25 - Rational(√5))//120 0
-         1//12 (11 - Rational(√5))//24 (11 + Rational(√5))//24 0]
+         1//12 (11 - Rational(√5))//24 (11 + Rational(√5))//24 0]'
     c = [0, 1 // 2 - Rational(√5) // 10, 1 // 2 + Rational(√5) // 10, 1]
     b = [1 // 12, 5 // 12, 5 // 12, 1 // 12]
 
@@ -161,7 +161,7 @@ function constructLobattoIIIb5(::Type{T}, nested::Bool) where {T}
          1//20 (343 + 9 * Rational(√21))//2520 (56 - 15 * Rational(√21))//315 (343 - 69 * Rational(√21))//2520 0
          1//20 (49 + 12 * Rational(√21))//360 8//45 (49 - 12 * Rational(√21))//360 0
          1//20 (343 + 69 * Rational(√21))//2520 (56 + 15 * Rational(√21))//315 (343 - 9 * Rational(√21))//2520 0
-         1//20 (119 - 3 * Rational(√21))//360 13//45 (119 + 3 * Rational(√21))//360 0]
+         1//20 (119 - 3 * Rational(√21))//360 13//45 (119 + 3 * Rational(√21))//360 0]'
     c = [0, 1 // 2 - Rational(√21) // 14, 1 // 2, 1 // 2 + Rational(√21) // 14, 1]
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
@@ -189,7 +189,7 @@ function constructLobattoIIIc2(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [1//2 -1//2
-         1//2 1//2]
+         1//2 1//2]'
     c = [0, 1]
     b = [1 // 2, 1 // 2]
 
@@ -207,7 +207,7 @@ function constructLobattoIIIc3(::Type{T}, nested::Bool) where {T}
     s = 3
     a = [1//6 -1//3 1//6
          1//6 5//12 -1//12
-         1//6 2//3 1//6]
+         1//6 2//3 1//6]'
     c = [0, 1 // 2, 1]
     b = [1 // 6, 2 // 3, 1 // 6]
 
@@ -227,7 +227,7 @@ function constructLobattoIIIc4(::Type{T}, nested::Bool) where {T}
     a = [1//12 -Rational(sqrt(5))//12 Rational(sqrt(5))//12 -1//12
          1//12 1//4 (10 - 7 * Rational(sqrt(5)))//60 Rational(sqrt(5))//60
          1//12 (10 + 7 * Rational(sqrt(5)))//60 1//4 -Rational(sqrt(5))//60
-         1//12 5//12 5//12 1//12]
+         1//12 5//12 5//12 1//12]'
     c = [0, 1 // 2 - Rational(sqrt(5)) // 10, 1 // 2 + Rational(sqrt(5)) // 10, 1]
     b = [1 // 12, 5 // 12, 5 // 12, 1 // 12]
 
@@ -250,7 +250,7 @@ function constructLobattoIIIc5(::Type{T}, nested::Bool) where {T}
          1//20 29//180 (47 - 15 * Rational(sqrt(21)))//315 (203 - 30 * Rational(sqrt(21)))//1260 -3//140
          1//20 (329 + 105 * Rational(sqrt(21)))//2880 73//360 (329 - 105 * Rational(sqrt(21)))//2880 3//160
          1//20 (203 + 30 * Rational(sqrt(21)))//1260 (47 + 15 * Rational(sqrt(21)))//315 29//180 -3//140
-         1//20 49//180 16//45 49//180 1//20]
+         1//20 49//180 16//45 49//180 1//20]'
     c = [0, 1 // 2 - Rational(sqrt(21)) // 14, 1 // 2, 1 // 2 + Rational(sqrt(21)) // 14, 1]
     b = [1 // 20, 49 // 180, 16 // 45, 49 // 180, 1 // 20]
 
