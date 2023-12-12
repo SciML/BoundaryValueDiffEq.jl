@@ -77,7 +77,7 @@ end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
     prob = probArr[i]
-    @testset "RadauIIa$order" for order in (2, 3, 4, 5, 6)
+    @testset "RadauIIa$order" for order in (3, 5, 9, 13)
         @time sol = solve(prob, radau_solver(Val(order)); dt = 0.2)
         @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
     end
@@ -85,7 +85,7 @@ end end
 
 @testset "Convergence on Linear" begin @testset "Problem: $i" for i in (3, 4, 7, 8)
     prob = probArr[i]
-    @testset "RadauIIa$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
+    @testset "RadauIIa$order" for (i, order) in enumerate((3, 5, 9, 13))
         @time sim = test_convergence(dts, prob, radau_solver(Val(order));
                                      abstol = 1e-8, reltol = 1e-8)
         @test sim.𝒪est[:final]≈order atol=testTol
@@ -114,9 +114,18 @@ bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
                                nonbc_diffmode = AutoSparseFiniteDiff())
 
+nl_solve = NewtonRaphson()
+
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, RadauIIa1(; jac_alg); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa3(; jac_alg); dt = 0.005)
-@test_nowarn solve(bvp1, RadauIIa5(; jac_alg); dt = 0.005)
-@test_nowarn solve(bvp1, RadauIIa9(; jac_alg); dt = 0.05)
-@test_nowarn solve(bvp1, RadauIIa13(; jac_alg); dt = 0.05)
+@test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, true); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, true); dt = 0.005)
+@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, true); dt = 0.005)
+@test_nowarn solve(bvp1, RadauIIa9(nl_solve, jac_alg, true); dt = 0.05)
+@test_nowarn solve(bvp1, RadauIIa13(nl_solve, jac_alg, true); dt = 0.05)
+
+@test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, false); dt = 0.005,
+                   adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, false); dt = 0.005)
+@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, false); dt = 0.005)
+@test_nowarn solve(bvp1, RadauIIa9(nl_solve, jac_alg, false); dt = 0.05)
+@test_nowarn solve(bvp1, RadauIIa13(nl_solve, jac_alg, false); dt = 0.05)
