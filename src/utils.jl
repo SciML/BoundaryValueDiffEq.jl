@@ -127,7 +127,8 @@ end
 function __extract_problem_details(prob; kwargs...)
     return __extract_problem_details(prob, prob.u0; kwargs...)
 end
-function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kwargs...)
+### TODO: Support DiffEqArray for non-uniform mesh for multiple shooting
+function __extract_problem_details(prob, u0::VectorOfArray; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
@@ -167,7 +168,7 @@ end
 function __initial_state_from_prob(::BVProblem, u0::AbstractArray, mesh)
     return [copy(vec(u0)) for _ in mesh]
 end
-function __initial_state_from_prob(::BVProblem, u0::AbstractVector{<:AbstractVector}, _)
+function __initial_state_from_prob(::BVProblem, u0::VectorOfArray, _)
     return [copy(vec(u)) for u in u0]
 end
 function __initial_state_from_prob(prob::BVProblem, f::F, mesh) where {F}

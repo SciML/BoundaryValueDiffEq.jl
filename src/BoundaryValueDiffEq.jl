@@ -16,7 +16,7 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
     import ConcreteStructs: @concrete
     import DiffEqBase: solve
     import ForwardDiff: pickchunksize
-    import RecursiveArrayTools: ArrayPartition, DiffEqArray
+    import RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
     import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
     import SparseDiffTools: AbstractSparseADType
     import TruncatedStacktraces: @truncate_stacktrace

@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, Test, OrdinaryDiffEq
+using BoundaryValueDiffEq, Test, OrdinaryDiffEq, RecursiveArrayTools
 
 #System Constants
 ss = 1 #excitatory parameter
@@ -61,7 +61,7 @@ function bc_po!(residual, u, p, t)
 end
 
 #This is the part of the code that has problems
-bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
+bvp1 = BVProblem(TC!, bc_po!, VectorOfArray(sol.u), tspan)
 sol6 = solve(bvp1, MIRK6(); dt = 0.5)
 @test SciMLBase.successful_retcode(sol6.retcode)
 

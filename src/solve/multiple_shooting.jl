@@ -364,7 +364,7 @@ end
 
     # NOTE: We don't check `u0 isa Function` since `u0` in-principle can be a callable
     #       struct
-    u0_ = u0 isa AbstractArray ? u0 : [__initial_guess(u0, prob.p, t) for t in nodes]
+    u0_ = u0 isa VectorOfArray ? u0 : [__initial_guess(u0, prob.p, t) for t in nodes]
 
     N = length(first(u0_))
     u_at_nodes = similar(first(u0_), (nshoots + 1) * N)

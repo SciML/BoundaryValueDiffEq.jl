@@ -101,7 +101,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    prob_ = !(prob.u0 isa AbstractArray || prob.u0 isa VectorOfArray) ?
+            remake(prob; u0 = X) : prob
 
     return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
@@ -312,6 +313,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         J_full_band = nothing
         NoSparsityDetection()
     end
+    # @show sd_collocation.row_colorvec
+    # @show sd_collocation.col_colorvec
+    display(sd_collocation.jac_prototype)
     cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
         sd_collocation, loss_collocationₚ, resid_collocation, y)
 
