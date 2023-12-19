@@ -313,9 +313,6 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         J_full_band = nothing
         NoSparsityDetection()
     end
-    # @show sd_collocation.row_colorvec
-    # @show sd_collocation.col_colorvec
-    display(sd_collocation.jac_prototype)
     cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
         sd_collocation, loss_collocationₚ, resid_collocation, y)
 
