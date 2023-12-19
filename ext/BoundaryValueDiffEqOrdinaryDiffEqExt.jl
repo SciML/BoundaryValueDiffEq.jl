@@ -43,13 +43,13 @@ end
 
     algs = []
 
-    if load_preference(BoundaryValueDiffEq, "PrecompileShooting", true)
+    if load_preference(BoundaryValueDiffEq, "PrecompileShooting", false)
         push!(algs,
             Shooting(Tsit5(); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))))
     end
 
-    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShooting", true)
+    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShooting", false)
         push!(algs,
             MultipleShooting(10,
                 Tsit5();
