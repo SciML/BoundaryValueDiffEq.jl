@@ -101,7 +101,10 @@ end
     resid_f = Array{ComplexF64}(undef, 2)
 
     # We will automatically use FiniteDiff if we can't use dual numbers
-    for solver in [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
+    # Auto Selecting default solvers for Complex Valued Problems supported by a version of 
+    # NonlinearSolve that is not yet compatible with BoundaryValueDiffEq
+    for solver in [Shooting(Tsit5(), NewtonRaphson()),
+        MultipleShooting(10, Tsit5(), nlsolve = NewtonRaphson())]
         sol = solve(bvp, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         bc1!(resid_f, sol, nothing, sol.t)

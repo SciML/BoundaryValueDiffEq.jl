@@ -60,6 +60,9 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
             @time @safetestset "Initial Guess Function" begin
                 include("misc/initial_guess.jl")
             end
+            @time @safetestset "Affine Geodesic" begin
+                include("misc/affine_geodesic.jl")
+            end
             @time @safetestset "Aqua: Quality Assurance" begin
                 include("misc/aqua.jl")
             end
