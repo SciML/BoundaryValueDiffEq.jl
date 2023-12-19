@@ -3,11 +3,11 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
 @testset "Overconstrained BVP" begin
     SOLVERS = [
         Shooting(Tsit5()),
-        Shooting(Tsit5(); nlsolve = LevenbergMarquardt()),
         Shooting(Tsit5(); nlsolve = GaussNewton()),
+        Shooting(Tsit5(); nlsolve = TrustRegion()),
         MultipleShooting(10, Tsit5()),
-        MultipleShooting(10, Tsit5(); nlsolve = LevenbergMarquardt()),
-        MultipleShooting(10, Tsit5(); nlsolve = GaussNewton())]
+        MultipleShooting(10, Tsit5(); nlsolve = GaussNewton()),
+        MultipleShooting(10, Tsit5(); nlsolve = TrustRegion())]
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -27,10 +27,8 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp1, solver;
-            nlsolve_kwargs = (; abstol = 1e-8, reltol = 1e-8, maxiters = 1000),
-            verbose = false)
-        @test norm(bc1(sol, nothing, sol.t)) < 1e-4
+        sol = @time solve(bvp1, solver; verbose = false)
+        @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-4
     end
 
     # IIP MP-BVP
@@ -56,12 +54,10 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp2, solver;
-            nlsolve_kwargs = (; abstol = 1e-8, reltol = 1e-8, maxiters = 1000),
-            verbose = false)
+        sol = @time solve(bvp2, solver; verbose = false)
         resid_f = Array{Float64}(undef, 4)
         bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f) < 1e-4
+        @test norm(resid_f, Inf) < 1e-4
     end
 
     # OOP TP-BVP
@@ -72,10 +68,8 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp3, solver;
-            nlsolve_kwargs = (; abstol = 1e-8, reltol = 1e-8, maxiters = 1000),
-            verbose = false)
-        @test norm(vcat(bc1a(sol(0.0), nothing), bc1b(sol(100.0), nothing))) < 1e-4
+        sol = @time solve(bvp3, solver; verbose = false)
+        @test norm(vcat(bc1a(sol(0.0), nothing), bc1b(sol(100.0), nothing)), Inf) < 1e-4
     end
 
     # IIP TP-BVP
@@ -86,13 +80,11 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp4, solver;
-            nlsolve_kwargs = (; abstol = 1e-8, reltol = 1e-8, maxiters = 1000),
-            verbose = false)
+        sol = @time solve(bvp4, solver; verbose = false)
         resida = Array{Float64}(undef, 1)
         residb = Array{Float64}(undef, 2)
         bc1a!(resida, sol(0.0), nothing)
         bc1b!(residb, sol(100.0), nothing)
-        @test norm(vcat(resida, residb)) < 1e-4
+        @test norm(vcat(resida, residb), Inf) < 1e-4
     end
 end

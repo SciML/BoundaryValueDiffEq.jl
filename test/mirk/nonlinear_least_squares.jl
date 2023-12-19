@@ -20,7 +20,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
 
     for solver in SOLVERS
         @time sol = solve(bvp1, solver; verbose = false, dt = 1.0)
-        @test norm(bc1(sol, nothing, tspan)) < 1e-2
+        @test norm(bc1(sol, nothing, tspan), Inf) < 1e-2
     end
 
     # IIP MP-BVP
@@ -46,7 +46,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
         @time sol = solve(bvp2, solver; verbose = false, dt = 1.0)
         resid_f = Array{Float64}(undef, 3)
         bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f) < 1e-2
+        @test norm(resid_f, Inf) < 1e-2
     end
 
     # OOP TP-BVP
@@ -58,7 +58,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
 
     for solver in SOLVERS
         @time sol = solve(bvp3, solver; verbose = false, dt = 1.0)
-        @test norm(vcat(bc1a(sol[1], nothing), bc1b(sol[end], nothing))) < 1e-2
+        @test norm(vcat(bc1a(sol[1], nothing), bc1b(sol[end], nothing)), Inf) < 1e-2
     end
 
     # IIP TP-BVP
@@ -75,7 +75,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
         residb = Array{Float64}(undef, 2)
         bc1a!(resida, sol(0.0), nothing)
         bc1b!(residb, sol(100.0), nothing)
-        @test norm(vcat(resida, residb)) < 1e-2
+        @test norm(vcat(resida, residb), Inf) < 1e-2
     end
 end
 

@@ -54,7 +54,7 @@ probs = [
     @testset "Single Shooting" begin
         for prob in probs
             @time sol = solve(prob, Shooting(Tsit5()))
-            @test norm(boundary(sol, prob.p, nothing)) < 0.01
+            @test norm(boundary(sol, prob.p, nothing), Inf) < 0.01
         end
     end
 
