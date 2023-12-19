@@ -57,7 +57,7 @@ function __generate_sparse_jacobian_prototype(::MIRKCache, ::StandardBVProblem, 
         N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
-    J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M))
+    J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
     return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
 end
 
