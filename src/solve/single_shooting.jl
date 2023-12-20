@@ -2,7 +2,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), verbose = true, kwargs...)
     ig, T, N, _, u0 = __extract_problem_details(prob; dt = 0.1)
     _unwrap_val(ig) && verbose &&
-        @warn "Initial guess provided, but will be ignored for Shooting!"
+        @warn "Initial guess provided, but will be ignored for Shooting."
 
     alg = concretize_jacobian_algorithm(alg_, prob)
 

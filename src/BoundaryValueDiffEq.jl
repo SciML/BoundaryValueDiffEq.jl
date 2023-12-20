@@ -30,7 +30,7 @@ include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 
-include("mirk_tableaus.jl")
+include("tableaus/mirk.jl")
 
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")

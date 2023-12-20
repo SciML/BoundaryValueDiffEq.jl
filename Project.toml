@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEq"
 uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
-version = "5.6.1"
+version = "6.0.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -42,7 +42,7 @@ Aqua = "0.7"
 ArrayInterface = "7"
 BandedMatrices = "1"
 ConcreteStructs = "0.2"
-DiffEqBase = "6.138 - 6.143"
+DiffEqBase = "6.144"
 FastAlmostBandedMatrices = "0.1"
 ForwardDiff = "0.10"
 LinearAlgebra = "1.9"

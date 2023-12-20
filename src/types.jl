@@ -1,6 +1,6 @@
 # MIRK Method Tableaus
+"""Discrete stages of MIRK formula"""
 struct MIRKTableau{sType, cType, vType, bType, xType}
-    """Discrete stages of MIRK formula"""
     s::sType
     c::cType
     v::vType
