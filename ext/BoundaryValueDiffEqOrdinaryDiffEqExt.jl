@@ -35,15 +35,17 @@ end
     bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
     probs = [
-        BVProblem(f1!, bc1!, u0, tspan),
-        BVProblem(f1, bc1, u0, tspan),
-        TwoPointBVProblem(f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype),
-        TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
+        BVProblem(BVPFunction{true}(f1!, bc1!), u0, tspan; nlls = Val(false)),
+        BVProblem(BVPFunction{false}(f1, bc1), u0, tspan; nlls = Val(false)),
+        BVProblem(BVPFunction{true}(f1!, (bc1_a!, bc1_b!); bcresid_prototype,
+                twopoint = Val(true)), u0, tspan; nlls = Val(false)),
+        BVProblem(BVPFunction{false}(f1, (bc1_a, bc1_b); bcresid_prototype,
+                twopoint = Val(true)), u0, tspan; nlls = Val(false)),
     ]
 
     algs = []
 
-    if load_preference(BoundaryValueDiffEq, "PrecompileShooting", false)
+    if load_preference(BoundaryValueDiffEq, "PrecompileShooting", true)
         push!(algs,
             Shooting(Tsit5(); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))))
@@ -51,8 +53,7 @@ end
 
     if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShooting", false)
         push!(algs,
-            MultipleShooting(10,
-                Tsit5();
+            MultipleShooting(10, Tsit5();
                 nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)),
                 jac_alg = BVPJacobianAlgorithm(;
                     bc_diffmode = AutoForwardDiff(; chunksize = 2),
@@ -94,22 +95,24 @@ end
     bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
 
     probs = [
-        BVProblem(BVPFunction(f1_nlls!, bc1_nlls!; bcresid_prototype = bcresid_prototype1),
-            u0, tspan),
-        BVProblem(BVPFunction(f1_nlls, bc1_nlls; bcresid_prototype = bcresid_prototype1),
-            u0, tspan),
-        TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
-            bcresid_prototype = bcresid_prototype2),
-        TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
-            bcresid_prototype = bcresid_prototype2),
+        BVProblem(BVPFunction{true}(f1_nlls!, bc1_nlls!;
+                bcresid_prototype = bcresid_prototype1), u0, tspan; nlls = Val(true)),
+        BVProblem(BVPFunction{false}(f1_nlls, bc1_nlls;
+                bcresid_prototype = bcresid_prototype1), u0, tspan; nlls = Val(true)),
+        BVProblem(BVPFunction{true}(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!);
+                bcresid_prototype = bcresid_prototype2, twopoint = Val(true)), u0, tspan;
+            nlls = Val(true)),
+        BVProblem(BVPFunction{false}(f1_nlls, (bc1_nlls_a, bc1_nlls_b);
+                bcresid_prototype = bcresid_prototype2, twopoint = Val(true)), u0, tspan;
+            nlls = Val(true)),
     ]
 
     algs = []
 
-    if load_preference(BoundaryValueDiffEq, "PrecompileShootingNLLS", false)
+    if load_preference(BoundaryValueDiffEq, "PrecompileShootingNLLS", true)
         append!(algs,
             [
-                Shooting(Tsit5(); nlsolve = LevenbergMarquardt(),
+                Shooting(Tsit5(); nlsolve = TrustRegion(),
                     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
                 Shooting(Tsit5(); nlsolve = GaussNewton(),
                     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
@@ -120,8 +123,7 @@ end
         append!(algs,
             [
                 MultipleShooting(10, Tsit5();
-                    nlsolve = LevenbergMarquardt(;
-                        autodiff = AutoForwardDiff(chunksize = 2)),
+                    nlsolve = TrustRegion(; autodiff = AutoForwardDiff(chunksize = 2)),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
                         nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),

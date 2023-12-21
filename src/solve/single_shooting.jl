@@ -126,8 +126,7 @@ end
 function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         ::Union{AutoForwardDiff, AutoSparseForwardDiff}, u0, ode_alg; kwargs...)
     # See https://github.com/SciML/OrdinaryDiffEq.jl/issues/2091 which causes too many
-    # runtime dispatches. Till that is fixed we just create a new cache to calm down
-    # compile times
+    # runtime dispatches.
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
