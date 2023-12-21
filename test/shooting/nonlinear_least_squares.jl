@@ -1,4 +1,4 @@
-using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
+using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
 
 @testset "Overconstrained BVP" begin
     SOLVERS = [
@@ -8,6 +8,8 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
         MultipleShooting(10, Tsit5()),
         MultipleShooting(10, Tsit5(); nlsolve = GaussNewton()),
         MultipleShooting(10, Tsit5(); nlsolve = TrustRegion())]
+
+    @info "Solving Overconstrained BVPs"
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -24,10 +26,13 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
 
-    bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)), u0, tspan)
+    bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)), u0, tspan;
+        nlls = Val(true))
 
     for solver in SOLVERS
-        sol = @time solve(bvp1, solver; verbose = false)
+        @info "Testing $solver"
+        sol = @time solve(bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
         @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-4
     end
 

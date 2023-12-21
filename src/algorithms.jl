@@ -3,7 +3,9 @@ abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
 """
-    Shooting(ode_alg = nothing; nlsolve = nothing, jac_alg = BVPJacobianAlgorithm())
+    Shooting(ode_alg; kwargs...)
+    Shooting(ode_alg, nlsolve; kwargs...)
+    Shooting(; ode_alg = nothing, nlsolve = nothing, jac_alg = nothing)
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
 
@@ -12,53 +14,55 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
   - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
     SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
     poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
-
-## Keyword Arguments
-
   - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
     `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
     will be ignored and a custom jacobian algorithm will be used.
-  - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
-    `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
-    on the input types and problem type. Only `diffmode` is used (defaults to
-    `AutoForwardDiff` if possible else `AutoFiniteDiff`).
-
-!!! note
-    For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
-    must be provided.
+  - `jac_alg`: Jacobian Algorithm used for the Nonlinear Solver. If this is not set, we
+    check if `nlsolve.ad` exists and is not nothing. If it is, we use that to construct
+    the jacobian. If not, we try to use the best algorithm based on the input types
+    and problem type. If `BVPJacobianAlgorithm` is provided, only `diffmode` is used
+    (defaults to `AutoForwardDiff` if possible else `AutoFiniteDiff`).
 """
-struct Shooting{O, N, L <: BVPJacobianAlgorithm} <: BoundaryValueDiffEqAlgorithm
-    ode_alg::O
-    nlsolve::N
-    jac_alg::L
+@concrete struct Shooting{J <: BVPJacobianAlgorithm} <: BoundaryValueDiffEqAlgorithm
+    ode_alg
+    nlsolve
+    jac_alg::J
 end
 
-function concretize_jacobian_algorithm(alg::Shooting, prob)
-    jac_alg = alg.jac_alg
-    diffmode = jac_alg.diffmode === nothing ? __default_nonsparse_ad(prob.u0) :
-               jac_alg.diffmode
-    return Shooting(alg.ode_alg, alg.nlsolve, BVPJacobianAlgorithm(diffmode))
+function Shooting(; ode_alg = nothing, nlsolve = nothing, jac_alg = nothing)
+    if jac_alg isa BVPJacobianAlgorithm
+        _jac_alg = jac_alg
+    elseif jac_alg === nothing
+        if nlsolve === nothing
+            _jac_alg = BVPJacobianAlgorithm()
+        else
+            ad = hasfield(typeof(nlsolve), :ad) ? nlsolve.ad : missing
+            _jac_alg = BVPJacobianAlgorithm(ad)
+        end
+    elseif jac_alg isa ADTypes.AbstractADType
+        _jac_alg = BVPJacobianAlgorithm(jac_alg)
+    else
+        throw(ArgumentError("Invalid `jac_alg`: $_jac_alg."))
+    end
+    return Shooting(ode_alg, nlsolve, _jac_alg)
+end
+@inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
+@inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
+
+function Base.show(io::IO, alg::Shooting)
+    print(io, "Shooting(")
+    modifiers = String[]
+    alg.nlsolve !== nothing && push!(modifiers, "nlsolve = $(alg.nlsolve)")
+    alg.jac_alg !== nothing && push!(modifiers, "jac_alg = $(alg.jac_alg)")
+    alg.ode_alg !== nothing && push!(modifiers, "ode_alg = $(__nameof(alg.ode_alg))()")
+    print(io, join(modifiers, ", "))
+    print(io, ")")
 end
 
-function Shooting(ode_alg = nothing; nlsolve = nothing, jac_alg = nothing)
-    jac_alg === nothing && (jac_alg = __propagate_nlsolve_ad_to_jac_alg(nlsolve))
-    return Shooting(ode_alg, nlsolve, jac_alg)
-end
-
-Shooting(ode_alg, nlsolve; jac_alg = nothing) = Shooting(ode_alg; nlsolve, jac_alg)
-
-# This is a deprecation path. We forward the `ad` from nonlinear solver to `jac_alg`.
-# We will drop this function in
-function __propagate_nlsolve_ad_to_jac_alg(nlsolve::N) where {N}
-    # Defaults so no depwarn
-    nlsolve === nothing && return BVPJacobianAlgorithm()
-    ad = hasfield(N, :ad) ? nlsolve.ad : nothing
-    ad === nothing && return BVPJacobianAlgorithm()
-
-    Base.depwarn("Setting autodiff to the nonlinear solver in Shooting has been deprecated \
-                  and will have no effect from the next major release. Update to use \
-                  `BVPJacobianAlgorithm` directly", :Shooting)
-    return BVPJacobianAlgorithm(ad)
+@inline function concretize_jacobian_algorithm(alg::Shooting, prob)
+    alg.jac_alg.diffmode === nothing &&
+        (return @set alg.jac_alg.diffmode = __default_nonsparse_ad(prob.u0))
+    return alg
 end
 
 """

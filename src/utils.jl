@@ -264,3 +264,36 @@ struct __unsafe_nonlinearfunction{iip} end
         RP}(f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
         nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
 end
+
+@inline __nameof(::T) where {T} = nameof(T)
+@inline __nameof(::Type{T}) where {T} = nameof(T)
+
+# Construct the internal NonlinearProblem
+@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, nlls},
+        resid_prototype, u0, args...; kwargs...) where {uType, tType, iip, nlls}
+    if nlls
+        return NonlinearLeastSquaresProblem(args...; kwargs...)
+    else
+        return NonlinearProblem(args...; kwargs...)
+    end
+end
+
+@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, Nothing},
+        resid_prototype, u0, args...; kwargs...) where {uType, tType, iip}
+    if length(resid_prototype) != length(u0)
+        return NonlinearLeastSquaresProblem(args...; kwargs...)
+    else
+        return NonlinearProblem(args...; kwargs...)
+    end
+end
+
+# Populate the `original` and `resid` of the ODESolution
+@inline function __update_odesolution(sol::ODESolution{T, N, uType, uType2, DType, tType,
+            rateType, P, A, IType, S, AC, R, O}; original = nothing, retcode = sol.retcode,
+        resid = nothing) where {T, N, uType, uType2, DType, tType, rateType, P, A, IType,
+        S, AC, R, O}
+    return ODESolution{T, N, uType, uType2, DType, tType, rateType, P, A, IType, S, AC,
+        typeof(resid), typeof(original)}(sol.u, sol.u_analytic, sol.errors, sol.t, sol.k,
+        sol.prob, sol.alg, sol.interp, sol.dense, sol.tslocation, sol.stats, sol.alg_choice,
+        retcode, resid, original)
+end

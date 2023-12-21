@@ -352,9 +352,9 @@ version = "0.1.4"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "199288db29b37c0d3fbd30c66c9b66fa4aea5ceb"
+git-tree-sha1 = "5fdf2fe6724d8caabf43b557b84ce53f3b7e2f6b"
 uuid = "1d5cc7b8-4909-519e-a0f8-d0f5ad9712d0"
-version = "2024.0.0+1"
+version = "2024.0.2+0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -769,7 +769,7 @@ version = "0.6.42"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FillArrays", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables", "TruncatedStacktraces"]
-git-tree-sha1 = "eab9057555a5611a846b160c8d942cc4d3acfa09"
+git-tree-sha1 = "a35d39d42360f17389bfaeec5d7582a5d20fe7e3"
 repo-rev = "ap/nlls_bvp"
 repo-url = "https://github.com/SciML/SciMLBase.jl.git"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"

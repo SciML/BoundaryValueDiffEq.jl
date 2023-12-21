@@ -39,6 +39,23 @@ end
     diffmode
 end
 
+function Base.show(io::IO, alg::BVPJacobianAlgorithm)
+    print(io, "BVPJacobianAlgorithm(")
+    modifiers = String[]
+    if alg.diffmode !== nothing && alg.diffmode !== missing
+        push!(modifiers, "diffmode = $(__nameof(alg.diffmode))()")
+    else
+        if alg.nonbc_diffmode !== missing && alg.nonbc_diffmode !== nothing
+            push!(modifiers, "nonbc_diffmode = $(__nameof(alg.nonbc_diffmode))()")
+        end
+        if alg.bc_diffmode !== missing && alg.bc_diffmode !== nothing
+            push!(modifiers, "bc_diffmode = $(__nameof(alg.bc_diffmode))()")
+        end
+    end
+    print(io, join(modifiers, ", "))
+    print(io, ")")
+end
+
 __any_sparse_ad(ad) = ad isa AbstractSparseADType
 function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
     __any_sparse_ad(jac_alg.bc_diffmode) || __any_sparse_ad(jac_alg.nonbc_diffmode) ||

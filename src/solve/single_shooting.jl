@@ -1,8 +1,17 @@
 function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), verbose = true, kwargs...)
-    ig, T, N, _, u0 = __extract_problem_details(prob; dt = 0.1)
-    _unwrap_val(ig) && verbose &&
-        @warn "Initial guess provided, but will be ignored for Shooting."
+    # Setup the problem
+    if prob.u0 isa AbstractArray
+        u0 = prob.u0
+    else
+        verbose && @warn "Initial guess provided, but will be ignored for Shooting."
+        if prob.u0 isa VectorOfArray
+            u0 = prob.u0[:, 1]
+        else
+            u0 = __initial_guess(f, prob.p, first(prob.tspan))
+        end
+    end
+    T, N = eltype(u0), length(u0)
 
     alg = concretize_jacobian_algorithm(alg_, prob)
 
@@ -24,14 +33,14 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
             prob.problem_type)
     end
 
-    # Construct the jacobian function
-    # NOTE: We pass in a separate Jacobian Function because that allows us to cache the
-    #       the internal ode solve cache. This cache needs to be distinct from the regular
-    #       residual function cache
     sd = alg.jac_alg.diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
          NoSparsityDetection()
     y_ = similar(resid_prototype)
 
+    # Construct the jacobian function
+    # NOTE: We pass in a separate Jacobian Function because that allows us to cache the
+    #       the internal ode solve cache. This cache needs to be distinct from the regular
+    #       residual function cache
     jac_cache = if iip
         sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, y_, vec(u0))
     else
@@ -61,9 +70,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
 
     nlf = __unsafe_nonlinearfunction{iip}(loss_fn; jac_prototype, resid_prototype,
         jac = jac_fn)
-    nlprob = (SciMLBase.isnonlinearleastsquares(prob) ? NonlinearLeastSquaresProblem :
-              NonlinearProblem)(nlf,
-        vec(u0), prob.p)
+    nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
     opt = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
@@ -72,9 +79,11 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         prob.p)
     sol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
-    !SciMLBase.successful_retcode(opt) &&
-        return SciMLBase.solution_new_retcode(sol, ReturnCode.Failure)
-    return sol
+    if !SciMLBase.successful_retcode(opt)
+        return __update_odesolution(sol; opt.resid, original = opt, opt.retcode)
+    else
+        return __update_odesolution(sol; opt.resid, original = opt)
+    end
 end
 
 function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
@@ -120,8 +129,7 @@ function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where
 end
 
 function __single_shooting_jacobian_ode_cache(prob, jac_cache, alg, u0, ode_alg; kwargs...)
-    prob_ = remake(prob; u0)
-    return SciMLBase.__init(prob_, ode_alg; kwargs...)
+    return SciMLBase.__init(remake(prob; u0), ode_alg; kwargs...)
 end
 
 function __single_shooting_jacobian_ode_cache(prob, jac_cache,
