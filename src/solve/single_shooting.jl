@@ -68,8 +68,9 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache
-    sol = __solve(internal_prob, alg.ode_alg; u0 = reshape(opt.u, u0_size),
-        actual_ode_kwargs...)
+    internal_prob_final = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan,
+        prob.p)
+    sol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     !SciMLBase.successful_retcode(opt) &&
         return SciMLBase.solution_new_retcode(sol, ReturnCode.Failure)
