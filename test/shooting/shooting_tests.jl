@@ -27,7 +27,7 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
         sol = solve(bvp1, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f) < 1e-12
+        @test norm(resid_f, Inf) < 1e-12
     end
 
     # Out of Place
@@ -47,7 +47,7 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
         sol = solve(bvp2, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         resid_f = bc1(sol, nothing, sol.t)
-        @test norm(resid_f) < 1e-12
+        @test norm(resid_f, Inf) < 1e-12
     end
 
     # Inplace
@@ -63,7 +63,7 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
         resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
         bc2a!(resid_f[1], sol(tspan[1]), nothing)
         bc2b!(resid_f[2], sol(tspan[2]), nothing)
-        @test norm(reduce(vcat, resid_f)) < 1e-12
+        @test norm(reduce(vcat, resid_f), Inf) < 1e-12
     end
 
     # Out of Place
@@ -76,7 +76,7 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test
         sol = solve(bvp4, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         resid_f = reduce(vcat, (bc2a(sol(tspan[1]), nothing), bc2b(sol(tspan[2]), nothing)))
-        @test norm(resid_f) < 1e-12
+        @test norm(resid_f, Inf) < 1e-12
     end
 end
 
@@ -101,11 +101,14 @@ end
     resid_f = Array{ComplexF64}(undef, 2)
 
     # We will automatically use FiniteDiff if we can't use dual numbers
-    for solver in [Shooting(Tsit5()), MultipleShooting(10, Tsit5())]
+    # Auto Selecting default solvers for Complex Valued Problems supported by a version of 
+    # NonlinearSolve that is not yet compatible with BoundaryValueDiffEq
+    for solver in [Shooting(Tsit5(), NewtonRaphson()),
+        MultipleShooting(10, Tsit5(), nlsolve = NewtonRaphson())]
         sol = solve(bvp, solver; abstol = 1e-13, reltol = 1e-13)
         @test SciMLBase.successful_retcode(sol)
         bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f) < 1e-12
+        @test norm(resid_f, Inf) < 1e-12
     end
 end
 

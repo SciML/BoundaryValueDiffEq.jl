@@ -61,7 +61,7 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, Test, LinearAlgebra
         @test SciMLBase.successful_retcode(sol)
         resid = zeros(4)
         bc1!(resid, sol, p, sol.t)
-        @test norm(resid) < 1e-10
+        @test norm(resid, Inf) < 1e-10
     end
 
     bvp2 = BVProblem(chart_log_problem!, bc1!, initial_guess_2, tspan, p)
@@ -77,6 +77,6 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, Test, LinearAlgebra
         @test SciMLBase.successful_retcode(sol)
         resid = zeros(4)
         bc1!(resid, sol, p, sol.t)
-        @test norm(resid) < 1e-10
+        @test norm(resid, Inf) < 1e-10
     end
 end

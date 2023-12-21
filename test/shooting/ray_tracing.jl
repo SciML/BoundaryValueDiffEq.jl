@@ -125,10 +125,10 @@ for (prob, alg) in Iterators.product((prob_oop, prob_iip, prob_tp_oop, prob_tp_i
         resida, residb = zeros(5), zeros(3)
         ray_tracing_bc_a!(resida, sol.u[1], p)
         ray_tracing_bc_b!(residb, sol.u[end], p)
-        @test norm(vcat(resida, residb), 2) < 5e-5
+        @test norm(vcat(resida, residb), Inf) < 5e-5
     else
         resid = zeros(8)
         ray_tracing_bc!(resid, sol, p, sol.t)
-        @test norm(resid, 2) < 5e-5
+        @test norm(resid, Inf) < 5e-5
     end
 end

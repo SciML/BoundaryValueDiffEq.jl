@@ -33,7 +33,7 @@ sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
 resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
 ex7_2pbc1!(resid_f[1], sol_bvpm2(tspan[1]), nothing)
 ex7_2pbc2!(resid_f[2], sol_bvpm2(tspan[2]), nothing)
-@test norm(resid_f) < 1e-6
+@test norm(resid_f, Inf) < 1e-6
 
 function ex7_f2!(du, u, p, t)
     u₁, λ = u

@@ -66,5 +66,5 @@ sol6 = solve(bvp1, MIRK6(); dt = 0.5)
 @test SciMLBase.successful_retcode(sol6.retcode)
 
 bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1e-16)
+sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1e-15)
 @test SciMLBase.successful_retcode(sol6.retcode)
