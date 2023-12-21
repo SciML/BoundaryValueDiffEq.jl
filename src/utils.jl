@@ -252,3 +252,15 @@ function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
 end
 
 # TODO: Add dispatch for a ODESolution Type as well
+
+# Override the checks for NonlinearFunction
+struct __unsafe_nonlinearfunction{iip} end
+
+@inline function __unsafe_nonlinearfunction{iip}(f::F; jac::J = nothing,
+        jac_prototype::JP = nothing, colorvec::CV = nothing,
+        resid_prototype::RP = nothing) where {iip, F, J, JP, CV, RP}
+    return NonlinearFunction{iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing,
+        J, Nothing, Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing,
+        RP}(f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
+        nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
+end

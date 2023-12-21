@@ -11,15 +11,16 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     resid_prototype = __vec(bcresid_prototype)
 
     # Construct the residual function
-    ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
+    actual_ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
+    ode_kwargs = (; save_everystep = false, actual_ode_kwargs...)
     internal_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, prob.p)
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
     loss_fn = if iip
-        (du, u, p) -> __single_shooting_loss!(du, u, p, ode_cache_loss_fn, bc, u0_size,
-            prob.problem_type, resid_size)
+        @closure (du, u, p) -> __single_shooting_loss!(du, u, p, ode_cache_loss_fn, bc,
+            u0_size, prob.problem_type, resid_size)
     else
-        (u, p) -> __single_shooting_loss(u, p, ode_cache_loss_fn, bc, u0_size,
+        @closure (u, p) -> __single_shooting_loss(u, p, ode_cache_loss_fn, bc, u0_size,
             prob.problem_type)
     end
 
@@ -43,31 +44,32 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     jac_prototype = init_jacobian(jac_cache)
 
     loss_fnₚ = if iip
-        (du, u) -> __single_shooting_loss!(du, u, prob.p, ode_cache_jac_fn, bc, u0_size,
-            prob.problem_type, resid_size)
+        @closure (du, u) -> __single_shooting_loss!(du, u, prob.p, ode_cache_jac_fn, bc,
+            u0_size, prob.problem_type, resid_size)
     else
-        (u) -> __single_shooting_loss(u, prob.p, ode_cache_jac_fn, bc, u0_size,
+        @closure (u) -> __single_shooting_loss(u, prob.p, ode_cache_jac_fn, bc, u0_size,
             prob.problem_type)
     end
 
     jac_fn = if iip
-        (J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache, alg.jac_alg.diffmode,
-            loss_fnₚ, y_)
+        @closure (J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache,
+            alg.jac_alg.diffmode, loss_fnₚ, y_)
     else
-        (u, p) -> __single_shooting_jacobian(jac_prototype, u, jac_cache,
+        @closure (u, p) -> __single_shooting_jacobian(jac_prototype, u, jac_cache,
             alg.jac_alg.diffmode, loss_fnₚ)
     end
 
-    nlf = NonlinearFunction{iip}(loss_fn; jac_prototype, resid_prototype, jac = jac_fn)
-    nlprob = if length(resid_prototype) == length(u0)
-        NonlinearProblem(nlf, vec(u0), prob.p)
-    else
-        NonlinearLeastSquaresProblem(nlf, vec(u0), prob.p)
-    end
+    nlf = __unsafe_nonlinearfunction{iip}(loss_fn; jac_prototype, resid_prototype,
+        jac = jac_fn)
+    nlprob = (SciMLBase.isnonlinearleastsquares(prob) ? NonlinearLeastSquaresProblem :
+              NonlinearProblem)(nlf,
+        vec(u0), prob.p)
     opt = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
 
-    SciMLBase.reinit!(ode_cache_loss_fn, reshape(opt.u, u0_size))
-    sol = solve!(ode_cache_loss_fn)
+    # There is no way to reinit with the same cache with different cache. But not saving
+    # the internal values gives a significant speedup. So we just create a new cache
+    sol = __solve(internal_prob, alg.ode_alg; u0 = reshape(opt.u, u0_size),
+        actual_ode_kwargs...)
 
     !SciMLBase.successful_retcode(opt) &&
         return SciMLBase.solution_new_retcode(sol, ReturnCode.Failure)
@@ -123,6 +125,9 @@ end
 
 function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         ::Union{AutoForwardDiff, AutoSparseForwardDiff}, u0, ode_alg; kwargs...)
+    # See https://github.com/SciML/OrdinaryDiffEq.jl/issues/2091 which causes too many
+    # runtime dispatches. Till that is fixed we just create a new cache to calm down
+    # compile times
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
@@ -130,6 +135,7 @@ function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         xduals = cache.t
     end
     fill!(xduals, 0)
-    prob_ = remake(prob; u0 = reshape(xduals, size(u0)))
+    prob_ = remake(prob; u0 = reshape(xduals, size(u0)),
+        tspan = eltype(xduals).(prob.tspan))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)
 end
