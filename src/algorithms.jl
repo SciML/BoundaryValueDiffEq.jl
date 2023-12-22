@@ -2,6 +2,11 @@
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
+## Disable the ugly verbose printing by default
+function Base.show(io::IO, alg::BoundaryValueDiffEqAlgorithm)
+    print(io, "$(nameof(typeof(alg)))()")
+end
+
 """
     Shooting(ode_alg; kwargs...)
     Shooting(ode_alg, nlsolve; kwargs...)
@@ -64,6 +69,7 @@ Significantly more stable than Single Shooting.
 ## Arguments
 
   - `nshoots`: Number of shooting points.
+
   - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
     SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
     poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
@@ -72,22 +78,24 @@ Significantly more stable than Single Shooting.
   - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
     `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
     on the input types and problem type.
-    - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-      `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
-    - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
-      we default to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
-      `bc_diffmode`, we default to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
+
+      + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+        `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+      + For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
+        we default to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
+        `bc_diffmode`, we default to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
   - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
     solution. Possible Choices:
-    - `true`: Halve the grid size, till we reach a grid size of 1.
-    - `false`: Do not coarsen the grid. Solve a Multiple Shooting Problem and finally
-      solve a Single Shooting Problem.
-    - `AbstractVector{<:Int}` or `Ntuple{N, <:Integer}`: Use the provided grid coarsening.
-      For example, if `nshoots = 10` and `grid_coarsening = [5, 2]`, then the grid will be
-      coarsened to `[5, 2]`. Note that `1` should not be present in the grid coarsening.
-    - `Function`: Takes the current number of shooting points and returns the next number
-      of shooting points. For example, if `nshoots = 10` and
-      `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
+
+      + `true`: Halve the grid size, till we reach a grid size of 1.
+      + `false`: Do not coarsen the grid. Solve a Multiple Shooting Problem and finally
+        solve a Single Shooting Problem.
+      + `AbstractVector{<:Int}` or `Ntuple{N, <:Integer}`: Use the provided grid coarsening.
+        For example, if `nshoots = 10` and `grid_coarsening = [5, 2]`, then the grid will be
+        coarsened to `[5, 2]`. Note that `1` should not be present in the grid coarsening.
+      + `Function`: Takes the current number of shooting points and returns the next number
+        of shooting points. For example, if `nshoots = 10` and
+        `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
 """
 @concrete struct MultipleShooting{J <: BVPJacobianAlgorithm}
     ode_alg
@@ -186,6 +194,7 @@ Fortran code for solving two-point boundary value problems. For detailed documen
 [ODEInterface.jl](https://github.com/luchr/ODEInterface.jl/blob/master/doc/SolverOptions.md#bvpm2).
 
 !!! note
+
     Only available if the `ODEInterface` package is loaded.
 """
 struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
@@ -222,6 +231,7 @@ For detailed documentation, see
 [ODEInterface.jl](https://github.com/luchr/ODEInterface.jl/blob/master/doc/SolverOptions.md#bvpsol).
 
 !!! note
+
     Only available if the `ODEInterface` package is loaded.
 """
 struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm

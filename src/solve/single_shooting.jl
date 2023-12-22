@@ -1,15 +1,11 @@
 function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), verbose = true, kwargs...)
     # Setup the problem
-    if prob.u0 isa AbstractArray
+    if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
     else
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
-        if prob.u0 isa VectorOfArray
-            u0 = prob.u0[:, 1]
-        else
-            u0 = __initial_guess(f, prob.p, first(prob.tspan))
-        end
+        u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     end
     T, N = eltype(u0), length(u0)
 

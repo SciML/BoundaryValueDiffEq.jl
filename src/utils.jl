@@ -303,3 +303,61 @@ end
         sol.prob, sol.alg, sol.interp, sol.dense, sol.tslocation, sol.stats, sol.alg_choice,
         retcode, resid, original)
 end
+
+# Handling Initial Guesses
+"""
+    __extract_u0(u₀, t₀)
+
+Takes the input initial guess and returns the value at the starting mesh point.
+"""
+@inline __extract_u0(u₀::AbstractVector{<:AbstractArray}, p, t₀) = u₀[1]
+@inline __extract_u0(u₀::VectorOfArray, p, t₀) = u₀[:, 1]
+@inline __extract_u0(u₀::DiffEqArray, p, t₀) = u₀.u[1]
+@inline __extract_u0(u₀::F, p, t₀) where {F <: Function} = __initial_guess(u₀, p, t₀)
+@inline __extract_u0(u₀::AbstractArray, p, t₀) = u₀
+@inline __extract_u0(u₀::T, p, t₀) where {T} = error("`prob.u0::$(T)` is not supported.")
+
+"""
+    __extract_mesh(u₀, t₀, t₁, n)
+
+Takes the input initial guess and returns the mesh.
+"""
+@inline __extract_mesh(u₀, t₀, t₁, n::Int) = collect(range(t₀; stop = t₁, length = n + 1))
+@inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
+@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, n) = u₀.t
+
+"""
+    __has_initial_guess(u₀) -> Bool
+
+Returns `true` if the input has an initial guess.
+"""
+@inline __has_initial_guess(u₀::AbstractVector{<:AbstractArray}) = true
+@inline __has_initial_guess(u₀::VectorOfArray) = true
+@inline __has_initial_guess(u₀::DiffEqArray) = true
+@inline __has_initial_guess(u₀::F) where {F} = true
+@inline __has_initial_guess(u₀::AbstractArray) = false
+
+"""
+    __initial_guess_length(u₀) -> Int
+
+Returns the length of the initial guess. If the initial guess is a function or no initial
+guess is supplied, it returns `-1`.
+"""
+@inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
+@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
+@inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
+@inline __initial_guess_length(u₀::F) where {F} = -1
+@inline __initial_guess_length(u₀::AbstractArray) = -1
+
+"""
+    __flatten_initial_guess(u₀) -> Union{AbstractMatrix, AbstractVector, Nothing}
+
+Flattens the initial guess into a matrix. For a function `u₀`, it returns `nothing`. For no
+initial guess, it returns `vec(u₀)`.
+"""
+@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(vec,
+    hcat, u₀)
+@inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
+@inline __flatten_initial_guess(u₀::F) where {F} = nothing

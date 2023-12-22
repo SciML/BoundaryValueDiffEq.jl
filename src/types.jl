@@ -1,5 +1,7 @@
 # MIRK Method Tableaus
-"""Discrete stages of MIRK formula"""
+"""
+Discrete stages of MIRK formula
+"""
 struct MIRKTableau{sType, cType, vType, bType, xType}
     s::sType
     c::cType
@@ -40,8 +42,7 @@ end
 end
 
 @inline __materialize_jacobian_algorithm(_, alg::BVPJacobianAlgorithm) = alg
-@inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) =
-    BVPJacobianAlgorithm(alg)
+@inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) = BVPJacobianAlgorithm(alg)
 @inline __materialize_jacobian_algorithm(::Nothing, ::Nothing) = BVPJacobianAlgorithm()
 @inline function __materialize_jacobian_algorithm(nlsolve::N, ::Nothing) where {N}
     ad = hasfield(N, :ad) ? nlsolve.ad : missing
