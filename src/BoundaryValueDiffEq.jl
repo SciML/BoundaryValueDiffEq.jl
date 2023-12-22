@@ -29,7 +29,6 @@ end
 include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
-include("alg_utils.jl")
 
 include("tableaus/mirk.jl")
 
@@ -42,6 +41,18 @@ include("sparse_jacobians.jl")
 
 include("adaptivity.jl")
 include("interpolation.jl")
+
+for order in (2, 3, 4, 5, 6)
+    alg = Symbol("MIRK$(order)")
+    @eval alg_order(::$(alg)) = $order
+    @eval alg_stage(::$(alg)) = $(order - 1)
+end
+
+SciMLBase.isautodifferentiable(::BoundaryValueDiffEqAlgorithm) = true
+SciMLBase.allows_arbitrary_number_types(::BoundaryValueDiffEqAlgorithm) = true
+SciMLBase.allowscomplex(alg::BoundaryValueDiffEqAlgorithm) = true
+
+SciMLBase.isadaptive(alg::AbstractMIRK) = true
 
 function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
@@ -159,7 +170,7 @@ end
 
 export Shooting, MultipleShooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
-export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
+export BVPJacobianAlgorithm
 # From ODEInterface.jl
 export BVPM2, BVPSOL
 

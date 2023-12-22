@@ -67,7 +67,7 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
 
     @info "Solving Lambert's Problem in Multi Point BVP Form"
 
-    bvp = BVProblem(orbital!, cur_bc!, y0, tspan)
+    bvp = BVProblem(orbital!, cur_bc!, y0, tspan; nlls = Val(false))
     for autodiff in (AutoForwardDiff(; chunksize = 6),
         AutoFiniteDiff(; fdtype = Val(:central)), AutoSparseForwardDiff(; chunksize = 6),
         AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparseFiniteDiff())
@@ -82,7 +82,8 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
         @test norm(resid_f, Inf) < 1e-6
 
         @info "Multiple Shooting Lambert's Problem: $(autodiff)"
-        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff)
+        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff,
+            bc_diffmode = BoundaryValueDiffEq.__get_non_sparse_ad(autodiff))
         @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false,
             odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
@@ -96,7 +97,8 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
     @info "Solving Lambert's Problem in Two Point BVP Form"
 
     bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
-        bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)))
+        bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)),
+        nlls = Val(false))
     for autodiff in (AutoForwardDiff(; chunksize = 6), AutoSparseFiniteDiff(),
         AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
         AutoSparseForwardDiff(; chunksize = 6))

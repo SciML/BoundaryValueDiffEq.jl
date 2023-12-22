@@ -278,9 +278,15 @@ end
     end
 end
 
-@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, Nothing},
+@inline function __internal_nlsolve_problem(bvp::BVProblem{uType, tType, iip, Nothing},
         resid_prototype, u0, args...; kwargs...) where {uType, tType, iip}
-    if length(resid_prototype) != length(u0)
+    return __internal_nlsolve_problem(bvp, length(resid_prototype), length(u0), args...;
+        kwargs...)
+end
+
+@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, Nothing},
+        l1::Int, l2::Int, args...; kwargs...) where {uType, tType, iip}
+    if l1 != l2
         return NonlinearLeastSquaresProblem(args...; kwargs...)
     else
         return NonlinearProblem(args...; kwargs...)

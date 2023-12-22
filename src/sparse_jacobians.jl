@@ -6,9 +6,6 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     return sparse(I′, J′, V, m, n)
 end
 
-# NOTE: We don't retain the Banded Structure in non-TwoPoint BVP cases since vcat/hcat makes
-# it into a dense array. Instead we can atleast exploit sparsity!
-
 # FIXME: Fix the cases where fast_scalar_indexing is not possible
 
 # Helpers for IIP/OOP functions

@@ -39,6 +39,15 @@ end
     diffmode
 end
 
+@inline __materialize_jacobian_algorithm(_, alg::BVPJacobianAlgorithm) = alg
+@inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) =
+    BVPJacobianAlgorithm(alg)
+@inline __materialize_jacobian_algorithm(::Nothing, ::Nothing) = BVPJacobianAlgorithm()
+@inline function __materialize_jacobian_algorithm(nlsolve::N, ::Nothing) where {N}
+    ad = hasfield(N, :ad) ? nlsolve.ad : missing
+    return BVPJacobianAlgorithm(ad)
+end
+
 function Base.show(io::IO, alg::BVPJacobianAlgorithm)
     print(io, "BVPJacobianAlgorithm(")
     modifiers = String[]
@@ -136,15 +145,6 @@ end
 function concretize_jacobian_algorithm(alg, prob)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return alg
-end
-
-function MIRKJacobianComputationAlgorithm(diffmode = missing;
-        collocation_diffmode = missing, bc_diffmode = missing)
-    Base.depwarn("`MIRKJacobianComputationAlgorithm` has been deprecated in favor of \
-        `BVPJacobianAlgorithm`. Replace `collocation_diffmode` with `nonbc_diffmode",
-        :MIRKJacobianComputationAlgorithm)
-    return BVPJacobianAlgorithm(diffmode; nonbc_diffmode = collocation_diffmode,
-        bc_diffmode)
 end
 
 __needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true

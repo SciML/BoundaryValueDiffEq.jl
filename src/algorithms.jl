@@ -30,21 +30,7 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
 end
 
 function Shooting(; ode_alg = nothing, nlsolve = nothing, jac_alg = nothing)
-    if jac_alg isa BVPJacobianAlgorithm
-        _jac_alg = jac_alg
-    elseif jac_alg === nothing
-        if nlsolve === nothing
-            _jac_alg = BVPJacobianAlgorithm()
-        else
-            ad = hasfield(typeof(nlsolve), :ad) ? nlsolve.ad : missing
-            _jac_alg = BVPJacobianAlgorithm(ad)
-        end
-    elseif jac_alg isa ADTypes.AbstractADType
-        _jac_alg = BVPJacobianAlgorithm(jac_alg)
-    else
-        throw(ArgumentError("Invalid `jac_alg`: $_jac_alg."))
-    end
-    return Shooting(ode_alg, nlsolve, _jac_alg)
+    return Shooting(ode_alg, nlsolve, __materialize_jacobian_algorithm(nlsolve, jac_alg))
 end
 @inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
 @inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
@@ -66,8 +52,11 @@ end
 end
 
 """
-    MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
+    MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
+        grid_coarsening = true, jac_alg = nothing)
+    MultipleShooting(nshoots::Int; kwargs...)
+    MultipleShooting(nshoots::Int, ode_alg; kwargs...)
+    MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...)
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
 Significantly more stable than Single Shooting.
@@ -78,20 +67,16 @@ Significantly more stable than Single Shooting.
   - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
     SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
     poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
-
-## Keyword Arguments
-
   - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-    `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
-    will be ignored and a custom jacobian algorithm will be used.
+    `NonlinearProblem` interface can be used.
   - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
     `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
     on the input types and problem type.
     - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
       `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
     - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
-      defaults to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
-      `bc_diffmode`, defaults to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
+      we default to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
+      `bc_diffmode`, we default to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
   - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
     solution. Possible Choices:
     - `true`: Halve the grid size, till we reach a grid size of 1.
@@ -103,10 +88,6 @@ Significantly more stable than Single Shooting.
     - `Function`: Takes the current number of shooting points and returns the next number
       of shooting points. For example, if `nshoots = 10` and
       `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
-
-!!! note
-    For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
-    must be provided.
 """
 @concrete struct MultipleShooting{J <: BVPJacobianAlgorithm}
     ode_alg
@@ -127,25 +108,30 @@ function update_nshoots(alg::MultipleShooting, nshoots::Int)
         alg.grid_coarsening)
 end
 
-function MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
-    @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
-            grid_coarsening isa AbstractVector{<:Integer} ||
-            grid_coarsening isa NTuple{N, <:Integer} where {N}
+function MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
+        grid_coarsening::Union{Bool, Function, <:AbstractVector{<:Integer},
+            Tuple{Vararg{Integer}}} = true, jac_alg = nothing)
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(ode_alg, nlsolve, jac_alg, nshoots, grid_coarsening)
+    return MultipleShooting(ode_alg, nlsolve,
+        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening)
 end
+@inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
+@inline MultipleShooting(nshoots::Int, ode_alg; kwargs...) = MultipleShooting(;
+    nshoots, ode_alg, kwargs...)
+@inline MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...) = MultipleShooting(;
+    nshoots, ode_alg, nlsolve, kwargs...)
 
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
+                max_num_subintervals = 3000, defect_threshold = 0.1)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
 
@@ -163,10 +149,10 @@ for order in (2, 3, 4, 5, 6)
               `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
               `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
               possible else `AutoFiniteDiff`.
-
-        !!! note
-            For type-stability, the chunksizes for ForwardDiff ADTypes in
-            `BVPJacobianAlgorithm` must be provided.
+          - `max_num_subintervals`: Maximum number of subintervals to use for the
+            adaptive stepsize control.
+          - `defect_threshold`: Threshold for the defect control. If the defect is larger
+            than this threshold, the step is rejected and the stepsize is reduced.
 
         ## References
 
@@ -181,9 +167,11 @@ for order in (2, 3, 4, 5, 6)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
+        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
             nlsolve::N = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            max_num_subintervals::Int = 3000
+            defect_threshold::T = 0.1
         end
     end
 end

@@ -85,7 +85,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     sol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     if !SciMLBase.successful_retcode(opt)
-        return __update_odesolution(sol; opt.resid, original = opt, opt.retcode)
+        return __update_odesolution(sol; opt.resid, opt.retcode, original = opt)
     else
         return __update_odesolution(sol; opt.resid, original = opt)
     end
@@ -139,8 +139,6 @@ end
 
 function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         ::Union{AutoForwardDiff, AutoSparseForwardDiff}, u0, ode_alg; kwargs...)
-    # See https://github.com/SciML/OrdinaryDiffEq.jl/issues/2091 which causes too many
-    # runtime dispatches.
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals

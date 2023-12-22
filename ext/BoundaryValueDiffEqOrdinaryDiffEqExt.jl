@@ -51,10 +51,9 @@ end
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))))
     end
 
-    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShooting", false)
+    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShooting", true)
         push!(algs,
-            MultipleShooting(10, Tsit5();
-                nlsolve = NewtonRaphson(; autodiff = AutoForwardDiff(chunksize = 2)),
+            MultipleShooting(10, Tsit5(); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(;
                     bc_diffmode = AutoForwardDiff(; chunksize = 2),
                     nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))))
@@ -119,16 +118,14 @@ end
             ])
     end
 
-    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShootingNLLS", false)
+    if load_preference(BoundaryValueDiffEq, "PrecompileMultipleShootingNLLS", true)
         append!(algs,
             [
-                MultipleShooting(10, Tsit5();
-                    nlsolve = TrustRegion(; autodiff = AutoForwardDiff(chunksize = 2)),
+                MultipleShooting(10, Tsit5(); nlsolve = TrustRegion(),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
                         nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
-                MultipleShooting(10, Tsit5();
-                    nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2)),
+                MultipleShooting(10, Tsit5(); nlsolve = GaussNewton(),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
                         nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
