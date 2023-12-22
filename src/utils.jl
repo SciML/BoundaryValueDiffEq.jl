@@ -162,23 +162,10 @@ function __initial_guess(f::F, p::P, t::T) where {F, P, T}
     end
 end
 
-function __initial_state_from_prob(prob::BVProblem, mesh)
-    return __initial_state_from_prob(prob, prob.u0, mesh)
-end
-function __initial_state_from_prob(::BVProblem, u0::AbstractArray, mesh)
-    return [copy(vec(u0)) for _ in mesh]
-end
-function __initial_state_from_prob(::BVProblem, u0::VectorOfArray, _)
-    return [copy(vec(u)) for u in u0]
-end
-function __initial_state_from_prob(prob::BVProblem, f::F, mesh) where {F}
-    return [__initial_guess(f, prob.p, t) for t in mesh]
-end
-
-function __get_bcresid_prototype(prob::BVProblem, u)
+@inline function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
-function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
+@inline function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     prototype = if prob.f.bcresid_prototype !== nothing
         prob.f.bcresid_prototype.x
     else
@@ -186,7 +173,7 @@ function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     end
     return prototype, size.(prototype)
 end
-function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
+@inline function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
                 __zeros_like(u)
     return prototype, size(prototype)
@@ -200,9 +187,7 @@ end
 @inline __zeros_like(args...) = __fill_like(0, args...)
 @inline __ones_like(args...) = __fill_like(1, args...)
 
-@inline __safe_vec(x) = vec(x)
-@inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
-
+@inline __vec(x) = x
 @inline __vec(x::AbstractArray) = vec(x)
 @inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
 
@@ -361,3 +346,23 @@ initial guess, it returns `vec(u₀)`.
 @inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
 @inline __flatten_initial_guess(u₀::F) where {F} = nothing
+
+"""
+    __initial_guess_on_mesh(u₀, mesh, p, alias_u0::Bool)
+
+Returns the initial guess on the mesh. For `DiffEqArray` assumes that the mesh is the same
+as the mesh of the `DiffEqArray`.
+
+If `alias_u0` is set to `true`, we try our best to minimize copies. This means that `u₀`
+or parts of it will get mutated.
+"""
+@inline __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, _, p, alias_u0::Bool) =
+    alias_u0 ? vec.(u₀) : [copy(vec(u)) for u in u₀]
+@inline __initial_guess_on_mesh(u₀::VectorOfArray, _, p, alias_u0::Bool) =
+    alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+@inline __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p, alias_u0::Bool) =
+    alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+@inline __initial_guess_on_mesh(u₀::AbstractArray, mesh, p, alias_u0::Bool) =
+    [copy(vec(u₀)) for _ in mesh]
+@inline __initial_guess_on_mesh(u₀::F, mesh, p, alias_u0::Bool) where {F} =
+    [vec(__initial_guess(u₀, p, t)) for t in mesh]

@@ -48,7 +48,7 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
                 include("misc/type_stability.jl")
             end
             @time @safetestset "ODE Interface Tests" begin
-                include("misc/odeinterface_ex7.jl")
+                include("misc/odeinterface.jl")
             end
             @time @safetestset "Initial Guess Function" begin
                 include("misc/initial_guess.jl")

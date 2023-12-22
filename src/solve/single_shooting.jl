@@ -116,7 +116,7 @@ end
 function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
     SciMLBase.reinit!(cache, reshape(u, u0_size))
     odesol = solve!(cache)
-    return __safe_vec(eval_bc_residual(pt, bc, odesol, p))
+    return __vec(eval_bc_residual(pt, bc, odesol, p))
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}

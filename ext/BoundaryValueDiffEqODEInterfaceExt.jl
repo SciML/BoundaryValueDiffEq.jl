@@ -42,11 +42,12 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
     obj = Bvpm2()
     if prob.u0 isa Function
         guess_function = @closure (x, y) -> (y .= vec(__initial_guess(prob.u0, prob.p, x)))
-        bvpm2_init(obj, no_odes, no_left_bc, mesh, guess_function, eltype(u0)[],
+        bvpm2_init(obj, no_odes, no_left_bc, mesh, guess_function, eltype(u0_)[],
             alg.max_num_subintervals, prob.u0)
     else
-        bvpm2_init(obj, no_odes, no_left_bc, mesh, __flatten_initial_guess(prob.u0),
-            eltype(u0)[], alg.max_num_subintervals)
+        u0 = __flatten_initial_guess(prob.u0)
+        bvpm2_init(obj, no_odes, no_left_bc, mesh, u0, eltype(u0)[],
+            alg.max_num_subintervals)
     end
 
     bvp2m_f = if isinplace(prob)
@@ -72,7 +73,7 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
         OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
         OPT_SINGULARTERM => alg.singular_term, OPT_ERRORCONTROL => alg.error_control)
 
-    sol, retcode, stats = bvpm2_solve(obj, bvp2m_f!, bvp2m_bc!, opt)
+    sol, retcode, stats = bvpm2_solve(obj, bvp2m_f, bvp2m_bc, opt)
     retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure
 
     x_mesh = bvpm2_get_x(sol)
@@ -109,7 +110,7 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, d
     mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n))
     if u0 === nothing
         # initial_guess function was provided
-        u0 = mapreduce(@closure(t -> vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)
+        u0 = mapreduce(@closure(t->vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)
     end
 
     if prob.f.bcresid_prototype !== nothing
@@ -172,7 +173,7 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, d
     end
 
     return DiffEqBase.build_solution(prob, alg, sol_t,
-        map(x -> reshape(convert(Vector{eltype(evalsol)}, x), u0_size), eachcol(sol_x));
+        map(x -> reshape(convert(Vector{eltype(u0_)}, x), u0_size), eachcol(sol_x));
         retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure, stats)
 end
 

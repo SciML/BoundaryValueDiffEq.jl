@@ -44,7 +44,7 @@ end
     @info "BVPSOL with VectorOfArray"
 
     initial_u0 = VectorOfArray([sol_bvpm2(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]])
-    tpprob = TwoPointBVProblem(ex7_f2!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan;
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan;
         bcresid_prototype = (zeros(1), zeros(1)))
 
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
@@ -54,7 +54,7 @@ end
 
     ts = collect(tspan[1]:(π / 20):tspan[2])
     initial_u0 = DiffEqArray([sol_bvpm2(t) .+ rand() for t in ts], ts)
-    tpprob = TwoPointBVProblem(ex7_f2!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan;
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan;
         bcresid_prototype = (zeros(1), zeros(1)))
 
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
@@ -62,7 +62,7 @@ end
     @info "BVPSOL with initial guess function"
 
     initial_u0 = (p, t) -> sol_bvpm2(t) .+ rand()
-    tpprob = TwoPointBVProblem(ex7_f2!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan, p;
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan, p;
         bcresid_prototype = (zeros(1), zeros(1)))
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 end

@@ -32,44 +32,42 @@ end
 Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+        abstol = 1e-3, adaptive = true, alias_u0 = false, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    iip = isinplace(prob)
 
-    _, T, M, n, X = __extract_problem_details(prob; dt, check_positive_dt = true)
-    # NOTE: Assumes the user provided initial guess is on a uniform mesh
-    mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
+    t₀, t₁ = prob.tspan
+    X = __extract_u0(prob.u0, prob.p, t₀)
+    M, T = length(X), eltype(X)
+    n = __initial_guess_length(prob.u0)
+
+    n == -1 && dt ≤ 0 && throw(ArgumentError("`dt` must be positive."))
+
+    mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n))
     mesh_dt = diff(mesh)
+
+    iip = isinplace(prob)
 
     chunksize = pickchunksize(M * (n + 1))
 
-    __alloc = x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
     fᵢ_cache = __alloc(similar(X))
     fᵢ₂_cache = vec(similar(X))
 
-    defect_threshold = T(0.1)  # TODO: Allow user to specify these
-    MxNsub = 3000              # TODO: Allow user to specify these
-
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_state_from_prob(prob, mesh)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, alias_u0)
     y = __alloc.(copy.(y₀))
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:n]
-    k_interp = [similar(X, ifelse(adaptive, M, 0), ifelse(adaptive, ITU.s_star - stage, 0))
-                for _ in 1:n]
+    k_interp = [similar(X, M, ITU.s_star - stage) for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
     residual = if iip
-        if prob.problem_type isa TwoPointBVProblem
-            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
-        else
-            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
-        end
+        vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
     else
         nothing
     end
@@ -107,7 +105,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     return MIRKCache{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        resid₁_size, (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+        resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 """

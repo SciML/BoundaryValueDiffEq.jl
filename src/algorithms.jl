@@ -181,6 +181,8 @@ for order in (2, 3, 4, 5, 6)
             max_num_subintervals::Int = 3000
             defect_threshold::T = 0.1
         end
+
+        $(alg)(nlsolve; kwargs...) = $(alg)(; nlsolve, kwargs...)
     end
 end
 
