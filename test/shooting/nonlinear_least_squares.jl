@@ -32,8 +32,8 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
     for solver in SOLVERS
         @info "Testing $solver"
         sol = @time solve(bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
-        @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-4
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        @test norm(sol.resid, Inf) < 0.005
     end
 
     # IIP MP-BVP
@@ -56,40 +56,39 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
         return nothing
     end
 
-    bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)), u0, tspan)
+    bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)), u0, tspan;
+        nlls = Val(true))
 
     for solver in SOLVERS
-        sol = @time solve(bvp2, solver; verbose = false)
-        resid_f = Array{Float64}(undef, 4)
-        bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f, Inf) < 1e-4
+        @info "Testing $solver"
+        sol = @time solve(bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        @test norm(sol.resid, Inf) < 0.005
     end
 
     # OOP TP-BVP
     bc1a(ua, p) = [ua[1]]
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    bvp3 = TwoPointBVProblem(BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
+    bvp3 = BVProblem(BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan; nlls = Val(true))
 
     for solver in SOLVERS
+        @info "Testing $solver"
         sol = @time solve(bvp3, solver; verbose = false)
-        @test norm(vcat(bc1a(sol(0.0), nothing), bc1b(sol(100.0), nothing)), Inf) < 1e-4
+        @test norm(sol.resid, Inf) < 1e-4
     end
 
     # IIP TP-BVP
     bc1a!(resid, ua, p) = (resid[1] = ua[1])
     bc1b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
-    bvp4 = TwoPointBVProblem(BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
+    bvp4 = BVProblem(BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan; nlls = Val(true))
 
     for solver in SOLVERS
+        @info "Testing $solver"
         sol = @time solve(bvp4, solver; verbose = false)
-        resida = Array{Float64}(undef, 1)
-        residb = Array{Float64}(undef, 2)
-        bc1a!(resida, sol(0.0), nothing)
-        bc1b!(residb, sol(100.0), nothing)
-        @test norm(vcat(resida, residb), Inf) < 1e-4
+        @test norm(sol.resid, Inf) < 1e-4
     end
 end

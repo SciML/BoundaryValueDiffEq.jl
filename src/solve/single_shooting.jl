@@ -21,7 +21,12 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
 
     # Construct the residual function
     actual_ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
-    ode_kwargs = (; save_everystep = false, actual_ode_kwargs...)
+    # For TwoPointBVPs we don't need to save every step
+    if prob.problem_type isa TwoPointBVProblem
+        ode_kwargs = (; save_everystep = false, actual_ode_kwargs...)
+    else
+        ode_kwargs = (; actual_ode_kwargs...)
+    end
     internal_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, prob.p)
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
