@@ -16,6 +16,7 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
                            parameterless_type, undefmatrix, fast_scalar_indexing
     import ConcreteStructs: @concrete
     import DiffEqBase: solve
+    import FastClosures: @closure
     import ForwardDiff: pickchunksize
     import RecursiveArrayTools: ArrayPartition, DiffEqArray
     import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val

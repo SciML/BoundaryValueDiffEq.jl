@@ -5,21 +5,14 @@ const GROUP = uppercase(get(ENV, "GROUP", "ALL"))
 @testset "Boundary Value Problem Tests" begin
     if GROUP == "ALL" || GROUP == "SHOOTING"
         @time @testset "Shooting Method Tests" begin
-            @time @safetestset "Shooting Tests" begin
-                include("shooting/shooting_tests.jl")
+            @time @safetestset "Basic Problems" begin
+                include("shooting/basic_problems.jl")
             end
-            @time @safetestset "Ray Tracing BVP" begin
-                include("shooting/ray_tracing.jl")
+            @time @safetestset "Orbital" begin
+                include("shooting/orbital.jl")
             end
-            if VERSION ≥ v"1.10-"
-                @time @safetestset "Orbital" begin
-                    include("shooting/orbital.jl")
-                end
-            end
-            if VERSION ≥ v"1.10-"
-                @time @safetestset "Shooting NLLS Tests" begin
-                    include("shooting/nonlinear_least_squares.jl")
-                end
+            @time @safetestset "Shooting NLLS Tests" begin
+                include("shooting/nonlinear_least_squares.jl")
             end
         end
     end

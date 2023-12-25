@@ -82,10 +82,10 @@ end
 
 Returns a 3-Tuple:
 
-* Entire Jacobian Prototype (if Two-Point Problem) else `nothing`.
-* Sparse Non-BC Part Jacobian Prototype along with the column and row color vectors.
-* Sparse BC Part Jacobian Prototype along with the column and row color vectors (if
-  Two-Point Problem) else `nothing`.
+  - Entire Jacobian Prototype (if Two-Point Problem) else `nothing`.
+  - Sparse Non-BC Part Jacobian Prototype along with the column and row color vectors.
+  - Sparse BC Part Jacobian Prototype along with the column and row color vectors (if
+    Two-Point Problem) else `nothing`.
 """
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
         bcresid_prototype, u0, N::Int, nshoots::Int)

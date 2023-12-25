@@ -259,14 +259,16 @@ end
     return z, z′
 end
 
+"""
+    interp_weights(τ, alg
+
+interp_weights: solver-specified interpolation weights and its first derivative
+"""
+function interp_weights end
+
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
     @eval begin
-        """
-            interp_weights(τ, alg)
-
-        interp_weights: solver-specified interpolation weights and its first derivative
-        """
         function interp_weights(τ::T, ::$(alg)) where {T}
             if $(order == 2)
                 w = [0, τ * (1 - τ / 2), τ^2 / 2]

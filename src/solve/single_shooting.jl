@@ -1,8 +1,13 @@
 function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), verbose = true, kwargs...)
-    ig, T, N, _, u0 = __extract_problem_details(prob; dt = 0.1)
-    _unwrap_val(ig) && verbose &&
-        @warn "Initial guess provided, but will be ignored for Shooting!"
+    # Setup the problem
+    if prob.u0 isa AbstractArray{<:Number}
+        u0 = prob.u0
+    else
+        verbose && @warn "Initial guess provided, but will be ignored for Shooting."
+        u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
+    end
+    T, N = eltype(u0), length(u0)
 
     alg = concretize_jacobian_algorithm(alg_, prob)
 
@@ -11,26 +16,32 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     resid_prototype = __vec(bcresid_prototype)
 
     # Construct the residual function
-    ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
+    actual_ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
+    # For TwoPointBVPs we don't need to save every step
+    if prob.problem_type isa TwoPointBVProblem
+        ode_kwargs = (; save_everystep = false, actual_ode_kwargs...)
+    else
+        ode_kwargs = (; actual_ode_kwargs...)
+    end
     internal_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, prob.p)
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
     loss_fn = if iip
-        (du, u, p) -> __single_shooting_loss!(du, u, p, ode_cache_loss_fn, bc, u0_size,
-            prob.problem_type, resid_size)
+        @closure (du, u, p) -> __single_shooting_loss!(du, u, p, ode_cache_loss_fn, bc,
+            u0_size, prob.problem_type, resid_size)
     else
-        (u, p) -> __single_shooting_loss(u, p, ode_cache_loss_fn, bc, u0_size,
+        @closure (u, p) -> __single_shooting_loss(u, p, ode_cache_loss_fn, bc, u0_size,
             prob.problem_type)
     end
+
+    sd = alg.jac_alg.diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+         NoSparsityDetection()
+    y_ = similar(resid_prototype)
 
     # Construct the jacobian function
     # NOTE: We pass in a separate Jacobian Function because that allows us to cache the
     #       the internal ode solve cache. This cache needs to be distinct from the regular
     #       residual function cache
-    sd = alg.jac_alg.diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
-         NoSparsityDetection()
-    y_ = similar(resid_prototype)
-
     jac_cache = if iip
         sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, y_, vec(u0))
     else
@@ -43,35 +54,34 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     jac_prototype = init_jacobian(jac_cache)
 
     loss_fnₚ = if iip
-        (du, u) -> __single_shooting_loss!(du, u, prob.p, ode_cache_jac_fn, bc, u0_size,
-            prob.problem_type, resid_size)
+        @closure (du, u) -> __single_shooting_loss!(du, u, prob.p, ode_cache_jac_fn, bc,
+            u0_size, prob.problem_type, resid_size)
     else
-        (u) -> __single_shooting_loss(u, prob.p, ode_cache_jac_fn, bc, u0_size,
+        @closure (u) -> __single_shooting_loss(u, prob.p, ode_cache_jac_fn, bc, u0_size,
             prob.problem_type)
     end
 
     jac_fn = if iip
-        (J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache, alg.jac_alg.diffmode,
-            loss_fnₚ, y_)
+        @closure (J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache,
+            alg.jac_alg.diffmode, loss_fnₚ, y_)
     else
-        (u, p) -> __single_shooting_jacobian(jac_prototype, u, jac_cache,
+        @closure (u, p) -> __single_shooting_jacobian(jac_prototype, u, jac_cache,
             alg.jac_alg.diffmode, loss_fnₚ)
     end
 
-    nlf = NonlinearFunction{iip}(loss_fn; jac_prototype, resid_prototype, jac = jac_fn)
-    nlprob = if length(resid_prototype) == length(u0)
-        NonlinearProblem(nlf, vec(u0), prob.p)
-    else
-        NonlinearLeastSquaresProblem(nlf, vec(u0), prob.p)
-    end
+    nlf = __unsafe_nonlinearfunction{iip}(loss_fn; jac_prototype, resid_prototype,
+        jac = jac_fn)
+    nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
     opt = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
 
-    SciMLBase.reinit!(ode_cache_loss_fn, reshape(opt.u, u0_size))
-    sol = solve!(ode_cache_loss_fn)
+    # There is no way to reinit with the same cache with different cache. But not saving
+    # the internal values gives a significant speedup. So we just create a new cache
+    internal_prob_final = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan,
+        prob.p)
+    sol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
-    !SciMLBase.successful_retcode(opt) &&
-        return SciMLBase.solution_new_retcode(sol, ReturnCode.Failure)
-    return sol
+    retcode = SciMLBase.successful_retcode(opt) ? sol.retcode : opt.retcode
+    return BVPSolution(sol; original = opt, retcode)
 end
 
 function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
@@ -103,7 +113,7 @@ end
 function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
     SciMLBase.reinit!(cache, reshape(u, u0_size))
     odesol = solve!(cache)
-    return __safe_vec(eval_bc_residual(pt, bc, odesol, p))
+    return __vec(eval_bc_residual(pt, bc, odesol, p))
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}
@@ -117,8 +127,7 @@ function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where
 end
 
 function __single_shooting_jacobian_ode_cache(prob, jac_cache, alg, u0, ode_alg; kwargs...)
-    prob_ = remake(prob; u0)
-    return SciMLBase.__init(prob_, ode_alg; kwargs...)
+    return SciMLBase.__init(remake(prob; u0), ode_alg; kwargs...)
 end
 
 function __single_shooting_jacobian_ode_cache(prob, jac_cache,
@@ -130,6 +139,7 @@ function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         xduals = cache.t
     end
     fill!(xduals, 0)
-    prob_ = remake(prob; u0 = reshape(xduals, size(u0)))
+    prob_ = remake(prob; u0 = reshape(xduals, size(u0)),
+        tspan = eltype(xduals).(prob.tspan))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)
 end

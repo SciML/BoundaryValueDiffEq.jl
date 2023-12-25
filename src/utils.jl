@@ -252,3 +252,127 @@ function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
 end
 
 # TODO: Add dispatch for a ODESolution Type as well
+
+# Override the checks for NonlinearFunction
+struct __unsafe_nonlinearfunction{iip} end
+
+@inline function __unsafe_nonlinearfunction{iip}(f::F; jac::J = nothing,
+        jac_prototype::JP = nothing, colorvec::CV = nothing,
+        resid_prototype::RP = nothing) where {iip, F, J, JP, CV, RP}
+    return NonlinearFunction{iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing,
+        J, Nothing, Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing,
+        RP}(f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
+        nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
+end
+
+@inline __nameof(::T) where {T} = nameof(T)
+@inline __nameof(::Type{T}) where {T} = nameof(T)
+
+# Construct the internal NonlinearProblem
+@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, nlls},
+        resid_prototype, u0, args...; kwargs...) where {uType, tType, iip, nlls}
+    if nlls
+        return NonlinearLeastSquaresProblem(args...; kwargs...)
+    else
+        return NonlinearProblem(args...; kwargs...)
+    end
+end
+
+@inline function __internal_nlsolve_problem(bvp::BVProblem{uType, tType, iip, Nothing},
+        resid_prototype, u0, args...; kwargs...) where {uType, tType, iip}
+    return __internal_nlsolve_problem(bvp, length(resid_prototype), length(u0), args...;
+        kwargs...)
+end
+
+@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, Nothing},
+        l1::Int, l2::Int, args...; kwargs...) where {uType, tType, iip}
+    if l1 != l2
+        return NonlinearLeastSquaresProblem(args...; kwargs...)
+    else
+        return NonlinearProblem(args...; kwargs...)
+    end
+end
+
+# Handling Initial Guesses
+"""
+    __extract_u0(u₀, t₀)
+
+Takes the input initial guess and returns the value at the starting mesh point.
+"""
+@inline __extract_u0(u₀::AbstractVector{<:AbstractArray}, p, t₀) = u₀[1]
+@inline __extract_u0(u₀::VectorOfArray, p, t₀) = u₀[:, 1]
+@inline __extract_u0(u₀::DiffEqArray, p, t₀) = u₀.u[1]
+@inline __extract_u0(u₀::F, p, t₀) where {F <: Function} = __initial_guess(u₀, p, t₀)
+@inline __extract_u0(u₀::AbstractArray, p, t₀) = u₀
+@inline __extract_u0(u₀::T, p, t₀) where {T} = error("`prob.u0::$(T)` is not supported.")
+
+"""
+    __extract_mesh(u₀, t₀, t₁, n)
+
+Takes the input initial guess and returns the mesh.
+"""
+@inline __extract_mesh(u₀, t₀, t₁, n::Int) = collect(range(t₀; stop = t₁, length = n + 1))
+@inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
+@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, n) = u₀.t
+
+"""
+    __has_initial_guess(u₀) -> Bool
+
+Returns `true` if the input has an initial guess.
+"""
+@inline __has_initial_guess(u₀::AbstractVector{<:AbstractArray}) = true
+@inline __has_initial_guess(u₀::VectorOfArray) = true
+@inline __has_initial_guess(u₀::DiffEqArray) = true
+@inline __has_initial_guess(u₀::F) where {F} = true
+@inline __has_initial_guess(u₀::AbstractArray) = false
+
+"""
+    __initial_guess_length(u₀) -> Int
+
+Returns the length of the initial guess. If the initial guess is a function or no initial
+guess is supplied, it returns `-1`.
+"""
+@inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
+@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
+@inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
+@inline __initial_guess_length(u₀::F) where {F} = -1
+@inline __initial_guess_length(u₀::AbstractArray) = -1
+
+"""
+    __flatten_initial_guess(u₀) -> Union{AbstractMatrix, AbstractVector, Nothing}
+
+Flattens the initial guess into a matrix. For a function `u₀`, it returns `nothing`. For no
+initial guess, it returns `vec(u₀)`.
+"""
+@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(vec,
+    hcat, u₀)
+@inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
+@inline __flatten_initial_guess(u₀::F) where {F} = nothing
+
+"""
+    __initial_guess_on_mesh(u₀, mesh, p, alias_u0::Bool)
+
+Returns the initial guess on the mesh. For `DiffEqArray` assumes that the mesh is the same
+as the mesh of the `DiffEqArray`.
+
+If `alias_u0` is set to `true`, we try our best to minimize copies. This means that `u₀`
+or parts of it will get mutated.
+"""
+@inline function __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, _, p,
+        alias_u0::Bool)
+    return alias_u0 ? vec.(u₀) : [copy(vec(u)) for u in u₀]
+end
+@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p, alias_u0::Bool)
+    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+end
+@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p, alias_u0::Bool)
+    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+end
+@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p, alias_u0::Bool)
+    return [copy(vec(u₀)) for _ in mesh]
+end
+@inline function __initial_guess_on_mesh(u₀::F, mesh, p, alias_u0::Bool) where {F}
+    return [vec(__initial_guess(u₀, p, t)) for t in mesh]
+end
