@@ -93,14 +93,14 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
 
     x_mesh = bvpm2_get_x(sol)
     evalsol = evalSolution(sol, x_mesh)
-    sol_final = DiffEqBase.build_solution(prob, alg, x_mesh,
+    ivpsol = SciMLBase.build_solution(prob, alg, x_mesh,
         map(x -> reshape(convert(Vector{eltype(evalsol)}, x), u0_size), eachcol(evalsol));
         retcode, stats = destats)
 
     bvpm2_destroy(obj)
     bvpm2_destroy(sol)
 
-    return BVPSolution(sol_final)
+    return SciMLBase.build_solution(prob, ivpsol)
 end
 
 #-------
@@ -187,9 +187,11 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, d
         end
     end
 
-    return DiffEqBase.build_solution(prob, alg, sol_t,
+    ivpsol = SciMLBase.build_solution(prob, alg, sol_t,
         map(x -> reshape(convert(Vector{eltype(u0_)}, x), u0_size), eachcol(sol_x));
         retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure, stats)
+
+    return SciMLBase.build_solution(prob, ivpsol)
 end
 
 #-------
