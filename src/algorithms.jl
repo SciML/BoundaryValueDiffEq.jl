@@ -108,16 +108,6 @@ Significantly more stable than Single Shooting.
     grid_coarsening
 end
 
-# function Base.show(io::IO, alg::MultipleShooting)
-#     print(io, "MultipleShooting(")
-#     modifiers = String[]
-#     alg.nlsolve !== nothing && push!(modifiers, "nlsolve = $(alg.nlsolve)")
-#     alg.jac_alg !== nothing && push!(modifiers, "jac_alg = $(alg.jac_alg)")
-#     alg.ode_alg !== nothing && push!(modifiers, "ode_alg = $(__nameof(alg.ode_alg))()")
-#     print(io, join(modifiers, ", "))
-#     print(io, ")")
-# end
-
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return MultipleShooting(alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots,

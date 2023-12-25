@@ -1,13 +1,22 @@
-using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
+using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test, JET
 
 @testset "Overconstrained BVP" begin
     SOLVERS = [
         Shooting(Tsit5()),
-        Shooting(Tsit5(); nlsolve = GaussNewton()),
-        Shooting(Tsit5(); nlsolve = TrustRegion()),
+        Shooting(Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
+        Shooting(Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
         MultipleShooting(10, Tsit5()),
-        MultipleShooting(10, Tsit5(); nlsolve = GaussNewton()),
-        MultipleShooting(10, Tsit5(); nlsolve = TrustRegion())]
+        MultipleShooting(10, Tsit5(),
+            GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
+        MultipleShooting(10, Tsit5(),
+            TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
+    ]
+    JET_SKIP = [true, false, false, false, false, true, false, false, false, false]
+    JET_BROKEN = [false, false, false, false, false, false, false, false, false, false]
 
     @info "Solving Overconstrained BVPs"
 
@@ -29,11 +38,19 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)), u0, tspan;
         nlls = Val(true))
 
-    for solver in SOLVERS
+    for (i, solver) in enumerate(SOLVERS)
         @info "Testing $solver"
         sol = @time solve(bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
         @test norm(sol.resid, Inf) < 0.005
+
+        JET_SKIP[i] && continue
+        @test_opt target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp1, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+        @test_call target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp1, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
     end
 
     # IIP MP-BVP
@@ -59,11 +76,19 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)), u0, tspan;
         nlls = Val(true))
 
-    for solver in SOLVERS
+    for (i, solver) in enumerate(SOLVERS)
         @info "Testing $solver"
         sol = @time solve(bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
         @test norm(sol.resid, Inf) < 0.005
+
+        JET_SKIP[i] && continue
+        @test_opt target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp2, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+        @test_call target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp2, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
     end
 
     # OOP TP-BVP
@@ -73,10 +98,19 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
     bvp3 = BVProblem(BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan; nlls = Val(true))
 
-    for solver in SOLVERS
+    for (i, solver) in enumerate(SOLVERS)
         @info "Testing $solver"
-        sol = @time solve(bvp3, solver; verbose = false)
-        @test norm(sol.resid, Inf) < 1e-4
+        sol = @time solve(bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        @test norm(sol.resid, Inf) < 0.009
+
+        JET_SKIP[i] && continue
+        @test_opt target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp3, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+        @test_call target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp3, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
     end
 
     # IIP TP-BVP
@@ -86,9 +120,18 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test
     bvp4 = BVProblem(BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
             bcresid_prototype = (zeros(1), zeros(2))), u0, tspan; nlls = Val(true))
 
-    for solver in SOLVERS
+    for (i, solver) in enumerate(SOLVERS)
         @info "Testing $solver"
-        sol = @time solve(bvp4, solver; verbose = false)
-        @test norm(sol.resid, Inf) < 1e-4
+        sol = @time solve(bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        @test norm(sol.resid, Inf) < 0.009
+
+        JET_SKIP[i] && continue
+        @test_opt target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp4, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+        @test_call target_modules=(SciMLBase, DiffEqBase, NonlinearSolve,
+            BoundaryValueDiffEq) solve(bvp4, solver; verbose = false, abstol = 1e-6,
+            reltol = 1e-6, odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
     end
 end

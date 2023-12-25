@@ -1,17 +1,14 @@
 using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test, JET
 
-# FIXME: Reenable the Multiple Shooting Tests
-
 @testset "Basic Shooting Tests" begin
     SOLVERS = [
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5()),
-        # MultipleShooting(10, Tsit5(),
-        #     NewtonRaphson(; autodiff = AutoFiniteDiff())),
-        # MultipleShooting(10, Tsit5(),
-        #     NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
-        # MultipleShooting(10, Tsit5()),
+        MultipleShooting(10, Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
+        MultipleShooting(10, Tsit5(),
+            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5()),
     ]
     JET_SKIP = [false, false, true, false, false, true]
     JET_BROKEN = [false, false, false, false, false, false]
@@ -146,12 +143,9 @@ end
     SOLVERS = [
         Shooting(Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         Shooting(Vern7()),
-        # MultipleShooting(10, Vern7(),
-        #     NewtonRaphson(; autodiff = AutoFiniteDiff())),
-        # MultipleShooting(10, Vern7()),
+        MultipleShooting(10, Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
+        MultipleShooting(10, Vern7()),
     ]
-    JET_SKIP = [false, true, false, true]
-    JET_BROKEN = [false, false, false, false]
 
     function f1!(du, u, p, t)
         du[1] = u[2]
@@ -219,8 +213,10 @@ end
     @info "Flow in a Channel"
 
     for solver in [
-        Shooting(AutoTsit5(Rosenbrock23())),
-        # MultipleShooting(10, AutoTsit5(Rosenbrock23())),
+        Shooting(AutoTsit5(Rosenbrock23()),
+            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
+        MultipleShooting(10, AutoTsit5(Rosenbrock23()),
+            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
     ]
         @info "Solver: $solver"
         sol = @time solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
@@ -231,148 +227,139 @@ end
     end
 end
 
-# @testset "Ray Tracing" begin
-#     @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
-#     @inline ux(x, y, z, p) = -p[1] * sin(p[1] * x)
-#     @inline uy(x, y, z, p) = p[2] * cos(p[2] * y)
-#     @inline uz(x, y, z, p) = p[3] * sin(p[3] * z)
+@testset "Ray Tracing" begin
+    @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
+    @inline ux(x, y, z, p) = -p[1] * sin(p[1] * x)
+    @inline uy(x, y, z, p) = p[2] * cos(p[2] * y)
+    @inline uz(x, y, z, p) = p[3] * sin(p[3] * z)
 
-#     function ray_tracing(u, p, t)
-#         du = similar(u)
-#         ray_tracing!(du, u, p, t)
-#         return du
-#     end
+    function ray_tracing(u, p, t)
+        du = similar(u)
+        ray_tracing!(du, u, p, t)
+        return du
+    end
 
-#     function ray_tracing!(du, u, p, t)
-#         x, y, z, ξ, η, ζ, T, S = u
+    function ray_tracing!(du, u, p, t)
+        x, y, z, ξ, η, ζ, T, S = u
 
-#         nu = v(x, y, z, p) # Velocity of a sound wave, function of space;
-#         μx = ux(x, y, z, p) # ∂(slowness)/∂x, function of space
-#         μy = uy(x, y, z, p) # ∂(slowness)/∂y, function of space
-#         μz = uz(x, y, z, p) # ∂(slowness)/∂z, function of space
+        nu = v(x, y, z, p) # Velocity of a sound wave, function of space;
+        μx = ux(x, y, z, p) # ∂(slowness)/∂x, function of space
+        μy = uy(x, y, z, p) # ∂(slowness)/∂y, function of space
+        μz = uz(x, y, z, p) # ∂(slowness)/∂z, function of space
 
-#         du[1] = S * nu * ξ
-#         du[2] = S * nu * η
-#         du[3] = S * nu * ζ
+        du[1] = S * nu * ξ
+        du[2] = S * nu * η
+        du[3] = S * nu * ζ
 
-#         du[4] = S * μx
-#         du[5] = S * μy
-#         du[6] = S * μz
+        du[4] = S * μx
+        du[5] = S * μy
+        du[6] = S * μz
 
-#         du[7] = S / nu
-#         du[8] = 0
+        du[7] = S / nu
+        du[8] = 0
 
-#         return nothing
-#     end
+        return nothing
+    end
 
-#     function ray_tracing_bc(sol, p, t)
-#         res = similar(first(sol))
-#         ray_tracing_bc!(res, sol, p, t)
-#         return res
-#     end
+    function ray_tracing_bc(sol, p, t)
+        res = similar(first(sol))
+        ray_tracing_bc!(res, sol, p, t)
+        return res
+    end
 
-#     function ray_tracing_bc!(res, sol, p, t)
-#         ua = sol(0.0)
-#         ub = sol(1.0)
-#         nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
+    function ray_tracing_bc!(res, sol, p, t)
+        ua = sol(0.0)
+        ub = sol(1.0)
+        nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
 
-#         res[1] = ua[1] - p[4]
-#         res[2] = ua[2] - p[5]
-#         res[3] = ua[3] - p[6]
-#         res[4] = ua[7]      # T(0) = 0
-#         res[5] = ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2
-#         res[6] = ub[1] - p[7]
-#         res[7] = ub[2] - p[8]
-#         res[8] = ub[3] - p[9]
-#         return nothing
-#     end
+        res[1] = ua[1] - p[4]
+        res[2] = ua[2] - p[5]
+        res[3] = ua[3] - p[6]
+        res[4] = ua[7]      # T(0) = 0
+        res[5] = ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2
+        res[6] = ub[1] - p[7]
+        res[7] = ub[2] - p[8]
+        res[8] = ub[3] - p[9]
+        return nothing
+    end
 
-#     function ray_tracing_bc_a(ua, p)
-#         resa = similar(ua, 5)
-#         ray_tracing_bc_a!(resa, ua, p)
-#         return resa
-#     end
+    function ray_tracing_bc_a(ua, p)
+        resa = similar(ua, 5)
+        ray_tracing_bc_a!(resa, ua, p)
+        return resa
+    end
 
-#     function ray_tracing_bc_a!(resa, ua, p)
-#         nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
+    function ray_tracing_bc_a!(resa, ua, p)
+        nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
 
-#         resa[1] = ua[1] - p[4]
-#         resa[2] = ua[2] - p[5]
-#         resa[3] = ua[3] - p[5]
-#         resa[4] = ua[7]
-#         resa[5] = ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2
+        resa[1] = ua[1] - p[4]
+        resa[2] = ua[2] - p[5]
+        resa[3] = ua[3] - p[5]
+        resa[4] = ua[7]
+        resa[5] = ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2
 
-#         return nothing
-#     end
+        return nothing
+    end
 
-#     function ray_tracing_bc_b(ub, p)
-#         resb = similar(ub, 3)
-#         ray_tracing_bc_b!(resb, ub, p)
-#         return resb
-#     end
+    function ray_tracing_bc_b(ub, p)
+        resb = similar(ub, 3)
+        ray_tracing_bc_b!(resb, ub, p)
+        return resb
+    end
 
-#     function ray_tracing_bc_b!(resb, ub, p)
-#         resb[1] = ub[1] - p[7]
-#         resb[2] = ub[2] - p[8]
-#         resb[3] = ub[3] - p[9]
-#         return nothing
-#     end
+    function ray_tracing_bc_b!(resb, ub, p)
+        resb[1] = ub[1] - p[7]
+        resb[2] = ub[2] - p[8]
+        resb[3] = ub[3] - p[9]
+        return nothing
+    end
 
-#     p = [0, 1, 2, 0, 0, 0, 4, 3, 2.0]
+    p = [0, 1, 2, 0, 0, 0, 4, 3, 2.0]
 
-#     dx = p[7] - p[4]
-#     dy = p[8] - p[5]
-#     dz = p[9] - p[6]
+    dx = p[7] - p[4]
+    dy = p[8] - p[5]
+    dz = p[9] - p[6]
 
-#     u0 = zeros(8)
-#     u0[1:3] .= 0 # position
-#     u0[4] = dx / v(p[4], p[5], p[6], p)
-#     u0[5] = dy / v(p[4], p[5], p[6], p)
-#     u0[6] = dz / v(p[4], p[5], p[6], p)
-#     u0[8] = 1
+    u0 = zeros(8)
+    u0[1:3] .= 0 # position
+    u0[4] = dx / v(p[4], p[5], p[6], p)
+    u0[5] = dy / v(p[4], p[5], p[6], p)
+    u0[6] = dz / v(p[4], p[5], p[6], p)
+    u0[8] = 1
 
-#     tspan = (0.0, 1.0)
+    tspan = (0.0, 1.0)
 
-#     prob_oop = BVProblem(BVPFunction{false}(ray_tracing, ray_tracing_bc), u0, tspan, p;
-#         nlls = Val(false))
-#     prob_iip = BVProblem(BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p;
-#         nlls = Val(true))
-#     prob_tp_oop = BVProblem(BVPFunction{false}(ray_tracing,
-#             (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)), u0, tspan, p;
-#         nlls = Val(true))
-#     prob_tp_iip = BVProblem(BVPFunction{true}(ray_tracing!,
-#             (ray_tracing_bc_a!, ray_tracing_bc_b!);
-#             bcresid_prototype = (zeros(5), zeros(3)), twopoint = Val(true)), u0, tspan, p;
-#         nlls = Val(true))
+    prob_oop = BVProblem(BVPFunction{false}(ray_tracing, ray_tracing_bc), u0, tspan, p;
+        nlls = Val(false))
+    prob_iip = BVProblem(BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p;
+        nlls = Val(true))
+    prob_tp_oop = BVProblem(BVPFunction{false}(ray_tracing,
+            (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)), u0, tspan, p;
+        nlls = Val(true))
+    prob_tp_iip = BVProblem(BVPFunction{true}(ray_tracing!,
+            (ray_tracing_bc_a!, ray_tracing_bc_b!);
+            bcresid_prototype = (zeros(5), zeros(3)), twopoint = Val(true)), u0, tspan, p;
+        nlls = Val(true))
 
-#     @info "Ray Tracing: Multiple Shooting"
+    @info "Ray Tracing: Multiple Shooting"
 
-#     alg_sp = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true,
-#         nlsolve = TrustRegion(),
-#         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
-#             nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 8)))
-#     alg_dense = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true,
-#         nlsolve = TrustRegion(),
-#         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
-#             nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
-#     alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true)
+    alg_sp = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true,
+        nlsolve = TrustRegion(),
+        jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
+            nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 8)))
+    alg_dense = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true,
+        nlsolve = TrustRegion(),
+        jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
+            nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
+    alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true)
 
-#     for (prob, alg) in Iterators.product((prob_oop, prob_iip, prob_tp_oop, prob_tp_iip),
-#         (alg_sp, alg_dense, alg_default))
-#         @info "Solver: $alg"
-#         @time sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
-#             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
-#         @test SciMLBase.successful_retcode(sol.retcode)
+    for (prob, alg) in Iterators.product((prob_oop, prob_iip, prob_tp_oop, prob_tp_iip),
+        (alg_sp, alg_dense, alg_default))
+        @info "Solver: $alg"
+        @time sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
+            odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
 
-#         if prob.problem_type isa TwoPointBVProblem
-#             resida, residb = zeros(5), zeros(3)
-#             ray_tracing_bc_a!(resida, sol.u[1], p)
-#             ray_tracing_bc_b!(residb, sol.u[end], p)
-#             @test norm(vcat(resida, residb), Inf) < 1e-6
-#         else
-#             resid = zeros(8)
-#             ray_tracing_bc!(resid, sol, p, sol.t)
-#             @test norm(resid, Inf) < 1e-6
-#         end
-#     end
-# end
+        @test SciMLBase.successful_retcode(sol.retcode)
+        @test norm(sol.resid, Inf) < 1e-6
+    end
+end

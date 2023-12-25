@@ -100,7 +100,7 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
     bvpm2_destroy(obj)
     bvpm2_destroy(sol)
 
-    return SciMLBase.build_solution(prob, ivpsol)
+    return SciMLBase.build_solution(prob, ivpsol, nothing)
 end
 
 #-------
@@ -191,7 +191,7 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, d
         map(x -> reshape(convert(Vector{eltype(u0_)}, x), u0_size), eachcol(sol_x));
         retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure, stats)
 
-    return SciMLBase.build_solution(prob, ivpsol)
+    return SciMLBase.build_solution(prob, ivpsol, nothing)
 end
 
 #-------

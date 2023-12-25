@@ -62,8 +62,6 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
     cur_bc! = (resid, sol, p, t) -> bc!_generator(resid, sol, init_val)
     cur_bc_2point_a! = (resid, sol, p) -> bc!_generator_2p_a(resid, sol, init_val)
     cur_bc_2point_b! = (resid, sol, p) -> bc!_generator_2p_b(resid, sol, init_val)
-    resid_f = Array{Float64}(undef, 6)
-    resid_f_2p = (Array{Float64, 1}(undef, 3), Array{Float64, 1}(undef, 3))
 
     @info "Solving Lambert's Problem in Multi Point BVP Form"
 
@@ -72,14 +70,15 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
         AutoFiniteDiff(; fdtype = Val(:central)), AutoSparseForwardDiff(; chunksize = 6),
         AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparseFiniteDiff())
         nlsolve = TrustRegion(; autodiff)
+
         @info "Single Shooting Lambert's Problem: $(autodiff)"
         @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6,
             reltol = 1e-6, verbose = false,
             odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
-        cur_bc!(resid_f, sol, nothing, sol.t)
-        @info "Single Shooting Lambert's Problem: $(norm(resid_f, Inf))"
+
+        @info "Single Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
-        @test norm(resid_f, Inf) < 1e-6
+        @test norm(sol.resid, Inf) < 1e-6
 
         @info "Multiple Shooting Lambert's Problem: $(autodiff)"
         jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff,
@@ -87,13 +86,12 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
         @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false,
             odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
-        cur_bc!(resid_f, sol, nothing, sol.t)
-        @info "Multiple Shooting Lambert's Problem: $(norm(resid_f, Inf))"
+
+        @info "Multiple Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
-        @test norm(resid_f, Inf) < 1e-6
+        @test norm(sol.resid, Inf) < 1e-6
     end
 
-    println()
     @info "Solving Lambert's Problem in Two Point BVP Form"
 
     bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
@@ -103,25 +101,24 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
         AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
         AutoSparseForwardDiff(; chunksize = 6))
         nlsolve = TrustRegion(; autodiff)
+
         @info "Single Shooting Lambert's Problem: $(autodiff)"
         @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6,
             reltol = 1e-6, verbose = false,
             odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
-        cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
-        cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
-        @info "Single Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
+
+        @info "Single Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
-        @test norm(reduce(vcat, resid_f_2p), Inf) < 1e-6
+        @test norm(sol.resid, Inf) < 1e-6
 
         @info "Multiple Shooting Lambert's Problem: $(autodiff)"
         jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
         @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false,
             odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
-        cur_bc_2point_a!(resid_f_2p[1], sol(t0), nothing)
-        cur_bc_2point_b!(resid_f_2p[2], sol(t1), nothing)
-        @info "Multiple Shooting Lambert's Problem: $(norm(reduce(vcat, resid_f_2p), Inf))"
+
+        @info "Multiple Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
-        @test norm(reduce(vcat, resid_f_2p), Inf) < 1e-6
+        @test norm(sol.resid, Inf) < 1e-6
     end
 end
