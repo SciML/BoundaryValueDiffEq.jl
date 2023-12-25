@@ -209,28 +209,38 @@ Fortran code for solving two-point boundary value problems. For detailed documen
     - `singular_term`: either nothing if the ODEs have no singular terms at the left boundary or a constant (d,d) matrix for the
         singular term.
 
-!!! warning
-
-    Only supports inplace two-point boundary value problems, with very limited forms of
-    input structures!
-
 !!! note
 
     Only available if the `ODEInterface` package is loaded.
 """
-Base.@kwdef struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
-    max_num_subintervals::Int = 3000
-    method_choice::Int = 4
-    diagnostic_output::Int = -1
-    error_control::Int = 1
-    singular_term::S = nothing
+struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
+    max_num_subintervals::Int
+    method_choice::Int
+    diagnostic_output::Int
+    error_control::Int
+    singular_term::S
+
+    function BVPM2(max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
+            error_control::Int, singular_term::Union{Nothing, AbstractMatrix})
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
+            error("BVPM2 requires ODEInterface.jl to be loaded")
+        end
+        return new{typeof(singular_term)}(max_num_subintervals, method_choice,
+            diagnostic_output, error_control, singular_term)
+    end
+end
+
+function BVPM2(; max_num_subintervals::Int = 3000, method_choice::Int = 4,
+        diagnostic_output::Int = -1, error_control::Int = 1, singular_term = nothing)
+    return BVPM2(max_num_subintervals, method_choice, diagnostic_output, error_control,
+        singular_term)
 end
 
 """
     BVPSOL(; bvpclass = 2, sol_method = 0, odesolver = nothing)
     BVPSOL(bvpclass::Int, sol_methods::Int, odesolver)
 
-A FORTRAN77 code which solves highly nonlinear two point boundary value problems using a
+A FORTRAN77 code which solves highly nonlinear **two point boundary value problems** using a
 local linear solver (condensing algorithm) or a global sparse linear solver for the solution
 of the arising linear subproblems, by Peter Deuflhard, Georg Bader, Lutz Weimann.
 For detailed documentation, see
@@ -249,24 +259,28 @@ For detailed documentation, see
         - `1`: Use global sparse linear solver.
     - `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
 
-!!! warning
-
-    Only supports inplace two-point boundary value problems, with very limited forms of
-    input structures!
-
 !!! note
 
     Only available if the `ODEInterface` package is loaded.
 """
-Base.@kwdef struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
-    bvpclass::Int = 2
-    sol_method::Int = 0
-    odesolver::O = nothing
+struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
+    bvpclass::Int
+    sol_method::Int
+    odesolver::O
+
+    function BVPSOL(bvpclass::Int, sol_method::Int, odesolver)
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
+            error("BVPSOL requires ODEInterface.jl to be loaded")
+        end
+        return new{typeof(odesolver)}(bvpclass, sol_method, odesolver)
+    end
 end
 
 """
-    COLNEW(; bvpclass = 2, collocationpts = 7, autodiff = :central)
-    COLNEW(bvpclass::Int, collocationpts::Int, autodiff)
+    COLNEW(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
+        max_num_subintervals = 3000)
+    COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+        max_num_subintervals::Int)
 
 ## Keyword Arguments:
 
@@ -285,8 +299,8 @@ end
         - `1`: No printout.
     - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
-A Fortran77 code solves a multi-points boundary value problems for a mixed order system of ODEs.
-It incorporates a new basis representation replacing b-splines, and improvements for
+A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
+ODEs. It incorporates a new basis representation replacing b-splines, and improvements for
 the linear and nonlinear algebraic equation solvers.
 
 !!! warning
@@ -295,9 +309,21 @@ the linear and nonlinear algebraic equation solvers.
 !!! note
     Only available if the `ODEInterface` package is loaded.
 """
-Base.@kwdef struct COLNEW <: BoundaryValueDiffEqAlgorithm
-    bvpclass::Int = 1
-    collocationpts::Int = 7
-    diagnostic_output::Int = 1
-    max_num_subintervals::Int = 3000
+struct COLNEW <: BoundaryValueDiffEqAlgorithm
+    bvpclass::Int
+    collocationpts::Int
+    diagnostic_output::Int
+    max_num_subintervals::Int
+
+    function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7,
+            diagnostic_output::Int = 1, max_num_subintervals::Int = 3000)
+        return COLNEW(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
+    end
+    function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+            max_num_subintervals::Int)
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
+            error("COLNEW requires ODEInterface.jl to be loaded")
+        end
+        return new(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
+    end
 end
