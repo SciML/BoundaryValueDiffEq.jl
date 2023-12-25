@@ -72,16 +72,15 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     nlf = __unsafe_nonlinearfunction{iip}(loss_fn; jac_prototype, resid_prototype,
         jac = jac_fn)
     nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
-    opt = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
+    nlsol = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache
-    internal_prob_final = ODEProblem{iip}(prob.f, reshape(opt.u, u0_size), prob.tspan,
+    internal_prob_final = ODEProblem{iip}(prob.f, reshape(nlsol.u, u0_size), prob.tspan,
         prob.p)
-    sol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
+    odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
-    retcode = SciMLBase.successful_retcode(opt) ? sol.retcode : opt.retcode
-    return BVPSolution(sol; original = opt, retcode)
+    return SciMLBase.build_solution(prob, odesol, nlsol)
 end
 
 function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,

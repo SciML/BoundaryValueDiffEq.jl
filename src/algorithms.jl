@@ -1,10 +1,24 @@
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
+abstract type AbstractShooting <: BoundaryValueDiffEqAlgorithm end
 abstract type AbstractMIRK <: BoundaryValueDiffEqAlgorithm end
 
 ## Disable the ugly verbose printing by default
+@inline __modifier_text!(list, fieldname, field) = push!(list, "$fieldname = $(field)")
+@inline __modifier_text!(list, fieldname, ::Nothing) = list
+@inline __modifier_text!(list, fieldname, ::Missing) = list
+@inline function __modifier_text!(list, fieldname, field::SciMLBase.AbstractODEAlgorithm)
+    push!(list, "$fieldname = $(__nameof(field))()")
+end
+
 function Base.show(io::IO, alg::BoundaryValueDiffEqAlgorithm)
-    print(io, "$(nameof(typeof(alg)))()")
+    print(io, "$(__nameof(alg))(")
+    modifiers = String[]
+    for field in fieldnames(typeof(alg))
+        __modifier_text!(modifiers, field, getfield(alg, field))
+    end
+    print(io, join(modifiers, ", "))
+    print(io, ")")
 end
 
 """
@@ -28,7 +42,7 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
     and problem type. If `BVPJacobianAlgorithm` is provided, only `diffmode` is used
     (defaults to `AutoForwardDiff` if possible else `AutoFiniteDiff`).
 """
-@concrete struct Shooting{J <: BVPJacobianAlgorithm} <: BoundaryValueDiffEqAlgorithm
+@concrete struct Shooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
     ode_alg
     nlsolve
     jac_alg::J
@@ -40,25 +54,17 @@ end
 @inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
 @inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
 
-function Base.show(io::IO, alg::Shooting)
-    print(io, "Shooting(")
-    modifiers = String[]
-    alg.nlsolve !== nothing && push!(modifiers, "nlsolve = $(alg.nlsolve)")
-    alg.jac_alg !== nothing && push!(modifiers, "jac_alg = $(alg.jac_alg)")
-    alg.ode_alg !== nothing && push!(modifiers, "ode_alg = $(__nameof(alg.ode_alg))()")
-    print(io, join(modifiers, ", "))
-    print(io, ")")
-end
-
 @inline function concretize_jacobian_algorithm(alg::Shooting, prob)
     alg.jac_alg.diffmode === nothing &&
         (return @set alg.jac_alg.diffmode = __default_nonsparse_ad(prob.u0))
     return alg
 end
-
 """
-    MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
+    MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
+        grid_coarsening = true, jac_alg = nothing)
+    MultipleShooting(nshoots::Int; kwargs...)
+    MultipleShooting(nshoots::Int, ode_alg; kwargs...)
+    MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...)
 
 Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
 Significantly more stable than Single Shooting.
@@ -66,16 +72,12 @@ Significantly more stable than Single Shooting.
 ## Arguments
 
   - `nshoots`: Number of shooting points.
+
   - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
     SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
     poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
-
-## Keyword Arguments
-
   - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-    `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
-    will be ignored and a custom jacobian algorithm will be used.
-
+    `NonlinearProblem` interface can be used.
   - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
     `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
     on the input types and problem type.
@@ -83,8 +85,8 @@ Significantly more stable than Single Shooting.
       + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
         `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
       + For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
-        defaults to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
-        `bc_diffmode`, defaults to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
+        we default to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
+        `bc_diffmode`, we default to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
   - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
     solution. Possible Choices:
 
@@ -97,19 +99,24 @@ Significantly more stable than Single Shooting.
       + `Function`: Takes the current number of shooting points and returns the next number
         of shooting points. For example, if `nshoots = 10` and
         `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
-
-!!! note
-
-    For type-stability, the chunksizes for ForwardDiff ADTypes in `BVPJacobianAlgorithm`
-    must be provided.
 """
-@concrete struct MultipleShooting{J <: BVPJacobianAlgorithm}
+@concrete struct MultipleShooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
     ode_alg
     nlsolve
     jac_alg::J
     nshoots::Int
     grid_coarsening
 end
+
+# function Base.show(io::IO, alg::MultipleShooting)
+#     print(io, "MultipleShooting(")
+#     modifiers = String[]
+#     alg.nlsolve !== nothing && push!(modifiers, "nlsolve = $(alg.nlsolve)")
+#     alg.jac_alg !== nothing && push!(modifiers, "jac_alg = $(alg.jac_alg)")
+#     alg.ode_alg !== nothing && push!(modifiers, "ode_alg = $(__nameof(alg.ode_alg))()")
+#     print(io, join(modifiers, ", "))
+#     print(io, ")")
+# end
 
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
@@ -122,18 +129,22 @@ function update_nshoots(alg::MultipleShooting, nshoots::Int)
         alg.grid_coarsening)
 end
 
-function MultipleShooting(nshoots::Int, ode_alg = nothing; nlsolve = nothing,
-        grid_coarsening = true, jac_alg = BVPJacobianAlgorithm())
-    @assert grid_coarsening isa Bool || grid_coarsening isa Function ||
-            grid_coarsening isa AbstractVector{<:Integer} ||
-            grid_coarsening isa NTuple{N, <:Integer} where {N}
+function MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
+        grid_coarsening::Union{Bool, Function, <:AbstractVector{<:Integer},
+            Tuple{Vararg{Integer}}} = true, jac_alg = nothing)
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(ode_alg, nlsolve, jac_alg, nshoots, grid_coarsening)
+    return MultipleShooting(ode_alg, nlsolve,
+        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening)
 end
+@inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
+@inline MultipleShooting(nshoots::Int, ode_alg; kwargs...) = MultipleShooting(;
+    nshoots, ode_alg, kwargs...)
+@inline MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...) = MultipleShooting(;
+    nshoots, ode_alg, nlsolve, kwargs...)
 
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
