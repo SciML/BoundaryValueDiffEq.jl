@@ -195,6 +195,18 @@ Fortran code for solving two-point boundary value problems. For detailed documen
     Only supports inplace two-point boundary value problems, with very limited forms of
     input structures!
 
+## Arguments:
+
+    - `max_num_subintervals`: Maximum number of subintervals allowed, default as 3000.
+    - `method_choice`: The order of MIRK methods, choices are 2, 4 and 6, default as 4th order MIRK method.
+    - `diagnostic_output`: Diagnostic output level, choices are -1: no output, 0: only output if computation fails,
+        1: intermediate output, 2: full output, default as -1.
+    - `error_control`: Error control methods, choices are 1: defect control, 2: global error control,
+        3: defect then global error control, 4: linear combination of defect and global error control,
+        default as 1.
+    - `singular_term`: Either nothing if the ODEs have no singular terms at the left
+        boundary or a constant (d,d) matrix for the singular term, default as `nothing`
+
 !!! note
     Only available if the `ODEInterface` package is loaded.
 """
