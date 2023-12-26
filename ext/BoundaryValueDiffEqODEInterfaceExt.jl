@@ -39,7 +39,7 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
 
     n == -1 && dt ≤ 0 && throw(ArgumentError("`dt` must be positive."))
 
-    mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n))
+    mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n - 1))
     n = length(mesh) - 1
     no_odes = length(u0_)
 
@@ -122,7 +122,7 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, d
 
     n == -1 && dt ≤ 0 && throw(ArgumentError("`dt` must be positive."))
     u0 = __flatten_initial_guess(prob.u0)
-    mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n))
+    mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n - 1))
     if u0 === nothing
         # initial_guess function was provided
         u0 = mapreduce(@closure(t->vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)

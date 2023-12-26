@@ -34,7 +34,7 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
 
     solve_internal_odes! = @closure (resid_nodes, us, p, cur_nshoot, nodes,
-        odecache) -> __multiple_shooting_solve_internal_odes!(resid_nodes, us, cur_nshoot,
+    odecache) -> __multiple_shooting_solve_internal_odes!(resid_nodes, us, cur_nshoot,
         odecache, nodes, u0_size, N, ensemblealg, tspan)
 
     # This gets all the nshoots except the final SingleShooting case
