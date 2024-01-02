@@ -55,7 +55,7 @@ end
         # Update interpolation residual
         for r in 1:stage
             @. tmp1 = yᵢ
-            __maybe_matmul!(tmp1, K, a[:,r], h, T(1))
+            __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
             f!(residual[ctr + r], tmp1, p, mesh[i] + c[r] * h)
             residual[ctr + r] .-= K[:, r]
         end
@@ -78,7 +78,7 @@ function FIRK_nlsolve!(res, K, p_nlsolve, f!, a, c, stage, p_f!)
 
     for r in 1:stage
         @. tmp1 = yᵢ
-        __maybe_matmul!(tmp1, K, @view(a[:,r]), h, T(1))
+        __maybe_matmul!(tmp1, K, @view(a[:, r]), h, T(1))
         f!(@view(res[:, r]), tmp1, p_f!, mesh_i + c[r] * h)
         @views res[:, r] .-= K[:, r]
     end
@@ -89,20 +89,15 @@ function FIRK_nlsolve(K, p_nlsolve, f!, a, c, stage, p_f!)
     mesh_i = p_nlsolve[1]
     h = p_nlsolve[2]
     yᵢ = @view p_nlsolve[3:end]
-    
+
     T = promote_type(eltype(K), eltype(yᵢ))
     tmp1 = similar(K, T, size(K, 1))
     res = similar(K, T, size(K))
 
     for r in 1:stage
         @. tmp1 = yᵢ
-        __maybe_matmul!(tmp1, K, @view(a[:,r]), h, T(1))
-        try @views res[:, r] = f!(tmp1, p_f!, mesh_i + c[r] * h)
-        catch
-            if isdefined(Main, :Infiltrator)
-            Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-                end
-        end
+        __maybe_matmul!(tmp1, K, @view(a[:, r]), h, T(1))
+        @views res[:, r] = f!(tmp1, p_f!, mesh_i + c[r] * h)
         @views res[:, r] .-= K[:, r]
     end
     return res
@@ -115,6 +110,7 @@ end
 
     T = eltype(u)
     p_nestprob = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
+
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
         h = mesh_dt[i]
@@ -126,8 +122,10 @@ end
         p_nestprob[2] = T(mesh_dt[i])
         p_nestprob[3:end] = yᵢ
 
-        solve_cache!(nest_cache, p_nestprob)
+        K = get_tmp(k_discrete[i], u)
 
+        sol = solve_cache!(nest_cache, K, p_nestprob)
+        @. K = nest_cache.u
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nest_cache.u, b, -h, T(1))
     end
@@ -227,7 +225,7 @@ end
         p_nestprob[2] = T(mesh_dt[i])
         p_nestprob[3:end] = yᵢ
 
-        solve_cache!(nest_cache, p_nestprob)
+        solve_cache!(nest_cache, yᵢ, p_nestprob)
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nest_cache.u, b, -h, T(1))

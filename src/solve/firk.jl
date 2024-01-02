@@ -157,7 +157,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(fill(one(T), (M, stage)), chunksize, alg.jac_alg)
                   for _ in 1:n]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -199,7 +199,8 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     # Initialize internal nonlinear problem cache
     @unpack c, a, b, s = TU
     p_nestprob = zeros(T, M + 2)
-    K0 = fill(one(T), (M, s))
+    avg_u0 = size(prob.u0, 2) == 1 ? prob.u0 : sum(prob.u0, dims = 2)/size(prob.u0, 2)
+    K0 = repeat(avg_u0, 1, s)
     if iip
         nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res, K,
                                                                           p_nestprob, f,
@@ -337,8 +338,8 @@ function __expand_cache!(cache::Union{FIRKCacheNested, FIRKCacheExpand})
     return cache
 end
 
-function solve_cache!(nest_cache, p_nest)
-    reinit!(nest_cache, p = p_nest)
+function solve_cache!(nest_cache, _u0, p_nest)
+    reinit!(nest_cache, _u0,p = p_nest)
     return solve!(nest_cache)
 end
 
@@ -350,9 +351,11 @@ function _scalar_nlsolve_∂f_∂u(f, res, u, p)
     return ForwardDiff.jacobian((y, x) -> f(y, x, p), res, u)
 end
 
-function _scalar_nlsolve_cache_ad(nest_cache::NonlinearSolve.NewtonRaphsonCache{iip}, p_nest) where {iip}
+function _scalar_nlsolve_cache_ad(nest_cache::NonlinearSolve.NewtonRaphsonCache{iip}, _u0, p_nest) where {iip}
     _p_nest = ForwardDiff.value.(p_nest)
-    reinit!(nest_cache, p = _p_nest)
+    new_u0 = ones(size(ForwardDiff.value.(_u0)))
+    
+    reinit!(nest_cache,new_u0, p = _p_nest);
     sol = solve!(nest_cache)
     uu = sol.u
     res = zero(uu)
@@ -379,11 +382,11 @@ function _scalar_nlsolve_cache_ad(nest_cache::NonlinearSolve.NewtonRaphsonCache{
     return sol, partials
 end
 
-
 #TODO: iip overload
-function solve_cache!(nest_cache,
+function solve_cache!(nest_cache, _u0,
                       p_nest::AbstractArray{<:Dual{T, V, P}}) where {T, V, P}
-    sol, partials = _scalar_nlsolve_cache_ad(nest_cache, p_nest)
+
+    sol, partials = _scalar_nlsolve_cache_ad(nest_cache, _u0, p_nest);
     dual_soln = map(((uᵢ, pᵢ),) -> Dual{T, V, P}(uᵢ, pᵢ), zip(sol.u, partials))
     return SciMLBase.build_solution(nest_cache.prob, nest_cache.alg, dual_soln, sol.resid;
                                     sol.retcode)

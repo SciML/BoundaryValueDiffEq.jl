@@ -109,7 +109,7 @@ end
     p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
     p_nestprob[3:end] .= y_i
 
-    solve_cache!(nest_cache, p_nestprob)
+    solve_cache!(nest_cache, copy(cache.k_discrete[j].du), p_nestprob)
     K = nest_cache.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
@@ -178,7 +178,7 @@ end
     end
     τ = (t - mesh[j]) / h
 
-    @unpack f, M, p = cache
+    @unpack f, M, p, k_discrete = cache
     @unpack c, a, b = cache.TU
     @unpack q_coeff, stage = ITU
     @unpack nest_cache, p_nestprob, prob = cache
@@ -203,7 +203,7 @@ end
     p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
     p_nestprob[3:end] .= y_i
 
-    solve_cache!(nest_cache, p_nestprob)
+    solve_cache!(nest_cache, k_discrete[j].du, p_nestprob)
     K = nest_cache.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
@@ -460,7 +460,7 @@ end
         yᵢ₁ = copy(cache.y[i].du)
         yᵢ₂ = copy(yᵢ₁)
 
-        K = cache.k_discrete[i].du
+        K = copy(cache.k_discrete[i].du)
 
         if minimum(abs.(K)) < 1e-2
             K = fill(one(eltype(K)), size(K))
@@ -470,7 +470,7 @@ end
 
         p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
         p_nestprob[3:end] = y_i
-        solve_cache!(nest_cache, p_nestprob)
+        solve_cache!(nest_cache, K, p_nestprob)
 
         # Defect estimate from q(x) at y_i + τ* * h
         z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)

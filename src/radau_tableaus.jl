@@ -64,7 +64,6 @@ end
 function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 5
-    a = permutedims(a, (2, 1))
     c = [
         0.5710419611451768219312e-01,
         0.2768430136381238276800e+00,
@@ -86,6 +85,7 @@ function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
 
     a = c_q / c_p
     b = a[5, :]
+    a = permutedims(a, (2, 1))
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
     q_coeff = [1.5864079001863276 -1.0081178814983707 0.7309748661597844 -0.5092648848477398 0.19999999999999882;
@@ -103,7 +103,6 @@ end
 function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 7
-    a = permutedims(a, (2, 1))
     c = [
         0.2931642715978489197205e-01,
         0.1480785996684842918500e+00,
@@ -132,6 +131,8 @@ function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
     a = c_q / c_p
 
     b = a[7, :]
+
+    a = permutedims(a, (2, 1))
 
     # Coefficients for constructing q and zeros of p(x) polynomial in bvp5c paper
     q_coeff = [1.5940642185610567 -1.036553752196515 0.79382172349084 -0.6325776522499784 0.4976107136030369 -0.3592223940655934 0.14285714285715354;
