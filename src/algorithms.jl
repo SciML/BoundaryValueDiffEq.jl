@@ -191,21 +191,28 @@ end
 Fortran code for solving two-point boundary value problems. For detailed documentation, see
 [ODEInterface.jl](https://github.com/luchr/ODEInterface.jl/blob/master/doc/SolverOptions.md#bvpm2).
 
+## Keyword Arguments:
+
+    - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+    - `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4, available choices:
+        - `2`: Runge-Kutta method of order 2.
+        - `4`: Runge-Kutta method of order 4.
+        - `6`: Runge-Kutta method of order 6.
+    - `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available choices:
+        - `-1`: Full diagnostic printout.
+        - `0`: Selected printout.
+        - `1`: No printout.
+    - `error_control`: Determines the error-estimation for which RTOL is used, default as defect control, available choices:
+        - `1`: Defect control.
+        - `2`: Global error control.
+        - `3`: Defect and then global error control.
+        - `4`: Linear combination of defect and global error control.
+    - `singular_term`: either nothing if the ODEs have no singular terms at the left boundary or a constant (d,d) matrix for the
+        singular term.
+
 !!! warning
     Only supports inplace two-point boundary value problems, with very limited forms of
     input structures!
-
-## Arguments:
-
-    - `max_num_subintervals`: Maximum number of subintervals allowed, default as 3000.
-    - `method_choice`: The order of MIRK methods, choices are 2, 4 and 6, default as 4th order MIRK method.
-    - `diagnostic_output`: Diagnostic output level, choices are -1: no output, 0: only output if computation fails,
-        1: intermediate output, 2: full output, default as -1.
-    - `error_control`: Error control methods, choices are 1: defect control, 2: global error control,
-        3: defect then global error control, 4: linear combination of defect and global error control,
-        default as 1.
-    - `singular_term`: Either nothing if the ODEs have no singular terms at the left
-        boundary or a constant (d,d) matrix for the singular term, default as `nothing`
 
 !!! note
     Only available if the `ODEInterface` package is loaded.
@@ -228,6 +235,19 @@ of the arising linear subproblems, by Peter Deuflhard, Georg Bader, Lutz Weimann
 For detailed documentation, see
 [ODEInterface.jl](https://github.com/luchr/ODEInterface.jl/blob/master/doc/SolverOptions.md#bvpsol).
 
+## Keyword Arguments
+
+    - `bvpclass`: Boundary value problem classification, default as highly nonlinear with bad initial data, available choices:
+        - `0`: Linear boundary value problem.
+        - `1`: Nonlinear with good initial data.
+        - `2`: Highly Nonlinear with bad initial data.
+        - `3`: Highly nonlinear with bad initial data and initial rank reduction to seperable
+            linear boundary conditions.
+    - `sol_method`: Switch for solution methods, default as local linear solver with condensing algorithm, available choices:
+        - `0`: Use local linear solver with condensing algorithm.
+        - `1`: Use global sparse linear solver.
+    - `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
+
 !!! warning
     Only supports inplace two-point boundary value problems, with very limited forms of
     input structures!
@@ -239,4 +259,42 @@ Base.@kwdef struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
     bvpclass::Int = 2
     sol_method::Int = 0
     odesolver::O = nothing
+end
+
+"""
+    COLNEW(; bvpclass = 2, collocationpts = 7, autodiff = :central)
+    COLNEW(bvpclass::Int, collocationpts::Int, autodiff)
+
+## Keyword Arguments:
+
+    - `bvpclass`: Boundary value problem classification, default as nonlinear and "extra sensitive", available choices:
+        - `0`: Linear boundary value problem.
+        - `1`: Nonlinear and regular.
+        - `2`: Nonlinear and "extra sensitive" (first relax factor is rstart and the
+            nonlinear iteration does not rely on past convergence).
+        - `3`: fail-early: return immediately upon:
+            (a) two successive non-convergences.
+            (b) after obtaining an error estimate for the first time.
+    - `collocationpts`: Number of collocation points per subinterval. Require orders[i] ≤ k ≤ 7, default as 7
+    - `diagnostic_output`: Diagnostic output for COLNEW, default as no printout, available choices:
+        - `-1`: Full diagnostic printout.
+        - `0`: Selected printout.
+        - `1`: No printout.
+    - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+
+A Fortran77 code solves a multi-points boundary value problems for a mixed order system of ODEs.
+It incorporates a new basis representation replacing b-splines, and improvements for
+the linear and nonlinear algebraic equation solvers.
+
+!!! warning
+    Only supports two-point boundary value problems.
+
+!!! note
+    Only available if the `ODEInterface` package is loaded.
+"""
+Base.@kwdef struct COLNEW <: BoundaryValueDiffEqAlgorithm
+    bvpclass::Int = 1
+    collocationpts::Int = 7
+    diagnostic_output::Int = 1
+    max_num_subintervals::Int = 3000
 end
