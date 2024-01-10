@@ -51,3 +51,23 @@ tpprob = TwoPointBVProblem(ex7_f2!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan;
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
 # TODO: Implement appolo reentry example from ODEInterface.jl
 sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
+
+@info "COLNEW"
+
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = u[1]
+end
+function bca!(resid_a, u_a, p)
+    resid_a[1] = u_a[1] - 1
+end
+function bcb!(resid_b, u_b, p)
+    resid_b[1] = u_b[1]
+end
+
+fun = BVPFunction(f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
+tspan = (0.0, 1.0)
+
+prob = TwoPointBVProblem(fun, [1.0, 0.0], tspan)
+sol_colnew = solve(prob, COLNEW(), dt = 0.01)
+@test SciMLBase.successful_retcode(sol_colnew)
