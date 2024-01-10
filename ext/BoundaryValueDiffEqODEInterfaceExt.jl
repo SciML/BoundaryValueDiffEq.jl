@@ -54,11 +54,12 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
 
     sol, retcode, stats = bvpm2_solve(initial_guess, bvp2m_f, bvp2m_bc, opt)
     retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure
+    destats = SciMLBase.DEStats(stats["no_rhs_calls"], 0, 0, 0, stats["no_jac_calls"], 0, 0, 0, 0, 0, 0)
 
     x_mesh = bvpm2_get_x(sol)
     evalsol = evalSolution(sol, x_mesh)
     sol_final = DiffEqBase.build_solution(prob, alg, x_mesh,
-        collect(Vector{eltype(evalsol)}, eachcol(evalsol)); retcode, stats)
+        collect(Vector{eltype(evalsol)}, eachcol(evalsol)); retcode, stats = destats)
 
     bvpm2_destroy(initial_guess)
     bvpm2_destroy(sol)
