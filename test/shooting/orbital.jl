@@ -1,4 +1,3 @@
-# Lambert's Problem
 using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
 
 @testset "Lambert's Problem" begin

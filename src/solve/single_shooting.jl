@@ -80,7 +80,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         prob.p)
     odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
-    return SciMLBase.build_solution(prob, odesol, nlsol)
+    return __build_solution(prob, odesol, nlsol)
 end
 
 function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,

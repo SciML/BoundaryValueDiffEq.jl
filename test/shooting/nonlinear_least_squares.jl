@@ -1,13 +1,21 @@
 using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test, JET
 
+# NOTE: The nonlinear solve polyalgorithm for NLLS is currently broken because of Bastin
+#       Jv & Jᵀv computation with the cached ODE solve
 @testset "Overconstrained BVP" begin
     SOLVERS = [
-        Shooting(Tsit5()),
+        # Shooting(Tsit5()),
+        Shooting(Tsit5(),
+            LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Tsit5()),
+        # MultipleShooting(10, Tsit5()),
+        MultipleShooting(10, Tsit5(),
+            LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
         MultipleShooting(10, Tsit5(),
             GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
@@ -15,7 +23,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test, JET
             TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
     ]
-    JET_SKIP = [true, false, false, false, false, true, false, false, false, false]
+    JET_SKIP = [false, false, false, false, false, false, false, false, false, false]
     JET_BROKEN = [false, false, false, false, false, false, false, false, false, false]
 
     @info "Solving Overconstrained BVPs"

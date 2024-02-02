@@ -43,7 +43,7 @@ end
 @inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) = BVPJacobianAlgorithm(alg)
 @inline __materialize_jacobian_algorithm(::Nothing, ::Nothing) = BVPJacobianAlgorithm()
 @inline function __materialize_jacobian_algorithm(nlsolve::N, ::Nothing) where {N}
-    ad = hasfield(N, :ad) ? nlsolve.ad : missing
+    ad = hasfield(N, :jacobian_ad) ? nlsolve.jacobian_ad : missing
     return BVPJacobianAlgorithm(ad)
 end
 
