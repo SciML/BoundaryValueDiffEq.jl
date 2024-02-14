@@ -43,12 +43,12 @@ odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 odef2! = ODEFunction(f2!,
     analytic = (u0, p, t) -> [
         5 * (cos(t) - cot(5) * sin(t)),
-        5 * (-cos(t) * cot(5) - sin(t)),
+        5 * (-cos(t) * cot(5) - sin(t))
     ])
 odef2 = ODEFunction(f2,
     analytic = (u0, p, t) -> [
         5 * (cos(t) - cot(5) * sin(t)),
-        5 * (-cos(t) * cot(5) - sin(t)),
+        5 * (-cos(t) * cot(5) - sin(t))
     ])
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
@@ -68,7 +68,7 @@ probArr = [
     TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!), u0, tspan;
         bcresid_prototype),
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
-        bcresid_prototype),
+        bcresid_prototype)
 ];
 
 testTol = 0.2

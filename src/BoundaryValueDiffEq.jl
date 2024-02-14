@@ -4,15 +4,16 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
 
 @recompile_invalidations begin
     using ADTypes, Adapt, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
-        PreallocationTools, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
-        SparseDiffTools, Tricks
+          PreallocationTools, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
+          Setfield,
+          SparseDiffTools, Tricks
 
     # Special Matrix Types
     using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
     import ADTypes: AbstractADType
     import ArrayInterface: matrix_colors,
-        parameterless_type, undefmatrix, fast_scalar_indexing
+                           parameterless_type, undefmatrix, fast_scalar_indexing
     import ConcreteStructs: @concrete
     import DiffEqBase: solve
     import ForwardDiff: pickchunksize
@@ -74,7 +75,7 @@ end
         BVProblem(f1!, bc1!, u0, tspan),
         BVProblem(f1, bc1, u0, tspan),
         TwoPointBVProblem(f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype),
-        TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
+        TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype)
     ]
 
     algs = []
@@ -129,7 +130,7 @@ end
         TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
             bcresid_prototype = bcresid_prototype2),
         TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
-            bcresid_prototype = bcresid_prototype2),
+            bcresid_prototype = bcresid_prototype2)
     ]
 
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
@@ -144,7 +145,7 @@ end
                 [
                     MIRK2(; jac_alg, nlsolve), MIRK3(; jac_alg, nlsolve),
                     MIRK4(; jac_alg, nlsolve), MIRK5(; jac_alg, nlsolve),
-                    MIRK6(; jac_alg, nlsolve),
+                    MIRK6(; jac_alg, nlsolve)
                 ])
         end
     end
