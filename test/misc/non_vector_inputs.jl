@@ -40,7 +40,7 @@ probs = [
     TwoPointBVProblem(f1!, (boundary_a!, boundary_b!), u0, tspan;
         bcresid_prototype = (Array{Float64}(undef, 1, 1), Array{Float64}(undef, 1, 1))),
     BVProblem(f1, boundary, u0, tspan),
-    TwoPointBVProblem(f1, (boundary_a, boundary_b), u0, tspan),
+    TwoPointBVProblem(f1, (boundary_a, boundary_b), u0, tspan)
 ];
 
 @testset "Affineness" begin

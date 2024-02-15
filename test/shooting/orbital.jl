@@ -7,7 +7,7 @@ y0 = [
     -5.3500183933132319E+06,
     -5528.612564911408,
     1216.8442360202787,
-    4845.114446429901,
+    4845.114446429901
 ]
 init_val = [
     -4.7763169762853989E+06,
@@ -15,7 +15,7 @@ init_val = [
     -5.3500183933132319E+06,
     7.0526926403748598E+06,
     -7.9650476230388973E+05,
-    -1.1911128863666430E+06,
+    -1.1911128863666430E+06
 ]
 J2 = 1.08262668E-3
 req = 6378137
@@ -66,7 +66,8 @@ resid_f_2p = (Array{Float64, 1}(undef, 3), Array{Float64, 1}(undef, 3))
 
 ### Now use the BVP solver to get closer
 bvp = BVProblem(orbital!, cur_bc!, y0, tspan)
-for autodiff in (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+for autodiff in (
+    AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
     AutoSparseForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
     nlsolve = TrustRegion(; autodiff)
@@ -88,7 +89,8 @@ end
 ### Using the TwoPoint BVP Structure
 bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
     bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)))
-for autodiff in (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+for autodiff in (
+    AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
     AutoSparseForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:forward)),
     AutoSparseFiniteDiff())
     nlsolve = TrustRegion(; autodiff)

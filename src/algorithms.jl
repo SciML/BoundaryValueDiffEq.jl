@@ -55,9 +55,11 @@ function __propagate_nlsolve_ad_to_jac_alg(nlsolve::N) where {N}
     ad = hasfield(N, :ad) ? nlsolve.ad : nothing
     ad === nothing && return BVPJacobianAlgorithm()
 
-    Base.depwarn("Setting autodiff to the nonlinear solver in Shooting has been deprecated \
-                  and will have no effect from the next major release. Update to use \
-                  `BVPJacobianAlgorithm` directly", :Shooting)
+    Base.depwarn(
+        "Setting autodiff to the nonlinear solver in Shooting has been deprecated \
+         and will have no effect from the next major release. Update to use \
+         `BVPJacobianAlgorithm` directly",
+        :Shooting)
     return BVPJacobianAlgorithm(ad)
 end
 

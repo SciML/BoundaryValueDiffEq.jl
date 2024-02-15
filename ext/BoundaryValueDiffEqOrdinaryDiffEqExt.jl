@@ -38,7 +38,7 @@ end
         BVProblem(f1!, bc1!, u0, tspan),
         BVProblem(f1, bc1, u0, tspan),
         TwoPointBVProblem(f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype),
-        TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype),
+        TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype)
     ]
 
     algs = []
@@ -101,7 +101,7 @@ end
         TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
             bcresid_prototype = bcresid_prototype2),
         TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
-            bcresid_prototype = bcresid_prototype2),
+            bcresid_prototype = bcresid_prototype2)
     ]
 
     algs = []
@@ -112,7 +112,7 @@ end
                 Shooting(Tsit5(); nlsolve = LevenbergMarquardt(),
                     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
                 Shooting(Tsit5(); nlsolve = GaussNewton(),
-                    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
+                    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             ])
     end
 
@@ -129,7 +129,7 @@ end
                     nlsolve = GaussNewton(; autodiff = AutoForwardDiff(chunksize = 2)),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
+                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2)))
             ])
     end
 

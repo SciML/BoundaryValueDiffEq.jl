@@ -1,7 +1,8 @@
 using BoundaryValueDiffEq, LinearAlgebra, Test
 
 @testset "Overconstrained BVP" begin
-    SOLVERS = [mirk(; nlsolve) for mirk in (MIRK4, MIRK5, MIRK6),
+    SOLVERS = [mirk(; nlsolve)
+               for mirk in (MIRK4, MIRK5, MIRK6),
     nlsolve in (LevenbergMarquardt(), GaussNewton(), nothing)]
 
     # OOP MP-BVP
@@ -53,8 +54,11 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
     bc1a(ua, p) = [ua[1]]
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    bvp3 = TwoPointBVProblem(BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
+    bvp3 = TwoPointBVProblem(
+        BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))),
+        u0,
+        tspan)
 
     for solver in SOLVERS
         @time sol = solve(bvp3, solver; verbose = false, dt = 1.0)
@@ -65,8 +69,11 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
     bc1a!(resid, ua, p) = (resid[1] = ua[1])
     bc1b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
-    bvp4 = TwoPointBVProblem(BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan)
+    bvp4 = TwoPointBVProblem(
+        BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))),
+        u0,
+        tspan)
 
     for solver in SOLVERS
         @time sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3,

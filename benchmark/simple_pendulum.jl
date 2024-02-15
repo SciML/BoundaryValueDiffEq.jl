@@ -43,32 +43,42 @@ function create_simple_pendulum_benchmark()
     suite["OOP"] = oop_suite
 
     if @isdefined(MultipleShooting)
-        iip_suite["MultipleShooting(100, Tsit5; grid_coarsening = true)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip,
+        iip_suite["MultipleShooting(100, Tsit5; grid_coarsening = true)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_iip,
             $MultipleShooting(100, Tsit5()))
-        iip_suite["MultipleShooting(100, Tsit5; grid_coarsening = false)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip,
+        iip_suite["MultipleShooting(100, Tsit5; grid_coarsening = false)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_iip,
             $MultipleShooting(100, Tsit5(); grid_coarsening = false))
-        iip_suite["MultipleShooting(10, Tsit5; grid_coarsening = true)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip,
+        iip_suite["MultipleShooting(10, Tsit5; grid_coarsening = true)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_iip,
             $MultipleShooting(10, Tsit5()))
-        iip_suite["MultipleShooting(10, Tsit5; grid_coarsening = false)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip,
+        iip_suite["MultipleShooting(10, Tsit5; grid_coarsening = false)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_iip,
             $MultipleShooting(10, Tsit5(); grid_coarsening = false))
     end
     if @isdefined(Shooting)
-        iip_suite["Shooting(Tsit5())"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip,
+        iip_suite["Shooting(Tsit5())"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_iip,
             $Shooting(Tsit5()))
     end
 
     if @isdefined(MultipleShooting)
-        oop_suite["MultipleShooting(100, Tsit5; grid_coarsening = true)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop,
+        oop_suite["MultipleShooting(100, Tsit5; grid_coarsening = true)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_oop,
             $MultipleShooting(100, Tsit5()))
-        oop_suite["MultipleShooting(100, Tsit5; grid_coarsening = false)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop,
+        oop_suite["MultipleShooting(100, Tsit5; grid_coarsening = false)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_oop,
             $MultipleShooting(100, Tsit5(); grid_coarsening = false))
-        oop_suite["MultipleShooting(10, Tsit5; grid_coarsening = true)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop,
+        oop_suite["MultipleShooting(10, Tsit5; grid_coarsening = true)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_oop,
             $MultipleShooting(10, Tsit5()))
-        oop_suite["MultipleShooting(10, Tsit5; grid_coarsening = false)"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop,
+        oop_suite["MultipleShooting(10, Tsit5; grid_coarsening = false)"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_oop,
             $MultipleShooting(10, Tsit5(); grid_coarsening = false))
     end
     if @isdefined(Shooting)
-        oop_suite["Shooting(Tsit5())"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop,
+        oop_suite["Shooting(Tsit5())"] = @benchmarkable solve(
+            $SimplePendulumBenchmark.prob_oop,
             $Shooting(Tsit5()))
     end
 

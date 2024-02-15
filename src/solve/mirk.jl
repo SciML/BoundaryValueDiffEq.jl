@@ -224,7 +224,8 @@ function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, 
     return nothing
 end
 
-function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
+function __mirk_loss!(
+        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
         mesh, cache) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
@@ -347,7 +348,8 @@ function __mirk_mpoint_jacobian!(J, _, x, bc_diffmode, nonbc_diffmode, bc_diffca
     return nothing
 end
 
-function __mirk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+function __mirk_mpoint_jacobian!(
+        J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
         bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C, resid_bc,
         resid_collocation, L::Int) where {BC, C}
     J_bc = fillpart(J)

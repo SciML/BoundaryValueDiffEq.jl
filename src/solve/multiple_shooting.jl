@@ -54,12 +54,14 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         end
 
         if prob.problem_type isa TwoPointBVProblem
-            __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
+            __solve_nlproblem!(
+                prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
                 cur_nshoot, M, N, resida_len, residb_len, solve_internal_odes!, bc[1],
                 bc[2], prob, u0, ode_cache_loss_fn, ensemblealg, internal_ode_kwargs;
                 verbose, kwargs..., nlsolve_kwargs...)
         else
-            __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
+            __solve_nlproblem!(
+                prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
                 cur_nshoot, M, N, prod(resid_size), solve_internal_odes!, bc, prob, f,
                 u0_size, u0, ode_cache_loss_fn, ensemblealg, internal_ode_kwargs; verbose,
                 kwargs..., nlsolve_kwargs...)
@@ -171,7 +173,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     # Define the functions now
     ode_fn = (du, u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes,
         ode_cache_ode_jac_fn)
-    bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(du, u, prob.p, cur_nshoot, nodes,
+    bc_fn = (du, u) -> __multiple_shooting_mpoint_loss_bc!(
+        du, u, prob.p, cur_nshoot, nodes,
         prob, solve_internal_odes!, N, f, bc, u0_size, prob.tspan, alg.ode_alg, u0,
         ode_cache_bc_jac_fn)
 
@@ -257,7 +260,8 @@ function __multiple_shooting_solve_internal_odes!(resid_nodes, us, cur_nshoots::
     Threads.@threads for idx in 1:length(data_partition)
         cache = odecache[idx]
         for i in data_partition[idx]
-            SciMLBase.reinit!(cache, reshape(@view(us[((i - 1) * N + 1):(i * N)]), u0_size);
+            SciMLBase.reinit!(
+                cache, reshape(@view(us[((i - 1) * N + 1):(i * N)]), u0_size);
                 t0 = nodes[i], tf = nodes[i + 1])
             sol = solve!(cache)
             us_[i] = deepcopy(sol.u)
@@ -355,7 +359,8 @@ end
 end
 
 # Problem has initial guess
-@views function __multiple_shooting_initialize!(nodes, prob, alg, ::Val{true}, nshoots::Int,
+@views function __multiple_shooting_initialize!(
+        nodes, prob, alg, ::Val{true}, nshoots::Int,
         odecache; kwargs...)
     @unpack u0, tspan = prob
 
