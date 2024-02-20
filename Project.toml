@@ -37,7 +37,7 @@ BoundaryValueDiffEqOrdinaryDiffEqExt = "OrdinaryDiffEq"
 
 [compat]
 ADTypes = "0.2"
-Adapt = "3"
+Adapt = "3, 4"
 Aqua = "0.7"
 ArrayInterface = "7"
 BandedMatrices = "1"
