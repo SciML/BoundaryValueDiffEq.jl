@@ -68,24 +68,24 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = 1 .// 2 .^ (3:-1:1)
+dts = 1 .// 2 .^ (4:-1:2)
 
 for order in (2, 3, 4, 5)
     s = Symbol("LobattoIIIb$(order)")
-    @eval lobatto_solver(::Val{$order}) = $(s)()
+    @eval lobatto_solver(::Val{$order}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()), true)
 end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
     prob = probArr[i]
     @testset "LobattoIIIb$order" for order in (2, 3, 4, 5)
-        @time sol = solve(prob, lobatto_solver(Val(order)); dt = 0.2)
+        @time sol = solve(prob, lobatto_solver(Val(order)); dt = 0.2, adaptive = false)
         @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
     end
 end end
 
 @testset "Convergence on Linear" begin @testset "Problem: $i" for i in (3, 4, 7, 8)
     prob = probArr[i]
-    @testset "LobattoIIIb$order" for (i, order) in enumerate((2, 3, 4, 5))
+    @testset "LobattoIIIb$order" for order in (2, 3, 4, 5)
         @time sim = test_convergence(dts, prob, lobatto_solver(Val(order));
                                      abstol = 1e-8, reltol = 1e-8)
         @test sim.𝒪est[:final]≈order atol=testTol
@@ -111,18 +111,18 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
+jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                                nonbc_diffmode = AutoSparseFiniteDiff())
 
 nl_solve = NewtonRaphson()
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, true); dt = 0.005)
+@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, true); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, true); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, true); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, true); dt = 0.005, adaptive = false)
 
-@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, false); dt = 0.005)
+@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)

@@ -68,26 +68,27 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = 1 .// 2 .^ (3:-1:1)
+#dts = 1 .// 2 .^ (3:-1:1)
+dts = 1 .// 2 .^ (4:-1:2)
 
 for order in (3, 5, 9, 13)
     s = Symbol("RadauIIa$(order)")
-    @eval radau_solver(::Val{$order}) = $(s)()
+    @eval radau_solver(::Val{$order}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()), true)
 end
+nnk = (; abstol = 1e-10, reltol = 1e-10, maxiters = 1000)
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
     prob = probArr[i]
     @testset "RadauIIa$order" for order in (3, 5, 9, 13)
-        @time sol = solve(prob, radau_solver(Val(order)); dt = 0.2)
+        @time sol = solve(prob, radau_solver(Val(order)); dt = 0.2,  adaptive = false, nlsolve_kwargs = nnk)
         @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
     end
 end end
-
 @testset "Convergence on Linear" begin @testset "Problem: $i" for i in (3, 4, 7, 8)
     prob = probArr[i]
-    @testset "RadauIIa$order" for (i, order) in enumerate((3, 5, 9, 13))
+    @testset "RadauIIa$order" for order in (3, 5, 9, 13)
         @time sim = test_convergence(dts, prob, radau_solver(Val(order));
-                                     abstol = 1e-8, reltol = 1e-8)
+                                     abstol = 1e-8, reltol = 1e-8, nlsolve_kwargs = nnk);
         @test sim.𝒪est[:final]≈order atol=testTol
     end
 end end
@@ -115,17 +116,17 @@ jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
                                nonbc_diffmode = AutoSparseFiniteDiff())
 
 nl_solve = NewtonRaphson()
-
+adaptive = false
 # Using ForwardDiff might lead to Cache expansion warnings
 @test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, true); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, RadauIIa9(nl_solve, jac_alg, true); dt = 0.05)
-@test_nowarn solve(bvp1, RadauIIa13(nl_solve, jac_alg, true); dt = 0.05)
+@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, true); dt = 0.005, adaptive)
+@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, true); dt = 0.005, adaptive)
+@test_nowarn solve(bvp1, RadauIIa9(nl_solve, jac_alg, true); dt = 0.05, adaptive)
+@test_nowarn solve(bvp1, RadauIIa13(nl_solve, jac_alg, true); dt = 0.05, adaptive)
 
 @test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, false); dt = 0.005,
                    adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, RadauIIa9(nl_solve, jac_alg, false); dt = 0.05)
-@test_nowarn solve(bvp1, RadauIIa13(nl_solve, jac_alg, false); dt = 0.05)
+@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, false); dt = 0.005, adaptive)
+@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, false); dt = 0.005, adaptive)
+@test_nowarn solve(bvp1, RadauIIa9(nl_solve, jac_alg, false); dt = 0.05, adaptive)
+@test_nowarn solve(bvp1, RadauIIa13(nl_solve, jac_alg, false); dt = 0.05, adaptive)

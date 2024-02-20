@@ -1,8 +1,8 @@
 using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools, LinearAlgebra, Test
-
+nlsolve = NewtonRaphson()
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")
-    @eval mirk_solver(::Val{$order}) = $(s)()
+    @eval mirk_solver(::Val{$order}) = $(s)(; nlsolve)
 end
 
 # First order test
@@ -119,8 +119,8 @@ jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
     nonbc_diffmode = AutoSparseFiniteDiff())
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
-@test_nowarn solve(bvp1, MIRK3(; jac_alg); dt = 0.005)
-@test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
-@test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
-@test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK2(; nlsolve, jac_alg); dt = 0.005)
+@test_nowarn solve(bvp1, MIRK3(; nlsolve, jac_alg); dt = 0.005)
+@test_nowarn solve(bvp1, MIRK4(; nlsolve, jac_alg); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK5(; nlsolve, jac_alg); dt = 0.05)
+@test_nowarn solve(bvp1, MIRK6(; nlsolve, jac_alg); dt = 0.05)

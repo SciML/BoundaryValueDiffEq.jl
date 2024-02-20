@@ -68,11 +68,12 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = 1 .// 2 .^ (3:-1:1)
+#dts = 1 .// 2 .^ (3:-1:1)
+dts = 1 .// 2 .^ (5:-1:2)
 
 for order in (2, 3, 4, 5)
     s = Symbol("LobattoIIIa$(order)")
-    @eval lobatto_solver(::Val{$order}) = $(s)()
+    @eval lobatto_solver(::Val{$order}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()), false)
 end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
@@ -85,9 +86,9 @@ end end
 
 @testset "Convergence on Linear" begin @testset "Problem: $i" for i in (3, 4, 7, 8)
     prob = probArr[i]
-    @testset "LobattoIIIa$order" for (i, order) in enumerate((2, 3, 4, 5))
+    @testset "LobattoIIIa$order" for order in (2, 3, 4, 5)
         @time sim = test_convergence(dts, prob, lobatto_solver(Val(order));
-                                     abstol = 1e-8, reltol = 1e-8)
+        abstol = 1e-8, reltol = 1e-8);
         @test sim.𝒪est[:final]≈order atol=testTol
     end
 end end

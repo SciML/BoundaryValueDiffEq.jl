@@ -19,10 +19,11 @@ prob_bvp_linear_tspan = (0.0, 1.0)
 prob_bvp_linear = BVProblem(prob_bvp_linear_function, prob_bvp_linear_bc!,
     [1.0, 0.0], prob_bvp_linear_tspan, λ)
 testTol = 1e-6
+nlsolve = NewtonRaphson()
 
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")
-    @eval mirk_solver(::Val{$order}) = $(s)()
+    @eval mirk_solver(::Val{$order}) = $(s)(; nlsolve)
 end
 
 @testset "Interpolation" begin
