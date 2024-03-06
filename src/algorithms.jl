@@ -183,7 +183,7 @@ for order in (2, 3, 4, 5, 6)
     end end
 end
 
-for order in (1, 3, 5, 9, 13)
+for order in (1, 2, 3, 5, 7)
     alg = Symbol("RadauIIa$(order)")
 
     @eval begin """

@@ -1,7 +1,7 @@
 # RadauIIa
-for order in (1, 3, 5, 9, 13)
-    alg = Symbol("RadauIIa$(order)")
-    f = Symbol("constructRadauIIa$(order)")
+for stage in (1, 2, 3, 5, 7)
+    alg = Symbol("RadauIIa$(stage)")
+    f = Symbol("constructRadauIIa$(stage)")
     @eval constructRK(_alg::$(alg), ::Type{T}) where {T} = $(f)(T, _alg.nested_nlsolve)
 end
 
@@ -21,7 +21,7 @@ function constructRadauIIa1(::Type{T}, nested::Bool) where {T}
     return TU, ITU
 end
 
-function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
+function constructRadauIIa2(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 2
     a = [5//12 -1//12
@@ -40,7 +40,7 @@ function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
     return TU, ITU
 end
 
-function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
+function constructRadauIIa3(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 3
     a = [11 // 45-7 * Rational(√6) // 360 37 // 225-169 * Rational(√6) // 1800 -2 // 225+Rational(√6) // 75
@@ -61,7 +61,7 @@ function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
     return TU, ITU
 end
 
-function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
+function constructRadauIIa5(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 5
     c = [
@@ -100,7 +100,7 @@ function constructRadauIIa9(::Type{T}, nested::Bool) where {T}
     return TU, ITU
 end
 
-function constructRadauIIa13(::Type{T}, nested::Bool) where {T}
+function constructRadauIIa7(::Type{T}, nested::Bool) where {T}
     # RK coefficients tableau
     s = 7
     c = [

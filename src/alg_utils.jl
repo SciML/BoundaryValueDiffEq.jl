@@ -4,28 +4,28 @@ for order in (2, 3, 4, 5, 6)
     @eval alg_stage(::$(alg)) = $(order - 1)
 end
 
-for order in (1, 3, 5, 9, 13)
-    alg = Symbol("RadauIIa$(order)")
-    @eval alg_order(::$(alg)) = $order
-    @eval alg_stage(::$(alg)) = Int($(order + 1) / 2)
+for stage in (1, 2, 3, 5, 7)
+    alg = Symbol("RadauIIa$(stage)")
+    @eval alg_order(::$(alg)) = $(2 * stage -1)
+    @eval alg_stage(::$(alg)) = $stage
 end
 
-for order in (2, 3, 4, 5)
-    alg = Symbol("LobattoIIIa$(order)")
-    @eval alg_order(::$(alg)) = $order
-    @eval alg_stage(::$(alg)) = $order
+for stage in (2, 3, 4, 5)
+    alg = Symbol("LobattoIIIa$(stage)")
+    @eval alg_order(::$(alg)) = $(2 * stage -2)
+    @eval alg_stage(::$(alg)) = $stage
 end
 
-for order in (2, 3, 4, 5)
-    alg = Symbol("LobattoIIIb$(order)")
-    @eval alg_order(::$(alg)) = $order
-    @eval alg_stage(::$(alg)) = $order
+for stage in (2, 3, 4, 5)
+    alg = Symbol("LobattoIIIb$(stage)")
+    @eval alg_order(::$(alg)) = $(2 * stage -2)
+    @eval alg_stage(::$(alg)) = $stage
 end
 
-for order in (2, 3, 4, 5)
-    alg = Symbol("LobattoIIIc$(order)")
-    @eval alg_order(::$(alg)) = $order
-    @eval alg_stage(::$(alg)) = $order
+for stage in (2, 3, 4, 5)
+    alg = Symbol("LobattoIIIc$(stage)")
+    @eval alg_order(::$(alg)) = $(2 * stage -2)
+    @eval alg_stage(::$(alg)) = $stage
 end
 
 SciMLBase.isautodifferentiable(::BoundaryValueDiffEqAlgorithm) = true

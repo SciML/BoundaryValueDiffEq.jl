@@ -70,25 +70,25 @@ testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
-for order in (2, 3, 4, 5)
-    s = Symbol("LobattoIIIc$(order)")
-    @eval lobatto_solver(::Val{$order}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoForwardDiff()), false)
+for stage in (2, 3, 4, 5)
+    s = Symbol("LobattoIIIc$(stage)")
+    @eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()), false)
 end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
     prob = probArr[i]
-    @testset "LobattoIIIc$order" for order in (3, 4, 5)
-        @time sol = solve(prob, lobatto_solver(Val(order)); dt = 0.2)
+    @testset "LobattoIIIc$stage" for stage in (3, 4, 5)
+        @time sol = solve(prob, lobatto_solver(Val(stage)); dt = 0.2)
         @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
     end
 end end
 
 @testset "Convergence on Linear" begin @testset "Problem: $i" for i in (3, 4, 7, 8)
     prob = probArr[i]
-    @testset "LobattoIIIc$order" for order in (2, 3, 4, 5)
-        @time sim = test_convergence(dts, prob, lobatto_solver(Val(order));
+    @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
+        @time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
                                      abstol = 1e-8, reltol = 1e-8)
-        @test sim.𝒪est[:final]≈order atol=testTol
+        @test sim.𝒪est[:final]≈(2*stage-2) atol=testTol
     end
 end end
 

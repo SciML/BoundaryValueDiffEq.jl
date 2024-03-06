@@ -19,7 +19,7 @@ bvp = BVProblem(ode!, bc!, u0, tspan, p)
 ensemble_prob = EnsembleProblem(bvp; prob_func)
 nlsolve = NewtonRaphson()
 
-@testset "$(solver)" for solver in (RadauIIa3, RadauIIa5, RadauIIa9, RadauIIa13) # RadauIIa1 doesn't have adaptivity
+@testset "$(solver)" for solver in (RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7) # RadauIIa1 doesn't have adaptivity
     jac_algs = [#BVPJacobianAlgorithm(),
         BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                              nonbc_diffmode = AutoSparseFiniteDiff())]
