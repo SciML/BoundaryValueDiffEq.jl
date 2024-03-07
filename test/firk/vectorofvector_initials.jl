@@ -64,7 +64,7 @@ nested = true
 
 #This is the part of the code that has problems
 bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
-sol6 = solve(bvp1, LobattoIIIc5(NewtonRaphson(),BVPJacobianAlgorithm(AutoFiniteDiff()), nested); dt = 0.5)
+sol6 = solve(bvp1, LobattoIIIc5(NewtonRaphson(),BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested); dt = 0.5)
 @test SciMLBase.successful_retcode(sol6.retcode)
 
 bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)

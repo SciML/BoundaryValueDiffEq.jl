@@ -216,13 +216,15 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 		_chunk = chunksize
 	end
 
-    if __needs_diffcache(alg.jac_alg.diffmode) # Test for forward diff
+    #= if __needs_diffcache(alg.jac_alg.diffmode) # Test for forward diff
 	p_nestprob_cache = Dual{ForwardDiff.Tag{SparseDiffTools.SparseDiffToolsTag, T},
 		T, _chunk}.(p_nestprob)
 
     else
         p_nestprob_cache = copy(p_nestprob)
-    end
+    end =#
+
+	p_nestprob_cache = copy(p_nestprob)
 
 	if iip
 		nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res, K,
@@ -365,15 +367,15 @@ function __expand_cache!(cache::Union{FIRKCacheNested, FIRKCacheExpand})
 end
 
 function solve_cache!(nest_cache, _u0, p_nest) # Make reinit! work with forwarddiff
-	if eltype(_u0) == Float64
-		dual_type = eltype(nest_cache.p)
+	#if eltype(_u0) == Float64
+		#dual_type = eltype(nest_cache.p)
 		#reinit!(nest_cache, u0 = _u0,
-		reinit!(nest_cache,
-			p = dual_type.(p_nest))
-	else
+		#reinit!(nest_cache,
+			#p = dual_type.(p_nest))
+	#else
 		#reinit!(nest_cache, u0 = _u0, p = p_nest)
 		reinit!(nest_cache, p = p_nest)
-	end
+	#end
 
 	return solve!(nest_cache)
 end
@@ -630,6 +632,27 @@ sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetectio
 		NoSparsityDetection()
 cache_bc = __sparse_jacobian_cache(Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bcₚ,
 	resid_bc, y)
+#= 
+sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
+	if L < cache.M
+		# For underdetermined problems we use sparse since we don't have banded qr
+		colored_matrix = __generate_sparse_jacobian_prototype(cache,
+			cache.problem_type, y, y, cache.M, N)
+		J_full_band = nothing
+		__sparsity_detection_alg(ColoredMatrix(sparse(colored_matrix.M),
+			colored_matrix.row_colorvec, colored_matrix.col_colorvec))
+	else
+		block_size = cache.M * (s+2)
+		J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (s + 1) * (N - 1), cache.M * (s + 1) * (N - 1) + cache.M),
+			(block_size, block_size))
+		__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
+			cache.problem_type, y, y, cache.M, N))
+	end
+else
+	J_full_band = nothing
+	NoSparsityDetection()
+end
+ =#
 
 sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
 	if L < cache.M
@@ -640,15 +663,18 @@ sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
 		__sparsity_detection_alg(ColoredMatrix(sparse(colored_matrix.M),
 			colored_matrix.row_colorvec, colored_matrix.col_colorvec))
 	else
-		J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (s + 1) * (N - 1), cache.M * (s + 1) * (N - 1) +cache.M),
-			(cache.M * (s+2), cache.M * (s+2)))
+		block_size = cache.M * (s+2)
+		J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (s + 1) * (N - 1), cache.M * (s + 1) * (N - 1) + cache.M),
+			(block_size, block_size))
 		__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
-			cache.problem_type, y, y, cache.M, N))
+		cache.problem_type,
+		y, cache.M, N, TU))
 	end
 else
 	J_full_band = nothing
 	NoSparsityDetection()
 end
+
 cache_collocation = __sparse_jacobian_cache(Val(iip), jac_alg.nonbc_diffmode,
 	sd_collocation, loss_collocationₚ, resid_collocation, y)
 
@@ -693,7 +719,7 @@ resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
 	resid_collocation,
 	@view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
 L = length(cache.bcresid_prototype)
-
+#= 
 sd = if jac_alg.diffmode isa AbstractSparseADType
 	__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
 		cache.problem_type, @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
@@ -701,11 +727,29 @@ sd = if jac_alg.diffmode isa AbstractSparseADType
 		N))
 else
 	NoSparsityDetection()
+end =#
+TU, ITU = constructRK(cache.alg, eltype(y))
+@unpack s = TU
+sd = if jac_alg.nonbc_diffmode isa AbstractSparseADType
+		block_size = cache.M * (s+2)
+		J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (s + 1) * (N - 1), cache.M * (s + 1) * (N - 1) + cache.M),
+			(block_size, block_size))
+		__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
+		cache.problem_type,
+		y, cache.M, N, TU))
+else
+	J_full_band = nothing
+	NoSparsityDetection()
 end
-
+test = __generate_sparse_jacobian_prototype(cache,
+cache.problem_type,
+y, cache.M, N, TU)
+test.M
 diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
 jac_prototype = init_jacobian(diffcache)
-
+if isdefined(Main, :Infiltrator)
+Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+	end
 jac = if iip
 	(J, u, p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, lossₚ,
 		resid)

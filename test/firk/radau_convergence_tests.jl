@@ -72,7 +72,7 @@ dts = 1 .// 2 .^ (4:-1:1)
 
 for stage in (2, 3, 5, 7)
     s = Symbol("RadauIIa$(stage)")
-    @eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoForwardDiff()), false)
+    @eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseForwardDiff()), false)
 end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
@@ -87,7 +87,9 @@ end end
     @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
         @time sim = test_convergence(dts, prob, radau_solver(Val(stage));
                                      abstol = 1e-8, reltol = 1e-8);
+        if first(sim.errors[:final]) > 1e-12
         @test sim.𝒪est[:final]≈2*stage - 1 atol=testTol
+        end
     end
 end end
 

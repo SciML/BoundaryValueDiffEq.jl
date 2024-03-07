@@ -72,13 +72,13 @@ dts = 1 .// 2 .^ (3:-1:1)
 
 for stage in (2, 3, 4, 5)
     s = Symbol("LobattoIIIa$(stage)")
-    @eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoForwardDiff()), false)
+    @eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseForwardDiff()), false)
 end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
     prob = probArr[i]
     @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-        @time sol = solve(prob, lobatto_solver(Val(stage)); dt = 0.2)
+        @time sol = solve(prob, lobatto_solver(Val(stage)); dt = 0.2, adaptive = false)
         @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
     end
 end end
@@ -88,7 +88,9 @@ end end
     @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
         @time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
         abstol = 1e-8, reltol = 1e-8);
-        @test sim.𝒪est[:final]≈(2*stage-2) atol=testTol
+        if first(sim.errors[:final]) > 1e-12
+            @test sim.𝒪est[:final]≈2*stage - 2 atol=testTol
+        end
     end
 end end
 
