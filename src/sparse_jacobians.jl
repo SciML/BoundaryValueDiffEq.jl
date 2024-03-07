@@ -71,7 +71,7 @@ function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested
     return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
 
-function __generate_sparse_jacobian_prototype(::FIRKCacheExpand, _, y, M, N, TU::FIRKTableau{false})
+#= function __generate_sparse_jacobian_prototype(::FIRKCacheExpand, _, y, M, N, TU::FIRKTableau{false})
     @unpack s = TU
     # Get number of nonzeros
     l = M^2 * ((s + 2)^2 - 1) * (N - 1) - M * (s + 2) - s * M
@@ -110,6 +110,35 @@ function __generate_sparse_jacobian_prototype(::FIRKCacheExpand, _, y, M, N, TU:
     end
 
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
+end =#
+
+function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::StandardBVProblem, ya,
+    yb, M,
+    N)
+fast_scalar_indexing(ya) ||
+error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
+@unpack TU, ITU = cache
+@unpack s = TU
+row_size = M * (s + 1) * (N - 1)
+block_size = M * (s+2)
+J_c = BandedMatrix(Ones{eltype(ya)}(row_size, row_size + M), (block_size, block_size))
+return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
+end
+
+function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::TwoPointBVProblem,
+    ya, yb, M, N)
+fast_scalar_indexing(ya) ||
+error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
+@unpack TU, ITU = cache
+@unpack s = TU
+
+J₁ = length(ya) + length(yb) + M * (s + 1) * (N - 1)
+J₂ =  M * (s + 1) * (N-1) + M
+block_size = M * (s+2)
+J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (block_size, block_size))
+# for underdetermined systems we don't have banded qr implemented. use sparse
+J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
+return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
 
 # For Multiple Shooting

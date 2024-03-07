@@ -185,7 +185,7 @@ function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y::AbstractVector) where {iip}
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}, FIRKCacheExpand{iip}}, y::AbstractVector) where {iip}
     pt = cache.problem_type
 
     loss_bc = if iip
@@ -280,7 +280,13 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = similar(y, cache.M * (N - 1))
+
+    TU, ITU = constructRK(cache.alg, eltype(y))
+
+	expanded_jac = isa(TU, FIRKTableau{false})
+
+	resid_collocation = expanded_jac ? similar(y, cache.M * (N - 1) * (TU.s + 1)) :
+						similar(y, cache.M * (N - 1))
 
     loss_bcₚ = iip ? ((du, u) -> loss_bc(du, u, cache.p)) : (u -> loss_bc(u, cache.p))
     loss_collocationₚ = iip ? ((du, u) -> loss_collocation(du, u, cache.p)) :
@@ -383,8 +389,15 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
 
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
+    TU, ITU = constructRK(cache.alg, eltype(y))
+
+	expanded_jac = isa(TU, FIRKTableau{false})
+
+	resid_collocation = expanded_jac ? similar(y, cache.M * (N - 1) * (TU.s + 1)) :
+						similar(y, cache.M * (N - 1))
+
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-        similar(y, cache.M * (N - 1)),
+        resid_collocation,
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
