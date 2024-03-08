@@ -210,7 +210,7 @@ function __perform_mirk_iteration(
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}, FIRKCacheExpand{iip}}, y::AbstractVector) where {iip}
     pt = cache.problem_type
 
     loss_bc = if iip
@@ -299,7 +299,7 @@ end
     return mapreduce(vec, vcat, resids)
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
