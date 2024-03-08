@@ -34,10 +34,14 @@ include("algorithms.jl")
 include("alg_utils.jl")
 
 include("mirk_tableaus.jl")
+include("lobatto_tableaus.jl")
+include("radau_tableaus.jl")
+
 
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
 include("solve/mirk.jl")
+include("solve/firk.jl")
 
 include("collocation.jl")
 include("sparse_jacobians.jl")
@@ -277,6 +281,10 @@ export Shooting, MultipleShooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
+export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
+export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
+export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
+export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
 export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
 
 end
