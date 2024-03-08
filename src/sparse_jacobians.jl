@@ -53,16 +53,16 @@ function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
     return __generate_sparse_jacobian_prototype(cache, cache.problem_type, ya, yb, M, N)
 end
 
-function __generate_sparse_jacobian_prototype(
-        ::MIRKCache, ::StandardBVProblem, ya, yb, M, N)
+function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested}, ::StandardBVProblem, ya, yb, M,
+        N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
     return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
 end
 
-function __generate_sparse_jacobian_prototype(
-        ::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
+function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested}, ::TwoPointBVProblem,
+        ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
@@ -72,6 +72,79 @@ function __generate_sparse_jacobian_prototype(
     J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
     return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
+
+function __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::StandardBVProblem, y, M, N, TU::FIRKTableau{false})
+    @unpack s = TU
+    # Get number of nonzeros
+    l = M^2 * ((s + 2)^2 - 1) * (N - 1) - M * (s + 2) - s * M
+    # Initialize Is and Js
+    Is = Vector{Int}(undef, l)
+    Js = Vector{Int}(undef, l)
+
+    # Fill Is and Js
+    row_size = M * (s + 1) * (N - 1)
+    idx = 1
+    i_start = 0
+    i_step = M * (s + 2)
+    for k in 1:(N - 1) # Iterate over blocks
+        for i in 1:i_step
+            for j in 1:i_step
+                if k == 1 || !(i <= M && j <= M) && i + i_start <= row_size
+                    Is[idx] = i + i_start
+                    Js[idx] = j + i_start
+                    idx += 1
+                end
+            end
+        end
+        i_start += i_step - M
+    end
+
+    # Create sparse matrix from Is and Js
+    J_c = _sparse_like(Is, Js, y, row_size, row_size + M)
+
+    col_colorvec = Vector{Int}(undef, size(J_c, 2))
+    for i in eachindex(col_colorvec)
+        col_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
+    end
+    row_colorvec = Vector{Int}(undef, size(J_c, 1))
+    for i in eachindex(row_colorvec)
+        row_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
+    end
+
+    return ColoredMatrix(J_c, row_colorvec, col_colorvec)
+end 
+
+function __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::TwoPointBVProblem, y, M, N, TU::FIRKTableau{false})
+    @unpack s = TU
+    # Get number of nonzeros
+    l = M^2 * ((s + 2)^2 - 1) * (N - 1) - M * (s + 2) - s * M + M * M * (s + 2)
+    # Initialize Is and Js
+    Is = Vector{Int}(undef, l)
+    Js = Vector{Int}(undef, l)
+
+    # Fill Is and Js
+    row_size = M * (s + 1) * (N - 1) + M
+    idx = 1
+    i_start = 0
+    i_step = M * (s + 2)
+
+    for k in 1:(N - 1) # Iterate over blocks
+        for i in 1:i_step
+            for j in 1:i_step
+                if k == 1 || !(i <= M && j <= M) && i + i_start <= row_size
+                    Is[idx] = i + i_start #+ M
+                    Js[idx] = j + i_start
+                    idx += 1
+                end
+            end
+        end
+        i_start += i_step - M
+    end
+
+    # Create sparse matrix from Is and Js
+    J = _sparse_like(Is, Js, y, row_size, row_size )
+    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
+end 
 
 # For Multiple Shooting
 """
