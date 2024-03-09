@@ -68,7 +68,7 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = 1 .// 2 .^ (4:-1:1)
+dts = 1 .// 2 .^ (5:-1:3)
 
 for stage in (2, 3, 5, 7)
 	s = Symbol("RadauIIa$(stage)")

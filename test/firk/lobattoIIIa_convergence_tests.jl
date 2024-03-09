@@ -68,7 +68,7 @@ probArr = [
 
 testTol = 0.2
 affineTol = 1e-2
-dts = 1 .// 2 .^ (3:-1:1)
+dts = 1 .// 2 .^ (5:-1:3)
 
 for stage in (2, 3, 4, 5)
     s = Symbol("LobattoIIIa$(stage)")
@@ -88,7 +88,7 @@ end end
     @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
         @time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
         abstol = 1e-8, reltol = 1e-8);
-        if ((i in (4, 8)) && stage > 2) || first(sim.errors[:final]) < 1e-12
+       if first(sim.errors[:final]) < 1e-12
             @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
         else
             @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
