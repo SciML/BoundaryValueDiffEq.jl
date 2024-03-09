@@ -362,8 +362,8 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
 				if info == ReturnCode.Success
 					__append_similar!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
 					for (i, m) in enumerate(cache.mesh)
-						interp_eval!(cache.y₀, i, cache, cache.ITU, m, mesh, mesh_dt)
-					end
+                        interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                    end
 					__expand_cache!(cache)
 				end
 			end
@@ -464,7 +464,6 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 	return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
 end
 
-
 function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
 	loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
 	@unpack nlsolve, jac_alg = cache.alg
@@ -498,9 +497,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 
 	diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
 	jac_prototype = init_jacobian(diffcache)
-	if isdefined(Main, :Infiltrator)
-		Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-	end
+
 	jac = if iip
 		(J, u, p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, lossₚ,
 			resid)

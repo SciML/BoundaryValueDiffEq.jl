@@ -168,7 +168,7 @@ end
 
 	return residuals
 end
-
+#= 
 @views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
 	mesh, mesh_dt, stage::Int)
 	@unpack c, a, b = TU
@@ -200,6 +200,43 @@ end
 		residᵢ = residuals[ctr]
 		@. residᵢ = yᵢ₊₁ - yᵢ
 		__maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+		ctr += stage + 1
+	end
+	return residuals
+end =#
+
+
+@views function Φ(fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y, u, p,
+	mesh, mesh_dt, stage::Int)
+	@unpack c, a, b = TU
+	residuals = [similar(yᵢ) for yᵢ in y[1:(end-1)]]
+	tmp1 = get_tmp(fᵢ_cache, u)
+	K = get_tmp(k_discrete[1], u) # Not optimal # TODO
+	T = eltype(u)
+	ctr = 1
+
+	for i in eachindex(mesh_dt)
+		h = mesh_dt[i]
+		yᵢ = get_tmp(y[ctr], u)
+		yᵢ₊₁ = get_tmp(y[ctr+stage+1], u)
+
+		# Load interpolation residual
+		for j in 1:stage
+			K[:, j] = get_tmp(y[ctr+j], u)
+		end
+
+		# Update interpolation residual
+		for r in 1:stage
+			@. tmp1 = yᵢ
+			__maybe_matmul!(tmp1, K, a[:, r], h, T(1))
+			residuals[ctr+r] = f(tmp1, p, mesh[i] + c[r] * h)
+			residuals[ctr+r] .-= K[:, r]
+		end
+
+		# Update mesh point residual
+		residᵢ = residuals[ctr]
+		@. residᵢ = yᵢ₊₁ - yᵢ
+		__maybe_matmul!(residᵢ, K, b, -h, T(1))
 		ctr += stage + 1
 	end
 	return residuals
