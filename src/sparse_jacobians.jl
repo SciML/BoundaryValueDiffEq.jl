@@ -35,7 +35,7 @@ function __sparsity_detection_alg(M::ColoredMatrix)
     return PrecomputedJacobianColorvec(;
         jac_prototype = M.M, M.row_colorvec, M.col_colorvec)
 end
-__sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
+#__sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection() #TODO: WHY?
 
 # For MIRK Methods
 """
@@ -104,7 +104,7 @@ function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::Standard
     end
 
 	# Create sparse matrix from Is and Js
-	J_c = _sparse_like(Is, Js, y, row_size, row_size + M)
+	J_c = _sparse_like(Is, Js, ya, row_size, row_size + M)
 
 	col_colorvec = Vector{Int}(undef, size(J_c, 2))
 	for i in eachindex(col_colorvec)
@@ -157,7 +157,7 @@ function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::TwoPoint
         i_start += i_step
         j_start += i_step
     end
-
+    j_start -= i_step
     #Fill last rows
     for i in 1:length(yb)
         for j in 1:j_step
@@ -168,10 +168,10 @@ function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::TwoPoint
     end
 
 	# Create sparse matrix from Is and Js
-	J = _sparse_like(Is, Js, y, row_size, row_size)
+	J = _sparse_like(Is, Js, ya, row_size + M, row_size + M)
 	return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
-
+ 
 # For Multiple Shooting
 """
 	__generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
