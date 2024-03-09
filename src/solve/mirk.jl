@@ -119,7 +119,7 @@ end
 After redistributing or halving the mesh, this function expands the required vectors to
 match the length of the new mesh.
 """
-function __expand_cache!(cache::MIRKCache)
+function __expand_cache!(cache::Union{FIRKCacheNested,MIRKCache})
     Nₙ = length(cache.mesh)
     __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
     __append_similar!(cache.k_interp, Nₙ - 1, cache.M)

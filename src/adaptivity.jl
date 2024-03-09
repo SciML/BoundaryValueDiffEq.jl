@@ -140,7 +140,7 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::MIRKCache{iip, T}) where {iip, T}
+@views function mesh_selector!(cache::Union{MIRKCache{iip, T},FIRKCacheExpand{iip, T},FIRKCacheNested{iip, T}}) where {iip, T}
     (; M, order, defect, mesh, mesh_dt) = cache
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
