@@ -69,10 +69,11 @@ probArr = [
 testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
+nested = false
 
 for stage in (2, 3, 4, 5)
 	s = Symbol("LobattoIIIb$(stage)")
-	@eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(), false)
+	@eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(), nested)
 end
 
 @testset "Affineness" begin
@@ -125,7 +126,7 @@ jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteD
 nl_solve = NewtonRaphson()
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)

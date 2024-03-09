@@ -404,7 +404,7 @@ function __mirk_mpoint_jacobian(
     return J
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
+function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)

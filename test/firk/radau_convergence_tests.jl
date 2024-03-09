@@ -69,10 +69,11 @@ probArr = [
 testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
+nested = false
 
 for stage in (2, 3, 5, 7)
 	s = Symbol("RadauIIa$(stage)")
-	@eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(), false)
+	@eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(), nested)
 end
 
 @testset "Affineness" begin
@@ -124,8 +125,8 @@ jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
 nl_solve = NewtonRaphson()
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa2(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, false); dt = 0.05, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa7(nl_solve, jac_alg, false); dt = 0.05, adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa2(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, nested); dt = 0.05, adaptive = false)
+@test_nowarn solve(bvp1, RadauIIa7(nl_solve, jac_alg, nested); dt = 0.05, adaptive = false)

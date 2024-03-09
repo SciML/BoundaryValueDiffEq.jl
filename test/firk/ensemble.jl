@@ -18,13 +18,14 @@ p = [rand()]
 bvp = BVProblem(ode!, bc!, u0, tspan, p)
 ensemble_prob = EnsembleProblem(bvp; prob_func)
 nlsolve = NewtonRaphson()
+nested_nlsolve = false
 
 @testset "$(solver)" for solver in (RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7) # RadauIIa1 doesn't have adaptivity
     jac_algs = [BVPJacobianAlgorithm(),
         BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                              nonbc_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg); trajectories = 10, dt = 0.1)
+        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve); trajectories = 10, dt = 0.1)
         @test sol.converged
     end
 end
@@ -34,7 +35,7 @@ end
         BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                              nonbc_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg); trajectories = 10, dt = 0.1)
+        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve); trajectories = 10, dt = 0.1)
         @test sol.converged
     end
 end
@@ -44,7 +45,7 @@ end
         BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                              nonbc_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg); trajectories = 10, dt = 0.1)
+        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve); trajectories = 10, dt = 0.1)
         @test sol.converged
     end
 end
@@ -54,7 +55,7 @@ end
         BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                              nonbc_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
-        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg); trajectories = 10, dt = 0.1)
+        sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve); trajectories = 10, dt = 0.1)
         @test sol.converged
     end
 end
