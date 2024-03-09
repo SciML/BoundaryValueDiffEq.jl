@@ -490,15 +490,12 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 		__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
 			cache.problem_type,
 			@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-            @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]) cache.M, N))
+            @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]), cache.M, N))
 	else
 		J_full_band = nothing
 		NoSparsityDetection()
 	end
-	test = __generate_sparse_jacobian_prototype(cache,
-		cache.problem_type,
-		y, cache.M, N, TU)
-	test.M
+
 	diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
 	jac_prototype = init_jacobian(diffcache)
 	if isdefined(Main, :Infiltrator)
