@@ -12,8 +12,8 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     return y
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache{iip},
-    ITU::FIRKInterpTableau{false},
+@views function interp_eval!(y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip},
+    ITU,
     t,
     mesh, mesh_dt) where {iip}
 j = interval(mesh, t)
@@ -65,8 +65,8 @@ end
 return y[ctr_y0]
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::AbstractRKCache{iip},
-    ITU::FIRKInterpTableau{true},
+@views function interp_eval!(y::AbstractArray, i::Int, cache::FIRKCacheNested{iip},
+    ITU,
     t,
     mesh, mesh_dt) where {iip}
 j = interval(mesh, t)
@@ -113,7 +113,7 @@ y[i] = S_interpolate(τ * h, S_coeffs)
 return y[i]
 end
 
-@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache{iip},
+@views function interp_eval!(y::AbstractArray, cache::FIRKCacheExpand{iip},
     ITU::FIRKInterpTableau{false},
     t,
     mesh, mesh_dt) where {iip}
@@ -159,7 +159,7 @@ y .= S_interpolate(τ * h, S_coeffs)
 return y
 end
 
-@views function interp_eval!(y::AbstractArray, cache::AbstractRKCache{iip},
+@views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip},
     ITU::FIRKInterpTableau{true},
     t,
     mesh, mesh_dt) where {iip}

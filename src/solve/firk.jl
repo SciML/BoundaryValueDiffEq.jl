@@ -1,4 +1,4 @@
-@concrete struct FIRKCacheNested{iip, T} <: AbstractRKCache{iip, T}
+@concrete struct FIRKCacheNested{iip, T}
 	order::Int                 # The order of MIRK method
 	stage::Int                 # The state of MIRK method
 	M::Int                     # The number of equations
@@ -28,8 +28,8 @@
 	resid_size::Any
 	kwargs::Any
 end
-
-@concrete struct FIRKCacheExpand{iip, T} <: AbstractRKCache{iip, T}
+Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
+@concrete struct FIRKCacheExpand{iip, T}
 	order::Int                 # The order of MIRK method
 	stage::Int                 # The state of MIRK method
 	M::Int                     # The number of equations
@@ -57,6 +57,7 @@ end
 	resid_size::Any
 	kwargs::Any
 end
+Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N, stage)
 	y_extended = similar(y, (N - 1) * (stage + 1) + 1)
@@ -88,6 +89,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 	abstol = 1e-3, adaptive = true,
 	nlsolve_kwargs = (; abstol = 1e-4, reltol = 1e-4, maxiters = 10),
 	kwargs...)
+	
 	if alg.nested_nlsolve
 		return init_nested(prob, alg; dt = dt,
 			abstol = abstol, adaptive = adaptive,
@@ -390,7 +392,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
 		u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))
 	end
 	return DiffEqBase.build_solution(prob, alg, cache.mesh,
-		u; interp = RKInterpolation(cache.mesh, u, cache),
+		u; interp = MIRKInterpolation(cache.mesh, u, cache),
 		retcode = info)
 end
 
@@ -428,7 +430,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 				(block_size, block_size))
 			__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
 				cache.problem_type,
-				y, cache.M, N, TU))
+				y, y, cache.M, N))
 		end
 	else
 		J_full_band = nothing
@@ -487,7 +489,8 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 			(block_size, block_size))
 		__sparsity_detection_alg(__generate_sparse_jacobian_prototype(cache,
 			cache.problem_type,
-			y, cache.M, N, TU))
+			@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+            @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]) cache.M, N))
 	else
 		J_full_band = nothing
 		NoSparsityDetection()

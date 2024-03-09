@@ -40,8 +40,8 @@ include("radau_tableaus.jl")
 
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
-include("solve/mirk.jl")
 include("solve/firk.jl")
+include("solve/mirk.jl")
 
 include("collocation.jl")
 include("sparse_jacobians.jl")

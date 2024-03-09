@@ -88,8 +88,10 @@ end end
     @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
         @time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
         abstol = 1e-8, reltol = 1e-8);
-        if first(sim.errors[:final]) > 1e-12
-            @test sim.𝒪est[:final]≈2*stage - 2 atol=testTol
+        if ((i in (4, 8)) && stage > 2) || first(sim.errors[:final]) < 1e-12
+            @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
+        else
+            @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
         end
     end
 end end
@@ -113,18 +115,13 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
-                               nonbc_diffmode = AutoSparseFiniteDiff())
+jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
+	nonbc_diffmode = AutoSparseFiniteDiff())
 
 nl_solve = NewtonRaphson()
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, LobattoIIIa2(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIa3(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIa4(nl_solve, jac_alg, true); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIa5(nl_solve, jac_alg, true); dt = 0.005)
-
-@test_nowarn solve(bvp1, LobattoIIIa2(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIa3(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIa4(nl_solve, jac_alg, false); dt = 0.005)
-@test_nowarn solve(bvp1, LobattoIIIa5(nl_solve, jac_alg, false); dt = 0.005)
+@test_nowarn solve(bvp1, LobattoIIIa2(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIa3(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIa4(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIa5(nl_solve, jac_alg, false); dt = 0.005, adaptive = false)

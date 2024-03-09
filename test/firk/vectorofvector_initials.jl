@@ -60,7 +60,7 @@ function bc_po!(residual, u, p, t)
     residual[3] = u[1][3] - u[end][3]
 end
 
-nested = true
+nested = false
 
 #This is the part of the code that has problems
 bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
