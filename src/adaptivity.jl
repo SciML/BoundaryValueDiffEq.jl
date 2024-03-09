@@ -13,8 +13,13 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 end
 
 @views function interp_eval!(y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
-	
-    j = interval(mesh, t)
+	i = findfirst(x -> x == y, cache.y₀)
+	interp_eval!(cache.y₀, i, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt)
+	return y
+end
+
+@views function interp_eval!(y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
+	j = interval(mesh, t)
 	h = mesh_dt[j]
 	lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
 	if lf > 1
@@ -22,12 +27,13 @@ end
 	end
 	τ = (t - mesh[j]) / h
 
-	@unpack f, M, p, ITU= cache
-	@unpack c, a, b = cache.TU
+	@unpack f, M, p, ITU, TU= cache
+	@unpack c, a, b = TU
 	@unpack q_coeff, stage = ITU
 
 	K = zeros(eltype(cache.y[1].du), M, stage)
 
+	ctr_y0 = (i - 1) * (ITU.stage + 1) + 1
 	ctr_y = (j - 1) * (ITU.stage + 1) + 1
 
 	yᵢ = cache.y[ctr_y].du
@@ -43,6 +49,7 @@ end
 		dyᵢ = f(yᵢ, cache.p, mesh[j])
 		dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j+1])
 	end
+
 	# Load interpolation residual
 	for jj in 1:stage
 		K[:, jj] = cache.y[ctr_y+jj].du
@@ -51,9 +58,14 @@ end
 	z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
 	S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-	y .= S_interpolate(τ * h, S_coeffs)
+	y[ctr_y0] = S_interpolate(τ * h, S_coeffs)
+	if ctr_y0 < length(y)
+		for (k, ci) in enumerate(c)
+			y[ctr_y0+k] = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs)
+		end
+	end
 
-	return y
+	return y[ctr_y0]
 end
 
 @views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
@@ -65,7 +77,7 @@ end
 	end
 	τ = (t - mesh[j]) / h
 
-	@unpack f, M, p, k_discrete, ITU= cache
+	@unpack f, M, p, k_discrete, ITU = cache
 	@unpack c, a, b = cache.TU
 	@unpack q_coeff, stage = ITU
 	@unpack nest_cache, p_nestprob, prob = cache
@@ -137,7 +149,7 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::Union{MIRKCache{iip, T},FIRKCacheExpand{iip, T},FIRKCacheNested{iip, T}}) where {iip, T}
+@views function mesh_selector!(cache::Union{MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
     (; M, order, defect, mesh, mesh_dt) = cache
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)

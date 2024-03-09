@@ -20,7 +20,7 @@ end
 # FIXME: Fix the interpolation outside the tspan
 
 @inline function interpolation(
-        tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
+        tvals, id::MIRKInterpolation, idxs, deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -42,7 +42,7 @@ end
 end
 
 @inline function interpolation!(
-        vals, tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
+        vals, tvals, id::MIRKInterpolation, idxs, deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -55,10 +55,72 @@ end
 end
 
 @inline function interpolation(
-        tval::Number, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
+        tval::Number, id::MIRKInterpolation, idxs, deriv::D, p, continuity::Symbol = :left) where {D}
     z = similar(id.cache.fᵢ₂_cache)
     interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return idxs !== nothing ? z[idxs] : z
+end
+
+struct FIRKExpandInterpolation{T1, T2} <: AbstractDiffEqInterpolation
+    t::T1
+    u::T2
+    cache
+end
+
+function DiffEqBase.interp_summary(interp::FIRKExpandInterpolation)
+    return "FIRK Order $(interp.cache.order) Interpolation"
+end
+
+function (id::FIRKExpandInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
+    interpolation(tvals, id, idxs, deriv, p, continuity)
+end
+
+function (id::FIRKExpandInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol = :left)
+    interpolation!(val, tvals, id, idxs, deriv, p, continuity)
+end
+
+# FIXME: Fix the interpolation outside the tspan
+
+@inline function interpolation(tvals, id::FIRKExpandInterpolation, idxs, deriv::D, p,
+        continuity::Symbol = :left) where {D}
+    @unpack t, u, cache = id
+    tdir = sign(t[end] - t[1])
+    idx = sortperm(tvals, rev = tdir < 0)
+
+    if idxs isa Number
+        vals = Vector{eltype(first(u))}(undef, length(tvals))
+    elseif idxs isa AbstractVector
+        vals = Vector{Vector{eltype(first(u))}}(undef, length(tvals))
+    else
+        vals = Vector{eltype(u)}(undef, length(tvals))
+    end
+
+    for j in idx
+        z = similar(cache.fᵢ₂_cache)
+        interp_eval!(z, j, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        vals[j] = z
+    end
+    return DiffEqArray(vals, tvals)
+end
+
+@inline function interpolation!(vals, tvals, id::FIRKExpandInterpolation, idxs, deriv::D, p,
+        continuity::Symbol = :left) where { D}
+    @unpack t, cache = id
+    tdir = sign(t[end] - t[1])
+    idx = sortperm(tvals, rev = tdir < 0)
+
+    for j in idx
+        z = similar(cache.fᵢ₂_cache)
+        interp_eval!(z, j, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        vals[j] = z
+    end
+end
+
+@inline function interpolation(tval::Number, id::FIRKExpandInterpolation, idxs, deriv::D, p,
+        continuity::Symbol = :left) where {D}
+    z = [similar(id.cache.fᵢ₂_cache)]
+    interp_eval!(z, 1, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
+    return z[1]
 end
 
 """

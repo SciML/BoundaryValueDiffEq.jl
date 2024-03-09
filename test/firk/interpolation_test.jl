@@ -20,7 +20,7 @@ prob_bvp_linear_tspan = (0.0, 1.0)
 prob_bvp_linear = BVProblem(prob_bvp_linear_function, prob_bvp_linear_bc!,
                             [1.0, 0.0], prob_bvp_linear_tspan, λ)
 testTol = 1e-6 # Works with testTol = 1e-4 for nested
-nested = true
+nested = false
 
 @testset "Radau interpolations" begin
     for stage in (2, 3, 5, 7)
@@ -28,7 +28,7 @@ nested = true
         @eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(),BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested)
     end
     @testset "Interpolation" begin @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-        @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001, nlsolve_kwargs)
+        @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
         if stage == 2
             @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol 
         else

@@ -103,6 +103,10 @@ end
 function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 	abstol = 1e-3, adaptive = true, nlsolve_kwargs, kwargs...)
 	@set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+
+	if __needs_diffcache(alg.jac_alg)
+		error("Nested FIRK solver does not currently support ForwardDiff. To enable ForwardDiff, use the non-nested FIRK solver instead.")
+	end
 	iip = isinplace(prob)
 	if adaptive && isa(alg, FIRKNoAdaptivity)
 		error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
@@ -392,7 +396,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
 		u = shrink_y(u, length(cache.mesh), cache.M, alg_stage(cache.alg))
 	end
 	return DiffEqBase.build_solution(prob, alg, cache.mesh,
-		u; interp = MIRKInterpolation(cache.mesh, u, cache),
+		u; interp = FIRKExpandInterpolation(cache.mesh, u, cache),
 		retcode = info)
 end
 
