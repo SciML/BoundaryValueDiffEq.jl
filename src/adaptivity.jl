@@ -1,245 +1,142 @@
 """
-    interp_eval!(y::AbstractArray, cache::MIRKCache, t)
+	interp_eval!(y::AbstractArray, cache::MIRKCache, t)
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
 @views function interp_eval!(y::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt)
-    i = interval(mesh, t)
-    dt = mesh_dt[i]
-    τ = (t - mesh[i]) / dt
-    w, w′ = interp_weights(τ, cache.alg)
-    sum_stages!(y, cache, w, i)
-    return y
+	i = interval(mesh, t)
+	dt = mesh_dt[i]
+	τ = (t - mesh[i]) / dt
+	w, w′ = interp_weights(τ, cache.alg)
+	sum_stages!(y, cache, w, i)
+	return y
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip},
-    ITU,
-    t,
-    mesh, mesh_dt) where {iip}
-j = interval(mesh, t)
-h = mesh_dt[j]
-lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
-if lf > 1
-h *= lf
-end
-τ = (t - mesh[j]) / h
+@views function interp_eval!(y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
+	
+    j = interval(mesh, t)
+	h = mesh_dt[j]
+	lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+	if lf > 1
+		h *= lf
+	end
+	τ = (t - mesh[j]) / h
 
-@unpack f, M, p = cache
-@unpack c, a, b = cache.TU
-@unpack q_coeff, stage = ITU
+	@unpack f, M, p, ITU= cache
+	@unpack c, a, b = cache.TU
+	@unpack q_coeff, stage = ITU
 
-K = zeros(eltype(cache.y[1].du), M, stage)
+	K = zeros(eltype(cache.y[1].du), M, stage)
 
-ctr_y0 = (i - 1) * (ITU.stage + 1) + 1
-ctr_y = (j - 1) * (ITU.stage + 1) + 1
+	ctr_y = (j - 1) * (ITU.stage + 1) + 1
 
-yᵢ = cache.y[ctr_y].du
-yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
+	yᵢ = cache.y[ctr_y].du
+	yᵢ₊₁ = cache.y[ctr_y+ITU.stage+1].du
 
-if iip
-dyᵢ = copy(yᵢ)
-dyᵢ₊₁ = copy(yᵢ₊₁)
+	if iip
+		dyᵢ = copy(yᵢ)
+		dyᵢ₊₁ = copy(yᵢ₊₁)
 
-f(dyᵢ, yᵢ, cache.p, mesh[j])
-f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
-else
-dyᵢ = f(yᵢ, cache.p, mesh[j])
-dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
-end
+		f(dyᵢ, yᵢ, cache.p, mesh[j])
+		f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j+1])
+	else
+		dyᵢ = f(yᵢ, cache.p, mesh[j])
+		dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j+1])
+	end
+	# Load interpolation residual
+	for jj in 1:stage
+		K[:, jj] = cache.y[ctr_y+jj].du
+	end
 
-# Load interpolation residual
-for jj in 1:stage
-K[:, jj] = cache.y[ctr_y + jj].du
-end
+	z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+	S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+	y .= S_interpolate(τ * h, S_coeffs)
 
-y[ctr_y0] = S_interpolate(τ * h, S_coeffs)
-if ctr_y0 < length(y)
-for (k, ci) in enumerate(c)
-y[ctr_y0 + k] = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs)
-end
-end
-
-return y[ctr_y0]
-end
-
-@views function interp_eval!(y::AbstractArray, i::Int, cache::FIRKCacheNested{iip},
-    ITU,
-    t,
-    mesh, mesh_dt) where {iip}
-j = interval(mesh, t)
-h = mesh_dt[j]
-lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
-if lf > 1
-h *= lf
-end
-τ = (t - mesh[j]) / h
-
-@unpack f, M, p = cache
-@unpack c, a, b = cache.TU
-@unpack q_coeff, stage = ITU
-@unpack nest_cache, p_nestprob, prob = cache
-
-yᵢ = copy(cache.y[j].du)
-yᵢ₊₁ = copy(cache.y[j + 1].du)
-
-if iip
-dyᵢ = copy(yᵢ)
-dyᵢ₊₁ = copy(yᵢ₊₁)
-
-f(dyᵢ, yᵢ, cache.p, mesh[j])
-f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
-else
-dyᵢ = f(yᵢ, cache.p, mesh[j])
-dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
-end
-
-# Load interpolation residual
-y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
-
-p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
-p_nestprob[3:end] .= y_i
-
-solve_cache!(nest_cache, copy(cache.k_discrete[j].du), p_nestprob)
-K = nest_cache.u
-
-z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
-
-y[i] = S_interpolate(τ * h, S_coeffs)
-
-return y[i]
-end
-
-@views function interp_eval!(y::AbstractArray, cache::FIRKCacheExpand{iip},
-    ITU::FIRKInterpTableau{false},
-    t,
-    mesh, mesh_dt) where {iip}
-j = interval(mesh, t)
-h = mesh_dt[j]
-lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
-if lf > 1
-h *= lf
-end
-τ = (t - mesh[j]) / h
-
-@unpack f, M, p = cache
-@unpack c, a, b = cache.TU
-@unpack q_coeff, stage = ITU
-
-K = zeros(eltype(cache.y[1].du), M, stage)
-
-ctr_y = (j - 1) * (ITU.stage + 1) + 1
-
-yᵢ = cache.y[ctr_y].du
-yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
-
-if iip
-dyᵢ = copy(yᵢ)
-dyᵢ₊₁ = copy(yᵢ₊₁)
-
-f(dyᵢ, yᵢ, cache.p, mesh[j])
-f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
-else
-dyᵢ = f(yᵢ, cache.p, mesh[j])
-dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
-end
-# Load interpolation residual
-for jj in 1:stage
-K[:, jj] = cache.y[ctr_y + jj].du
-end
-
-z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
-
-y .= S_interpolate(τ * h, S_coeffs)
-
-return y
+	return y
 end
 
 @views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip},
-    ITU::FIRKInterpTableau{true},
-    t,
-    mesh, mesh_dt) where {iip}
-j = interval(mesh, t)
-h = mesh_dt[j]
-lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
-if lf > 1
-h *= lf
-end
-τ = (t - mesh[j]) / h
+	ITU,
+	t,
+	mesh, mesh_dt) where {iip}
+	j = interval(mesh, t)
+	h = mesh_dt[j]
+	lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+	if lf > 1
+		h *= lf
+	end
+	τ = (t - mesh[j]) / h
 
-@unpack f, M, p, k_discrete = cache
-@unpack c, a, b = cache.TU
-@unpack q_coeff, stage = ITU
-@unpack nest_cache, p_nestprob, prob = cache
+	@unpack f, M, p, k_discrete, ITU= cache
+	@unpack c, a, b = cache.TU
+	@unpack q_coeff, stage = ITU
+	@unpack nest_cache, p_nestprob, prob = cache
 
-yᵢ = copy(cache.y[j].du)
-yᵢ₊₁ = copy(cache.y[j + 1].du)
+	yᵢ = copy(cache.y[j].du)
+	yᵢ₊₁ = copy(cache.y[j+1].du)
 
-if iip
-dyᵢ = copy(yᵢ)
-dyᵢ₊₁ = copy(yᵢ₊₁)
+	if iip
+		dyᵢ = copy(yᵢ)
+		dyᵢ₊₁ = copy(yᵢ₊₁)
 
-f(dyᵢ, yᵢ, cache.p, mesh[j])
-f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
-else
-dyᵢ = f(yᵢ, cache.p, mesh[j])
-dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
-end
+		f(dyᵢ, yᵢ, cache.p, mesh[j])
+		f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j+1])
+	else
+		dyᵢ = f(yᵢ, cache.p, mesh[j])
+		dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j+1])
+	end
 
-# Load interpolation residual
-y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
+	# Load interpolation residual
+	y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
 
-p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
-p_nestprob[3:end] .= y_i
+	p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
+	p_nestprob[3:end] .= y_i
 
-solve_cache!(nest_cache, k_discrete[j].du, p_nestprob)
-K = nest_cache.u
+	solve_cache!(nest_cache, k_discrete[j].du, p_nestprob)
+	K = nest_cache.u
 
-z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+	z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+	S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-y .= S_interpolate(τ * h, S_coeffs)
+	y .= S_interpolate(τ * h, S_coeffs)
 
-return y
+	return y
 end
 
 function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
-vals = vcat(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
-M = length(yᵢ)
-A = s_constraints(M, h)
-coeffs = reshape(A \ vals, 6, M)'
-return coeffs
+	vals = vcat(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
+	M = length(yᵢ)
+	A = s_constraints(M, h)
+	coeffs = reshape(A \ vals, 6, M)'
+	return coeffs
 end
 
 # S forward Interpolation
 function S_interpolate(t, coeffs)
-ts = [t^(i - 1) for i in axes(coeffs, 2)]
-return coeffs * ts
+	ts = [t^(i - 1) for i in axes(coeffs, 2)]
+	return coeffs * ts
 end
 
 function dS_interpolate(t, S_coeffs)
-ts = zeros(size(S_coeffs, 2))
-for i in 2:size(S_coeffs, 2)
-ts[i] = (i - 1) * t^(i - 2)
-end
-return S_coeffs * ts
+	ts = zeros(size(S_coeffs, 2))
+	for i in 2:size(S_coeffs, 2)
+		ts[i] = (i - 1) * t^(i - 2)
+	end
+	return S_coeffs * ts
 end
 
 """
-    interval(mesh, t)
+	interval(mesh, t)
 
 Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
 """
 function interval(mesh, t)
-    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
+	return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
 end
 
 """
-    mesh_selector!(cache::MIRKCache)
+	mesh_selector!(cache::MIRKCache)
 
 Generate new mesh based on the defect.
 """
@@ -248,55 +145,55 @@ Generate new mesh based on the defect.
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
 
-    safety_factor = T(1.3)
-    ρ = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
-    Nsub_star = 0
-    Nsub_star_ub = 4 * (N - 1)
-    Nsub_star_lb = N ÷ 2
+	safety_factor = T(1.3)
+	ρ = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
+	Nsub_star = 0
+	Nsub_star_ub = 4 * (N - 1)
+	Nsub_star_lb = N ÷ 2
 
-    info = ReturnCode.Success
+	info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in defect]  # Broadcasting breaks GPU Compilation
-    ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
-    r₁ = maximum(ŝ)
-    r₂ = sum(ŝ)
-    r₃ = r₂ / (N - 1)
+	ŝ = [maximum(abs, d) for d in defect]  # Broadcasting breaks GPU Compilation
+	ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
+	r₁ = maximum(ŝ)
+	r₂ = sum(ŝ)
+	r₃ = r₂ / (N - 1)
 
-    n_predict = round(Int, (safety_factor * r₂) + 1)
-    n = N - 1
-    n_ = T(0.1) * n
-    n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
+	n_predict = round(Int, (safety_factor * r₂) + 1)
+	n = N - 1
+	n_ = T(0.1) * n
+	n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
-    if r₁ ≤ ρ * r₂
-        Nsub_star = 2 * (N - 1)
-        if Nsub_star > MxNsub # Need to determine the too large threshold
-            info = ReturnCode.Failure
-            meshₒ = mesh
-            mesh_dt₀ = mesh_dt
-        else
-            meshₒ = copy(mesh)
-            mesh_dt₀ = copy(mesh_dt)
-            half_mesh!(cache)
-        end
-    else
-        Nsub_star = clamp(n_predict, Nsub_star_lb, Nsub_star_ub)
-        if Nsub_star > MxNsub
-            # Mesh redistribution fails
-            info = ReturnCode.Failure
-            meshₒ = mesh
-            mesh_dt₀ = mesh_dt
-        else
-            ŝ ./= mesh_dt
-            meshₒ = copy(mesh)
-            mesh_dt₀ = copy(mesh_dt)
-            redistribute!(cache, Nsub_star, ŝ, meshₒ, mesh_dt₀)
-        end
-    end
-    return meshₒ, mesh_dt₀, Nsub_star, info
+	if r₁ ≤ ρ * r₂
+		Nsub_star = 2 * (N - 1)
+		if Nsub_star > MxNsub # Need to determine the too large threshold
+			info = ReturnCode.Failure
+			meshₒ = mesh
+			mesh_dt₀ = mesh_dt
+		else
+			meshₒ = copy(mesh)
+			mesh_dt₀ = copy(mesh_dt)
+			half_mesh!(cache)
+		end
+	else
+		Nsub_star = clamp(n_predict, Nsub_star_lb, Nsub_star_ub)
+		if Nsub_star > MxNsub
+			# Mesh redistribution fails
+			info = ReturnCode.Failure
+			meshₒ = mesh
+			mesh_dt₀ = mesh_dt
+		else
+			ŝ ./= mesh_dt
+			meshₒ = copy(mesh)
+			mesh_dt₀ = copy(mesh_dt)
+			redistribute!(cache, Nsub_star, ŝ, meshₒ, mesh_dt₀)
+		end
+	end
+	return meshₒ, mesh_dt₀, Nsub_star, info
 end
 
 """
-    redistribute!(cache::MIRKCache, Nsub_star, ŝ, mesh, mesh_dt)
+	redistribute!(cache::MIRKCache, Nsub_star, ŝ, mesh, mesh_dt)
 
 Generate a new mesh based on the `ŝ`.
 """
@@ -330,31 +227,31 @@ function redistribute!(
 end
 
 """
-    half_mesh!(mesh, mesh_dt)
-    half_mesh!(cache::MIRKCache)
+	half_mesh!(mesh, mesh_dt)
+	half_mesh!(cache::MIRKCache)
 
 The input mesh has length of `n + 1`. Divide the original subinterval into two equal length
 subinterval. The `mesh` and `mesh_dt` are modified in place.
 """
 function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
-    n = length(mesh) - 1
-    resize!(mesh, 2n + 1)
-    resize!(mesh_dt, 2n)
-    mesh[2n + 1] = mesh[n + 1]
-    for i in (2n - 1):-2:1
-        mesh[i] = mesh[(i + 1) ÷ 2]
-        mesh_dt[i + 1] = mesh_dt[(i + 1) ÷ 2] / T(2)
-    end
-    @simd for i in (2n):-2:2
-        mesh[i] = (mesh[i + 1] + mesh[i - 1]) / T(2)
-        mesh_dt[i - 1] = mesh_dt[i]
-    end
-    return mesh, mesh_dt
+	n = length(mesh) - 1
+	resize!(mesh, 2n + 1)
+	resize!(mesh_dt, 2n)
+	mesh[2n+1] = mesh[n+1]
+	for i in (2n-1):-2:1
+		mesh[i] = mesh[(i+1)÷2]
+		mesh_dt[i+1] = mesh_dt[(i+1)÷2] / T(2)
+	end
+	@simd for i in (2n):-2:2
+		mesh[i] = (mesh[i+1] + mesh[i-1]) / T(2)
+		mesh_dt[i-1] = mesh_dt[i]
+	end
+	return mesh, mesh_dt
 end
-half_mesh!(cache::MIRKCache) = half_mesh!(cache.mesh, cache.mesh_dt)
+half_mesh!(cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand}) = half_mesh!(cache.mesh, cache.mesh_dt)
 
 """
-    defect_estimate!(cache::MIRKCache)
+	defect_estimate!(cache::MIRKCache)
 
 defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
@@ -364,165 +261,165 @@ an interpolant
     (; M, stage, f, alg, mesh, mesh_dt, defect) = cache
     (; s_star, τ_star) = cache.ITU
 
-    # Evaluate at the first sample point
-    w₁, w₁′ = interp_weights(τ_star, alg)
-    # Evaluate at the second sample point
-    w₂, w₂′ = interp_weights(T(1) - τ_star, alg)
+	# Evaluate at the first sample point
+	w₁, w₁′ = interp_weights(τ_star, alg)
+	# Evaluate at the second sample point
+	w₂, w₂′ = interp_weights(T(1) - τ_star, alg)
 
-    interp_setup!(cache)
+	interp_setup!(cache)
 
-    for i in 1:(length(mesh) - 1)
-        dt = mesh_dt[i]
+	for i in 1:(length(mesh)-1)
+		dt = mesh_dt[i]
 
-        z, z′ = sum_stages!(cache, w₁, w₁′, i)
-        if iip
-            yᵢ₁ = cache.y[i].du
-            f(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
-        else
-            yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
-        end
-        yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
-        est₁ = maximum(abs, yᵢ₁)
+		z, z′ = sum_stages!(cache, w₁, w₁′, i)
+		if iip
+			yᵢ₁ = cache.y[i].du
+			f(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
+		else
+			yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
+		end
+		yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+		est₁ = maximum(abs, yᵢ₁)
 
-        z, z′ = sum_stages!(cache, w₂, w₂′, i)
-        if iip
-            yᵢ₂ = cache.y[i + 1].du
-            f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
-        else
-            yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
-        end
-        yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
-        est₂ = maximum(abs, yᵢ₂)
+		z, z′ = sum_stages!(cache, w₂, w₂′, i)
+		if iip
+			yᵢ₂ = cache.y[i+1].du
+			f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+		else
+			yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+		end
+		yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+		est₂ = maximum(abs, yᵢ₂)
 
-        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
-    end
+		defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+	end
 
-    return maximum(Base.Fix1(maximum, abs), defect)
+	return maximum(Base.Fix1(maximum, abs), defect)
 end
 
 
 @views function defect_estimate!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
-    @unpack f, M, stage, mesh, mesh_dt, defect = cache
-    @unpack q_coeff, τ_star = cache.ITU
+	@unpack f, M, stage, mesh, mesh_dt, defect = cache
+	@unpack q_coeff, τ_star = cache.ITU
 
-    ctr = 1
-    K = zeros(eltype(cache.y[1].du), M, stage)
-    for i in 1:(length(mesh) - 1)
-        h = mesh_dt[i]
+	ctr = 1
+	K = zeros(eltype(cache.y[1].du), M, stage)
+	for i in 1:(length(mesh)-1)
+		h = mesh_dt[i]
 
-        # Load interpolation residual
-        for j in 1:stage
-            K[:, j] = cache.y[ctr + j].du
-        end
+		# Load interpolation residual
+		for j in 1:stage
+			K[:, j] = cache.y[ctr+j].du
+		end
 
-        # Defect estimate from q(x) at y_i + τ* * h
-        yᵢ₁ = copy(cache.y[ctr].du)
-        yᵢ₂ = copy(yᵢ₁)
-        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, K)
-        if iip
-            f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
-        else
-            yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
-        end
-        yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
-        est₁ = maximum(abs, yᵢ₁)
+		# Defect estimate from q(x) at y_i + τ* * h
+		yᵢ₁ = copy(cache.y[ctr].du)
+		yᵢ₂ = copy(yᵢ₁)
+		z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, K)
+		if iip
+			f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
+		else
+			yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
+		end
+		yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+		est₁ = maximum(abs, yᵢ₁)
 
-        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, K)
-        # Defect estimate from q(x) at y_i + (1-τ*) * h
-        if iip
-            f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
-        else
-            yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
-        end
-        yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
-        est₂ = maximum(abs, yᵢ₂)
+		z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, K)
+		# Defect estimate from q(x) at y_i + (1-τ*) * h
+		if iip
+			f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+		else
+			yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+		end
+		yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+		est₂ = maximum(abs, yᵢ₂)
 
-        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
-        ctr += stage + 1 # Advance one step
-    end
+		defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+		ctr += stage + 1 # Advance one step
+	end
 
-    return maximum(Base.Fix1(maximum, abs), defect)
+	return maximum(Base.Fix1(maximum, abs), defect)
 end
 
 @views function defect_estimate!(cache::FIRKCacheNested{iip, T}) where {iip, T}
-    @unpack f, M, stage, mesh, mesh_dt, defect = cache
-    @unpack a, c = cache.TU
-    @unpack q_coeff, τ_star = cache.ITU
-    @unpack nest_cache, p_nestprob, prob = cache
-    for i in 1:(length(mesh) - 1)
-        h = mesh_dt[i]
-        yᵢ₁ = copy(cache.y[i].du)
-        yᵢ₂ = copy(yᵢ₁)
+	@unpack f, M, stage, mesh, mesh_dt, defect = cache
+	@unpack a, c = cache.TU
+	@unpack q_coeff, τ_star = cache.ITU
+	@unpack nest_cache, p_nestprob, prob = cache
+	for i in 1:(length(mesh)-1)
+		h = mesh_dt[i]
+		yᵢ₁ = copy(cache.y[i].du)
+		yᵢ₂ = copy(yᵢ₁)
 
-        K = copy(cache.k_discrete[i].du)
+		K = copy(cache.k_discrete[i].du)
 
-        if minimum(abs.(K)) < 1e-2
-            K = fill(one(eltype(K)), size(K))
-        end
+		if minimum(abs.(K)) < 1e-2
+			K = fill(one(eltype(K)), size(K))
+		end
 
-        y_i = eltype(yᵢ₁) == Float64 ? yᵢ₁ : [y.value for y in yᵢ₁]
+		y_i = eltype(yᵢ₁) == Float64 ? yᵢ₁ : [y.value for y in yᵢ₁]
 
-        p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
-        p_nestprob[3:end] = y_i
-        solve_cache!(nest_cache, K, p_nestprob)
+		p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
+		p_nestprob[3:end] = y_i
+		solve_cache!(nest_cache, K, p_nestprob)
 
-        # Defect estimate from q(x) at y_i + τ* * h
-        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)
-        if iip
-            f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
-        else
-            yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
-        end
-        yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
-        est₁ = maximum(abs, yᵢ₁)
+		# Defect estimate from q(x) at y_i + τ* * h
+		z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)
+		if iip
+			f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
+		else
+			yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
+		end
+		yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+		est₁ = maximum(abs, yᵢ₁)
 
-        # Defect estimate from q(x) at y_i + (1-τ*) * h
-        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, nest_cache.u)
-        if iip
-            f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
-        else
-            yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
-        end
-        yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
-        est₂ = maximum(abs, yᵢ₂)
+		# Defect estimate from q(x) at y_i + (1-τ*) * h
+		z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, nest_cache.u)
+		if iip
+			f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+		else
+			yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+		end
+		yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+		est₂ = maximum(abs, yᵢ₂)
 
-        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
-    end
+		defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+	end
 
-    return maximum(Base.Fix1(maximum, abs), defect)
+	return maximum(Base.Fix1(maximum, abs), defect)
 end
 
 function get_q_coeffs(A, ki, h)
-    coeffs = A * ki
-    for i in axes(coeffs, 1)
-        coeffs[i] = coeffs[i] / (h^(i - 1))
-    end
-    return coeffs
+	coeffs = A * ki
+	for i in axes(coeffs, 1)
+		coeffs[i] = coeffs[i] / (h^(i - 1))
+	end
+	return coeffs
 end
 
 function apply_q(y_i, τ, h, coeffs)
-    return y_i + sum(coeffs[i] * (τ * h)^(i) for i in axes(coeffs, 1))
+	return y_i + sum(coeffs[i] * (τ * h)^(i) for i in axes(coeffs, 1))
 end
 
 function apply_q_prime(τ, h, coeffs)
-    return sum(i * coeffs[i] * (τ * h)^(i - 1) for i in axes(coeffs, 1))
+	return sum(i * coeffs[i] * (τ * h)^(i - 1) for i in axes(coeffs, 1))
 end
 
 function eval_q(y_i, τ, h, A, K)
-    M = size(K, 1)
-    q = zeros(M)
-    q′ = zeros(M)
-    for i in 1:M
-        ki = @view K[i, :]
-        coeffs = get_q_coeffs(A, ki, h)
-        q[i] = apply_q(y_i[i], τ, h, coeffs)
-        q′[i] = apply_q_prime(τ, h, coeffs)
-    end
-    return q, q′
+	M = size(K, 1)
+	q = zeros(M)
+	q′ = zeros(M)
+	for i in 1:M
+		ki = @view K[i, :]
+		coeffs = get_q_coeffs(A, ki, h)
+		q[i] = apply_q(y_i[i], τ, h, coeffs)
+		q′[i] = apply_q_prime(τ, h, coeffs)
+	end
+	return q, q′
 end
 
 """
-    interp_setup!(cache::MIRKCache)
+	interp_setup!(cache::MIRKCache)
 
 `interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
@@ -555,16 +452,16 @@ Here, the ki_interp is the stages in one subinterval.
         end
     end
 
-    return k_interp
+	return k_interp
 end
 
 """
-    sum_stages!(cache::MIRKCache, w, w′, i::Int)
+	sum_stages!(cache::MIRKCache, w, w′, i::Int)
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 """
 function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
-    sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
+	sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
 
 function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
@@ -577,7 +474,7 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
         z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ cache.y₀[i]
 
-    return z
+	return z
 end
 
 @views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
@@ -594,7 +491,7 @@ end
         z′, k_interp[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
     z .= z .* dt[1] .+ cache.y₀[i]
 
-    return z, z′
+	return z, z′
 end
 
 """
@@ -611,14 +508,14 @@ for order in (2, 3, 4, 5, 6)
             if $(order == 2)
                 w = [0, τ * (1 - τ / 2), τ^2 / 2]
 
-                #     Derivative polynomials.
+				#     Derivative polynomials.
 
                 wp = [0, 1 - τ, τ]
             elseif $(order == 3)
                 w = [τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0),
                     -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0), τ^2 * (τ - 1.0)]
 
-                #     Derivative polynomials.
+				#     Derivative polynomials.
 
                 wp = [3.0 / 2.0 * (τ - 2.0 / 3.0) * (τ - 1.0),
                     -9.0 / 2.0 * τ * (τ - 1.0), 3.0 * τ * (τ - 2.0 / 3.0)]
@@ -628,12 +525,12 @@ for order in (2, 3, 4, 5, 6)
                 t4m3 = τ * 4.0 - 3.0
                 t2m1 = τ * 2.0 - 1.0
 
-                w = [-τ * (2.0 * τ - 3.0) * (2.0 * t2 - 3.0 * τ + 2.0) / 6.0,
-                    t2 * (12.0 * t2 - 20.0 * τ + 9.0) / 6.0,
-                    2.0 * t2 * (6.0 * t2 - 14.0 * τ + 9.0) / 3.0,
-                    -16.0 * t2 * tm1 * tm1 / 3.0]
+				w = [-τ * (2.0 * τ - 3.0) * (2.0 * t2 - 3.0 * τ + 2.0) / 6.0,
+					t2 * (12.0 * t2 - 20.0 * τ + 9.0) / 6.0,
+					2.0 * t2 * (6.0 * t2 - 14.0 * τ + 9.0) / 3.0,
+					-16.0 * t2 * tm1 * tm1 / 3.0]
 
-                #   Derivative polynomials
+				#   Derivative polynomials
 
                 wp = [-tm1 * t4m3 * t2m1 / 3.0, τ * t2m1 * t4m3,
                     4.0 * τ * t4m3 * tm1, -32.0 * τ * t2m1 * tm1 / 3.0]
@@ -647,7 +544,7 @@ for order in (2, 3, 4, 5, 6)
                     -25 / 5184 * τ^2 * (390.0 + 255.0 * τ - 1680.0 * τ^2 + 2072.0 * τ^3),
                     279841 / 168480 * τ^2 * (-6.0 + 21.0 * τ - 24.0 * τ^2 + 8.0 * τ^3)]
 
-                #   Derivative polynomials
+				#   Derivative polynomials
 
                 wp = [
                     1.0 - 13985 // 1872 * τ + 143041 // 7488 * τ^2 - 2371 // 117 * τ^3 +
@@ -684,7 +581,7 @@ for order in (2, 3, 4, 5, 6)
                     16384 // 441 * τ^3 - 16384 // 147 * τ^4 + 16384 // 147 * τ^5 -
                     16384 // 441 * τ^6]
 
-                #     Derivative polynomials.
+				#     Derivative polynomials.
 
                 wp = [
                     1 - 28607 // 3717 * τ - 166210 // 11151 * τ^2 + 1339120 // 11151 * τ^3 -
@@ -716,13 +613,13 @@ end
 function sol_eval(cache::MIRKCache{T}, t::T) where {T}
     (; M, mesh, mesh_dt, alg, k_discrete, k_interp, y) = cache
 
-    @assert mesh[1] ≤ t ≤ mesh[end]
-    i = interval(mesh, t)
-    dt = mesh_dt[i]
-    τ = (t - mesh[i]) / dt
-    weights, weights_prime = interp_weights(τ, alg)
-    z = zeros(M)
-    z_prime = zeros(M)
-    sum_stages!(z, z_prime, cache, weights, weights_prime, i, mesh_dt)
-    return z
+	@assert mesh[1] ≤ t ≤ mesh[end]
+	i = interval(mesh, t)
+	dt = mesh_dt[i]
+	τ = (t - mesh[i]) / dt
+	weights, weights_prime = interp_weights(τ, alg)
+	z = zeros(M)
+	z_prime = zeros(M)
+	sum_stages!(z, z_prime, cache, weights, weights_prime, i, mesh_dt)
+	return z
 end

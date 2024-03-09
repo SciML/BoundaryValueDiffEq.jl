@@ -100,26 +100,3 @@ function s_constraints(M, h)
     end
     return A
 end
-
-"""
-    get_s_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
-
-Gets the coefficients for the (local) s(x) polynomial, see bvp5c paper.
-"""
-function get_s_coeffs(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
-    vals = vcat(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid)
-    M = length(yᵢ)
-    A = s_constraints(M)
-    coeffs = reshape(A \ vals, 5, M)'
-    return coeffs
-end
-
-"""
-    s_interpolate(t, coeffs)
-
-Evaluate the s(x) interpolation, see bvp5c paper.
-"""
-function s_interpolate(t, coeffs)
-    ts = [t^(i - 1) for i in axes(coeffs, 2)]
-    return coeffs * ts
-end
