@@ -56,10 +56,7 @@ end
 	return y
 end
 
-@views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip},
-	ITU,
-	t,
-	mesh, mesh_dt) where {iip}
+@views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
 	j = interval(mesh, t)
 	h = mesh_dt[j]
 	lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
