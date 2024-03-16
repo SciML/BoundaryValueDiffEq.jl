@@ -21,9 +21,9 @@ function __sparse_jacobian_cache(::Val{iip}, ad, sd, fn, fx, y) where {iip}
 end
 
 @concrete struct ColoredMatrix
-	M::Any
-	row_colorvec::Any
-	col_colorvec::Any
+	M
+	row_colorvec
+	col_colorvec
 end
 
 Base.size(M::ColoredMatrix, args...) = size(M.M, args...)

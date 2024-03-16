@@ -2,60 +2,62 @@
 	order::Int                 # The order of MIRK method
 	stage::Int                 # The state of MIRK method
 	M::Int                     # The number of equations
-	in_size::Any
-	f::Any
-	bc::Any
-	prob::Any                       # BVProblem
-	problem_type::Any               # StandardBVProblem
-	p::Any                          # Parameters
-	alg::Any                        # MIRK methods
-	TU::Any                         # MIRK Tableau
-	ITU::Any                        # MIRK Interpolation Tableau
-	bcresid_prototype::Any
+	in_size
+	f
+	bc
+	prob                       # BVProblem
+	problem_type               # StandardBVProblem
+	p                          # Parameters
+	alg                        # MIRK methods
+	TU                         # MIRK Tableau
+	ITU                        # MIRK Interpolation Tableau
+	bcresid_prototype
 	# Everything below gets resized in adaptive methods
-	mesh::Any                       # Discrete mesh
-	mesh_dt::Any                    # Step size
-	k_discrete::Any                 # Stage information associated with the discrete Runge-Kutta method
-	y::Any
-	y₀::Any
-	residual::Any
+	mesh                       # Discrete mesh
+	mesh_dt                    # Step size
+	k_discrete                 # Stage information associated with the discrete Runge-Kutta method
+	y
+	y₀
+	residual
 	# The following 2 caches are never resized
-	fᵢ_cache::Any
-	fᵢ₂_cache::Any
-	defect::Any
-	p_nestprob::Any
-	nest_cache::Any
-	resid_size::Any
-	kwargs::Any
+	fᵢ_cache
+	fᵢ₂_cache
+	defect
+	p_nestprob
+	nest_cache
+	nest_tol
+	resid_size
+	kwargs
 end
+
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
 @concrete struct FIRKCacheExpand{iip, T}
 	order::Int                 # The order of MIRK method
 	stage::Int                 # The state of MIRK method
 	M::Int                     # The number of equations
-	in_size::Any
-	f::Any
-	bc::Any
-	prob::Any                       # BVProblem
-	problem_type::Any               # StandardBVProblem
-	p::Any                          # Parameters
-	alg::Any                        # MIRK methods
-	TU::Any                         # MIRK Tableau
-	ITU::Any                        # MIRK Interpolation Tableau
-	bcresid_prototype::Any
+	in_size
+	f
+	bc
+	prob                       # BVProblem
+	problem_type               # StandardBVProblem
+	p                          # Parameters
+	alg                        # MIRK methods
+	TU                         # MIRK Tableau
+	ITU                        # MIRK Interpolation Tableau
+	bcresid_prototype
 	# Everything below gets resized in adaptive methods
-	mesh::Any                       # Discrete mesh
-	mesh_dt::Any                    # Step size
-	k_discrete::Any                 # Stage information associated with the discrete Runge-Kutta method
-	y::Any
-	y₀::Any
-	residual::Any
+	mesh                       # Discrete mesh
+	mesh_dt                    # Step size
+	k_discrete                 # Stage information associated with the discrete Runge-Kutta method
+	y
+	y₀
+	residual
 	# The following 2 caches are never resized
-	fᵢ_cache::Any
-	fᵢ₂_cache::Any
-	defect::Any
-	resid_size::Any
-	kwargs::Any
+	fᵢ_cache
+	fᵢ₂_cache
+	defect
+	resid_size
+	kwargs
 end
 Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
@@ -104,9 +106,9 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 	abstol = 1e-3, adaptive = true, nlsolve_kwargs, kwargs...)
 	@set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
-	if __needs_diffcache(alg.jac_alg)
+	#= if __needs_diffcache(alg.jac_alg)
 		error("Nested FIRK solver does not currently support ForwardDiff. To enable ForwardDiff, use the non-nested FIRK solver instead.")
-	end
+	end =#
 	iip = isinplace(prob)
 	if adaptive && isa(alg, FIRKNoAdaptivity)
 		error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
