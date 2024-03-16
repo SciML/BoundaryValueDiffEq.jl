@@ -25,7 +25,6 @@
 	defect
 	p_nestprob
 	nest_cache
-	nest_tol
 	resid_size
 	kwargs
 end
