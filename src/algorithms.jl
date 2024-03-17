@@ -200,7 +200,7 @@ for stage in (1, 2, 3, 5, 7)
     alg = Symbol("RadauIIa$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
 
                 $($stage)th stage RadauIIa method.
 
@@ -222,6 +222,8 @@ for stage in (1, 2, 3, 5, 7)
                 implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are 
                 solved as a part of the global residual. The general recommendation is to choose 
                 `true` for larger problems and `false` for smaller ones.
+                - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+                `NonlinearSolve` automatically selecting the tolerance.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -281,7 +283,7 @@ for stage in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIa$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
 
                 $($stage)th stage LobattoIIIa method.
 
@@ -303,6 +305,8 @@ for stage in (2, 3, 4, 5)
                 implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are 
                 solved as a part of the global residual. The general recommendation is to choose 
                 `true` for larger problems and `false` for smaller ones.
+                - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+                `NonlinearSolve` automatically selecting the tolerance.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -363,7 +367,7 @@ for stage in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIb$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
 
                 $($stage)th stage LobattoIIIb method.
 
@@ -385,6 +389,8 @@ for stage in (2, 3, 4, 5)
                 implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
                 solved as a part of the global residual. The general recommendation is to choose 
                 `true` for larger problems and `false` for smaller ones.
+                - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+                `NonlinearSolve` automatically selecting the tolerance.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -445,7 +451,7 @@ for stage in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIc$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
 
                 $($stage)th stage LobattoIIIc method.
 
@@ -467,6 +473,8 @@ for stage in (2, 3, 4, 5)
                 implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
                 solved as a part of the global residual. The general recommendation is to choose 
                 `true` for larger problems and `false` for smaller ones.
+                - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+                `NonlinearSolve` automatically selecting the tolerance.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
