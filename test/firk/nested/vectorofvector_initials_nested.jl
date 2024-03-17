@@ -60,11 +60,10 @@ function bc_po!(residual, u, p, t)
     residual[3] = u[1][3] - u[end][3]
 end
 
-#This is the part of the code that has problems
 bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
-sol5 = solve(bvp1,  RadauIIa5(); dt = 0.5)
+sol5 = solve(bvp1,  RadauIIa5(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff())); dt = 0.5) #TODO: Change once applicable
 @test SciMLBase.successful_retcode(sol5.retcode)
 
 bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-sol5 = solve(bvp1, RadauIIa5(); dt = 0.1, abstol = 1e-14)
+sol5 = solve(bvp1, RadauIIa5(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff())); dt = 0.1, abstol = 1e-14) #TODO: Change once applicable
 @test SciMLBase.successful_retcode(sol5.retcode)

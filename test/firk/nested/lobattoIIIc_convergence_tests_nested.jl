@@ -69,17 +69,17 @@ probArr = [
 testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
-nested = false
+nested = true
 
 for stage in (2, 3, 4, 5)
-	s = Symbol("LobattoIIIb$(stage)")
-	@eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(), nested)
+	s = Symbol("LobattoIIIc$(stage)")
+	@eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested) # TODO: Fix once applicable
 end
 
 @testset "Affineness" begin
 	@testset "Problem: $i" for i in (1, 2, 5, 6)
 		prob = probArr[i]
-		@testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
+		@testset "LobattoIIIc$stage" for stage in (3, 4, 5)
 			@time sol = solve(prob, lobatto_solver(Val(stage)); dt = 0.2, adaptive = false)
 			@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
 		end
@@ -89,7 +89,7 @@ end
 @testset "Convergence on Linear" begin
 	@testset "Problem: $i" for i in (3, 4, 7, 8)
 		prob = probArr[i]
-		@testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
+		@testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
 			@time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
 				abstol = 1e-8, reltol = 1e-8)
 			if first(sim.errors[:final]) < 1e-12
@@ -120,13 +120,13 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
+jac_alg = BVPJacobianAlgorithm(AutoFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
 	nonbc_diffmode = AutoSparseFiniteDiff())
 
 nl_solve = NewtonRaphson()
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIc2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIc3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIc4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIc5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)

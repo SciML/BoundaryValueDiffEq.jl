@@ -69,32 +69,34 @@ probArr = [
 testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
-nested = false
+nested = true
 
-for stage in (2, 3, 5, 7)
-	s = Symbol("RadauIIa$(stage)")
-	@eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(), nested)
+for stage in (2, 3, 4, 5)
+	s = Symbol("LobattoIIIb$(stage)")
+	@eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested) #TODO: Change once applicable
 end
-
 @testset "Affineness" begin
 	@testset "Problem: $i" for i in (1, 2, 5, 6)
 		prob = probArr[i]
-		@testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-			@time sol = solve(prob, radau_solver(Val(stage)); dt = 0.2, adaptive = false)
+		@testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
+			@time sol = solve(prob, lobatto_solver(Val(stage)); dt = 0.2, adaptive = false)
 			@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
 		end
 	end
 end
+
 @testset "Convergence on Linear" begin
 	@testset "Problem: $i" for i in (3, 4, 7, 8)
 		prob = probArr[i]
-		@testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-			@time sim = test_convergence(dts, prob, radau_solver(Val(stage));
+		@testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
+			@time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
 				abstol = 1e-8, reltol = 1e-8)
-			if i in (4, 8) || first(sim.errors[:final]) < 1e-12
-				@test_broken sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
+			if i == 8 && stage == 4
+				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
+			elseif first(sim.errors[:final]) < 1e-12
+				@test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
 			else
-				@test sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
+				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
 			end
 		end
 	end
@@ -119,14 +121,13 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
+jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
 	nonbc_diffmode = AutoSparseFiniteDiff())
 
 nl_solve = NewtonRaphson()
 
 # Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa2(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg, nested); dt = 0.005, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg, nested); dt = 0.05, adaptive = false)
-@test_nowarn solve(bvp1, RadauIIa7(nl_solve, jac_alg, nested); dt = 0.05, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+@test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
