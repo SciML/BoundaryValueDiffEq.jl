@@ -352,6 +352,9 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
     J_bc = init_jacobian(cache_bc)
     J_c = init_jacobian(cache_collocation)
     if J_full_band === nothing
+        if isdefined(Main, :Infiltrator)
+        Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+            end
         jac_prototype = vcat(J_bc, J_c)
     else
         jac_prototype = AlmostBandedMatrix{eltype(cache)}(J_full_band, J_bc)

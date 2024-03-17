@@ -8,9 +8,9 @@
 	prob                       # BVProblem
 	problem_type               # StandardBVProblem
 	p                          # Parameters
-	alg                        # MIRK methods
-	TU                         # MIRK Tableau
-	ITU                        # MIRK Interpolation Tableau
+	alg                        # FIRK methods
+	TU                         # FIRK Tableau
+	ITU                        # FIRK Interpolation Tableau
 	bcresid_prototype
 	# Everything below gets resized in adaptive methods
 	mesh                       # Discrete mesh
@@ -40,9 +40,9 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
 	prob                       # BVProblem
 	problem_type               # StandardBVProblem
 	p                          # Parameters
-	alg                        # MIRK methods
-	TU                         # MIRK Tableau
-	ITU                        # MIRK Interpolation Tableau
+	alg                        # FIRK methods
+	TU                         # FIRK Tableau
+	ITU                        # FIRK Interpolation Tableau
 	bcresid_prototype
 	# Everything below gets resized in adaptive methods
 	mesh                       # Discrete mesh
@@ -88,13 +88,11 @@ end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 	abstol = 1e-3, adaptive = true,
-	nlsolve_kwargs = (; abstol = 1e-4, reltol = 1e-4, maxiters = 10),
 	kwargs...)
 	
 	if alg.nested_nlsolve
 		return init_nested(prob, alg; dt = dt,
-			abstol = abstol, adaptive = adaptive,
-			nlsolve_kwargs = nlsolve_kwargs, kwargs...)
+			abstol = abstol, adaptive = adaptive, kwargs...)
 	else
 		return init_expanded(prob, alg; dt = dt,
 			abstol = abstol, adaptive = adaptive, kwargs...)
@@ -102,12 +100,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 end
 
 function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-	abstol = 1e-3, adaptive = true, nlsolve_kwargs, kwargs...)
+	abstol = 1e-3, adaptive = true, kwargs...)
 	@set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
-	#= if __needs_diffcache(alg.jac_alg)
-		error("Nested FIRK solver does not currently support ForwardDiff. To enable ForwardDiff, use the non-nested FIRK solver instead.")
-	end =#
 	iip = isinplace(prob)
 	if adaptive && isa(alg, FIRKNoAdaptivity)
 		error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
@@ -209,9 +204,9 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 			K0, p_nestprob_cache)
 	end
 
+	tol = alg.nest_tol > eps(T) ? alg.nest_tol : nothing
 	nest_cache = init(nestprob,
-		NewtonRaphson(autodiff = alg.jac_alg.diffmode);
-		nlsolve_kwargs...)
+	NewtonRaphson(autodiff = alg.jac_alg.diffmode); abstol = tol)
 
 	return FIRKCacheNested{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
 		prob.problem_type, prob.p, alg, TU, ITU,
@@ -226,7 +221,6 @@ end
 
 function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 	abstol = 1e-3, adaptive = true,
-	nlsolve_kwargs = (; abstol = 1e-3, reltol = 1e-3, maxiters = 10),
 	kwargs...)
 	@set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 

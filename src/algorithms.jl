@@ -271,7 +271,10 @@ for stage in (1, 2, 3, 5, 7)
         nlsolve::N = nothing
         jac_alg::J = BVPJacobianAlgorithm()
         nested_nlsolve::Bool = false
-    end end
+        nest_tol::Number = 0.0
+    end 
+    $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0) where {N, J} = $(alg){N, J}(nlsolve, jac_alg, nested, nest_tol)
+end
 end
 
 for stage in (2, 3, 4, 5)
@@ -350,7 +353,10 @@ for stage in (2, 3, 4, 5)
         nlsolve::N = nothing
         jac_alg::J = BVPJacobianAlgorithm()
         nested_nlsolve::Bool = false
-    end end
+        nest_tol::Number = 0.0
+    end 
+    $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0) where {N, J} = $(alg){N, J}(nlsolve, jac_alg, nested, nest_tol)
+end
 end
 
 for stage in (2, 3, 4, 5)
@@ -429,7 +435,10 @@ for stage in (2, 3, 4, 5)
         nlsolve::N = nothing
         jac_alg::J = BVPJacobianAlgorithm()
         nested_nlsolve::Bool = false
-    end end
+        nest_tol::Number = 0.0
+    end 
+    $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0) where {N, J} = $(alg){N, J}(nlsolve, jac_alg, nested, nest_tol)
+end
 end
 
 for stage in (2, 3, 4, 5)
@@ -508,7 +517,10 @@ for stage in (2, 3, 4, 5)
         nlsolve::N = nothing
         jac_alg::J = BVPJacobianAlgorithm()
         nested_nlsolve::Bool = false
-    end end
+        nest_tol::Number = 0.0
+    end 
+    $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0) where {N, J} = $(alg){N, J}(nlsolve, jac_alg, nested, nest_tol)
+end
 end
 
 # FIRK Algorithms that don't use adaptivity

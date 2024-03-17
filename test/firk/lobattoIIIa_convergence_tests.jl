@@ -70,10 +70,11 @@ testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
 nested = true
+nested = true
 
 for stage in (2, 3, 4, 5)
     s = Symbol("LobattoIIIa$(stage)")
-    @eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested)
+    @eval lobatto_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested)
 end
 
 @testset "Affineness" begin @testset "Problem: $i" for i in (1, 2, 5, 6)
@@ -88,7 +89,7 @@ end end
     prob = probArr[i]
     @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
         @time sim = test_convergence(dts, prob, lobatto_solver(Val(stage));
-        abstol = 1e-8, reltol = 1e-8);
+        abstol = 1e-12, reltol = 1e-12);
        if first(sim.errors[:final]) < 1e-12
             @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
         else
