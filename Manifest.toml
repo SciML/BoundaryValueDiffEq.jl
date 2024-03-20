@@ -264,9 +264,11 @@ version = "0.1.10"
 
 [[deps.FastAlmostBandedMatrices]]
 deps = ["ArrayInterface", "ArrayLayouts", "BandedMatrices", "ConcreteStructs", "LazyArrays", "LinearAlgebra", "MatrixFactorizations", "PrecompileTools", "Reexport"]
-git-tree-sha1 = "178316d87f883f0702e79d9c83a8049484c9f619"
+git-tree-sha1 = "9dc913faf8552fd09b92a0d7fcc25f1d5609d795"
+repo-rev = "main"
+repo-url = "https://github.com/SciML/FastAlmostBandedMatrices.jl"
 uuid = "9d29842c-ecb8-4973-b1e9-a27b1157504e"
-version = "0.1.0"
+version = "0.1.1"
 
 [[deps.FastBroadcast]]
 deps = ["ArrayInterface", "LinearAlgebra", "Polyester", "Static", "StaticArrayInterface", "StrideArraysCore"]
@@ -607,7 +609,7 @@ version = "1.2.0"
 
 [[deps.NonlinearSolve]]
 deps = ["ADTypes", "ArrayInterface", "ConcreteStructs", "DiffEqBase", "FastBroadcast", "FastClosures", "FiniteDiff", "ForwardDiff", "LazyArrays", "LineSearches", "LinearAlgebra", "LinearSolve", "MaybeInplace", "PrecompileTools", "Preferences", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SimpleNonlinearSolve", "SparseArrays", "SparseDiffTools", "StaticArraysCore", "TimerOutputs"]
-path = "../NonlinearSolve.jl"
+git-tree-sha1 = "d52bac2b94358b4b960cbfb896d5193d67f3ff09"
 uuid = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 version = "3.8.0"
 
@@ -808,7 +810,9 @@ version = "0.6.42"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables"]
-path = "../SciMLBase.jl"
+git-tree-sha1 = "0e4fca3dd5de4d4a82c0ffae1e51ab6234af4df0"
+repo-rev = "ap/nlls_bvp"
+repo-url = "https://github.com/SciML/SciMLBase.jl.git"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 version = "2.30.1"
 

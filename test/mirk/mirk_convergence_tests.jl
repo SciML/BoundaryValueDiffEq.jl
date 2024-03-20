@@ -87,42 +87,45 @@ end
     end
 end
 
-# @testset "Convergence on Linear" begin
-#     @testset "Problem: $i" for i in (3, 4, 7, 8)
-#         prob = probArr[i]
-#         @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
-#             @time sim = test_convergence(
-#                 dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
-#             @test sim.𝒪est[:final]≈order atol=testTol
-#         end
-#     end
-# end
+@testitem "Convergence on Linear" setup=[MIRKConvergenceTests] begin
+    using LinearAlgebra, DiffEqDevTools
 
-# # Simple Pendulum
-# using StaticArrays
+    @testset "Problem: $i" for i in (3, 4, 7, 8)
+        prob = probArr[i]
+        @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
+            @time sim = test_convergence(
+                dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
+    end
+end
 
-# tspan = (0.0, π / 2)
-# function simplependulum!(du, u, p, t)
-#     g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
-#     du[1] = dθ
-#     du[2] = -(g / L) * sin(θ)
-# end
+# FIXME: This is a really bad test. Needs interpolation
+@testitem "Simple Pendulum" begin
+    using StaticArrays
 
-# # FIXME: This is a really bad test. Needs interpolation
-# function bc_pendulum!(residual, u, p, t)
-#     residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-#     residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
-# end
+    tspan = (0.0, π / 2)
+    function simplependulum!(du, u, p, t)
+        g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
 
-# u0 = MVector{2}([pi / 2, pi / 2])
-# bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
+    function bc_pendulum!(residual, u, p, t)
+        residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
+        residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
+    end
 
-# jac_alg = BVPJacobianAlgorithm(;
-#     bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())
+    u0 = MVector{2}([pi / 2, pi / 2])
+    bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-# # Using ForwardDiff might lead to Cache expansion warnings
-# @test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
-# @test_nowarn solve(bvp1, MIRK3(; jac_alg); dt = 0.005)
-# @test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
-# @test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
-# @test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)
+    jac_alg = BVPJacobianAlgorithm(;
+        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())
+
+    # Using ForwardDiff might lead to Cache expansion warnings
+    @test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
+    @test_nowarn solve(bvp1, MIRK3(; jac_alg); dt = 0.005)
+    @test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
+    @test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
+    @test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)
+end

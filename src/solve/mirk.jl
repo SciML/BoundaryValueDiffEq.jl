@@ -147,12 +147,8 @@ function SciMLBase.solve!(cache::MIRKCache)
     while SciMLBase.successful_retcode(info) && defect_norm > abstol
         nlprob = __construct_nlproblem(cache, recursive_flatten(y₀))
         sol_nlprob = solve(nlprob, alg.nlsolve; abstol, kwargs...,
-            alias_u0 = false) #  __default_alias_u0(alg.nlsolve))
-
-        error(111)
+            alias_u0 = __default_alias_u0(alg.nlsolve))
         recursive_unflatten!(cache.y₀, sol_nlprob.u)
-
-        error(2)
 
         info = sol_nlprob.retcode
 
@@ -344,8 +340,6 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, L)
     end
 
-    @show size(resid_bc), size(resid_collocation), size(y), size(jac_prototype)
-
     resid_prototype = vcat(resid_bc, resid_collocation)
     nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
 
@@ -393,49 +387,49 @@ function __mirk_mpoint_jacobian(
     return J
 end
 
-# function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-#         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
-#     (; nlsolve, jac_alg ) = cache.alg
-#     N = length(cache.mesh)
+function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
+        loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
+    (; nlsolve, jac_alg ) = cache.alg
+    N = length(cache.mesh)
 
-#     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
+    lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
-#     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-#         similar(y, cache.M * (N - 1)),
-#         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
-#     L = length(cache.bcresid_prototype)
+    resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+        similar(y, cache.M * (N - 1)),
+        @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
+    L = length(cache.bcresid_prototype)
 
-#     sd = if jac_alg.diffmode isa AbstractSparseADType
-#         __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
-#             cache, cache.problem_type,
-#             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-#             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-#             cache.M, N))
-#     else
-#         NoSparsityDetection()
-#     end
-#     diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-#     jac_prototype = init_jacobian(diffcache)
+    sd = if jac_alg.diffmode isa AbstractSparseADType
+        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
+            cache, cache.problem_type,
+            @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+            @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
+            cache.M, N))
+    else
+        NoSparsityDetection()
+    end
+    diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
+    jac_prototype = init_jacobian(diffcache)
 
-#     jac = if iip
-#         (J, u, p) -> __mirk_2point_jacobian!(
-#             J, u, jac_alg.diffmode, diffcache, lossₚ, resid)
-#     else
-#         (u, p) -> __mirk_2point_jacobian(
-#             u, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
-#     end
+    jac = if iip
+        @closure (J, u, p) -> __mirk_2point_jacobian!(
+            J, u, jac_alg.diffmode, diffcache, lossₚ, resid)
+    else
+        @closure (u, p) -> __mirk_2point_jacobian(
+            u, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
+    end
 
-#     nlf = NonlinearFunction{iip}(loss; resid_prototype = copy(resid), jac, jac_prototype)
+    resid_prototype = copy(resid)
+    nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+end
 
-#     return (L == cache.M ? NonlinearProblem : NonlinearLeastSquaresProblem)(nlf, y, cache.p)
-# end
+function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
+    sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
+    return J
+end
 
-# function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
-#     sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
-#     return J
-# end
-
-# function __mirk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
-#     sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
-#     return J
-# end
+function __mirk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
+    sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
+    return J
+end
