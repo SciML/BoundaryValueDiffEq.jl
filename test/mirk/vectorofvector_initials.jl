@@ -21,7 +21,8 @@ qht = 2.5
 
 #System functions
 function f(v, h, r)
-    -(glb * (v - el) + gnab * (1 / (1 + exp(-(v + 37) / 7)))^3 * h * (v - ena) +
+    -(glb * (v - el) +
+      gnab * (1 / (1 + exp(-(v + 37) / 7)))^3 * h * (v - ena) +
       gkb * (0.75 * (1 - h))^4 * (v - ek) +
       gtb * (1 / (1 + exp(-(v + 60) / 6.2)))^2 * r * (v - et)) - gex * ss * (v - vex) -
     gsyn * sj * (v - vsyn) + iext

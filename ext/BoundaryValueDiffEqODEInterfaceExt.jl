@@ -1,15 +1,13 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
 using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools
-import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess,
-                            __extract_mesh, __initial_guess_length, __initial_guess,
-                            __has_initial_guess
+import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess, __extract_mesh,
+                            __initial_guess_length, __initial_guess, __has_initial_guess
 import SciMLBase: __solve
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
-                     OPT_SOLMETHOD,
-                     OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_MAXSUBINTERVALS,
-                     RHS_CALL_INSITU, evalSolution
+                     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS,
+                     OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
 import ODEInterface: Bvpm2, bvpm2_init, bvpm2_solve, bvpm2_destroy, bvpm2_get_x
 import ODEInterface: bvpsol
 import ODEInterface: colnew
@@ -56,12 +54,12 @@ function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...
     obj = Bvpm2()
     if prob.u0 isa Function
         guess_function = @closure (x, y) -> (y .= vec(__initial_guess(prob.u0, prob.p, x)))
-        bvpm2_init(obj, no_odes, no_left_bc, mesh, guess_function, eltype(u0_)[],
-            alg.max_num_subintervals, prob.u0)
+        bvpm2_init(obj, no_odes, no_left_bc, mesh, guess_function,
+            eltype(u0_)[], alg.max_num_subintervals, prob.u0)
     else
         u0 = __flatten_initial_guess(prob.u0)
-        bvpm2_init(obj, no_odes, no_left_bc, mesh, u0, eltype(u0)[],
-            alg.max_num_subintervals)
+        bvpm2_init(
+            obj, no_odes, no_left_bc, mesh, u0, eltype(u0)[], alg.max_num_subintervals)
     end
 
     bvp2m_f = if isinplace(prob)
@@ -107,8 +105,8 @@ end
 #-------
 # BVPSOL
 #-------
-function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, dt = 0.0,
-        verbose = true, kwargs...)
+function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
+        reltol = 1e-3, dt = 0.0, verbose = true, kwargs...)
     if !(prob.problem_type isa TwoPointBVProblem)
         throw(ArgumentError("`BVPSOL` only supports `TwoPointBVProblem!`"))
     end
@@ -138,9 +136,9 @@ function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000, reltol = 1e-3, d
         no_left_bc = length(left_bc)
     end
 
-    opt = OptionsODE(OPT_RTOL => reltol, OPT_MAXSTEPS => maxiters,
-        OPT_BVPCLASS => alg.bvpclass, OPT_SOLMETHOD => alg.sol_method,
-        OPT_RHS_CALLMODE => RHS_CALL_INSITU)
+    opt = OptionsODE(
+        OPT_RTOL => reltol, OPT_MAXSTEPS => maxiters, OPT_BVPCLASS => alg.bvpclass,
+        OPT_SOLMETHOD => alg.sol_method, OPT_RHS_CALLMODE => RHS_CALL_INSITU)
 
     bvpsol_f = if isinplace(prob)
         @closure (t, u, du) -> prob.f(reshape(du, u0_size), reshape(u, u0_size), prob.p, t)

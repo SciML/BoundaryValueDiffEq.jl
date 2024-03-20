@@ -42,34 +42,28 @@ odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
 odef2! = ODEFunction(f2!,
     analytic = (u0, p, t) -> [
-        5 * (cos(t) - cot(5) * sin(t)),
-        5 * (-cos(t) * cot(5) - sin(t))
-    ])
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 odef2 = ODEFunction(f2,
     analytic = (u0, p, t) -> [
-        5 * (cos(t) - cot(5) * sin(t)),
-        5 * (-cos(t) * cot(5) - sin(t))
-    ])
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
 
-probArr = [
-    BVProblem(odef1!, boundary!, u0, tspan),
+probArr = [BVProblem(odef1!, boundary!, u0, tspan),
     BVProblem(odef1, boundary, u0, tspan),
     BVProblem(odef2!, boundary!, u0, tspan),
     BVProblem(odef2, boundary, u0, tspan),
-    TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!), u0, tspan;
-        bcresid_prototype),
-    TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
-        bcresid_prototype),
-    TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!), u0, tspan;
-        bcresid_prototype),
-    TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan;
-        bcresid_prototype)
-];
+    TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
+        u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(
+        odef1, (boundary_two_point_a, boundary_two_point_b), u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!),
+        u0, tspan; bcresid_prototype),
+    TwoPointBVProblem(
+        odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan; bcresid_prototype)];
 
 testTol = 0.2
 affineTol = 1e-2
@@ -89,8 +83,8 @@ end
     @testset "Problem: $i" for i in (3, 4, 7, 8)
         prob = probArr[i]
         @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
-            @time sim = test_convergence(dts, prob, mirk_solver(Val(order));
-                abstol = 1e-8, reltol = 1e-8)
+            @time sim = test_convergence(
+                dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
             @test sim.𝒪est[:final]≈order atol=testTol
         end
     end
@@ -115,8 +109,8 @@ end
 u0 = MVector{2}([pi / 2, pi / 2])
 bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
-    nonbc_diffmode = AutoSparseFiniteDiff())
+jac_alg = BVPJacobianAlgorithm(;
+    bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())
 
 # Using ForwardDiff might lead to Cache expansion warnings
 @test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)

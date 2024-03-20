@@ -15,8 +15,8 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
-        sizes)
+@views function recursive_flatten_twopoint!(
+        y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = Iterators.peel(x)
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
@@ -85,16 +85,16 @@ function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p,
-        t) where {BC}
+@views function eval_bc_residual!(
+        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol,
-        p, t) where {BC}
+@views function eval_bc_residual!(
+        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid[1], ua, p)
@@ -132,15 +132,15 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
-        check_positive_dt::Bool = false)
+function __extract_problem_details(
+        prob, u0::AbstractArray; dt = 0.0, check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
-function __extract_problem_details(prob, f::F; dt = 0.0,
-        check_positive_dt::Bool = false) where {F <: Function}
+function __extract_problem_details(
+        prob, f::F; dt = 0.0, check_positive_dt::Bool = false) where {F <: Function}
     # Problem passes in a initial guess function
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     u0 = __initial_guess(f, prob.p, prob.tspan[1])
@@ -149,9 +149,9 @@ function __extract_problem_details(prob, f::F; dt = 0.0,
 end
 
 function __initial_guess(f::F, p::P, t::T) where {F, P, T}
-    if static_hasmethod(f, Tuple{P, T})
+    if hasmethod(f, Tuple{P, T})
         return f(p, t)
-    elseif static_hasmethod(f, Tuple{T})
+    elseif hasmethod(f, Tuple{T})
         Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
                      `t`. The single argument version has been deprecated and will be \
                      removed in the next major release of SciMLBase.",
@@ -256,12 +256,13 @@ end
 # Override the checks for NonlinearFunction
 struct __unsafe_nonlinearfunction{iip} end
 
-@inline function __unsafe_nonlinearfunction{iip}(f::F; jac::J = nothing,
-        jac_prototype::JP = nothing, colorvec::CV = nothing,
+@inline function __unsafe_nonlinearfunction{iip}(
+        f::F; jac::J = nothing, jac_prototype::JP = nothing, colorvec::CV = nothing,
         resid_prototype::RP = nothing) where {iip, F, J, JP, CV, RP}
-    return NonlinearFunction{iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing,
-        J, Nothing, Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing,
-        RP}(f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
+    return NonlinearFunction{
+        iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing, J, Nothing,
+        Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing, RP}(
+        f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
         nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
 end
 
@@ -269,8 +270,9 @@ end
 @inline __nameof(::Type{T}) where {T} = nameof(T)
 
 # Construct the internal NonlinearProblem
-@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, nlls},
-        resid_prototype, u0, args...; kwargs...) where {uType, tType, iip, nlls}
+@inline function __internal_nlsolve_problem(
+        ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
+        u0, args...; kwargs...) where {uType, tType, iip, nlls}
     if nlls
         return NonlinearLeastSquaresProblem(args...; kwargs...)
     else
@@ -278,14 +280,16 @@ end
     end
 end
 
-@inline function __internal_nlsolve_problem(bvp::BVProblem{uType, tType, iip, Nothing},
-        resid_prototype, u0, args...; kwargs...) where {uType, tType, iip}
-    return __internal_nlsolve_problem(bvp, length(resid_prototype), length(u0), args...;
-        kwargs...)
+@inline function __internal_nlsolve_problem(
+        bvp::BVProblem{uType, tType, iip, Nothing}, resid_prototype,
+        u0, args...; kwargs...) where {uType, tType, iip}
+    return __internal_nlsolve_problem(
+        bvp, length(resid_prototype), length(u0), args...; kwargs...)
 end
 
-@inline function __internal_nlsolve_problem(::BVProblem{uType, tType, iip, Nothing},
-        l1::Int, l2::Int, args...; kwargs...) where {uType, tType, iip}
+@inline function __internal_nlsolve_problem(
+        ::BVProblem{uType, tType, iip, Nothing}, l1::Int,
+        l2::Int, args...; kwargs...) where {uType, tType, iip}
     if l1 != l2
         return NonlinearLeastSquaresProblem(args...; kwargs...)
     else
@@ -345,8 +349,8 @@ guess is supplied, it returns `-1`.
 Flattens the initial guess into a matrix. For a function `u₀`, it returns `nothing`. For no
 initial guess, it returns `vec(u₀)`.
 """
-@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(vec,
-    hcat, u₀)
+@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(
+    vec, hcat, u₀)
 @inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
@@ -361,8 +365,8 @@ as the mesh of the `DiffEqArray`.
 If `alias_u0` is set to `true`, we try our best to minimize copies. This means that `u₀`
 or parts of it will get mutated.
 """
-@inline function __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, _, p,
-        alias_u0::Bool)
+@inline function __initial_guess_on_mesh(
+        u₀::AbstractVector{<:AbstractArray}, _, p, alias_u0::Bool)
     return alias_u0 ? vec.(u₀) : [copy(vec(u)) for u in u₀]
 end
 @inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p, alias_u0::Bool)
@@ -384,11 +388,12 @@ function __build_solution(prob::BVProblem, odesol, nlsol)
     return __solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
 end
 
-function __solution_new_original_retcode(sol::ODESolution{T, N}, original, retcode,
-        resid) where {T, N}
-    return ODESolution{T, N, typeof(sol.u), typeof(sol.u_analytic), typeof(sol.errors),
-        typeof(sol.t), typeof(sol.k), typeof(sol.prob), typeof(sol.alg), typeof(sol.interp),
-        typeof(sol.stats), typeof(sol.alg_choice), typeof(resid), typeof(original)}(sol.u,
-        sol.u_analytic, sol.errors, sol.t, sol.k, sol.prob, sol.alg, sol.interp, sol.dense,
-        sol.tslocation, sol.stats, sol.alg_choice, retcode, resid, original)
+function __solution_new_original_retcode(
+        sol::ODESolution{T, N}, original, retcode, resid) where {T, N}
+    return ODESolution{
+        T, N, typeof(sol.u), typeof(sol.u_analytic), typeof(sol.errors), typeof(sol.t),
+        typeof(sol.k), typeof(sol.prob), typeof(sol.alg), typeof(sol.interp),
+        typeof(sol.stats), typeof(sol.alg_choice), typeof(resid), typeof(original)}(
+        sol.u, sol.u_analytic, sol.errors, sol.t, sol.k, sol.prob, sol.alg, sol.interp,
+        sol.dense, sol.tslocation, sol.stats, sol.alg_choice, retcode, resid, original)
 end

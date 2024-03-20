@@ -59,6 +59,7 @@ end
         (return @set alg.jac_alg.diffmode = __default_nonsparse_ad(prob.u0))
     return alg
 end
+
 """
     MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
         grid_coarsening = true, jac_alg = nothing)
@@ -110,25 +111,29 @@ end
 
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    return MultipleShooting(alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots,
-        alg.grid_coarsening)
+    return MultipleShooting(
+        alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots, alg.grid_coarsening)
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
-    return MultipleShooting(alg.ode_alg, alg.nlsolve, alg.jac_alg, nshoots,
-        alg.grid_coarsening)
+    return MultipleShooting(
+        alg.ode_alg, alg.nlsolve, alg.jac_alg, nshoots, alg.grid_coarsening)
 end
 
-function MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
-        grid_coarsening::Union{Bool, Function, <:AbstractVector{<:Integer},
-            Tuple{Vararg{Integer}}} = true, jac_alg = nothing)
+function MultipleShooting(; nshoots::Int,
+        ode_alg = nothing,
+        nlsolve = nothing,
+        grid_coarsening::Union{
+            Bool, Function, <:AbstractVector{<:Integer}, Tuple{Vararg{Integer}}} = true,
+        jac_alg = nothing)
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(ode_alg, nlsolve,
-        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening)
+    return MultipleShooting(
+        ode_alg, nlsolve, __materialize_jacobian_algorithm(nlsolve, jac_alg),
+        nshoots, grid_coarsening)
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
 @inline MultipleShooting(nshoots::Int, ode_alg; kwargs...) = MultipleShooting(;
@@ -233,8 +238,8 @@ end
 
 function BVPM2(; max_num_subintervals::Int = 3000, method_choice::Int = 4,
         diagnostic_output::Int = -1, error_control::Int = 1, singular_term = nothing)
-    return BVPM2(max_num_subintervals, method_choice, diagnostic_output, error_control,
-        singular_term)
+    return BVPM2(max_num_subintervals, method_choice,
+        diagnostic_output, error_control, singular_term)
 end
 
 """
@@ -322,8 +327,8 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
             diagnostic_output::Int = 1, max_num_subintervals::Int = 3000)
         return COLNEW(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
     end
-    function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
-            max_num_subintervals::Int)
+    function COLNEW(bvpclass::Int, collocationpts::Int,
+            diagnostic_output::Int, max_num_subintervals::Int)
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("COLNEW requires ODEInterface.jl to be loaded")
         end

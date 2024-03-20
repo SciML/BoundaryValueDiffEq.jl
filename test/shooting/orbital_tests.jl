@@ -1,22 +1,10 @@
-using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
+@testitem "Lambert's Problem" begin
+    using LinearAlgebra
 
-@testset "Lambert's Problem" begin
-    y0 = [
-        -4.7763169762853989E+06,
-        -3.8386398704441520E+05,
-        -5.3500183933132319E+06,
-        -5528.612564911408,
-        1216.8442360202787,
-        4845.114446429901
-    ]
-    init_val = [
-        -4.7763169762853989E+06,
-        -3.8386398704441520E+05,
-        -5.3500183933132319E+06,
-        7.0526926403748598E+06,
-        -7.9650476230388973E+05,
-        -1.1911128863666430E+06
-    ]
+    y0 = [-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06,
+        -5528.612564911408, 1216.8442360202787, 4845.114446429901]
+    init_val = [-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06,
+        7.0526926403748598E+06, -7.9650476230388973E+05, -1.1911128863666430E+06]
     J2 = 1.08262668E-3
     req = 6378137
     myu = 398600.4418E+9
@@ -62,61 +50,50 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, LinearAlgebra, Test
     cur_bc_2point_a! = (resid, sol, p) -> bc!_generator_2p_a(resid, sol, init_val)
     cur_bc_2point_b! = (resid, sol, p) -> bc!_generator_2p_b(resid, sol, init_val)
 
-    @info "Solving Lambert's Problem in Multi Point BVP Form"
-
     bvp = BVProblem(orbital!, cur_bc!, y0, tspan; nlls = Val(false))
-    for autodiff in (AutoForwardDiff(; chunksize = 6),
-        AutoFiniteDiff(; fdtype = Val(:central)), AutoSparseForwardDiff(; chunksize = 6),
+    for autodiff in (
+        AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+        AutoSparseForwardDiff(; chunksize = 6),
         AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparseFiniteDiff())
         nlsolve = TrustRegion(; autodiff)
 
-        @info "Single Shooting Lambert's Problem: $(autodiff)"
-        @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6,
-            reltol = 1e-6, verbose = false,
-            odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
+        sol = solve(
+            bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
+            verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
 
-        @info "Single Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-6
 
-        @info "Multiple Shooting Lambert's Problem: $(autodiff)"
         jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff,
             bc_diffmode = BoundaryValueDiffEq.__get_non_sparse_ad(autodiff))
-        @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
-            force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false,
-            odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
+        sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+            force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
+            verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
 
-        @info "Multiple Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-6
     end
-
-    @info "Solving Lambert's Problem in Two Point BVP Form"
 
     bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
         bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)),
         nlls = Val(false))
     for autodiff in (AutoForwardDiff(; chunksize = 6), AutoSparseFiniteDiff(),
-        AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
-        AutoSparseForwardDiff(; chunksize = 6))
+        AutoFiniteDiff(; fdtype = Val(:central)),
+        AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparseForwardDiff(; chunksize = 6))
         nlsolve = TrustRegion(; autodiff)
 
-        @info "Single Shooting Lambert's Problem: $(autodiff)"
-        @time sol = solve(bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6,
-            reltol = 1e-6, verbose = false,
-            odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
+        sol = solve(
+            bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
+            verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
 
-        @info "Single Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-6
 
-        @info "Multiple Shooting Lambert's Problem: $(autodiff)"
         jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
-        @time sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
-            force_dtmin = true, abstol = 1e-6, reltol = 1e-6, verbose = false,
-            odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
+        sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+            force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
+            verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
 
-        @info "Multiple Shooting Lambert's Problem: $(norm(sol.resid, Inf))"
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-6
     end

@@ -24,8 +24,8 @@ u0 = [0.5, 1.0]
 p = [0.1]
 tspan = (-π / 2, π / 2)
 
-tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan, p;
-    bcresid_prototype = (zeros(1), zeros(1)))
+tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
+    p; bcresid_prototype = (zeros(1), zeros(1)))
 
 @testset "BVPM2" begin
     @info "Testing BVPM2"
@@ -50,8 +50,8 @@ sol_ms = solve(tpprob, MultipleShooting(10, DP5(), NewtonRaphson());
     @info "BVPSOL with Vector{<:AbstractArray}"
 
     initial_u0 = [sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]]
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan, p;
-        bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
 
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
@@ -59,8 +59,8 @@ sol_ms = solve(tpprob, MultipleShooting(10, DP5(), NewtonRaphson());
     @info "BVPSOL with VectorOfArray"
 
     initial_u0 = VectorOfArray([sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]])
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan, p;
-        bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
 
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
@@ -69,8 +69,8 @@ sol_ms = solve(tpprob, MultipleShooting(10, DP5(), NewtonRaphson());
 
     ts = collect(tspan[1]:(π / 20):tspan[2])
     initial_u0 = DiffEqArray([sol_ms(t) .+ rand() for t in ts], ts)
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan, p;
-        bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
 
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 

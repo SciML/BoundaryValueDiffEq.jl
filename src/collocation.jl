@@ -1,10 +1,10 @@
 function Φ!(residual, cache::MIRKCache, y, u, p = cache.p)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-        y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f,
+        cache.TU, y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau,
+        y, u, p, mesh, mesh_dt, stage::Int)
     @unpack c, v, x, b = TU
 
     tmp = get_tmp(fᵢ_cache, u)
@@ -30,12 +30,12 @@ end
 end
 
 function Φ(cache::MIRKCache, y, u, p = cache.p)
-    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, p, cache.mesh,
-        cache.mesh_dt, cache.stage)
+    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
+        y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt,
-        stage::Int)
+@views function Φ(
+        fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt, stage::Int)
     @unpack c, v, x, b = TU
     residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp = get_tmp(fᵢ_cache, u)

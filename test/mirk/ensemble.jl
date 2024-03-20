@@ -20,8 +20,8 @@ ensemble_prob = EnsembleProblem(bvp; prob_func)
 
 @testset "$(solver)" for solver in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
     jac_algs = [BVPJacobianAlgorithm(),
-        BVPJacobianAlgorithm(; bc_diffmode = AutoFiniteDiff(),
-            nonbc_diffmode = AutoSparseFiniteDiff())]
+        BVPJacobianAlgorithm(;
+            bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())]
     for jac_alg in jac_algs
         sol = solve(ensemble_prob, solver(; jac_alg); trajectories = 10, dt = 0.1)
         @test sol.converged

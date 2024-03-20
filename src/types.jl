@@ -13,8 +13,6 @@ struct MIRKTableau{sType, cType, vType, bType, xType}
     end
 end
 
-@truncate_stacktrace MIRKTableau 1
-
 struct MIRKInterpTableau{s, c, v, x, τ}
     s_star::s
     c_star::c
@@ -24,13 +22,11 @@ struct MIRKInterpTableau{s, c, v, x, τ}
 
     function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star)
         @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
-        return new{typeof(s_star), typeof(c_star), typeof(v_star), typeof(x_star),
-            typeof(τ_star)}(s_star,
-            c_star, v_star, x_star, τ_star)
+        return new{
+            typeof(s_star), typeof(c_star), typeof(v_star), typeof(x_star), typeof(τ_star)}(
+            s_star, c_star, v_star, x_star, τ_star)
     end
 end
-
-@truncate_stacktrace MIRKInterpTableau 1
 
 # Sparsity Detection
 @concrete struct BVPJacobianAlgorithm
@@ -66,12 +62,13 @@ end
 
 __any_sparse_ad(ad) = ad isa AbstractSparseADType
 function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
-    __any_sparse_ad(jac_alg.bc_diffmode) || __any_sparse_ad(jac_alg.nonbc_diffmode) ||
+    __any_sparse_ad(jac_alg.bc_diffmode) ||
+        __any_sparse_ad(jac_alg.nonbc_diffmode) ||
         __any_sparse_ad(jac_alg.diffmode)
 end
 
-function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
-        bc_diffmode = missing)
+function BVPJacobianAlgorithm(
+        diffmode = missing; nonbc_diffmode = missing, bc_diffmode = missing)
     if diffmode !== missing
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
@@ -99,8 +96,8 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProb
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
-        prob::BVProblem, alg)
+function concrete_jacobian_algorithm(
+        jac_alg::BVPJacobianAlgorithm, prob_type, prob::BVProblem, alg)
     u0 = prob.u0 isa AbstractArray ? prob.u0 :
          __initial_guess(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
@@ -146,19 +143,15 @@ function concretize_jacobian_algorithm(alg, prob)
     return alg
 end
 
-function MIRKJacobianComputationAlgorithm(diffmode = missing;
-        collocation_diffmode = missing, bc_diffmode = missing)
-    Base.depwarn("`MIRKJacobianComputationAlgorithm` has been deprecated in favor of \
-        `BVPJacobianAlgorithm`. Replace `collocation_diffmode` with `nonbc_diffmode",
-        :MIRKJacobianComputationAlgorithm)
-    return BVPJacobianAlgorithm(diffmode; nonbc_diffmode = collocation_diffmode,
-        bc_diffmode)
-end
+Base.@deprecate MIRKJacobianComputationAlgorithm(
+    diffmode = missing; collocation_diffmode = missing, bc_diffmode = missing) BVPJacobianAlgorithm(
+    diffmode; nonbc_diffmode = collocation_diffmode, bc_diffmode)
 
 __needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true
 __needs_diffcache(_) = false
 function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
-    return __needs_diffcache(jac_alg.diffmode) || __needs_diffcache(jac_alg.bc_diffmode) ||
+    return __needs_diffcache(jac_alg.diffmode) ||
+           __needs_diffcache(jac_alg.bc_diffmode) ||
            __needs_diffcache(jac_alg.nonbc_diffmode)
 end
 

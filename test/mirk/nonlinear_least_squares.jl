@@ -76,8 +76,8 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
         tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3,
-            reltol = 1e-3)
+        @time sol = solve(
+            bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
         resida = Array{Float64}(undef, 1)
         residb = Array{Float64}(undef, 2)
         bc1a!(resida, sol(0.0), nothing)

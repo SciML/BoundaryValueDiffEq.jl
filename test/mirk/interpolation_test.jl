@@ -14,11 +14,11 @@ function prob_bvp_linear_bc!(res, u, p, t)
     res[1] = u[1][1] - 1
     res[2] = u[end][1]
 end
-prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!,
-    analytic = prob_bvp_linear_analytic)
+prob_bvp_linear_function = ODEFunction(
+    prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
 prob_bvp_linear_tspan = (0.0, 1.0)
-prob_bvp_linear = BVProblem(prob_bvp_linear_function, prob_bvp_linear_bc!,
-    [1.0, 0.0], prob_bvp_linear_tspan, λ)
+prob_bvp_linear = BVProblem(
+    prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ)
 testTol = 1e-6
 
 for order in (2, 3, 4, 5, 6)

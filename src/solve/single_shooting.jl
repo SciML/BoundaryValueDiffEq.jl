@@ -27,11 +27,11 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
     loss_fn = if iip
-        @closure (du, u, p) -> __single_shooting_loss!(du, u, p, ode_cache_loss_fn, bc,
-            u0_size, prob.problem_type, resid_size)
+        @closure (du, u, p) -> __single_shooting_loss!(
+            du, u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type, resid_size)
     else
-        @closure (u, p) -> __single_shooting_loss(u, p, ode_cache_loss_fn, bc, u0_size,
-            prob.problem_type)
+        @closure (u, p) -> __single_shooting_loss(
+            u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type)
     end
 
     sd = alg.jac_alg.diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
@@ -48,36 +48,36 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, vec(u0); fx = y_)
     end
 
-    ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(internal_prob, jac_cache,
-        alg.jac_alg.diffmode, u0, alg.ode_alg; ode_kwargs...)
+    ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
+        internal_prob, jac_cache, alg.jac_alg.diffmode, u0, alg.ode_alg; ode_kwargs...)
 
     jac_prototype = init_jacobian(jac_cache)
 
     loss_fnₚ = if iip
-        @closure (du, u) -> __single_shooting_loss!(du, u, prob.p, ode_cache_jac_fn, bc,
-            u0_size, prob.problem_type, resid_size)
+        @closure (du, u) -> __single_shooting_loss!(
+            du, u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size)
     else
-        @closure (u) -> __single_shooting_loss(u, prob.p, ode_cache_jac_fn, bc, u0_size,
-            prob.problem_type)
+        @closure (u) -> __single_shooting_loss(
+            u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type)
     end
 
     jac_fn = if iip
-        @closure (J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache,
-            alg.jac_alg.diffmode, loss_fnₚ, y_)
+        @closure (J, u, p) -> __single_shooting_jacobian!(
+            J, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ, y_)
     else
-        @closure (u, p) -> __single_shooting_jacobian(jac_prototype, u, jac_cache,
-            alg.jac_alg.diffmode, loss_fnₚ)
+        @closure (u, p) -> __single_shooting_jacobian(
+            jac_prototype, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ)
     end
 
-    nlf = __unsafe_nonlinearfunction{iip}(loss_fn; jac_prototype, resid_prototype,
-        jac = jac_fn)
+    nlf = __unsafe_nonlinearfunction{iip}(
+        loss_fn; jac_prototype, resid_prototype, jac = jac_fn)
     nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
     nlsol = __solve(nlprob, alg.nlsolve; nlsolve_kwargs..., verbose, kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache
-    internal_prob_final = ODEProblem{iip}(prob.f, reshape(nlsol.u, u0_size), prob.tspan,
-        prob.p)
+    internal_prob_final = ODEProblem{iip}(
+        prob.f, reshape(nlsol.u, u0_size), prob.tspan, prob.p)
     odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     return __build_solution(prob, odesol, nlsol)
@@ -129,8 +129,9 @@ function __single_shooting_jacobian_ode_cache(prob, jac_cache, alg, u0, ode_alg;
     return SciMLBase.__init(remake(prob; u0), ode_alg; kwargs...)
 end
 
-function __single_shooting_jacobian_ode_cache(prob, jac_cache,
-        ::Union{AutoForwardDiff, AutoSparseForwardDiff}, u0, ode_alg; kwargs...)
+function __single_shooting_jacobian_ode_cache(
+        prob, jac_cache, ::Union{AutoForwardDiff, AutoSparseForwardDiff},
+        u0, ode_alg; kwargs...)
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
@@ -138,7 +139,7 @@ function __single_shooting_jacobian_ode_cache(prob, jac_cache,
         xduals = cache.t
     end
     fill!(xduals, 0)
-    prob_ = remake(prob; u0 = reshape(xduals, size(u0)),
-        tspan = eltype(xduals).(prob.tspan))
+    prob_ = remake(
+        prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)
 end

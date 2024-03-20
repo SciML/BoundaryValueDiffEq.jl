@@ -18,8 +18,8 @@ end
 
 # FIXME: Fix the interpolation outside the tspan
 
-@inline function interpolation(tvals, id::I, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {I, D}
+@inline function interpolation(
+        tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
     @unpack t, u, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -40,8 +40,8 @@ end
     return DiffEqArray(vals, tvals)
 end
 
-@inline function interpolation!(vals, tvals, id::I, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {I, D}
+@inline function interpolation!(
+        vals, tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
     @unpack t, cache = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -53,8 +53,8 @@ end
     end
 end
 
-@inline function interpolation(tval::Number, id::I, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {I, D}
+@inline function interpolation(
+        tval::Number, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
     z = similar(id.cache.fᵢ₂_cache)
     interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return z
