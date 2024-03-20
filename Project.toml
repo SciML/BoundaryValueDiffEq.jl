@@ -25,7 +25,6 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseDiffTools = "47a9eef4-7e08-11e9-0b38-333d64bd3804"
-UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [weakdeps]
 ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
@@ -55,6 +54,7 @@ PreallocationTools = "0.4"
 PrecompileTools = "1"
 Preferences = "1"
 Random = "1"
+ReTestItems = "1.23.1"
 RecursiveArrayTools = "3"
 Reexport = "1.0"
 SciMLBase = "2.12"
@@ -63,7 +63,6 @@ SparseArrays = "1.9"
 SparseDiffTools = "2.9"
 StaticArrays = "1.8.1"
 Test = "1"
-UnPack = "1"
 julia = "1.10"
 
 [extras]

@@ -162,19 +162,6 @@ function __initial_guess(f::F, p::P, t::T) where {F, P, T}
     end
 end
 
-function __initial_state_from_prob(prob::BVProblem, mesh)
-    return __initial_state_from_prob(prob, prob.u0, mesh)
-end
-function __initial_state_from_prob(::BVProblem, u0::AbstractArray, mesh)
-    return [copy(vec(u0)) for _ in mesh]
-end
-function __initial_state_from_prob(::BVProblem, u0::AbstractVector{<:AbstractVector}, _)
-    return [copy(vec(u)) for u in u0]
-end
-function __initial_state_from_prob(prob::BVProblem, f::F, mesh) where {F}
-    return [__initial_guess(f, prob.p, t) for t in mesh]
-end
-
 function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
@@ -250,8 +237,6 @@ __get_chunksize(::AutoSparseForwardDiff{CK}) where {CK} = CK
 function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)
 end
-
-# TODO: Add dispatch for a ODESolution Type as well
 
 # Override the checks for NonlinearFunction
 struct __unsafe_nonlinearfunction{iip} end
@@ -397,3 +382,16 @@ function __solution_new_original_retcode(
         sol.u, sol.u_analytic, sol.errors, sol.t, sol.k, sol.prob, sol.alg, sol.interp,
         sol.dense, sol.tslocation, sol.stats, sol.alg_choice, retcode, resid, original)
 end
+
+# Fix3
+@concrete struct __Fix3
+    f
+    x
+end
+
+@inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
+
+# Aliasing
+@inline __default_alias_u0(::Nothing) = false
+@inline __default_alias_u0(::NonlinearSolvePolyAlgorithm) = false
+@inline __default_alias_u0(::Any) = true

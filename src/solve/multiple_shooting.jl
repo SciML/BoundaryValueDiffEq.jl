@@ -126,6 +126,7 @@ function __solve_nlproblem!(
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
+    # FIXME: This is not safe for polyalgorithms
     __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
 
     return nothing
@@ -185,6 +186,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
+    # FIXME: This is not safe for polyalgorithms
     __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
 
     return nothing
@@ -255,7 +257,7 @@ function __multiple_shooting_solve_internal_odes!(
         return first:1:last
     end
 
-    Threads.@threads for idx in 1:length(data_partition)
+    Threads.@threads for idx in eachindex(data_partition)
         cache = odecache[idx]
         for i in data_partition[idx]
             SciMLBase.reinit!(cache, reshape(@view(us[((i - 1) * N + 1):(i * N)]), u0_size);
@@ -358,7 +360,7 @@ end
 # Problem has initial guess
 @views function __multiple_shooting_initialize!(
         nodes, prob, alg, ::Val{true}, nshoots::Int, odecache; kwargs...)
-    @unpack u0, tspan = prob
+    (; u0, tspan) = prob
 
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
@@ -378,8 +380,8 @@ end
 @views function __multiple_shooting_initialize!(
         nodes, prob, alg::MultipleShooting, ::Val{false},
         nshoots::Int, odecache_; verbose, kwargs...)
-    @unpack f, u0, tspan, p = prob
-    @unpack ode_alg = alg
+    (; f, u0, tspan, p) = prob
+    (; ode_alg) = alg
 
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
@@ -401,7 +403,7 @@ end
     sol = solve!(odecache)
 
     if SciMLBase.successful_retcode(sol)
-        for i in 1:length(nodes)
+        for i in eachindex(nodes)
             u_at_nodes[(i - 1) * N .+ (1:N)] .= vec(sol(nodes[i]))
         end
     else
@@ -417,7 +419,7 @@ end
 # Grid coarsening
 @views function __multiple_shooting_initialize!(nodes, u_at_nodes_prev, prob, alg, nshoots,
         old_nshoots, ig, odecache_, u0; kwargs...)
-    @unpack f, tspan, p = prob
+    (; f, tspan, p) = prob
     prev_nodes = copy(nodes)
     odecache = odecache_ isa Vector ? first(odecache_) : odecache_
 

@@ -20,7 +20,6 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
     import RecursiveArrayTools: ArrayPartition, DiffEqArray
     import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
     import SparseDiffTools: AbstractSparseADType
-    import UnPack: @unpack
 end
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,

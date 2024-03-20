@@ -27,7 +27,7 @@ end
 Generate new mesh based on the defect.
 """
 @views function mesh_selector!(cache::MIRKCache{iip, T}) where {iip, T}
-    @unpack M, order, defect, mesh, mesh_dt = cache
+    (; M, order, defect, mesh, mesh_dt) = cache
     (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
 
@@ -144,8 +144,8 @@ the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
 @views function defect_estimate!(cache::MIRKCache{iip, T}) where {iip, T}
-    @unpack M, stage, f, alg, mesh, mesh_dt, defect = cache
-    @unpack s_star, τ_star = cache.ITU
+    (; M, stage, f, alg, mesh, mesh_dt, defect) = cache
+    (; s_star, τ_star) = cache.ITU
 
     # Evaluate at the first sample point
     w₁, w₁′ = interp_weights(τ_star, alg)
@@ -190,8 +190,8 @@ end
 Here, the ki_interp is the stages in one subinterval.
 """
 @views function interp_setup!(cache::MIRKCache{iip, T}) where {iip, T}
-    @unpack x_star, s_star, c_star, v_star = cache.ITU
-    @unpack k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt = cache
+    (; x_star, s_star, c_star, v_star) = cache.ITU
+    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
 
     for r in 1:(s_star - stage)
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
@@ -230,8 +230,8 @@ function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
 end
 
 function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
-    @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
-    @unpack s_star = cache.ITU
+    (; M, stage, mesh, k_discrete, k_interp, mesh_dt) = cache
+    (; s_star) = cache.ITU
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
@@ -243,8 +243,8 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
 end
 
 @views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
-    @unpack M, stage, mesh, k_discrete, k_interp, mesh_dt = cache
-    @unpack s_star = cache.ITU
+    (; M, stage, mesh, k_discrete, k_interp, mesh_dt) = cache
+    (; s_star) = cache.ITU
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
@@ -260,7 +260,7 @@ end
 end
 
 """
-    interp_weights(τ, alg
+    interp_weights(τ, alg)
 
 interp_weights: solver-specified interpolation weights and its first derivative
 """
@@ -376,7 +376,7 @@ for order in (2, 3, 4, 5, 6)
 end
 
 function sol_eval(cache::MIRKCache{T}, t::T) where {T}
-    @unpack M, mesh, mesh_dt, alg, k_discrete, k_interp, y = cache
+    (; M, mesh, mesh_dt, alg, k_discrete, k_interp, y) = cache
 
     @assert mesh[1] ≤ t ≤ mesh[end]
     i = interval(mesh, t)

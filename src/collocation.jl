@@ -5,7 +5,7 @@ end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau,
         y, u, p, mesh, mesh_dt, stage::Int)
-    @unpack c, v, x, b = TU
+    (; c, v, x, b) = TU
 
     tmp = get_tmp(fᵢ_cache, u)
     T = eltype(u)
@@ -36,7 +36,7 @@ end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt, stage::Int)
-    @unpack c, v, x, b = TU
+    (; c, v, x, b) = TU
     residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp = get_tmp(fᵢ_cache, u)
     T = eltype(u)

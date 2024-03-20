@@ -3,7 +3,6 @@ module BoundaryValueDiffEqODEInterfaceExt
 using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools
 import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess, __extract_mesh,
                             __initial_guess_length, __initial_guess, __has_initial_guess
-import SciMLBase: __solve
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
                      OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS,
@@ -26,7 +25,7 @@ end
 #------
 # BVPM2
 #------
-function __solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...)
+function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...)
     if !(prob.problem_type isa TwoPointBVProblem)
         throw(ArgumentError("`BVPM2` only supports `TwoPointBVProblem!`"))
     end
@@ -105,7 +104,7 @@ end
 #-------
 # BVPSOL
 #-------
-function __solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
+function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
         reltol = 1e-3, dt = 0.0, verbose = true, kwargs...)
     if !(prob.problem_type isa TwoPointBVProblem)
         throw(ArgumentError("`BVPSOL` only supports `TwoPointBVProblem!`"))

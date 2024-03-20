@@ -20,7 +20,7 @@ end
 
 @inline function interpolation(
         tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
-    @unpack t, u, cache = id
+    (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
@@ -42,7 +42,7 @@ end
 
 @inline function interpolation!(
         vals, tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
-    @unpack t, cache = id
+    (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 

@@ -146,7 +146,8 @@ for order in (2, 3, 4, 5, 6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm())
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
+                    defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
 
@@ -164,6 +165,8 @@ for order in (2, 3, 4, 5, 6)
               `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
               `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
               possible else `AutoFiniteDiff`.
+          - `defect_threshold`: Threshold for defect control.
+          - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
         !!! note
             For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -171,6 +174,7 @@ for order in (2, 3, 4, 5, 6)
 
         ## References
 
+        ```bibtex
         @article{Enright1996RungeKuttaSW,
             title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
             author={Wayne H. Enright and Paul H. Muir},
@@ -179,10 +183,13 @@ for order in (2, 3, 4, 5, 6)
             volume={17},
             pages={479-497}
         }
+        ```
         """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractMIRK
+        @kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
             nlsolve::N = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            defect_threshold::T = 0.1
+            max_num_subintervals::Int = 3000
         end
     end
 end
@@ -199,20 +206,24 @@ Fortran code for solving two-point boundary value problems. For detailed documen
 ## Keyword Arguments:
 
     - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
-    - `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4, available choices:
+    - `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4,
+      available choices:
         - `2`: Runge-Kutta method of order 2.
         - `4`: Runge-Kutta method of order 4.
         - `6`: Runge-Kutta method of order 6.
-    - `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available choices:
+    - `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available
+      choices:
         - `-1`: Full diagnostic printout.
         - `0`: Selected printout.
         - `1`: No printout.
-    - `error_control`: Determines the error-estimation for which RTOL is used, default as defect control, available choices:
+    - `error_control`: Determines the error-estimation for which RTOL is used, default as
+      defect control, available choices:
         - `1`: Defect control.
         - `2`: Global error control.
         - `3`: Defect and then global error control.
         - `4`: Linear combination of defect and global error control.
-    - `singular_term`: either nothing if the ODEs have no singular terms at the left boundary or a constant (d,d) matrix for the
+    - `singular_term`: either nothing if the ODEs have no singular terms at the left
+      boundary or a constant (d,d) matrix for the
         singular term.
 
 !!! note
@@ -229,7 +240,7 @@ struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
     function BVPM2(max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
             error_control::Int, singular_term::Union{Nothing, AbstractMatrix})
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
-            error("BVPM2 requires ODEInterface.jl to be loaded")
+            error("`BVPM2` requires `ODEInterface.jl` to be loaded")
         end
         return new{typeof(singular_term)}(max_num_subintervals, method_choice,
             diagnostic_output, error_control, singular_term)
@@ -254,13 +265,15 @@ For detailed documentation, see
 
 ## Keyword Arguments
 
-    - `bvpclass`: Boundary value problem classification, default as highly nonlinear with bad initial data, available choices:
+    - `bvpclass`: Boundary value problem classification, default as highly nonlinear with
+      bad initial data, available choices:
         - `0`: Linear boundary value problem.
         - `1`: Nonlinear with good initial data.
         - `2`: Highly Nonlinear with bad initial data.
-        - `3`: Highly nonlinear with bad initial data and initial rank reduction to seperable
-            linear boundary conditions.
-    - `sol_method`: Switch for solution methods, default as local linear solver with condensing algorithm, available choices:
+        - `3`: Highly nonlinear with bad initial data and initial rank reduction to
+          seperable linear boundary conditions.
+    - `sol_method`: Switch for solution methods, default as local linear solver with
+      condensing algorithm, available choices:
         - `0`: Use local linear solver with condensing algorithm.
         - `1`: Use global sparse linear solver.
     - `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
@@ -276,7 +289,7 @@ struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
 
     function BVPSOL(bvpclass::Int, sol_method::Int, odesolver)
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
-            error("BVPSOL requires ODEInterface.jl to be loaded")
+            error("`BVPSOL` requires `ODEInterface.jl` to be loaded")
         end
         return new{typeof(odesolver)}(bvpclass, sol_method, odesolver)
     end
@@ -290,20 +303,25 @@ end
 
 ## Keyword Arguments:
 
-    - `bvpclass`: Boundary value problem classification, default as nonlinear and "extra sensitive", available choices:
-        - `0`: Linear boundary value problem.
-        - `1`: Nonlinear and regular.
-        - `2`: Nonlinear and "extra sensitive" (first relax factor is rstart and the
-            nonlinear iteration does not rely on past convergence).
-        - `3`: fail-early: return immediately upon:
-            (a) two successive non-convergences.
-            (b) after obtaining an error estimate for the first time.
-    - `collocationpts`: Number of collocation points per subinterval. Require orders[i] ≤ k ≤ 7, default as 7
-    - `diagnostic_output`: Diagnostic output for COLNEW, default as no printout, available choices:
-        - `-1`: Full diagnostic printout.
-        - `0`: Selected printout.
-        - `1`: No printout.
-    - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+  - `bvpclass`: Boundary value problem classification, default as nonlinear and
+    "extra sensitive", available choices:
+
+      + `0`: Linear boundary value problem.
+      + `1`: Nonlinear and regular.
+      + `2`: Nonlinear and "extra sensitive" (first relax factor is rstart and the
+        nonlinear iteration does not rely on past convergence).
+      + `3`: fail-early: return immediately upon: a) two successive non-convergences.
+        b) after obtaining an error estimate for the first time.
+
+  - `collocationpts`: Number of collocation points per subinterval. Require
+    orders[i] ≤ k ≤ 7, default as 7
+  - `diagnostic_output`: Diagnostic output for COLNEW, default as no printout, available
+    choices:
+
+      + `-1`: Full diagnostic printout.
+      + `0`: Selected printout.
+      + `1`: No printout.
+  - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
 A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
 ODEs. It incorporates a new basis representation replacing b-splines, and improvements for
@@ -330,7 +348,7 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
     function COLNEW(bvpclass::Int, collocationpts::Int,
             diagnostic_output::Int, max_num_subintervals::Int)
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
-            error("COLNEW requires ODEInterface.jl to be loaded")
+            error("`COLNEW` requires `ODEInterface.jl` to be loaded")
         end
         return new(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
     end

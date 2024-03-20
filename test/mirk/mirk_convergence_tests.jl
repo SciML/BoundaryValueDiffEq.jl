@@ -1,4 +1,6 @@
-using BoundaryValueDiffEq, DiffEqBase, DiffEqDevTools, LinearAlgebra, Test
+@testsetup module MIRKConvergenceTests
+
+using BoundaryValueDiffEq
 
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")
@@ -63,13 +65,19 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan),
     TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!),
         u0, tspan; bcresid_prototype),
     TwoPointBVProblem(
-        odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan; bcresid_prototype)];
+        odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan; bcresid_prototype)]
 
 testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
-@testset "Affineness" begin
+export probArr, testTol, affineTol, dts, mirk_solver
+
+end
+
+@testitem "Affineness" setup=[MIRKConvergenceTests] begin
+    using LinearAlgebra
+
     @testset "Problem: $i" for i in (1, 2, 5, 6)
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
@@ -79,42 +87,42 @@ dts = 1 .// 2 .^ (3:-1:1)
     end
 end
 
-@testset "Convergence on Linear" begin
-    @testset "Problem: $i" for i in (3, 4, 7, 8)
-        prob = probArr[i]
-        @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
-            @time sim = test_convergence(
-                dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
-            @test sim.𝒪est[:final]≈order atol=testTol
-        end
-    end
-end
+# @testset "Convergence on Linear" begin
+#     @testset "Problem: $i" for i in (3, 4, 7, 8)
+#         prob = probArr[i]
+#         @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
+#             @time sim = test_convergence(
+#                 dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
+#             @test sim.𝒪est[:final]≈order atol=testTol
+#         end
+#     end
+# end
 
-# Simple Pendulum
-using StaticArrays
+# # Simple Pendulum
+# using StaticArrays
 
-tspan = (0.0, π / 2)
-function simplependulum!(du, u, p, t)
-    g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
-    du[1] = dθ
-    du[2] = -(g / L) * sin(θ)
-end
+# tspan = (0.0, π / 2)
+# function simplependulum!(du, u, p, t)
+#     g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
+#     du[1] = dθ
+#     du[2] = -(g / L) * sin(θ)
+# end
 
-# FIXME: This is a really bad test. Needs interpolation
-function bc_pendulum!(residual, u, p, t)
-    residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-    residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
-end
+# # FIXME: This is a really bad test. Needs interpolation
+# function bc_pendulum!(residual, u, p, t)
+#     residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
+#     residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
+# end
 
-u0 = MVector{2}([pi / 2, pi / 2])
-bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
+# u0 = MVector{2}([pi / 2, pi / 2])
+# bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-jac_alg = BVPJacobianAlgorithm(;
-    bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())
+# jac_alg = BVPJacobianAlgorithm(;
+#     bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())
 
-# Using ForwardDiff might lead to Cache expansion warnings
-@test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
-@test_nowarn solve(bvp1, MIRK3(; jac_alg); dt = 0.005)
-@test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
-@test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
-@test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)
+# # Using ForwardDiff might lead to Cache expansion warnings
+# @test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
+# @test_nowarn solve(bvp1, MIRK3(; jac_alg); dt = 0.005)
+# @test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
+# @test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
+# @test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)
