@@ -37,10 +37,16 @@ end
     probs = [
         BVProblem(BVPFunction{true}(f1!, bc1!), u0, tspan; nlls = Val(false)),
         BVProblem(BVPFunction{false}(f1, bc1), u0, tspan; nlls = Val(false)),
-        BVProblem(BVPFunction{true}(f1!, (bc1_a!, bc1_b!); bcresid_prototype,
-                twopoint = Val(true)), u0, tspan; nlls = Val(false)),
-        BVProblem(BVPFunction{false}(f1, (bc1_a, bc1_b); bcresid_prototype,
-                twopoint = Val(true)), u0, tspan; nlls = Val(false)),
+        BVProblem(
+            BVPFunction{true}(f1!, (bc1_a!, bc1_b!); bcresid_prototype,
+                twopoint = Val(true)),
+            u0,
+            tspan;
+            nlls = Val(false)),
+        BVProblem(
+            BVPFunction{false}(f1, (bc1_a, bc1_b); bcresid_prototype,
+                twopoint = Val(true)),
+            u0, tspan; nlls = Val(false))
     ]
 
     algs = []
@@ -94,16 +100,26 @@ end
     bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
 
     probs = [
-        BVProblem(BVPFunction{true}(f1_nlls!, bc1_nlls!;
-                bcresid_prototype = bcresid_prototype1), u0, tspan; nlls = Val(true)),
-        BVProblem(BVPFunction{false}(f1_nlls, bc1_nlls;
-                bcresid_prototype = bcresid_prototype1), u0, tspan; nlls = Val(true)),
-        BVProblem(BVPFunction{true}(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!);
-                bcresid_prototype = bcresid_prototype2, twopoint = Val(true)), u0, tspan;
+        BVProblem(
+            BVPFunction{true}(f1_nlls!, bc1_nlls!;
+                bcresid_prototype = bcresid_prototype1),
+            u0, tspan; nlls = Val(true)),
+        BVProblem(
+            BVPFunction{false}(f1_nlls, bc1_nlls;
+                bcresid_prototype = bcresid_prototype1),
+            u0, tspan; nlls = Val(true)),
+        BVProblem(
+            BVPFunction{true}(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!);
+                bcresid_prototype = bcresid_prototype2, twopoint = Val(true)),
+            u0,
+            tspan;
             nlls = Val(true)),
-        BVProblem(BVPFunction{false}(f1_nlls, (bc1_nlls_a, bc1_nlls_b);
-                bcresid_prototype = bcresid_prototype2, twopoint = Val(true)), u0, tspan;
-            nlls = Val(true)),
+        BVProblem(
+            BVPFunction{false}(f1_nlls, (bc1_nlls_a, bc1_nlls_b);
+                bcresid_prototype = bcresid_prototype2, twopoint = Val(true)),
+            u0,
+            tspan;
+            nlls = Val(true))
     ]
 
     algs = []

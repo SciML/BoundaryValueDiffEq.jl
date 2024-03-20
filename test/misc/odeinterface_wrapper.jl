@@ -1,5 +1,5 @@
 using Test, BoundaryValueDiffEq, LinearAlgebra, ODEInterface, Random, OrdinaryDiffEq,
-    RecursiveArrayTools
+      RecursiveArrayTools
 
 # Adaptation of https://github.com/luchr/ODEInterface.jl/blob/958b6023d1dabf775033d0b89c5401b33100bca3/examples/BasicExamples/ex7.jl
 function ex7_f!(du, u, p, t)

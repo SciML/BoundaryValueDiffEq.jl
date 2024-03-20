@@ -2,7 +2,8 @@ module BoundaryValueDiffEqODEInterfaceExt
 
 using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools
 import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess,
-    __extract_mesh, __initial_guess_length, __initial_guess, __has_initial_guess
+                            __extract_mesh, __initial_guess_length, __initial_guess,
+                            __has_initial_guess
 import SciMLBase: __solve
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,

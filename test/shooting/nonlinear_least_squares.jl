@@ -21,7 +21,7 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test, JET
         MultipleShooting(10, Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
         MultipleShooting(10, Tsit5(),
             TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
-        MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
+        MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff()))
     ]
     JET_SKIP = [false, false, false, false, false, false, false, false, false, false]
     JET_BROKEN = [false, false, false, false, false, false, false, false, false, false]
@@ -103,8 +103,12 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test, JET
     bc1a(ua, p) = [ua[1]]
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
-    bvp3 = BVProblem(BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan; nlls = Val(true))
+    bvp3 = BVProblem(
+        BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))),
+        u0,
+        tspan;
+        nlls = Val(true))
 
     for (i, solver) in enumerate(SOLVERS)
         @info "Testing $solver"
@@ -125,8 +129,12 @@ using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEq, Test, JET
     bc1a!(resid, ua, p) = (resid[1] = ua[1])
     bc1b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
-    bvp4 = BVProblem(BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))), u0, tspan; nlls = Val(true))
+    bvp4 = BVProblem(
+        BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))),
+        u0,
+        tspan;
+        nlls = Val(true))
 
     for (i, solver) in enumerate(SOLVERS)
         @info "Testing $solver"

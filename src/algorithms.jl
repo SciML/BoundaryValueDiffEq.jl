@@ -305,9 +305,11 @@ ODEs. It incorporates a new basis representation replacing b-splines, and improv
 the linear and nonlinear algebraic equation solvers.
 
 !!! warning
+
     Only supports two-point boundary value problems.
 
 !!! note
+
     Only available if the `ODEInterface` package is loaded.
 """
 struct COLNEW <: BoundaryValueDiffEqAlgorithm

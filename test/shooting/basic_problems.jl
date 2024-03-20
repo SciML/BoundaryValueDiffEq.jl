@@ -8,7 +8,7 @@ using BoundaryValueDiffEq, LinearAlgebra, LinearSolve, OrdinaryDiffEq, Test, JET
         MultipleShooting(10, Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         MultipleShooting(10, Tsit5(),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
-        MultipleShooting(10, Tsit5()),
+        MultipleShooting(10, Tsit5())
     ]
     JET_SKIP = [false, false, true, false, false, true]
     JET_BROKEN = [false, false, false, false, false, false]
@@ -144,7 +144,7 @@ end
         Shooting(Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         Shooting(Vern7()),
         MultipleShooting(10, Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Vern7()),
+        MultipleShooting(10, Vern7())
     ]
 
     function f1!(du, u, p, t)
@@ -216,7 +216,7 @@ end
         Shooting(AutoTsit5(Rosenbrock23()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
         MultipleShooting(10, AutoTsit5(Rosenbrock23()),
-            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
+            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8)))
     ]
         @info "Solver: $solver"
         sol = @time solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
@@ -333,12 +333,20 @@ end
         nlls = Val(false))
     prob_iip = BVProblem(BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p;
         nlls = Val(true))
-    prob_tp_oop = BVProblem(BVPFunction{false}(ray_tracing,
-            (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)), u0, tspan, p;
+    prob_tp_oop = BVProblem(
+        BVPFunction{false}(ray_tracing,
+            (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)),
+        u0,
+        tspan,
+        p;
         nlls = Val(true))
-    prob_tp_iip = BVProblem(BVPFunction{true}(ray_tracing!,
+    prob_tp_iip = BVProblem(
+        BVPFunction{true}(ray_tracing!,
             (ray_tracing_bc_a!, ray_tracing_bc_b!);
-            bcresid_prototype = (zeros(5), zeros(3)), twopoint = Val(true)), u0, tspan, p;
+            bcresid_prototype = (zeros(5), zeros(3)), twopoint = Val(true)),
+        u0,
+        tspan,
+        p;
         nlls = Val(true))
 
     @info "Ray Tracing: Multiple Shooting"
