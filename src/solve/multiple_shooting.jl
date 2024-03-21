@@ -126,7 +126,6 @@ function __solve_nlproblem!(
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
-    # FIXME: This is not safe for polyalgorithms
     __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
 
     return nothing

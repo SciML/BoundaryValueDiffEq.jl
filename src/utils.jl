@@ -63,9 +63,9 @@ end
 #       `w` to the GPU too many times. Instead if we iterate of w and w′ we save
 #       that cost. Our main cost is anyways going to be due to a large `u0` and
 #       we are going to use GPUs for that
-function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
-    for j in eachindex(b)
-        z .= α .* A[:, j] .* b[j] .+ β .* z
+@views function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
+    @simd ivdep for j in eachindex(b)
+        @inbounds @. z = α * A[:, j] * b[j] + β * z
     end
     return z
 end
@@ -390,8 +390,3 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
-
-# Aliasing
-@inline __default_alias_u0(::Nothing) = false
-@inline __default_alias_u0(::NonlinearSolvePolyAlgorithm) = false
-@inline __default_alias_u0(::Any) = true
