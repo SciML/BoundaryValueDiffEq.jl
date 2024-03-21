@@ -389,7 +389,7 @@ end
 
 function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
-    (; nlsolve, jac_alg ) = cache.alg
+    (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
 
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
