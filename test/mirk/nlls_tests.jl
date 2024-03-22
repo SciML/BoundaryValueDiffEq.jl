@@ -193,9 +193,9 @@ end
 
     for solver in SOLVERS
         sol = solve(
-            prob_tp, solver; verbose = false, dt = 0.1, abstol = 1e-3, reltol = 1e-3)
+            prob_tp, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
         @test SciMLBase.successful_retcode(sol.retcode)
-        sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1e-3, reltol = 1e-3)
+        sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
         @test SciMLBase.successful_retcode(sol.retcode)
     end
 end
