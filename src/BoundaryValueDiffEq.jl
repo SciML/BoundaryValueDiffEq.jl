@@ -4,8 +4,10 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
 
 @recompile_invalidations begin
     using ADTypes, Adapt, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
-          OrdinaryDiffEq, PreallocationTools, Preferences, RecursiveArrayTools, Reexport,
-          SciMLBase, Setfield, SparseDiffTools
+          OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+          SparseDiffTools
+
+    using PreallocationTools: PreallocationTools, DiffCache
 
     # Special Matrix Types
     using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
@@ -16,7 +18,8 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
     import ConcreteStructs: @concrete
     import DiffEqBase: solve
     import FastClosures: @closure
-    import ForwardDiff: pickchunksize
+    import ForwardDiff: ForwardDiff, pickchunksize
+    import Logging
     import RecursiveArrayTools: ArrayPartition, DiffEqArray
     import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
     import SparseDiffTools: AbstractSparseADType

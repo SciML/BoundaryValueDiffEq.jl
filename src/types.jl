@@ -166,6 +166,14 @@ end
 __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
 __maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
 
-PreallocationTools.get_tmp(dc::FakeDiffCache, _) = dc.du
-
 const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
+
+## get_tmp shows a warning as it should on cache exapansion, this behavior however is
+## expected for adaptive BVP solvers so we write our own `get_tmp` and drop the warning logs
+@inline get_tmp(dc::FakeDiffCache, u) = dc.du
+
+@inline function get_tmp(dc, u)
+    return Logging.with_logger(Logging.NullLogger()) do
+        PreallocationTools.get_tmp(dc, u)
+    end
+end
