@@ -1,6 +1,6 @@
-struct MIRKInterpolation{T1, T2} <: AbstractDiffEqInterpolation
-    t::T1
-    u::T2
+@concrete struct MIRKInterpolation <: AbstractDiffEqInterpolation
+    t
+    u
     cache
 end
 
@@ -9,11 +9,12 @@ function DiffEqBase.interp_summary(interp::MIRKInterpolation)
 end
 
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
-    interpolation(tvals, id, idxs, deriv, p, continuity)
+    return interpolation(tvals, id, idxs, deriv, p, continuity)
 end
 
 function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation!(val, tvals, id, idxs, deriv, p, continuity)
+    return
 end
 
 # FIXME: Fix the interpolation outside the tspan

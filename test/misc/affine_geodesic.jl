@@ -27,7 +27,8 @@ tspan = (0.0, 1.0)
 function bc1!(residual, u, p, t)
     mid = div(length(u[1]), 2)
     residual[1:mid] = u[1][1:mid] - a1
-    return residual[(mid + 1):end] = u[end][1:mid] - a2
+    residual[(mid + 1):end] = u[end][1:mid] - a2
+    return
 end
 
 function chart_log_problem!(du, u, params, t)
