@@ -138,58 +138,73 @@ function __split_mirk_kwargs(;
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
-    (defect_threshold, MxNsub, abstol, adaptive, _), kwargs = __split_mirk_kwargs(;
-        cache.kwargs...)
-    (; y, y₀, prob, alg, mesh, mesh_dt, TU, ITU) = cache
+    (_, _, abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
-    defect_norm = 2 * abstol
 
-    while SciMLBase.successful_retcode(info) && defect_norm > abstol
-        nlprob = __construct_nlproblem(cache, recursive_flatten(y₀))
-        sol_nlprob = __solve(nlprob, alg.nlsolve; abstol, kwargs..., alias_u0 = true)
-        recursive_unflatten!(cache.y₀, sol_nlprob.u)
+    # We do the first iteration outside the loop to preserve type-stability of the
+    # `original` field of the solution
+    sol_nlprob, info, defect_norm = __perform_mirk_iteration(
+        cache, abstol, adaptive; kwargs...)
 
-        info = sol_nlprob.retcode
-
-        !adaptive && break
-
-        if info == ReturnCode.Success
-            defect_norm = defect_estimate!(cache)
-            # The defect is greater than 10%, the solution is not acceptable
-            defect_norm > defect_threshold && (info = ReturnCode.Failure)
-        end
-
-        if info == ReturnCode.Success
-            if defect_norm > abstol
-                # We construct a new mesh to equidistribute the defect
-                mesh, mesh_dt, _, info = mesh_selector!(cache)
-                if info == ReturnCode.Success
-                    __append_similar!(cache.y₀, length(cache.mesh), cache.M)
-                    for (i, m) in enumerate(cache.mesh)
-                        interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
-                    end
-                    __expand_cache!(cache)
-                end
-            end
-        else
-            #  We cannot obtain a solution for the current mesh
-            if 2 * (length(cache.mesh) - 1) > MxNsub
-                # New mesh would be too large
-                info = ReturnCode.Failure
-            else
-                half_mesh!(cache)
-                __expand_cache!(cache)
-                recursive_fill!(cache.y₀, 0)
-                info = ReturnCode.Success # Force a restart
-                defect_norm = 2 * abstol
-            end
+    if adaptive
+        while SciMLBase.successful_retcode(info) && defect_norm > abstol
+            sol_nlprob, info, defect_norm = __perform_mirk_iteration(
+                cache, abstol, adaptive; kwargs...)
         end
     end
 
     u = [reshape(y, cache.in_size) for y in cache.y₀]
-    # TODO: Return `nlsol` as original
-    return DiffEqBase.build_solution(prob, alg, cache.mesh, u;
+
+    odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u;
         interp = MIRKInterpolation(cache.mesh, u, cache), retcode = info)
+    return __build_solution(cache.prob, odesol, sol_nlprob)
+end
+
+function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive; kwargs...)
+    nlprob = __construct_nlproblem(cache, recursive_flatten(cache.y₀))
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
+    sol_nlprob = __solve(nlprob, nlsolve_alg; abstol, kwargs..., alias_u0 = true)
+    recursive_unflatten!(cache.y₀, sol_nlprob.u)
+
+    defect_norm = 2 * abstol
+
+    # Early terminate if non-adaptive
+    adaptive || return sol_nlprob, sol_nlprob.retcode, defect_norm
+
+    info = sol_nlprob.retcode
+
+    if info == ReturnCode.Success # Nonlinear Solve was successful
+        defect_norm = defect_estimate!(cache)
+        # The defect is greater than 10%, the solution is not acceptable
+        defect_norm > cache.alg.defect_threshold && (info = ReturnCode.Failure)
+    end
+
+    if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
+        if defect_norm > abstol
+            # We construct a new mesh to equidistribute the defect
+            mesh, mesh_dt, _, info = mesh_selector!(cache)
+            if info == ReturnCode.Success
+                __append_similar!(cache.y₀, length(cache.mesh), cache.M)
+                for (i, m) in enumerate(cache.mesh)
+                    interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                end
+                __expand_cache!(cache)
+            end
+        end
+    else # Something bad happened
+        # We cannot obtain a solution for the current mesh
+        if 2 * (length(cache.mesh) - 1) > cache.alg.max_num_subintervals
+            # New mesh would be too large
+            info = ReturnCode.Failure
+        else
+            half_mesh!(cache)
+            __expand_cache!(cache)
+            recursive_fill!(cache.y₀, 0)
+            info = ReturnCode.Success # Force a restart
+        end
+    end
+
+    return sol_nlprob, info, defect_norm
 end
 
 # Constructing the Nonlinear Problem

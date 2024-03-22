@@ -54,18 +54,18 @@ bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
 
-probArr = [BVProblem(odef1!, boundary!, u0, tspan),
-    BVProblem(odef1, boundary, u0, tspan),
-    BVProblem(odef2!, boundary!, u0, tspan),
-    BVProblem(odef2, boundary, u0, tspan),
+probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
+    BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype),
-    TwoPointBVProblem(
-        odef1, (boundary_two_point_a, boundary_two_point_b), u0, tspan; bcresid_prototype),
+        u0, tspan; bcresid_prototype, nlls = Val(false)),
+    TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b),
+        u0, tspan; bcresid_prototype, nlls = Val(false)),
     TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype),
-    TwoPointBVProblem(
-        odef2, (boundary_two_point_a, boundary_two_point_b), u0, tspan; bcresid_prototype)]
+        u0, tspan; bcresid_prototype, nlls = Val(false)),
+    TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
+        u0, tspan; bcresid_prototype, nlls = Val(false))]
 
 testTol = 0.2
 affineTol = 1e-2
@@ -93,7 +93,7 @@ end
     @testset "Problem: $i" for i in 1:8
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
-            solver = mirk_solver(Val(order);
+            solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             @test_opt target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
@@ -181,4 +181,35 @@ end
         sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
         @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
     end
+end
+
+@testitem "Swirling Flow III" begin
+    # Reported in https://github.com/SciML/BoundaryValueDiffEq.jl/issues/153
+    eps = 0.01
+    function swirling_flow!(du, u, p, t)
+        eps = p
+        du[1] = u[2]
+        du[2] = (u[1] * u[4] - u[3] * u[2]) / eps
+        du[3] = u[4]
+        du[4] = u[5]
+        du[5] = u[6]
+        du[6] = (-u[3] * u[6] - u[1] * u[2]) / eps
+        return
+    end
+
+    function swirling_flow_bc!(res, u, p, t)
+        res[1] = u[1][1] + 1.0
+        res[2] = u[1][3]
+        res[3] = u[1][4]
+        res[4] = u[end][1] - 1.0
+        res[5] = u[end][3]
+        res[6] = u[end][4]
+        return
+    end
+
+    tspan = (0.0, 1.0)
+    u0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    prob = BVProblem(swirling_flow!, swirling_flow_bc!, u0, tspan, eps)
+
+    @test_nowarn solve(prob, MIRK4(); dt = 0.01)
 end

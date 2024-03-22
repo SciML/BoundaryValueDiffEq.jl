@@ -10,6 +10,8 @@ function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
     ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
     has_initial_guess = _unwrap_val(ig)
 
+    @assert u0 isa AbstractVector "Non-Vector Inputs for Multiple-Shooting hasn't been implemented yet!"
+
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
 
@@ -126,7 +128,8 @@ function __solve_nlproblem!(
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
-    __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(prob, alg.nlsolve)
+    __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
 
     return nothing
 end
@@ -185,8 +188,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
-    # FIXME: This is not safe for polyalgorithms
-    __solve(nlprob, alg.nlsolve; kwargs..., alias_u0 = true)
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(prob, alg.nlsolve)
+    __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
 
     return nothing
 end
