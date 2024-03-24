@@ -133,6 +133,12 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
 function __extract_problem_details(
+        prob, u0::RecursiveArrayTools.AbstractVectorOfArray; kwargs...)
+    # Problem has Initial Guess
+    _u0 = first(u0.u)
+    return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
+end
+function __extract_problem_details(
         prob, u0::AbstractArray; dt = 0.0, check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))

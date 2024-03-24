@@ -76,10 +76,12 @@ end
     u0 = [5.0, -3.5]
     bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
-    probs = [BVProblem(f1!, bc1!, u0, tspan; nlls=Val(false)),
-        BVProblem(f1, bc1, u0, tspan; nlls=Val(false)),
-        TwoPointBVProblem(f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype, nlls=Val(false)),
-        TwoPointBVProblem(f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype, nlls=Val(false))]
+    probs = [BVProblem(f1!, bc1!, u0, tspan; nlls = Val(false)),
+        BVProblem(f1, bc1, u0, tspan; nlls = Val(false)),
+        TwoPointBVProblem(
+            f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype, nlls = Val(false)),
+        TwoPointBVProblem(
+            f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype, nlls = Val(false))]
 
     algs = []
 
@@ -130,8 +132,8 @@ end
             u0, tspan, nlls = Val(true)),
         BVProblem(BVPFunction(f1_nlls, bc1_nlls; bcresid_prototype = bcresid_prototype1),
             u0, tspan, nlls = Val(true)),
-        TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0,
-            tspan; bcresid_prototype = bcresid_prototype2, nlls = Val(true)),
+        TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
+            bcresid_prototype = bcresid_prototype2, nlls = Val(true)),
         TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
             bcresid_prototype = bcresid_prototype2, nlls = Val(true))]
 
@@ -240,7 +242,8 @@ end
     if @load_preference("PrecompileShootingNLLS", true)
         append!(algs,
             [
-                Shooting(Tsit5(); nlsolve = LevenbergMarquardt(; disable_geodesic = Val(true)),
+                Shooting(
+                    Tsit5(); nlsolve = LevenbergMarquardt(; disable_geodesic = Val(true)),
                     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
                 Shooting(Tsit5(); nlsolve = GaussNewton(),
                     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))])

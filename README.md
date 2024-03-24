@@ -18,7 +18,7 @@ functionality should check out [DifferentialEquations.jl](https://github.com/Jul
 
 ## API
 
-BoundaryValueDiffEq.jl is part of the JuliaDiffEq common interface, but can be used independently of DifferentialEquations.jl. The only requirement is that the user passes a BoundaryValueDiffEq.jl algorithm to solve. For example, we can solve the [BVP tutorial from the documentation](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/bvp_example/) using the `MIRK4()` algorithm:
+BoundaryValueDiffEq.jl is part of the SciML common interface, but can be used independently of DifferentialEquations.jl. The only requirement is that the user passes a BoundaryValueDiffEq.jl algorithm to solve. For example, we can solve the [BVP tutorial from the documentation](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/bvp_example/) using the `MIRK4()` algorithm:
 
 ```julia
 using BoundaryValueDiffEq

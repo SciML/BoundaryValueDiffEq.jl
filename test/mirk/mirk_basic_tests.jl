@@ -213,3 +213,40 @@ end
 
     @test_nowarn solve(prob, MIRK4(); dt = 0.01)
 end
+
+@testitem "Solve using Continuation" begin
+    using RecursiveArrayTools
+
+    g = 9.81
+    L = 1.0
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
+
+    function bc2a!(resid_a, u_a, p) # u_a is at the beginning of the time span
+        x0 = p
+        resid_a[1] = u_a[1] - x0 # the solution at the beginning of the time span should be -pi/2
+    end
+    function bc2b!(resid_b, u_b, p) # u_b is at the ending of the time span
+        x0 = p
+        resid_b[1] = u_b[1] - pi / 2 # the solution at the end of the time span should be pi/2
+    end
+
+    bvp3 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), [pi / 2, pi / 2], (pi / 4, pi / 2),
+        -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    sol3 = solve(bvp3, MIRK4(), dt = 0.05)
+
+    # Needs a SciMLBase fix
+    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
+        pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    @test_broken solve(bvp4, MIRK4(), dt = 0.05) isa SciMLBase.ODESolution
+
+    bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
+        (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05).retcode)
+end
