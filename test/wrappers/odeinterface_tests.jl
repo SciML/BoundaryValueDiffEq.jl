@@ -1,5 +1,6 @@
-using Test, BoundaryValueDiffEq, LinearAlgebra, ODEInterface, Random, OrdinaryDiffEq,
-      RecursiveArrayTools
+@testsetup module ODEInterfaceWrapperTestSetup
+
+using BoundaryValueDiffEq, LinearAlgebra, ODEInterface, Random, RecursiveArrayTools
 
 # Adaptation of https://github.com/luchr/ODEInterface.jl/blob/958b6023d1dabf775033d0b89c5401b33100bca3/examples/BasicExamples/ex7.jl
 function ex7_f!(du, u, p, t)
@@ -27,8 +28,16 @@ tspan = (-π / 2, π / 2)
 tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
     p; bcresid_prototype = (zeros(1), zeros(1)))
 
-@testset "BVPM2" begin
-    @info "Testing BVPM2"
+# Just generate a solution for bvpsol
+sol_ms = solve(tpprob, MultipleShooting(10, DP5(), NewtonRaphson());
+    dt = π / 20, abstol = 1e-5, maxiters = 1000, adaptive = false)
+
+export ex7_f!, ex7_2pbc1!, ex7_2pbc2!, u0, p, tspan, tpprob, sol_ms
+
+end
+
+@testitem "BVPM2" setup=[ODEInterfaceWrapperTestSetup] begin
+    using ODEInterface, RecursiveArrayTools
 
     sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
     @test SciMLBase.successful_retcode(sol_bvpm2)
@@ -38,70 +47,61 @@ tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
     @test norm(resid_f, Inf) < 1e-6
 end
 
-# Just generate a solution for bvpsol
-sol_ms = solve(tpprob, MultipleShooting(10, DP5(), NewtonRaphson());
-    dt = π / 20, abstol = 1e-5, maxiters = 1000,
-    odesolve_kwargs = (; adaptive = false, dt = 0.01, abstol = 1e-6, maxiters = 1000))
-
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
-@testset "BVPSOL" begin
-    @info "Testing BVPSOL"
-
-    @info "BVPSOL with Vector{<:AbstractArray}"
+@testitem "BVPSOL" setup=[ODEInterfaceWrapperTestSetup] begin
+    using ODEInterface, RecursiveArrayTools
 
     initial_u0 = [sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]]
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
         tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
-
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
-    @info "BVPSOL with VectorOfArray"
+    @test sol_bvpsol isa SciMLBase.ODESolution
 
     initial_u0 = VectorOfArray([sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]])
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
         tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
-
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
-    @info "BVPSOL with DiffEqArray"
+    @test sol_bvpsol isa SciMLBase.ODESolution
 
     ts = collect(tspan[1]:(π / 20):tspan[2])
     initial_u0 = DiffEqArray([sol_ms(t) .+ rand() for t in ts], ts)
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
         tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
-
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
-    @info "BVPSOL with initial guess function"
+    @test sol_bvpsol isa SciMLBase.ODESolution
 
     initial_u0 = (p, t) -> sol_ms(t) .+ rand()
-    # FIXME: Upstream fix
-    # tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0, tspan, p;
-    #     bcresid_prototype = (zeros(1), zeros(1)))
-    # sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
+    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
+    sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
+
+    @test sol_bvpsol isa SciMLBase.ODESolution
 end
 
-#=
-@info "COLNEW"
+@testitem "COLNEW" setup=[ODEInterfaceWrapperTestSetup] begin
+    using ODEInterface, RecursiveArrayTools
 
-function f!(du, u, p, t)
-    du[1] = u[2]
-    du[2] = u[1]
-end
-function bca!(resid_a, u_a, p)
-    resid_a[1] = u_a[1] - 1
-end
-function bcb!(resid_b, u_b, p)
-    resid_b[1] = u_b[1]
-end
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = u[1]
+    end
+    function bca!(resid_a, u_a, p)
+        resid_a[1] = u_a[1] - 1
+    end
+    function bcb!(resid_b, u_b, p)
+        resid_b[1] = u_b[1]
+    end
 
-fun = BVPFunction(
-    f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
-tspan = (0.0, 1.0)
+    fun = BVPFunction(
+        f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
+    tspan = (0.0, 1.0)
 
-prob = TwoPointBVProblem(fun, [1.0, 0.0], tspan)
-sol_colnew = solve(prob, COLNEW(), dt = 0.01)
-@test SciMLBase.successful_retcode(sol_colnew)
-=#
+    prob = TwoPointBVProblem(fun, [1.0, 0.0], tspan)
+    sol_colnew = solve(prob, COLNEW(), dt = 0.01)
+    @test SciMLBase.successful_retcode(sol_colnew)
+end

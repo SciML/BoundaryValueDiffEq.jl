@@ -808,7 +808,7 @@ version = "0.6.42"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables"]
-git-tree-sha1 = "0e4fca3dd5de4d4a82c0ffae1e51ab6234af4df0"
+git-tree-sha1 = "3fbd6a361ec965a89f1ec64320a8b8a80b7409c3"
 repo-rev = "ap/nlls_bvp"
 repo-url = "https://github.com/SciML/SciMLBase.jl.git"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"

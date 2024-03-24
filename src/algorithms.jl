@@ -295,6 +295,10 @@ struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
     end
 end
 
+function BVPSOL(; bvpclass = 2, sol_method = 0, odesolver = nothing)
+    return BVPSOL(bvpclass, sol_method, odesolver)
+end
+
 """
     COLNEW(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
         max_num_subintervals = 3000)
