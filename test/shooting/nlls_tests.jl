@@ -1,21 +1,20 @@
-# FIXME: The nonlinear solve polyalgorithm for NLLS is currently broken because of Bastin
-#        Jv & Jᵀv computation with the cached ODE solve
 @testitem "Overconstrained BVP" begin
     using LinearAlgebra, JET
 
     SOLVERS = [
-        # Shooting(Tsit5()),
+        Shooting(Tsit5(); jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
         Shooting(
-            Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))), Shooting(
-            Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
+            Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
-        # MultipleShooting(10, Tsit5()),
         MultipleShooting(
-            10, Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))), MultipleShooting(
-            10, Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
+            10, Tsit5(); jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(
+            10, Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
         MultipleShooting(
             10, Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
@@ -23,7 +22,8 @@
             10, Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff()))]
     JET_SKIP = fill(false, length(SOLVERS))
-    JET_BROKEN = fill(false, length(SOLVERS))
+    JET_OPT_BROKEN = fill(false, length(SOLVERS))
+    JET_CALL_BROKEN = fill(false, length(SOLVERS))
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -52,11 +52,11 @@
         @test_opt target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
         @test_call target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
 
     # IIP MP-BVP
@@ -91,11 +91,11 @@
         @test_opt target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
         @test_call target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
 
     # OOP TP-BVP
@@ -118,11 +118,11 @@
         @test_opt target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
         @test_call target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
 
     # IIP TP-BVP
@@ -145,10 +145,10 @@
         @test_opt target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
         @test_call target_modules=(
             SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
             bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
 end

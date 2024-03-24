@@ -72,7 +72,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     nlf = __unsafe_nonlinearfunction{iip}(
         loss_fn; jac_prototype, resid_prototype, jac = jac_fn)
     nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(prob, alg.nlsolve)
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
     nlsol = __solve(nlprob, nlsolve_alg; nlsolve_kwargs..., verbose, kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
