@@ -13,8 +13,6 @@ struct MIRKTableau{sType, cType, vType, bType, xType}
     end
 end
 
-@truncate_stacktrace MIRKTableau 1
-
 struct MIRKInterpTableau{s, c, v, x, τ}
     s_star::s
     c_star::c
@@ -24,13 +22,11 @@ struct MIRKInterpTableau{s, c, v, x, τ}
 
     function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star)
         @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
-        return new{typeof(s_star), typeof(c_star), typeof(v_star), typeof(x_star),
-            typeof(τ_star)}(s_star,
-            c_star, v_star, x_star, τ_star)
+        return new{
+            typeof(s_star), typeof(c_star), typeof(v_star), typeof(x_star), typeof(τ_star)}(
+            s_star, c_star, v_star, x_star, τ_star)
     end
 end
-
-@truncate_stacktrace MIRKInterpTableau 1
 
 # Sparsity Detection
 @concrete struct BVPJacobianAlgorithm
@@ -39,14 +35,40 @@ end
     diffmode
 end
 
+@inline __materialize_jacobian_algorithm(_, alg::BVPJacobianAlgorithm) = alg
+@inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) = BVPJacobianAlgorithm(alg)
+@inline __materialize_jacobian_algorithm(::Nothing, ::Nothing) = BVPJacobianAlgorithm()
+@inline function __materialize_jacobian_algorithm(nlsolve::N, ::Nothing) where {N}
+    ad = hasfield(N, :jacobian_ad) ? nlsolve.jacobian_ad : missing
+    return BVPJacobianAlgorithm(ad)
+end
+
+function Base.show(io::IO, alg::BVPJacobianAlgorithm)
+    print(io, "BVPJacobianAlgorithm(")
+    modifiers = String[]
+    if alg.diffmode !== nothing && alg.diffmode !== missing
+        push!(modifiers, "diffmode = $(__nameof(alg.diffmode))()")
+    else
+        if alg.nonbc_diffmode !== missing && alg.nonbc_diffmode !== nothing
+            push!(modifiers, "nonbc_diffmode = $(__nameof(alg.nonbc_diffmode))()")
+        end
+        if alg.bc_diffmode !== missing && alg.bc_diffmode !== nothing
+            push!(modifiers, "bc_diffmode = $(__nameof(alg.bc_diffmode))()")
+        end
+    end
+    print(io, join(modifiers, ", "))
+    print(io, ")")
+end
+
 __any_sparse_ad(ad) = ad isa AbstractSparseADType
 function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
-    __any_sparse_ad(jac_alg.bc_diffmode) || __any_sparse_ad(jac_alg.nonbc_diffmode) ||
+    __any_sparse_ad(jac_alg.bc_diffmode) ||
+        __any_sparse_ad(jac_alg.nonbc_diffmode) ||
         __any_sparse_ad(jac_alg.diffmode)
 end
 
-function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing,
-        bc_diffmode = missing)
+function BVPJacobianAlgorithm(
+        diffmode = missing; nonbc_diffmode = missing, bc_diffmode = missing)
     if diffmode !== missing
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
@@ -74,10 +96,9 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProb
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
 end
 
-function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type,
-        prob::BVProblem, alg)
-    u0 = prob.u0 isa AbstractArray ? prob.u0 :
-         __initial_guess(prob.u0, prob.p, first(prob.tspan))
+function concrete_jacobian_algorithm(
+        jac_alg::BVPJacobianAlgorithm, prob_type, prob::BVProblem, alg)
+    u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
@@ -121,19 +142,15 @@ function concretize_jacobian_algorithm(alg, prob)
     return alg
 end
 
-function MIRKJacobianComputationAlgorithm(diffmode = missing;
-        collocation_diffmode = missing, bc_diffmode = missing)
-    Base.depwarn("`MIRKJacobianComputationAlgorithm` has been deprecated in favor of \
-        `BVPJacobianAlgorithm`. Replace `collocation_diffmode` with `nonbc_diffmode",
-        :MIRKJacobianComputationAlgorithm)
-    return BVPJacobianAlgorithm(diffmode; nonbc_diffmode = collocation_diffmode,
-        bc_diffmode)
-end
+Base.@deprecate MIRKJacobianComputationAlgorithm(
+    diffmode = missing; collocation_diffmode = missing, bc_diffmode = missing) BVPJacobianAlgorithm(
+    diffmode; nonbc_diffmode = collocation_diffmode, bc_diffmode)
 
 __needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true
 __needs_diffcache(_) = false
 function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
-    return __needs_diffcache(jac_alg.diffmode) || __needs_diffcache(jac_alg.bc_diffmode) ||
+    return __needs_diffcache(jac_alg.diffmode) ||
+           __needs_diffcache(jac_alg.bc_diffmode) ||
            __needs_diffcache(jac_alg.nonbc_diffmode)
 end
 
@@ -148,6 +165,14 @@ end
 __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
 __maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
 
-PreallocationTools.get_tmp(dc::FakeDiffCache, _) = dc.du
-
 const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
+
+## get_tmp shows a warning as it should on cache exapansion, this behavior however is
+## expected for adaptive BVP solvers so we write our own `get_tmp` and drop the warning logs
+@inline get_tmp(dc::FakeDiffCache, u) = dc.du
+
+@inline function get_tmp(dc, u)
+    return Logging.with_logger(Logging.NullLogger()) do
+        PreallocationTools.get_tmp(dc, u)
+    end
+end

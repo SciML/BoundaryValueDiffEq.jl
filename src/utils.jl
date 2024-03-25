@@ -15,8 +15,8 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray},
-        sizes)
+@views function recursive_flatten_twopoint!(
+        y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = Iterators.peel(x)
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
@@ -63,9 +63,9 @@ end
 #       `w` to the GPU too many times. Instead if we iterate of w and w′ we save
 #       that cost. Our main cost is anyways going to be due to a large `u0` and
 #       we are going to use GPUs for that
-function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
-    for j in eachindex(b)
-        z .= α .* A[:, j] .* b[j] .+ β .* z
+@views function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
+    @simd ivdep for j in eachindex(b)
+        @inbounds @. z = α * A[:, j] * b[j] + β * z
     end
     return z
 end
@@ -85,16 +85,16 @@ function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p,
-        t) where {BC}
+@views function eval_bc_residual!(
+        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol,
-        p, t) where {BC}
+@views function eval_bc_residual!(
+        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid[1], ua, p)
@@ -132,15 +132,21 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
-        check_positive_dt::Bool = false)
+function __extract_problem_details(
+        prob, u0::RecursiveArrayTools.AbstractVectorOfArray; kwargs...)
+    # Problem has Initial Guess
+    _u0 = first(u0.u)
+    return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
+end
+function __extract_problem_details(
+        prob, u0::AbstractArray; dt = 0.0, check_positive_dt::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
-function __extract_problem_details(prob, f::F; dt = 0.0,
-        check_positive_dt::Bool = false) where {F <: Function}
+function __extract_problem_details(
+        prob, f::F; dt = 0.0, check_positive_dt::Bool = false) where {F <: Function}
     # Problem passes in a initial guess function
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     u0 = __initial_guess(f, prob.p, prob.tspan[1])
@@ -149,9 +155,9 @@ function __extract_problem_details(prob, f::F; dt = 0.0,
 end
 
 function __initial_guess(f::F, p::P, t::T) where {F, P, T}
-    if static_hasmethod(f, Tuple{P, T})
+    if hasmethod(f, Tuple{P, T})
         return f(p, t)
-    elseif static_hasmethod(f, Tuple{T})
+    elseif hasmethod(f, Tuple{T})
         Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
                      `t`. The single argument version has been deprecated and will be \
                      removed in the next major release of SciMLBase.",
@@ -160,19 +166,6 @@ function __initial_guess(f::F, p::P, t::T) where {F, P, T}
     else
         throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))
     end
-end
-
-function __initial_state_from_prob(prob::BVProblem, mesh)
-    return __initial_state_from_prob(prob, prob.u0, mesh)
-end
-function __initial_state_from_prob(::BVProblem, u0::AbstractArray, mesh)
-    return [copy(vec(u0)) for _ in mesh]
-end
-function __initial_state_from_prob(::BVProblem, u0::AbstractVector{<:AbstractVector}, _)
-    return [copy(vec(u)) for u in u0]
-end
-function __initial_state_from_prob(prob::BVProblem, f::F, mesh) where {F}
-    return [__initial_guess(f, prob.p, t) for t in mesh]
 end
 
 function __get_bcresid_prototype(prob::BVProblem, u)
@@ -251,4 +244,155 @@ function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)
 end
 
-# TODO: Add dispatch for a ODESolution Type as well
+# Override the checks for NonlinearFunction
+struct __unsafe_nonlinearfunction{iip} end
+
+@inline function __unsafe_nonlinearfunction{iip}(
+        f::F; jac::J = nothing, jac_prototype::JP = nothing, colorvec::CV = nothing,
+        resid_prototype::RP = nothing) where {iip, F, J, JP, CV, RP}
+    return NonlinearFunction{
+        iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing, J, Nothing,
+        Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing, RP}(
+        f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
+        nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
+end
+
+@inline __nameof(::T) where {T} = nameof(T)
+@inline __nameof(::Type{T}) where {T} = nameof(T)
+
+# Construct the internal NonlinearProblem
+@inline function __internal_nlsolve_problem(
+        ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
+        u0, args...; kwargs...) where {uType, tType, iip, nlls}
+    if nlls
+        return NonlinearLeastSquaresProblem(args...; kwargs...)
+    else
+        return NonlinearProblem(args...; kwargs...)
+    end
+end
+
+@inline function __internal_nlsolve_problem(
+        bvp::BVProblem{uType, tType, iip, Nothing}, resid_prototype,
+        u0, args...; kwargs...) where {uType, tType, iip}
+    return __internal_nlsolve_problem(
+        bvp, length(resid_prototype), length(u0), args...; kwargs...)
+end
+
+@inline function __internal_nlsolve_problem(
+        ::BVProblem{uType, tType, iip, Nothing}, l1::Int,
+        l2::Int, args...; kwargs...) where {uType, tType, iip}
+    if l1 != l2
+        return NonlinearLeastSquaresProblem(args...; kwargs...)
+    else
+        return NonlinearProblem(args...; kwargs...)
+    end
+end
+
+# Handling Initial Guesses
+"""
+    __extract_u0(u₀, t₀)
+
+Takes the input initial guess and returns the value at the starting mesh point.
+"""
+@inline __extract_u0(u₀::AbstractVector{<:AbstractArray}, p, t₀) = u₀[1]
+@inline __extract_u0(u₀::VectorOfArray, p, t₀) = u₀[:, 1]
+@inline __extract_u0(u₀::DiffEqArray, p, t₀) = u₀.u[1]
+@inline __extract_u0(u₀::F, p, t₀) where {F <: Function} = __initial_guess(u₀, p, t₀)
+@inline __extract_u0(u₀::AbstractArray, p, t₀) = u₀
+@inline __extract_u0(u₀::T, p, t₀) where {T} = error("`prob.u0::$(T)` is not supported.")
+
+"""
+    __extract_mesh(u₀, t₀, t₁, n)
+
+Takes the input initial guess and returns the mesh.
+"""
+@inline __extract_mesh(u₀, t₀, t₁, n::Int) = collect(range(t₀; stop = t₁, length = n + 1))
+@inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
+@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = u₀.t
+@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = u₀.t
+
+"""
+    __has_initial_guess(u₀) -> Bool
+
+Returns `true` if the input has an initial guess.
+"""
+@inline __has_initial_guess(u₀::AbstractVector{<:AbstractArray}) = true
+@inline __has_initial_guess(u₀::VectorOfArray) = true
+@inline __has_initial_guess(u₀::DiffEqArray) = true
+@inline __has_initial_guess(u₀::F) where {F} = true
+@inline __has_initial_guess(u₀::AbstractArray) = false
+
+"""
+    __initial_guess_length(u₀) -> Int
+
+Returns the length of the initial guess. If the initial guess is a function or no initial
+guess is supplied, it returns `-1`.
+"""
+@inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
+@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
+@inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
+@inline __initial_guess_length(u₀::F) where {F} = -1
+@inline __initial_guess_length(u₀::AbstractArray) = -1
+
+"""
+    __flatten_initial_guess(u₀) -> Union{AbstractMatrix, AbstractVector, Nothing}
+
+Flattens the initial guess into a matrix. For a function `u₀`, it returns `nothing`. For no
+initial guess, it returns `vec(u₀)`.
+"""
+@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(
+    vec, hcat, u₀)
+@inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
+@inline __flatten_initial_guess(u₀::F) where {F} = nothing
+
+"""
+    __initial_guess_on_mesh(u₀, mesh, p, alias_u0::Bool)
+
+Returns the initial guess on the mesh. For `DiffEqArray` assumes that the mesh is the same
+as the mesh of the `DiffEqArray`.
+
+If `alias_u0` is set to `true`, we try our best to minimize copies. This means that `u₀`
+or parts of it will get mutated.
+"""
+@inline function __initial_guess_on_mesh(
+        u₀::AbstractVector{<:AbstractArray}, _, p, alias_u0::Bool)
+    return alias_u0 ? vec.(u₀) : [copy(vec(u)) for u in u₀]
+end
+@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p, alias_u0::Bool)
+    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+end
+@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p, alias_u0::Bool)
+    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+end
+@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p, alias_u0::Bool)
+    return [copy(vec(u₀)) for _ in mesh]
+end
+@inline function __initial_guess_on_mesh(u₀::F, mesh, p, alias_u0::Bool) where {F}
+    return [vec(__initial_guess(u₀, p, t)) for t in mesh]
+end
+
+# Construct BVP Solution
+function __build_solution(prob::BVProblem, odesol, nlsol)
+    retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
+    return __solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
+end
+
+function __solution_new_original_retcode(
+        sol::ODESolution{T, N}, original, retcode, resid) where {T, N}
+    return ODESolution{
+        T, N, typeof(sol.u), typeof(sol.u_analytic), typeof(sol.errors), typeof(sol.t),
+        typeof(sol.k), typeof(sol.prob), typeof(sol.alg), typeof(sol.interp),
+        typeof(sol.stats), typeof(sol.alg_choice), typeof(resid), typeof(original)}(
+        sol.u, sol.u_analytic, sol.errors, sol.t, sol.k, sol.prob, sol.alg, sol.interp,
+        sol.dense, sol.tslocation, sol.stats, sol.alg_choice, retcode, resid, original)
+end
+
+# Fix3
+@concrete struct __Fix3
+    f
+    x
+end
+
+@inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)

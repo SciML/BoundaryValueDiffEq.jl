@@ -18,7 +18,7 @@ functionality should check out [DifferentialEquations.jl](https://github.com/Jul
 
 ## API
 
-BoundaryValueDiffEq.jl is part of the JuliaDiffEq common interface, but can be used independently of DifferentialEquations.jl. The only requirement is that the user passes a BoundaryValueDiffEq.jl algorithm to solve. For example, we can solve the [BVP tutorial from the documentation](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/bvp_example/) using the `MIRK4()` algorithm:
+BoundaryValueDiffEq.jl is part of the SciML common interface, but can be used independently of DifferentialEquations.jl. The only requirement is that the user passes a BoundaryValueDiffEq.jl algorithm to solve. For example, we can solve the [BVP tutorial from the documentation](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/bvp_example/) using the `MIRK4()` algorithm:
 
 ```julia
 using BoundaryValueDiffEq
@@ -46,18 +46,18 @@ For the list of available solvers, please refer to the [DifferentialEquations.jl
 Precompilation can be controlled via `Preferences.jl`
 
   - `PrecompileMIRK` -- Precompile the MIRK2 - MIRK6 algorithms (default: `true`).
-  - `PrecompileShooting` -- Precompile the single shooting algorithms (default: `false`). This is triggered when `OrdinaryDiffEq` is loaded.
-  - `PrecompileMultipleShooting` -- Precompile the multiple shooting algorithms (default: `false`). This is triggered when `OrdinaryDiffEq` is loaded.
-  - `PrecompileMIRKNLLS` -- Precompile the MIRK2 - MIRK6 algorithms for under-determined and over-determined BVPs (default: `false`).
-  - `PrecompileShootingNLLS` -- Precompile the single shooting algorithms for under-determined and over-determined BVPs (default: `false`). This is triggered when `OrdinaryDiffEq` is loaded.
-  - `PrecompileMultipleShootingNLLS` -- Precompile the multiple shooting algorithms for under-determined and over-determined BVPs (default: `false` ). This is triggered when `OrdinaryDiffEq` is loaded.
+  - `PrecompileShooting` -- Precompile the single shooting algorithms (default: `true`).
+  - `PrecompileMultipleShooting` -- Precompile the multiple shooting algorithms (default: `true`).
+  - `PrecompileMIRKNLLS` -- Precompile the MIRK2 - MIRK6 algorithms for under-determined and over-determined BVPs (default: `true`).
+  - `PrecompileShootingNLLS` -- Precompile the single shooting algorithms for under-determined and over-determined BVPs (default: `true`).
+  - `PrecompileMultipleShootingNLLS` -- Precompile the multiple shooting algorithms for under-determined and over-determined BVPs (default: `true` ).
 
 To set these preferences before loading the package, do the following (replacing `PrecompileShooting` with the preference you want to set, or pass in multiple pairs to set them together):
 
 ```julia
 using Preferences, UUIDs
-Preferences.set_preferences!(UUID("764a87c0-6b3e-53db-9096-fe964310641d"),
-    "PrecompileShooting" => false)
+Preferences.set_preferences!(
+    UUID("764a87c0-6b3e-53db-9096-fe964310641d"), "PrecompileShooting" => false)
 ```
 
 ## Running Benchmarks Locally

@@ -1,6 +1,6 @@
-struct MIRKInterpolation{T1, T2} <: AbstractDiffEqInterpolation
-    t::T1
-    u::T2
+@concrete struct MIRKInterpolation <: AbstractDiffEqInterpolation
+    t
+    u
     cache
 end
 
@@ -9,18 +9,19 @@ function DiffEqBase.interp_summary(interp::MIRKInterpolation)
 end
 
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
-    interpolation(tvals, id, idxs, deriv, p, continuity)
+    return interpolation(tvals, id, idxs, deriv, p, continuity)
 end
 
 function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation!(val, tvals, id, idxs, deriv, p, continuity)
+    return
 end
 
 # FIXME: Fix the interpolation outside the tspan
 
-@inline function interpolation(tvals, id::I, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {I, D}
-    @unpack t, u, cache = id
+@inline function interpolation(
+        tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
+    (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
@@ -40,9 +41,9 @@ end
     return DiffEqArray(vals, tvals)
 end
 
-@inline function interpolation!(vals, tvals, id::I, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {I, D}
-    @unpack t, cache = id
+@inline function interpolation!(
+        vals, tvals, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
+    (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
@@ -53,8 +54,8 @@ end
     end
 end
 
-@inline function interpolation(tval::Number, id::I, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {I, D}
+@inline function interpolation(
+        tval::Number, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
     z = similar(id.cache.fᵢ₂_cache)
     interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return z

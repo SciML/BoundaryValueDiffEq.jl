@@ -1,9 +1,9 @@
-using BoundaryValueDiffEq, LinearAlgebra, Test
+@testitem "Overconstrained BVP" begin
+    using LinearAlgebra
 
-@testset "Overconstrained BVP" begin
     SOLVERS = [mirk(; nlsolve)
                for mirk in (MIRK4, MIRK5, MIRK6),
-    nlsolve in (LevenbergMarquardt(), GaussNewton(), nothing)]
+    nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -20,7 +20,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp1, solver; verbose = false, dt = 1.0)
+        sol = solve(bvp1, solver; verbose = false, dt = 1.0)
         @test norm(bc1(sol, nothing, tspan), Inf) < 1e-2
     end
 
@@ -44,7 +44,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp2, solver; verbose = false, dt = 1.0)
+        sol = solve(bvp2, solver; verbose = false, dt = 1.0)
         resid_f = Array{Float64}(undef, 3)
         bc1!(resid_f, sol, nothing, sol.t)
         @test norm(resid_f, Inf) < 1e-2
@@ -61,7 +61,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
         tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp3, solver; verbose = false, dt = 1.0)
+        sol = solve(bvp3, solver; verbose = false, dt = 1.0)
         @test norm(vcat(bc1a(sol[1], nothing), bc1b(sol[end], nothing)), Inf) < 1e-2
     end
 
@@ -76,8 +76,7 @@ using BoundaryValueDiffEq, LinearAlgebra, Test
         tspan)
 
     for solver in SOLVERS
-        @time sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3,
-            reltol = 1e-3)
+        sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
         resida = Array{Float64}(undef, 1)
         residb = Array{Float64}(undef, 2)
         bc1a!(resida, sol(0.0), nothing)
@@ -88,17 +87,18 @@ end
 
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
-# These tests are taking far too long currently and failing
-#=
-@testset "Underconstrained BVP: Rod BVP" begin
+@testitem "Underconstrained BVP: Rod BVP" begin
+    using LinearAlgebra
+
     # Force normal form for GN
-    SOLVERS = [mirk(; nlsolve) for mirk in (MIRK4, MIRK5, MIRK6),
-    nlsolve in (TrustRegion(), GaussNewton(), nothing)]
+    SOLVERS = [mirk(; nlsolve)
+               for mirk in (MIRK4, MIRK5, MIRK6),
+    nlsolve in (TrustRegion(), GaussNewton(), LevenbergMarquardt(), nothing)]
 
     function hat(y)
         return [0 -y[3] y[2]
-            y[3] 0 -y[1]
-            -y[2] y[1] 0]
+                y[3] 0 -y[1]
+                -y[2] y[1] 0]
     end
 
     function inv_hat(skew)
@@ -186,18 +186,16 @@ end
     rod_ode!(dy, y, p, t) = rod_ode!(dy, y, p, t, inv(Kse), inv(Kbt), rho, A, g)
     y0 = vcat(p0, R0, zeros(6))
     p = vcat(p0, R0, pL, RL)
-    prob_tp = TwoPointBVProblem(rod_ode!, (bc_a!, bc_b!), y0, tspan, p,
-        bcresid_prototype = (zeros(6), zeros(6)))
-    prob = BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, tspan,
-        p)
+    prob_tp = TwoPointBVProblem(
+        rod_ode!, (bc_a!, bc_b!), y0, tspan, p, bcresid_prototype = (zeros(6), zeros(6)))
+    prob = BVProblem(
+        BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, tspan, p)
 
     for solver in SOLVERS
-        @time sol = solve(prob_tp, solver; verbose = false, dt = 0.1, abstol = 1e-3,
-            reltol = 1e-3)
+        sol = solve(
+            prob_tp, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
         @test SciMLBase.successful_retcode(sol.retcode)
-        @time sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1e-3,
-            reltol = 1e-3)
+        sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
         @test SciMLBase.successful_retcode(sol.retcode)
     end
 end
-=#

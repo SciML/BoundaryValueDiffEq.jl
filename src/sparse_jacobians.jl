@@ -32,8 +32,8 @@ Base.eltype(M::ColoredMatrix) = eltype(M.M)
 ColoredMatrix() = ColoredMatrix(nothing, nothing, nothing)
 
 function __sparsity_detection_alg(M::ColoredMatrix)
-    return PrecomputedJacobianColorvec(; jac_prototype = M.M, M.row_colorvec,
-        M.col_colorvec)
+    return PrecomputedJacobianColorvec(;
+        jac_prototype = M.M, M.row_colorvec, M.col_colorvec)
 end
 __sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
 
@@ -53,16 +53,16 @@ function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
     return __generate_sparse_jacobian_prototype(cache, cache.problem_type, ya, yb, M, N)
 end
 
-function __generate_sparse_jacobian_prototype(::MIRKCache, ::StandardBVProblem, ya, yb, M,
-        N)
+function __generate_sparse_jacobian_prototype(
+        ::MIRKCache, ::StandardBVProblem, ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
     return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
 end
 
-function __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem,
-        ya, yb, M, N)
+function __generate_sparse_jacobian_prototype(
+        ::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
@@ -82,10 +82,10 @@ end
 
 Returns a 3-Tuple:
 
-* Entire Jacobian Prototype (if Two-Point Problem) else `nothing`.
-* Sparse Non-BC Part Jacobian Prototype along with the column and row color vectors.
-* Sparse BC Part Jacobian Prototype along with the column and row color vectors (if
-  Two-Point Problem) else `nothing`.
+  - Entire Jacobian Prototype (if Two-Point Problem) else `nothing`.
+  - Sparse Non-BC Part Jacobian Prototype along with the column and row color vectors.
+  - Sparse BC Part Jacobian Prototype along with the column and row color vectors (if
+    Two-Point Problem) else `nothing`.
 """
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
         bcresid_prototype, u0, N::Int, nshoots::Int)
