@@ -36,7 +36,7 @@ end
     for j in idx
         z = similar(cache.fᵢ₂_cache)
         interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
-        vals[j] = z
+        vals[j] = idxs !== nothing ? z[idxs] : z
     end
     return DiffEqArray(vals, tvals)
 end
@@ -58,5 +58,5 @@ end
         tval::Number, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
     z = similar(id.cache.fᵢ₂_cache)
     interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
-    return z
+    return idxs !== nothing ? z[idxs] : z
 end
