@@ -180,6 +180,9 @@ end
     @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
         sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
         @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
+        @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
+        @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
+        @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
     end
 end
 
