@@ -58,6 +58,11 @@ function create_simple_pendulum_benchmark()
         iip_suite["Shooting(Tsit5())"] = @benchmarkable solve(
             $SimplePendulumBenchmark.prob_iip, $Shooting(Tsit5()))
     end
+    for alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
+        if @isdefined(alg)
+            iip_suite["$alg()"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip, $alg(), dt=0.05)
+        end
+    end
 
     if @isdefined(MultipleShooting)
         oop_suite["MultipleShooting(100, Tsit5; grid_coarsening = true)"] = @benchmarkable solve(
@@ -74,6 +79,11 @@ function create_simple_pendulum_benchmark()
     if @isdefined(Shooting)
         oop_suite["Shooting(Tsit5())"] = @benchmarkable solve(
             $SimplePendulumBenchmark.prob_oop, $Shooting(Tsit5()))
+    end
+    for alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
+        if @isdefined(alg)
+            oop_suite["$alg()"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop, $alg(), dt=0.05)
+        end
     end
 
     return suite
