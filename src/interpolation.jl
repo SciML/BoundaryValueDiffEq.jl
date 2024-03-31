@@ -83,7 +83,7 @@ end
 
 @inline function interpolation(tvals, id::FIRKExpandInterpolation, idxs, deriv::D, p,
         continuity::Symbol = :left) where {D}
-    @unpack t, u, cache = id
+    (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
@@ -98,14 +98,14 @@ end
     for j in idx
         z = similar(cache.fᵢ₂_cache)
         interp_eval!(z, j, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
-        vals[j] = z
+        vals[j] = idxs !== nothing ? z[idxs] : z
     end
     return DiffEqArray(vals, tvals)
 end
 
 @inline function interpolation!(vals, tvals, id::FIRKExpandInterpolation, idxs, deriv::D, p,
         continuity::Symbol = :left) where { D}
-    @unpack t, cache = id
+    (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
@@ -120,7 +120,7 @@ end
         continuity::Symbol = :left) where {D}
     z = [similar(id.cache.fᵢ₂_cache)]
     interp_eval!(z, 1, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
-    return z[1]
+    return idxs !== nothing ? z[1][idxs] : z[1]
 end
 
 """

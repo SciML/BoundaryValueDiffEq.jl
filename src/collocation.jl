@@ -10,7 +10,7 @@ end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
 	mesh, mesh_dt, stage::Int)
-	@unpack c, v, x, b = TU
+	(; c, v, x, b) = TU
 
 	tmp = get_tmp(fᵢ_cache, u)
 	T = eltype(u)
@@ -36,7 +36,7 @@ end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
 	mesh, mesh_dt, stage::Int)
-	@unpack c, a, b = TU
+	(; c, a, b) = TU
 	tmp1 = get_tmp(fᵢ_cache, u)
 	K = get_tmp(k_discrete[1], u) # Not optimal # TODO
 	T = eltype(u)
@@ -105,8 +105,8 @@ end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
 	mesh, mesh_dt, stage::Int, cache)
-	@unpack c, a, b, = TU
-	@unpack nest_cache = cache
+	(; c, a, b )= TU
+	(; nest_cache) = cache
 
 	T = eltype(u)
 	p_nestprob = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
@@ -143,7 +143,7 @@ end
 
 @views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt,
 	stage::Int)
-	@unpack c, v, x, b = TU
+	(; c, v, x, b) = TU
 	residuals = [similar(yᵢ) for yᵢ in y[1:(end-1)]]
 	tmp = get_tmp(fᵢ_cache, u)
 	T = eltype(u)
@@ -168,47 +168,10 @@ end
 
 	return residuals
 end
-#= 
-@views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-	mesh, mesh_dt, stage::Int)
-	@unpack c, a, b = TU
-	residuals = [similar(yᵢ) for yᵢ in y[1:(end-1)]]
-	tmp1 = get_tmp(fᵢ_cache, u)
-	K = get_tmp(k_discrete[1], u)
-	T = eltype(u)
-
-	ctr = 1
-	for i in eachindex(mesh_dt)
-		h = mesh_dt[i]
-		yᵢ = get_tmp(y[ctr], u)
-		yᵢ₊₁ = get_tmp(y[ctr+stage+1], u)
-
-		# Load interpolation residual
-		for j in 1:stage
-			K[:, j] = get_tmp(y[ctr+j], u)
-		end
-
-		# Update interpolation residual
-		for r in 1:stage
-			@. tmp1 = yᵢ
-			__maybe_matmul!(tmp1, K[:, 1:stage], a[r, 1:stage], h, T(1))
-			residuals[ctr+r] = f!(tmp1, p, mesh[i] + c[r] * h)
-			residuals[ctr+r] .-= K[:, r]
-		end
-
-		# Update mesh point residual
-		residᵢ = residuals[ctr]
-		@. residᵢ = yᵢ₊₁ - yᵢ
-		__maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
-		ctr += stage + 1
-	end
-	return residuals
-end =#
-
 
 @views function Φ(fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y, u, p,
 	mesh, mesh_dt, stage::Int)
-	@unpack c, a, b = TU
+	(; c, a, b) = TU
 	residuals = [similar(yᵢ) for yᵢ in y[1:(end-1)]]
 	tmp1 = get_tmp(fᵢ_cache, u)
 	K = get_tmp(k_discrete[1], u) # Not optimal # TODO
@@ -242,11 +205,10 @@ end =#
 	return residuals
 end
 
-# TODO: Make this work
 @views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
 	mesh, mesh_dt, stage::Int, cache)
-	@unpack c, a, b, = TU
-	@unpack nest_cache = cache
+	(; c, a, b )= TU
+	(; nest_cache) = cache
 	residuals = [similar(yᵢ) for yᵢ in y[1:(end-1)]]
 
 	T = eltype(u)

@@ -27,9 +27,9 @@ end
 	end
 	τ = (t - mesh[j]) / h
 
-	@unpack f, M, p, ITU, TU= cache
-	@unpack c, a, b = TU
-	@unpack q_coeff, stage = ITU
+	(; f, M, p, ITU, TU) = cache
+	(; c, a, b) = TU
+	(; q_coeff, stage) = ITU
 
 	K = zeros(eltype(cache.y[1].du), M, stage)
 
@@ -77,10 +77,9 @@ end
 	end
 	τ = (t - mesh[j]) / h
 
-	@unpack f, M, p, k_discrete, ITU = cache
-	@unpack c, a, b = cache.TU
-	@unpack q_coeff, stage = ITU
-	@unpack nest_cache, p_nestprob, prob = cache
+	(; f, M, p, k_discrete, ITU, TU, nest_cache, p_nestprob, prob) = cache
+	(; c, a, b) = TU
+	(; q_coeff, stage) = ITU
 
 	yᵢ = copy(cache.y[j].du)
 	yᵢ₊₁ = copy(cache.y[j+1].du)
@@ -308,8 +307,8 @@ end
 
 
 @views function defect_estimate!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
-	@unpack f, M, stage, mesh, mesh_dt, defect = cache
-	@unpack q_coeff, τ_star = cache.ITU
+	(; f, M, stage, mesh, mesh_dt, defect, ITU) = cache
+	(;q_coeff, τ_star) = ITU
 
 	ctr = 1
 	K = zeros(eltype(cache.y[1].du), M, stage)
@@ -351,10 +350,10 @@ end
 end
 
 @views function defect_estimate!(cache::FIRKCacheNested{iip, T}) where {iip, T}
-	@unpack f, M, stage, mesh, mesh_dt, defect = cache
-	@unpack a, c = cache.TU
-	@unpack q_coeff, τ_star = cache.ITU
-	@unpack nest_cache, p_nestprob, prob = cache
+	(; f, M, stage, mesh, mesh_dt, defect, TU, ITU, nest_cache, p_nestprob, prob) = cache
+	(; a, c) = TU
+	(; q_coeff, τ_star) = ITU
+
 	for i in 1:(length(mesh)-1)
 		h = mesh_dt[i]
 		yᵢ₁ = copy(cache.y[i].du)

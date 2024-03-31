@@ -74,8 +74,8 @@ function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested
 end
 
 function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
-	@unpack TU = cache
-    @unpack s = TU
+	(; TU) = cache
+    (; s) = TU
 	# Get number of nonzeros
 	block_size = M * (s + 1) * M * (s + 2)
     l = (N - 1) * block_size
@@ -119,8 +119,8 @@ function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::Standard
 end
 
 function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
-    @unpack TU = cache
-    @unpack s = TU
+    (; TU) = cache
+    (; s) = TU
 	# Get number of nonzeros
 	block_size = M * (s + 1) * M * (s + 2)
     l = (N - 1) * block_size + M * (s + 2) * (length(ya) + length(yb))
@@ -168,7 +168,7 @@ function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::TwoPoint
     end
 
 	# Create sparse matrix from Is and Js
-	J = _sparse_like(Is, Js, ya, row_size + M, row_size + M)
+	J = _sparse_like(Is, Js, ya, row_size + length(ya) + length(yb), row_size + M)
 	return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
  
