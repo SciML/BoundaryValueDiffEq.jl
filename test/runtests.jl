@@ -4,7 +4,7 @@ ReTestItems.runtests(joinpath(@__DIR__, "mirk/"))
 ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
 ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))
 ReTestItems.runtests(joinpath(@__DIR__, "firk/expanded/"))
-#ReTestItems.runtests(joinpath(@__DIR__, "firk/nested/"))
+ReTestItems.runtests(joinpath(@__DIR__, "firk/nested/"))
 
 if !Sys.iswindows()
     # Wrappers like ODEInterface don't support parallel testing

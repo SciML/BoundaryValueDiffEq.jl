@@ -147,7 +147,7 @@ function __split_mirk_kwargs(;
         (defect_threshold, MxNsub, abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
-function SciMLBase.solve!(cache::MIRKCache)
+function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
     (_, _, abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
@@ -171,7 +171,7 @@ function SciMLBase.solve!(cache::MIRKCache)
 end
 
 function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive; nlsolve_kwargs = (;), kwargs...)
+    cache::Union{MIRKCache, FIRKCacheNested}, abstol, adaptive; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, recursive_flatten(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(

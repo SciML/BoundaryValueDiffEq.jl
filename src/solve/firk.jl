@@ -104,75 +104,85 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
 	@set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
+	if __needs_diffcache(alg.jac_alg.diffmode)
+		error("ForwardDiff not yet available for nested FIRK solver, use the expanded version instead.")
+	end
+
 	iip = isinplace(prob)
 	if adaptive && isa(alg, FIRKNoAdaptivity)
 		error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
 	end
 
-	_, T, M, n, X = __extract_problem_details(prob; dt, check_positive_dt = true)
-	# NOTE: Assumes the user provided initial guess is on a uniform mesh
-	mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
-	mesh_dt = diff(mesh)
+    t₀, t₁ = prob.tspan
+    ig, T, N, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
+    mesh_dt = diff(mesh)
 
-	chunksize = pickchunksize(M * (n + 1))
+    chunksize = pickchunksize(N * (Nig - 1))
+    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
-	__alloc = x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    fᵢ_cache = __alloc(similar(X))
+    fᵢ₂_cache = vec(similar(X))
 
-	fᵢ_cache = __alloc(similar(X))
-	fᵢ₂_cache = vec(similar(X))
+    defect_threshold = T(alg.defect_threshold)
+    MxNsub = alg.max_num_subintervals
 
-	defect_threshold = T(0.1)  # TODO: Allow user to specify these
-	MxNsub = 3000              # TODO: Allow user to specify these
+    # Don't flatten this here, since we need to expand it later if needed
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
 
-	# Don't flatten this here, since we need to expand it later if needed
-	y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
-	y = __alloc.(copy.(y₀))
-	TU, ITU = constructRK(alg, T)
+    y = __alloc.(copy.(y₀))
+    TU, ITU = constructRK(alg, T)
 	stage = alg_stage(alg)
 
-	k_discrete = [__maybe_allocate_diffcache(fill(one(T), (M, stage)), chunksize,
-		alg.jac_alg)
-				  for _ in 1:n]
+    k_discrete = [__maybe_allocate_diffcache(similar(X, N, stage), chunksize, alg.jac_alg)
+                  for _ in 1:Nig]
 
-	bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
+    bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
-	residual = if prob.problem_type isa TwoPointBVProblem
-		vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
-	else
-		vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
-	end
+    residual = if iip
+        if prob.problem_type isa TwoPointBVProblem
+            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
+        else
+            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
+        end
+    else
+        nothing
+    end
 
-	defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:n]
+    defect = [similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
 
-	# Transform the functions to handle non-vector inputs
-	bcresid_prototype = __vec(bcresid_prototype)
-	f, bc = if X isa AbstractVector
-		prob.f, prob.f.bc
-	elseif iip
-		vecf! = (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
-		vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
-			(r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
-		else
-			((r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[1], resid₁_size[1], size(X)),
-				(r, u, p) -> __vec_bc!(r, u, p, prob.f.bc[2], resid₁_size[2], size(X)))
-		end
-		vecf!, vecbc!
-	else
-		vecf = (u, p, t) -> __vec_f(u, p, t, prob.f, size(X))
-		vecbc = if !(prob.problem_type isa TwoPointBVProblem)
-			(u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
-		else
-			((u, p) -> __vec_bc(u, p, prob.f.bc[1], size(X))),
-			(u, p) -> __vec_bc(u, p, prob.f.bc[2], size(X))
-		end
-		vecf, vecbc
-	end
+    # Transform the functions to handle non-vector inputs
+    bcresid_prototype = __vec(bcresid_prototype)
+    f, bc = if X isa AbstractVector
+        prob.f, prob.f.bc
+    elseif iip
+        vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
+        vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
+            @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
+        else
+            (
+                @closure((r, u, p)->__vec_bc!(
+                    r, u, p, first(prob.f.bc), resid₁_size[1], size(X))),
+                @closure((r, u, p)->__vec_bc!(
+                    r, u, p, last(prob.f.bc), resid₁_size[2], size(X))))
+        end
+        vecf!, vecbc!
+    else
+        vecf = @closure (u, p, t) -> __vec_f(u, p, t, prob.f, size(X))
+        vecbc = if !(prob.problem_type isa TwoPointBVProblem)
+            @closure (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
+        else
+            (@closure((u, p)->__vec_bc(u, p, first(prob.f.bc), size(X))),
+                @closure((u, p)->__vec_bc(u, p, last(prob.f.bc), size(X))))
+        end
+        vecf, vecbc
+    end
 
-	prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
 	# Initialize internal nonlinear problem cache
 	(;c, a, b, s) = TU
-	p_nestprob = zeros(T, M + 2)
+	p_nestprob = zeros(T, N + 2)
 
 	if isa(u0, AbstractArray) && eltype(prob.u0) <: AbstractVector
 		u0_mat = hcat(prob.u0...)
@@ -209,7 +219,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 	nest_cache = init(nestprob,
 	NewtonRaphson(autodiff = alg.jac_alg.diffmode); abstol = tol)
 
-	return FIRKCacheNested{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
+	return FIRKCacheNested{iip, T}(alg_order(alg), stage, N, size(X), f, bc, prob_,
 		prob.problem_type, prob.p, alg, TU, ITU,
 		bcresid_prototype,
 		mesh, mesh_dt,
