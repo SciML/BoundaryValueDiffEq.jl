@@ -37,7 +37,6 @@ include("mirk_tableaus.jl")
 include("lobatto_tableaus.jl")
 include("radau_tableaus.jl")
 
-
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
 include("solve/firk.jl")
@@ -52,7 +51,6 @@ include("interpolation.jl")
 include("default_nlsolve.jl")
 
 function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
-    
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end

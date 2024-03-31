@@ -35,7 +35,7 @@ function __sparsity_detection_alg(M::ColoredMatrix)
     return PrecomputedJacobianColorvec(;
         jac_prototype = M.M, M.row_colorvec, M.col_colorvec)
 end
-#__sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection() #TODO: WHY?
+__sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
 
 # For MIRK Methods
 """

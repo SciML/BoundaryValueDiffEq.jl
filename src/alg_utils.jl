@@ -4,7 +4,6 @@ for order in (2, 3, 4, 5, 6)
     @eval alg_stage(::$(alg)) = $(order - 1)
 end
 
-
 for stage in (1, 2, 3, 5, 7)
     alg = Symbol("RadauIIa$(stage)")
     @eval alg_order(::$(alg)) = $(2 * stage -1)

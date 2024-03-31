@@ -245,14 +245,14 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
 	n = length(mesh) - 1
 	resize!(mesh, 2n + 1)
 	resize!(mesh_dt, 2n)
-	mesh[2n+1] = mesh[n+1]
-	for i in (2n-1):-2:1
-		mesh[i] = mesh[(i+1)÷2]
-		mesh_dt[i+1] = mesh_dt[(i+1)÷2] / T(2)
+	mesh[2n + 1] = mesh[n + 1]
+	for i in (2n - 1):-2:1
+		mesh[i] = mesh[(i + 1) ÷ 2]
+		mesh_dt[i + 1] = mesh_dt[(i + 1) ÷ 2] / T(2)
 	end
 	@simd for i in (2n):-2:2
-		mesh[i] = (mesh[i+1] + mesh[i-1]) / T(2)
-		mesh_dt[i-1] = mesh_dt[i]
+		mesh[i] = (mesh[i + 1] + mesh[i - 1]) / T(2)
+		mesh_dt[i - 1] = mesh_dt[i]
 	end
 	return mesh, mesh_dt
 end
@@ -276,7 +276,7 @@ an interpolant
 
 	interp_setup!(cache)
 
-	for i in 1:(length(mesh)-1)
+	for i in 1:(length(mesh) - 1)
 		dt = mesh_dt[i]
 
 		z, z′ = sum_stages!(cache, w₁, w₁′, i)
@@ -304,7 +304,6 @@ an interpolant
 
 	return maximum(Base.Fix1(maximum, abs), defect)
 end
-
 
 @views function defect_estimate!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
 	(; f, M, stage, mesh, mesh_dt, defect, ITU) = cache

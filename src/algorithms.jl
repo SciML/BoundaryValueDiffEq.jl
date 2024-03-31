@@ -195,12 +195,12 @@ for order in (2, 3, 4, 5, 6)
     end
 end
 
-
 for stage in (1, 2, 3, 5, 7)
     alg = Symbol("RadauIIa$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+                            defect_threshold = 0.1, max_num_subintervals = 3000)
 
                 $($stage)th stage RadauIIa method.
 
@@ -224,6 +224,8 @@ for stage in (1, 2, 3, 5, 7)
                 `true` for larger problems and `false` for smaller ones.
                 - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
                 `NonlinearSolve` automatically selecting the tolerance.
+                - `defect_threshold`: Threshold for defect control.
+                - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -285,7 +287,8 @@ for stage in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIa$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+                            defect_threshold = 0.1, max_num_subintervals = 3000)
 
                 $($stage)th stage LobattoIIIa method.
 
@@ -309,6 +312,8 @@ for stage in (2, 3, 4, 5)
                 `true` for larger problems and `false` for smaller ones.
                 - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
                 `NonlinearSolve` automatically selecting the tolerance.
+                - `defect_threshold`: Threshold for defect control.
+                - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -372,7 +377,8 @@ for stage in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIb$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+                            defect_threshold = 0.1, max_num_subintervals = 3000)
 
                 $($stage)th stage LobattoIIIb method.
 
@@ -396,6 +402,8 @@ for stage in (2, 3, 4, 5)
                 `true` for larger problems and `false` for smaller ones.
                 - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
                 `NonlinearSolve` automatically selecting the tolerance.
+                - `defect_threshold`: Threshold for defect control.
+                - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -459,7 +467,8 @@ for stage in (2, 3, 4, 5)
     alg = Symbol("LobattoIIIc$(stage)")
 
     @eval begin """
-                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0)
+                    $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+                            defect_threshold = 0.1, max_num_subintervals = 3000)
 
                 $($stage)th stage LobattoIIIc method.
 
@@ -483,6 +492,8 @@ for stage in (2, 3, 4, 5)
                 `true` for larger problems and `false` for smaller ones.
                 - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
                 `NonlinearSolve` automatically selecting the tolerance.
+                - `defect_threshold`: Threshold for defect control.
+                - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
               !!! note
                   For type-stability, the chunksizes for ForwardDiff ADTypes in
@@ -544,7 +555,6 @@ end
 
 # FIRK Algorithms that don't use adaptivity
 const FIRKNoAdaptivity = Union{LobattoIIIb2, RadauIIa1, LobattoIIIc2}
-
 
 """
     BVPM2(; max_num_subintervals = 3000, method_choice = 4, diagnostic_output = 1,
