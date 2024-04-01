@@ -62,7 +62,7 @@
 
     #This is the part of the code that has problems
     bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
-    sol5 = solve(bvp1,  RadauIIa5(); dt = 0.5)
+    sol5 = solve(bvp1, RadauIIa5(); dt = 0.5)
     @test SciMLBase.successful_retcode(sol5.retcode)
 
     bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)

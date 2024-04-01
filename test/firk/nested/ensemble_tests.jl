@@ -26,7 +26,8 @@
             BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparseFiniteDiff())]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested); trajectories = 10, dt = 0.1)
+            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+                trajectories = 10, dt = 0.1)
             @test sol.converged
         end
     end
@@ -36,7 +37,8 @@
             BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparseFiniteDiff())]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested); trajectories = 10, dt = 0.1)
+            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+                trajectories = 10, dt = 0.1)
             @test sol.converged
         end
     end
@@ -46,7 +48,8 @@
             BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparseFiniteDiff())]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested); trajectories = 10, dt = 0.1)
+            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+                trajectories = 10, dt = 0.1)
             @test sol.converged
         end
     end
@@ -56,7 +59,8 @@
             BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparseFiniteDiff())]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested); trajectories = 10, dt = 0.1)
+            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+                trajectories = 10, dt = 0.1)
             @test sol.converged
         end
     end

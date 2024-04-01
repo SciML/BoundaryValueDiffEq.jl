@@ -2,11 +2,9 @@
     using LinearAlgebra
 
     SOLVERS = [firk(; nlsolve)
-               for firk in (RadauIIa3, RadauIIa5, RadauIIa7, 
-                LobattoIIIa3, LobattoIIIa4, LobattoIIIa5, 
-                LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, 
-                LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
-                ),
+               for firk in (
+        RadauIIa3, RadauIIa5, RadauIIa7, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5,
+        LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5),
     nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
 
     # OOP MP-BVP
@@ -96,11 +94,9 @@ end
 
     # Force normal form for GN
     SOLVERS = [firk(; nlsolve)
-               for firk in (RadauIIa3, RadauIIa5, RadauIIa7, 
-                LobattoIIIa3, LobattoIIIa4, LobattoIIIa5, 
-                LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, 
-                LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
-                ),
+               for firk in (
+        RadauIIa3, RadauIIa5, RadauIIa7, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5,
+        LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5),
     nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
 
     function hat(y)

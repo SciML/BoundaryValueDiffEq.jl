@@ -5,23 +5,23 @@ using BoundaryValueDiffEq
 nested = false
 
 for stage in (2, 3, 4, 5)
-	s = Symbol("LobattoIIIa$(stage)")
-	@eval lobattoIIIa_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+    s = Symbol("LobattoIIIa$(stage)")
+    @eval lobattoIIIa_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
 end
 
 for stage in (2, 3, 4, 5)
-	s = Symbol("LobattoIIIb$(stage)")
-	@eval lobattoIIIb_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+    s = Symbol("LobattoIIIb$(stage)")
+    @eval lobattoIIIb_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
 end
 
 for stage in (2, 3, 4, 5)
-	s = Symbol("LobattoIIIc$(stage)")
-	@eval lobattoIIIc_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+    s = Symbol("LobattoIIIc$(stage)")
+    @eval lobattoIIIc_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
 end
 
 for stage in (2, 3, 5, 7)
-	s = Symbol("RadauIIa$(stage)")
-	@eval radau_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+    s = Symbol("RadauIIa$(stage)")
+    @eval radau_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
 end
 
 # First order test
@@ -88,7 +88,8 @@ testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
-export probArr, testTol, affineTol, dts, lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver, radau_solver
+export probArr, testTol, affineTol, dts, lobattoIIIa_solver, lobattoIIIb_solver,
+       lobattoIIIc_solver, radau_solver
 
 end
 
@@ -99,24 +100,27 @@ end
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-			@time sol = solve(prob, lobattoIIIa_solver(Val(stage)); dt = 0.2, adaptive = false)
-			@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-		end
+            @time sol = solve(
+                prob, lobattoIIIa_solver(Val(stage)); dt = 0.2, adaptive = false)
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+        end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-			@time sol = solve(prob, lobattoIIIb_solver(Val(stage)); dt = 0.2, adaptive = false)
-			@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-		end
+            @time sol = solve(
+                prob, lobattoIIIb_solver(Val(stage)); dt = 0.2, adaptive = false)
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+        end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-			@time sol = solve(prob, lobattoIIIc_solver(Val(stage)); dt = 0.2, adaptive = false)
-			@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-		end
-        
+            @time sol = solve(
+                prob, lobattoIIIc_solver(Val(stage)); dt = 0.2, adaptive = false)
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+        end
+
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-			@time sol = solve(prob, radau_solver(Val(stage)); dt = 0.2, adaptive = false)
-			@test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
-		end
+            @time sol = solve(prob, radau_solver(Val(stage)); dt = 0.2, adaptive = false)
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+        end
     end
-end 
+end
 
 @testitem "JET: Runtime Dispatches" setup=[FIRKExpandedConvergenceTests] begin
     using JET
@@ -124,39 +128,39 @@ end
     @testset "Problem: $i" for i in 1:8
         prob = probArr[i]
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-			solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
+            solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
             @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
-		end
+        end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-			solver = lobattoIIIb_solver(Val(stage); nlsolve = NewtonRaphson(),
+            solver = lobattoIIIb_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
             @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
-		end
+        end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-			solver = lobattoIIIc_solver(Val(stage); nlsolve = NewtonRaphson(),
+            solver = lobattoIIIc_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
             @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
-		end
+        end
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-			solver = radau_solver(Val(stage); nlsolve = NewtonRaphson(),
+            solver = radau_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
             @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
                 prob, solver; dt = 0.2)
-		end
+        end
     end
-end 
+end
 
 @testitem "Convergence on Linear" setup=[FIRKExpandedConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
@@ -165,51 +169,50 @@ end
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-			@time sim = test_convergence(dts, prob, lobattoIIIa_solver(Val(stage));
-				abstol = 1e-8, reltol = 1e-8)
-			if i == 8 && stage == 4
-				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			elseif first(sim.errors[:final]) < 1e-12
-				@test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			else
-				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			end
-		end
+            @time sim = test_convergence(
+                dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1e-8)
+            if i == 8 && stage == 4
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            elseif first(sim.errors[:final]) < 1e-12
+                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            else
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            end
+        end
 
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-			@time sim = test_convergence(dts, prob, lobattoIIIb_solver(Val(stage));
-				abstol = 1e-8, reltol = 1e-8)
-			if i == 8 && stage == 4
-				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			elseif first(sim.errors[:final]) < 1e-12
-				@test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			else
-				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			end
-		end
+            @time sim = test_convergence(
+                dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
+            if i == 8 && stage == 4
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            elseif first(sim.errors[:final]) < 1e-12
+                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            else
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            end
+        end
 
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-			@time sim = test_convergence(dts, prob, lobattoIIIc_solver(Val(stage));
-				abstol = 1e-8, reltol = 1e-8)
-			if (i == 3 && stage == 4) || (i == 4 && stage == 4)
-				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			elseif first(sim.errors[:final]) < 1e-12
-				@test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			else
-				@test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-			end
-		end
+            @time sim = test_convergence(
+                dts, prob, lobattoIIIc_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
+            if (i == 3 && stage == 4) || (i == 4 && stage == 4)
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            elseif first(sim.errors[:final]) < 1e-12
+                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            else
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            end
+        end
 
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-			@time sim = test_convergence(dts, prob, radau_solver(Val(stage));
-				abstol = 1e-8, reltol = 1e-8)
-			if first(sim.errors[:final]) < 1e-12
-				@test_broken sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
-			else
-				@test sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
-			end
-		end
-
+            @time sim = test_convergence(
+                dts, prob, radau_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
+            if first(sim.errors[:final]) < 1e-12
+                @test_broken sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
+            else
+                @test sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
+            end
+        end
     end
 end
 
@@ -238,26 +241,43 @@ end
     nested = false
 
     # Using ForwardDiff might lead to Cache expansion warnings
-    @test_nowarn solve(bvp1, LobattoIIIa2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIa3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIa4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIa5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIa2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIa3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIa4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIa5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
 
-    @test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIb2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIb3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIb4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIb5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
 
-    @test_nowarn solve(bvp1, LobattoIIIc2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIc3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIc4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIc5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIc2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIc3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIc4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, LobattoIIIc5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
 
-    @test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, RadauIIa2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg; nested); dt = 0.05, adaptive = false)
-    @test_nowarn solve(bvp1, RadauIIa7(nl_solve, jac_alg; nested); dt = 0.05, adaptive = false)
+    @test_nowarn solve(
+        bvp1, RadauIIa1(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, RadauIIa2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, RadauIIa3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(
+        bvp1, RadauIIa5(nl_solve, jac_alg; nested); dt = 0.05, adaptive = false)
+    @test_nowarn solve(
+        bvp1, RadauIIa7(nl_solve, jac_alg; nested); dt = 0.05, adaptive = false)
 end
 
 @testitem "Interpolation" begin
@@ -284,52 +304,59 @@ end
     prob_bvp_linear_tspan = (0.0, 1.0)
     prob_bvp_linear = BVProblem(
         prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ)
-    
+
     testTol = 1e-6
     nested = false
 
     for stage in (2, 3, 5, 7)
         s = Symbol("RadauIIa$(stage)")
-        @eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(),BVPJacobianAlgorithm(); nested)
+        @eval radau_solver(::Val{$stage}) = $(s)(
+            NewtonRaphson(), BVPJacobianAlgorithm(); nested)
     end
-
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIa$(stage)")
-        @eval lobattoIIIa_solver(::Val{$stage}) = $(s)(NewtonRaphson(),BVPJacobianAlgorithm(); nested)
+        @eval lobattoIIIa_solver(::Val{$stage}) = $(s)(
+            NewtonRaphson(), BVPJacobianAlgorithm(); nested)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIb$(stage)")
-        @eval lobattoIIIb_solver(::Val{$stage}) = $(s)(NewtonRaphson(),BVPJacobianAlgorithm(); nested)
+        @eval lobattoIIIb_solver(::Val{$stage}) = $(s)(
+            NewtonRaphson(), BVPJacobianAlgorithm(); nested)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIc$(stage)")
-        @eval lobattoIIIc_solver(::Val{$stage}) = $(s)(NewtonRaphson(),BVPJacobianAlgorithm(); nested)
+        @eval lobattoIIIc_solver(::Val{$stage}) = $(s)(
+            NewtonRaphson(), BVPJacobianAlgorithm(); nested)
     end
 
-
     @testset "Radau interpolations" begin
-         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
+        @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
             @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
             @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
             @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-            @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol  
-        end 
+            @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+        end
     end
 
-    @testset "LobattoIII interpolations" begin for (id, lobatto_solver) in zip(("a", "b", "c",), (lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
-        begin @testset "LobattoIII$(id)$stage" for stage in (3, 4, 5)
-            @time sol = solve(prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
-            @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-            @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-            @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-            @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
-        end end
-    end end
-
+    @testset "LobattoIII interpolations" begin
+        for (id, lobatto_solver) in zip(
+            ("a", "b", "c"), (lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
+            begin
+                @testset "LobattoIII$(id)$stage" for stage in (3, 4, 5)
+                    @time sol = solve(
+                        prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
+                    @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
+                    @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
+                    @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
+                    @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+                end
+            end
+        end
+    end
 end
 
 @testitem "Swirling Flow III" begin
