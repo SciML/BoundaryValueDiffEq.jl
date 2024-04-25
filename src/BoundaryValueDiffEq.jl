@@ -52,6 +52,9 @@ function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kw
     return solve!(cache)
 end
 
+const do_precompile = false
+
+if do_precompile
 @setup_workload begin
     f1! = @closure (du, u, p, t) -> begin
         du[1] = u[2]
@@ -271,6 +274,7 @@ end
             solve(prob, alg; nlsolve_kwargs = (; abstol = 1e-2))
         end
     end
+end
 end
 
 export Shooting, MultipleShooting
