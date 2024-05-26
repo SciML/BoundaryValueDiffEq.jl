@@ -113,7 +113,7 @@ end
     return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
 end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
-@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()
+@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparse(AutoFiniteDiff())
 @inline function __default_sparse_ad(::Type{T}) where {T}
     return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()))
 end
