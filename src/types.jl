@@ -36,8 +36,9 @@ end
 end
 
 @inline __materialize_jacobian_algorithm(_, alg::BVPJacobianAlgorithm) = alg
-@inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) = BVPJacobianAlgorithm(alg)
+@inline __materialize_jacobian_algorithm(_, alg::AbstractADType) = BVPJacobianAlgorithm(alg)
 @inline __materialize_jacobian_algorithm(::Nothing, ::Nothing) = BVPJacobianAlgorithm()
+# TODO: Introduce a public API in NonlinearSolve.jl for this
 @inline function __materialize_jacobian_algorithm(nlsolve::N, ::Nothing) where {N}
     ad = hasfield(N, :jacobian_ad) ? nlsolve.jacobian_ad : missing
     return BVPJacobianAlgorithm(ad)
@@ -62,9 +63,9 @@ end
 
 @inline __any_sparse_ad(::AutoSparse) = true
 @inline function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
-    __any_sparse_ad(jac_alg.bc_diffmode) ||
-        __any_sparse_ad(jac_alg.nonbc_diffmode) ||
-        __any_sparse_ad(jac_alg.diffmode)
+    return __any_sparse_ad(jac_alg.bc_diffmode) ||
+           __any_sparse_ad(jac_alg.nonbc_diffmode) ||
+           __any_sparse_ad(jac_alg.diffmode)
 end
 @inline __any_sparse_ad(_) = false
 
@@ -74,12 +75,11 @@ function BVPJacobianAlgorithm(
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
         return BVPJacobianAlgorithm(diffmode, diffmode, diffmode)
-    else
-        diffmode = nothing
-        bc_diffmode = bc_diffmode === missing ? nothing : bc_diffmode
-        nonbc_diffmode = nonbc_diffmode === missing ? nothing : nonbc_diffmode
-        return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
     end
+    diffmode = nothing
+    bc_diffmode = bc_diffmode === missing ? nothing : bc_diffmode
+    nonbc_diffmode = nonbc_diffmode === missing ? nothing : nonbc_diffmode
+    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
 """
@@ -100,63 +100,64 @@ end
 function concrete_jacobian_algorithm(
         jac_alg::BVPJacobianAlgorithm, prob_type, prob::BVProblem, alg)
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
-    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
+    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) :
+               __concrete_adtype(u0, jac_alg.diffmode)
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
-                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
+                   __default_dense_ad)(u0) : __concrete_adtype(u0, jac_alg.bc_diffmode)
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
-                     jac_alg.nonbc_diffmode
+                     __concrete_adtype(u0, jac_alg.nonbc_diffmode)
 
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-@inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
-    return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
-end
-@inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
-@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparse(AutoFiniteDiff())
-@inline function __default_sparse_ad(::Type{T}) where {T}
-    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()))
-end
-
-@inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
-    return isbitstype(T) ? __default_nonsparse_ad(T) : __default_nonsparse_ad(first(x))
-end
-@inline __default_nonsparse_ad(x::T) where {T} = __default_nonsparse_ad(T)
-@inline __default_nonsparse_ad(::Type{<:Complex}) = AutoFiniteDiff()
-@inline function __default_nonsparse_ad(::Type{T}) where {T}
-    return ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff())
-end
-
-# This can cause Type Instability
 function concretize_jacobian_algorithm(alg, prob)
-    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    return alg
+    return @set alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 end
 
-Base.@deprecate MIRKJacobianComputationAlgorithm(
-    diffmode = missing; collocation_diffmode = missing, bc_diffmode = missing) BVPJacobianAlgorithm(
-    diffmode; nonbc_diffmode = collocation_diffmode, bc_diffmode)
-
-@inline __needs_diffcache(::AutoForwardDiff) = true
-@inline __needs_diffcache(ad::AutoSparse) = __needs_diffcache(ADTypes.dense_ad(ad))
-@inline __needs_diffcache(_) = false
-@inline function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
-    return __needs_diffcache(jac_alg.diffmode) ||
-           __needs_diffcache(jac_alg.bc_diffmode) ||
-           __needs_diffcache(jac_alg.nonbc_diffmode)
+@inline function __default_dense_ad(x::AbstractArray{T}) where {T}
+    ck = __pick_nested_chunksize(x)
+    isbitstype(T) && __default_dense_ad(ck, T)
+    return __default_dense_ad(ck, mapreduce(eltype, promote_type, x))
 end
+@inline __default_dense_ad(ck::Int, ::T) where {T} = __default_dense_ad(ck, T)
+@inline __default_dense_ad(_, ::Type{<:Complex}) = AutoFiniteDiff()
+@inline function __default_dense_ad(ck::Int, ::Type{T}) where {T}
+    return ifelse(
+        ForwardDiff.can_dual(T), AutoForwardDiff(; chunksize = ck), AutoFiniteDiff())
+end
+
+@inline function __default_sparse_ad(args...)
+    return AutoSparse(
+        __default_dense_ad(args...); sparsity_detector = TracerSparsityDetector())
+end
+
+@inline function __concrete_adtype(u0, ad::AutoSparse)
+    dense_ad = __concrete_adtype(u0, ADTypes.dense_ad(ad))
+    return @set ad.dense_ad = dense_ad
+end
+@inline function __concrete_adtype(
+        u0, ad::Union{AutoForwardDiff{nothing}, AutoPolyesterForwardDiff{nothing}})
+    return parameterless_type(ad)(; chunksize = __pick_nested_chunksize(u0), tag = ad.tag)
+end
+@inline __concrete_adtype(_, ad::AbstractADType) = ad
+
+@inline function __pick_nested_chunksize(x::AbstractArray{T}) where {T}
+    isbitstype(T) && return DI.pick_chunksize(length(x))
+    return minimum(__pick_nested_chunksize, x)
+end
+
+@inline __get_chunksize(ad::AutoSparse) = __get_chunksize(ADTypes.dense_ad(ad))
+@inline __get_chunksize(::AutoForwardDiff{CK}) where {CK} = CK
+@inline __get_chunksize(::AutoPolyesterForwardDiff{CK}) where {CK} = CK
+
+@inline __get_tag(ad::AutoSparse) = __get_tag(ADTypes.dense_ad(ad))
+@inline __get_tag(ad::Union{AutoForwardDiff, AutoPolyesterForwardDiff}) = ad.tag
 
 # We don't need to always allocate a DiffCache. This works around that.
 @concrete struct FakeDiffCache
     du
 end
-
-function __maybe_allocate_diffcache(x, chunksize, jac_alg)
-    return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : FakeDiffCache(x)
-end
-__maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
-__maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
 
 const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
 
@@ -174,6 +175,25 @@ end
 struct DiffCacheNeeded end
 struct NoDiffCacheNeeded end
 
+Base.:+(::DiffCacheNeeded, ::DiffCacheNeeded) = DiffCacheNeeded()
+Base.:+(::NoDiffCacheNeeded, ::NoDiffCacheNeeded) = NoDiffCacheNeeded()
+Base.:+(::DiffCacheNeeded, ::NoDiffCacheNeeded) = DiffCacheNeeded()
+Base.:+(::NoDiffCacheNeeded, ::DiffCacheNeeded) = DiffCacheNeeded()
+
+@inline function __cache_trait(jac_alg::BVPJacobianAlgorithm)
+    return +(__cache_trait(jac_alg.diffmode), __cache_trait(jac_alg.bc_diffmode),
+        __cache_trait(jac_alg.nonbc_diffmode))
+end
 @inline __cache_trait(::AutoForwardDiff) = DiffCacheNeeded()
 @inline __cache_trait(ad::AutoSparse) = __cache_trait(ADTypes.dense_ad(ad))
 @inline __cache_trait(_) = NoDiffCacheNeeded()
+
+@inline __maybe_allocate_diffcache(x, chunksize, jac_alg) = __maybe_allocate_diffcache(
+    __cache_trait(jac_alg), x, chunksize)
+@inline __maybe_allocate_diffcache(::NoDiffCacheNeeded, x, chunksize) = FakeDiffCache(x)
+@inline __maybe_allocate_diffcache(::DiffCacheNeeded, x, chunksize) = DiffCache(
+    x, chunksize)
+
+@inline __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(
+    similar(x.du), chunksize)
+@inline __maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))

@@ -33,7 +33,7 @@ Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         abstol = 1e-3, adaptive = true, kwargs...)
-    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    alg = concretize_jacobian_algorithm(alg, prob)
     iip = isinplace(prob)
 
     t₀, t₁ = prob.tspan

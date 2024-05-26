@@ -71,9 +71,9 @@ end
 end
 
 ## Easier to dispatch
-eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
-eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
-function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
+eval_bc_residual(pt, bc, sol, p) = eval_bc_residual(pt, bc, sol, p, sol.t)
+eval_bc_residual(_, bc, sol, p, t) = bc(sol, p, t)
+function eval_bc_residual(::TwoPointBVProblem, (bca, bcb), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     resida = bca(ua, p)
@@ -81,12 +81,11 @@ function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where 
     return (resida, residb)
 end
 
-function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
+function eval_bc_residual!(resid, pt, bc!, sol, p)
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
-eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(
-        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
+eval_bc_residual!(resid, _, bc!, sol, p, t) = bc!(resid, sol, p, t)
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid.resida, ua, p)
@@ -94,7 +93,7 @@ eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, 
     return resid
 end
 @views function eval_bc_residual!(
-        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
+        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!), sol, p, t)
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
     bca!(resid[1], ua, p)
@@ -146,7 +145,7 @@ function __extract_problem_details(
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
 function __extract_problem_details(
-        prob, f::F; dt = 0.0, check_positive_dt::Bool = false) where {F <: Function}
+        prob, f::Function; dt = 0.0, check_positive_dt::Bool = false)
     # Problem passes in a initial guess function
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     u0 = __initial_guess(f, prob.p, prob.tspan[1])
@@ -281,7 +280,7 @@ Takes the input initial guess and returns the value at the starting mesh point.
 @inline __extract_u0(u₀::AbstractVector{<:AbstractArray}, p, t₀) = u₀[1]
 @inline __extract_u0(u₀::VectorOfArray, p, t₀) = u₀[:, 1]
 @inline __extract_u0(u₀::DiffEqArray, p, t₀) = u₀.u[1]
-@inline __extract_u0(u₀::F, p, t₀) where {F <: Function} = __initial_guess(u₀, p, t₀)
+@inline __extract_u0(u₀::Function, p, t₀) = __initial_guess(u₀, p, t₀)
 @inline __extract_u0(u₀::AbstractArray, p, t₀) = u₀
 @inline __extract_u0(u₀::T, p, t₀) where {T} = error("`prob.u0::$(T)` is not supported.")
 
@@ -303,7 +302,7 @@ Returns `true` if the input has an initial guess.
 @inline __has_initial_guess(u₀::AbstractVector{<:AbstractArray}) = true
 @inline __has_initial_guess(u₀::VectorOfArray) = true
 @inline __has_initial_guess(u₀::DiffEqArray) = true
-@inline __has_initial_guess(u₀::F) where {F} = true
+@inline __has_initial_guess(u₀) = true
 @inline __has_initial_guess(u₀::AbstractArray) = false
 
 """
@@ -315,7 +314,7 @@ guess is supplied, it returns `-1`.
 @inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
 @inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
 @inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
-@inline __initial_guess_length(u₀::F) where {F} = -1
+@inline __initial_guess_length(u₀) = -1
 @inline __initial_guess_length(u₀::AbstractArray) = -1
 
 """
@@ -329,7 +328,7 @@ initial guess, it returns `vec(u₀)`.
 @inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
-@inline __flatten_initial_guess(u₀::F) where {F} = nothing
+@inline __flatten_initial_guess(u₀) = nothing
 
 """
     __initial_guess_on_mesh(u₀, mesh, p, alias_u0::Bool)

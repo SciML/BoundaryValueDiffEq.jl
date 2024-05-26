@@ -54,12 +54,6 @@ end
 @inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
 @inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
 
-@inline function concretize_jacobian_algorithm(alg::Shooting, prob)
-    alg.jac_alg.diffmode === nothing &&
-        (return @set alg.jac_alg.diffmode = __default_nonsparse_ad(prob.u0))
-    return alg
-end
-
 """
     MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
         grid_coarsening = true, jac_alg = nothing)
@@ -108,12 +102,6 @@ Significantly more stable than Single Shooting.
     jac_alg::J
     nshoots::Int
     grid_coarsening
-end
-
-function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
-    jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots, alg.grid_coarsening)
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
