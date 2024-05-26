@@ -54,6 +54,13 @@ end
 @inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
 @inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
 
+function concretize_jacobian_algorithm(alg::Shooting, prob)
+    u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
+    diffmode = alg.jac_alg.diffmode === nothing ? __default_dense_ad(u0) :
+               __concrete_adtype(u0, alg.jac_alg.diffmode)
+    return Shooting(alg.ode_alg, alg.nlsolve, BVPJacobianAlgorithm(diffmode))
+end
+
 """
     MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
         grid_coarsening = true, jac_alg = nothing)

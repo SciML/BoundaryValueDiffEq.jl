@@ -28,8 +28,6 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     end
-    T, N = eltype(u0), length(u0)
-
     alg = concretize_jacobian_algorithm(alg_, prob)
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
@@ -49,50 +47,40 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     loss_fn = SingleShootingLossFunctionWrapper{iip}(
         ode_cache_loss, prob.p, bc, u0_size, prob.problem_type, resid_size)
 
+    # loss_fn_prep = @set loss_fn.cache = nothing # Needed if we want to trace the solve
     jac_extras = if iip
         DI.prepare_jacobian(
             loss_fn, similar(resid_prototype), alg.jac_alg.diffmode, vec(u0))
-        # loss_fnₚ, similar(resid_prototype), alg.jac_alg.diffmode, vec(u0))
     else
         DI.prepare_jacobian(loss_fn, alg.jac_alg.diffmode, vec(u0))
-        # DI.prepare_jacobian(loss_fnₚ, alg.jac_alg.diffmode, vec(u0))
     end
 
     ode_cache_jacobian = __single_shooting_jacobian_ode_cache(
         loss_fn, internal_prob, alg.jac_alg.diffmode, u0, alg.ode_alg; ode_kwargs...)
     loss_fn_jac = @set loss_fn.cache = ode_cache_jacobian
 
-    @show jac_extras
-
     # DI doesn't have an interface to init the sparse jacobian
     jac_prototype = if iip
-        DI.jacobian(
-            loss_fnₚ, similar(resid_prototype), alg.jac_alg.diffmode, vec(u0), jac_extras)
+        DI.jacobian(loss_fn_jac, similar(resid_prototype),
+            alg.jac_alg.diffmode, vec(u0), jac_extras)
     else
-        DI.jacobian(loss_fnₚ, alg.jac_alg.diffmode, vec(u0), jac_extras)
+        DI.jacobian(loss_fn_jac, alg.jac_alg.diffmode, vec(u0), jac_extras)
     end
 
     # `p` is ignored in this function
     jac_fn = if iip
         @closure (J, u, p) -> begin
-            @show typeof(J)
             resid = similar(resid_prototype,
                 promote_type(eltype(u), eltype(p), eltype(resid_prototype)))
-            DI.jacobian!(loss_fnₚ, resid, J, alg.jac_alg.diffmode, u, jac_extras)
+            DI.jacobian!(loss_fn_jac, resid, J, alg.jac_alg.diffmode, u, jac_extras)
         end
-        #     @closure (J, u, p) -> __single_shooting_jacobian!(
-        #         J, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ, y_)
     else
         J = jac_prototype
         @closure (u, p) -> begin
-            DI.jacobian!(loss_fnₚ, J, alg.jac_alg.diffmode, u, jac_extras)
+            DI.jacobian!(loss_fn_jac, J, alg.jac_alg.diffmode, u, jac_extras)
             return J
         end
-        #     @closure (u, p) -> __single_shooting_jacobian(
-        #         jac_prototype, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ)
     end
-
-    @show typeof(jac_prototype)
 
     nlf = __unsafe_nonlinearfunction{iip}(
         loss_fn; jac_prototype, resid_prototype, jac = jac_fn)

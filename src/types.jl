@@ -147,7 +147,8 @@ end
     return minimum(__pick_nested_chunksize, x)
 end
 
-@inline __get_chunksize(ad::AutoSparse) = __get_chunksize(ADTypes.dense_ad(ad))
+# DI just ignores chunksize for sparse backends
+@inline __get_chunksize(ad::AutoSparse) = 1 # __get_chunksize(ADTypes.dense_ad(ad))
 @inline __get_chunksize(::AutoForwardDiff{CK}) where {CK} = CK
 @inline __get_chunksize(::AutoPolyesterForwardDiff{CK}) where {CK} = CK
 
