@@ -104,7 +104,7 @@ function __solve_nlproblem!(
         du, u, p, cur_nshoot, nodes, prob, solve_internal_odes!,
         resida_len, residb_len, N, bca, bcb, ode_cache_loss_fn)
 
-    sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
+    sd_bvp = alg.jac_alg.diffmode isa AutoSparse ?
              __sparsity_detection_alg(J_proto) : NoSparsityDetection()
 
     resid_prototype_cached = similar(resid_prototype)
@@ -113,7 +113,7 @@ function __solve_nlproblem!(
     jac_prototype = init_jacobian(jac_cache)
 
     ode_cache_jac_fn = __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, jac_cache, alg.jac_alg.diffmode,
+        ensemblealg, prob, jac_cache, __cache_trait(alg.jac_alg.diffmode),
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     loss_fnₚ = @closure (du, u) -> __multiple_shooting_2point_loss!(
@@ -153,21 +153,21 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         N, f, bc, u0_size, prob.tspan, alg.ode_alg, u0, ode_cache_loss_fn)
 
     # ODE Part
-    sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
+    sd_ode = alg.jac_alg.nonbc_diffmode isa AutoSparse ?
              __sparsity_detection_alg(J_proto) : NoSparsityDetection()
     ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode, nothing,
         similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
     ode_cache_ode_jac_fn = __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, ode_jac_cache, alg.jac_alg.nonbc_diffmode,
+        ensemblealg, prob, ode_jac_cache, __cache_trait(alg.jac_alg.nonbc_diffmode),
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     # BC Part
-    sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
+    sd_bc = alg.jac_alg.bc_diffmode isa AutoSparse ?
             SymbolicsSparsityDetection() : NoSparsityDetection()
     bc_jac_cache = sparse_jacobian_cache(
         alg.jac_alg.bc_diffmode, sd_bc, nothing, similar(bcresid_prototype), u_at_nodes)
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, bc_jac_cache, alg.jac_alg.bc_diffmode,
+        ensemblealg, prob, bc_jac_cache, __cache_trait(alg.jac_alg.bc_diffmode),
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     jac_prototype = vcat(init_jacobian(bc_jac_cache), init_jacobian(ode_jac_cache))
@@ -208,12 +208,12 @@ function __multiple_shooting_init_odecache(
 end
 
 function __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, jac_cache, ad, alg, nshoots, u; kwargs...)
+        ensemblealg, prob, jac_cache, ::NoDiffCacheNeeded, alg, nshoots, u; kwargs...)
     return __multiple_shooting_init_odecache(ensemblealg, prob, alg, u, nshoots; kwargs...)
 end
 
-function __multiple_shooting_init_jacobian_odecache(ensemblealg, prob, jac_cache,
-        ::Union{AutoForwardDiff, AutoSparseForwardDiff}, alg, nshoots, u; kwargs...)
+function __multiple_shooting_init_jacobian_odecache(
+        ensemblealg, prob, jac_cache, ::DiffCacheNeeded, alg, nshoots, u; kwargs...)
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = reshape(cache.duals[2][1:length(u)], size(u))

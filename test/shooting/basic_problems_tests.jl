@@ -343,7 +343,7 @@ end
         grid_coarsening = true,
         nlsolve = TrustRegion(),
         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
-            nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 8)))
+            nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 8))))
     alg_dense = MultipleShooting(10,
         AutoVern7(Rodas4P());
         grid_coarsening = true,
