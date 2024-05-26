@@ -34,7 +34,7 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
             u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type)
     end
 
-    sd = alg.jac_alg.diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+    sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
          NoSparsityDetection()
     y_ = similar(resid_prototype)
 

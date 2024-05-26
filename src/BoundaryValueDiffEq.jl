@@ -22,7 +22,6 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
     import Logging
     import RecursiveArrayTools: ArrayPartition, DiffEqArray
     import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-    import SparseDiffTools: AbstractSparseADType
 end
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
@@ -92,8 +91,8 @@ end
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg; dt = 0.2)
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
         end
     end
 
@@ -150,8 +149,8 @@ end
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg; dt = 0.2, abstol = 1e-2)
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1e-2)
         end
     end
 
@@ -196,8 +195,8 @@ end
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg)
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg)
         end
     end
 
@@ -267,8 +266,8 @@ end
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg; nlsolve_kwargs = (; abstol = 1e-2))
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; nlsolve_kwargs = (; abstol = 1e-2))
         end
     end
 end

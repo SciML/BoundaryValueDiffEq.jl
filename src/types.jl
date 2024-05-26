@@ -60,12 +60,13 @@ function Base.show(io::IO, alg::BVPJacobianAlgorithm)
     print(io, ")")
 end
 
-__any_sparse_ad(ad) = ad isa AbstractSparseADType
-function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
+@inline __any_sparse_ad(::AutoSparse) = true
+@inline function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
     __any_sparse_ad(jac_alg.bc_diffmode) ||
         __any_sparse_ad(jac_alg.nonbc_diffmode) ||
         __any_sparse_ad(jac_alg.diffmode)
 end
+@inline __any_sparse_ad(_) = false
 
 function BVPJacobianAlgorithm(
         diffmode = missing; nonbc_diffmode = missing, bc_diffmode = missing)

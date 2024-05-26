@@ -104,7 +104,7 @@ function __solve_nlproblem!(
         du, u, p, cur_nshoot, nodes, prob, solve_internal_odes!,
         resida_len, residb_len, N, bca, bcb, ode_cache_loss_fn)
 
-    sd_bvp = alg.jac_alg.diffmode isa AbstractSparseADType ?
+    sd_bvp = alg.jac_alg.diffmode isa AutoSparse ?
              __sparsity_detection_alg(J_proto) : NoSparsityDetection()
 
     resid_prototype_cached = similar(resid_prototype)
@@ -153,7 +153,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         N, f, bc, u0_size, prob.tspan, alg.ode_alg, u0, ode_cache_loss_fn)
 
     # ODE Part
-    sd_ode = alg.jac_alg.nonbc_diffmode isa AbstractSparseADType ?
+    sd_ode = alg.jac_alg.nonbc_diffmode isa AutoSparse ?
              __sparsity_detection_alg(J_proto) : NoSparsityDetection()
     ode_jac_cache = sparse_jacobian_cache(alg.jac_alg.nonbc_diffmode, sd_ode, nothing,
         similar(u_at_nodes, cur_nshoot * N), u_at_nodes)
@@ -162,7 +162,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     # BC Part
-    sd_bc = alg.jac_alg.bc_diffmode isa AbstractSparseADType ?
+    sd_bc = alg.jac_alg.bc_diffmode isa AutoSparse ?
             SymbolicsSparsityDetection() : NoSparsityDetection()
     bc_jac_cache = sparse_jacobian_cache(
         alg.jac_alg.bc_diffmode, sd_bc, nothing, similar(bcresid_prototype), u_at_nodes)

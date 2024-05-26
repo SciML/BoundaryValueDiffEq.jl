@@ -311,12 +311,12 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
 
-    sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+    sd_bc = jac_alg.bc_diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
     cache_bc = __sparse_jacobian_cache(
         Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bcₚ, resid_bc, y)
 
-    sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
+    sd_collocation = if jac_alg.nonbc_diffmode isa AutoSparse
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             colored_matrix = __generate_sparse_jacobian_prototype(
@@ -416,7 +416,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
-    sd = if jac_alg.diffmode isa AbstractSparseADType
+    sd = if jac_alg.diffmode isa AutoSparse
         __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
             cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
