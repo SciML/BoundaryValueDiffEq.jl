@@ -192,7 +192,7 @@ end
                 nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(;
                     bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                    nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))))
+                    nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 2)))))
     end
 
     @compile_workload begin
@@ -257,13 +257,13 @@ end
                     nlsolve = LevenbergMarquardt(; disable_geodesic = Val(true)),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
+                        nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 2)))),
                 MultipleShooting(10,
                     Tsit5();
                     nlsolve = GaussNewton(),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2)))])
+                        nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 2))))])
     end
 
     @compile_workload begin

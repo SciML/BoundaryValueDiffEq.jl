@@ -89,8 +89,8 @@ If user provided all the required fields, then return the user provided algorith
 Otherwise, based on the problem type and the algorithm, decide the missing fields.
 
 For example, for `TwoPointBVProblem`, the `bc_diffmode` is set to
-`AutoSparseForwardDiff` while for `StandardBVProblem`, the `bc_diffmode` is set to
-`AutoForwardDiff`.
+`AutoSparse(AutoForwardDiff())` while for `StandardBVProblem`, the `bc_diffmode` is set to
+`AutoForwardDiff()`.
 """
 function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg)
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
@@ -109,21 +109,13 @@ function concrete_jacobian_algorithm(
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-struct BoundaryValueDiffEqTag end
-
-function ForwardDiff.checktag(::Type{<:ForwardDiff.Tag{<:BoundaryValueDiffEqTag, <:T}},
-        f::F, x::AbstractArray{T}) where {T, F}
-    return true
-end
-
 @inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
     return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
 end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
 @inline __default_sparse_ad(::Type{<:Complex}) = AutoSparseFiniteDiff()
 @inline function __default_sparse_ad(::Type{T}) where {T}
-    return ForwardDiff.can_dual(T) ?
-           AutoSparseForwardDiff(; tag = BoundaryValueDiffEqTag()) : AutoSparseFiniteDiff()
+    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()))
 end
 
 @inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
@@ -132,8 +124,7 @@ end
 @inline __default_nonsparse_ad(x::T) where {T} = __default_nonsparse_ad(T)
 @inline __default_nonsparse_ad(::Type{<:Complex}) = AutoFiniteDiff()
 @inline function __default_nonsparse_ad(::Type{T}) where {T}
-    return ForwardDiff.can_dual(T) ? AutoForwardDiff(; tag = BoundaryValueDiffEqTag()) :
-           AutoFiniteDiff()
+    return ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff())
 end
 
 # This can cause Type Instability
@@ -146,9 +137,10 @@ Base.@deprecate MIRKJacobianComputationAlgorithm(
     diffmode = missing; collocation_diffmode = missing, bc_diffmode = missing) BVPJacobianAlgorithm(
     diffmode; nonbc_diffmode = collocation_diffmode, bc_diffmode)
 
-__needs_diffcache(::Union{AutoForwardDiff, AutoSparseForwardDiff}) = true
-__needs_diffcache(_) = false
-function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
+@inline __needs_diffcache(::AutoForwardDiff) = true
+@inline __needs_diffcache(ad::AutoSparse) = __needs_diffcache(ADTypes.dense_ad(ad))
+@inline __needs_diffcache(_) = false
+@inline function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
     return __needs_diffcache(jac_alg.diffmode) ||
            __needs_diffcache(jac_alg.bc_diffmode) ||
            __needs_diffcache(jac_alg.nonbc_diffmode)
@@ -176,3 +168,11 @@ const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
         PreallocationTools.get_tmp(dc, u)
     end
 end
+
+# DiffCache
+struct DiffCacheNeeded end
+struct NoDiffCacheNeeded end
+
+@inline __cache_trait(::AutoForwardDiff) = DiffCacheNeeded()
+@inline __cache_trait(ad::AutoSparse) = __cache_trait(ADTypes.dense_ad(ad))
+@inline __cache_trait(_) = NoDiffCacheNeeded()

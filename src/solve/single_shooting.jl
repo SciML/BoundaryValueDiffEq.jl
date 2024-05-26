@@ -49,7 +49,8 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
-        internal_prob, jac_cache, alg.jac_alg.diffmode, u0, alg.ode_alg; ode_kwargs...)
+        internal_prob, jac_cache, __cache_trait(alg.jac_alg.diffmode),
+        u0, alg.ode_alg; ode_kwargs...)
 
     jac_prototype = init_jacobian(jac_cache)
 
@@ -126,13 +127,13 @@ function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where
     return J
 end
 
-function __single_shooting_jacobian_ode_cache(prob, jac_cache, alg, u0, ode_alg; kwargs...)
+function __single_shooting_jacobian_ode_cache(
+        prob, jac_cache, ::NoDiffCacheNeeded, u0, ode_alg; kwargs...)
     return SciMLBase.__init(remake(prob; u0), ode_alg; kwargs...)
 end
 
 function __single_shooting_jacobian_ode_cache(
-        prob, jac_cache, ::Union{AutoForwardDiff, AutoSparseForwardDiff},
-        u0, ode_alg; kwargs...)
+        prob, jac_cache, ::DiffCacheNeeded, u0, ode_alg; kwargs...)
     cache = jac_cache.cache
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
