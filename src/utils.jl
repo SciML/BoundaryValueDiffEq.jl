@@ -360,17 +360,7 @@ end
 # Construct BVP Solution
 function __build_solution(prob::BVProblem, odesol, nlsol)
     retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
-    return __solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
-end
-
-function __solution_new_original_retcode(
-        sol::ODESolution{T, N}, original, retcode, resid) where {T, N}
-    return ODESolution{
-        T, N, typeof(sol.u), typeof(sol.u_analytic), typeof(sol.errors), typeof(sol.t),
-        typeof(sol.k), typeof(sol.prob), typeof(sol.alg), typeof(sol.interp),
-        typeof(sol.stats), typeof(sol.alg_choice), typeof(resid), typeof(original)}(
-        sol.u, sol.u_analytic, sol.errors, sol.t, sol.k, sol.prob, sol.alg, sol.interp,
-        sol.dense, sol.tslocation, sol.stats, sol.alg_choice, retcode, resid, original)
+    return SciMLBase.solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
 end
 
 # Fix3
