@@ -216,7 +216,8 @@ end
         bc_diffmode = AutoForwardDiff(), nonbc_diffmode = AutoSparse(AutoForwardDiff()))
     prob = BVProblem(swirling_flow!, swirling_flow_bc!, u0, tspan, eps)
 
-    @test_nowarn solve(prob, MIRK4(; jac_alg); dt = 0.01)
+    sol = solve(prob, MIRK4(; jac_alg); dt = 0.01)
+    @test SciMLBase.successful_retcode(sol.retcode)
 end
 
 @testitem "Solve using Continuation" begin
