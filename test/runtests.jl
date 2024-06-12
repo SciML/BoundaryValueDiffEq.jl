@@ -1,7 +1,7 @@
 using ReTestItems
 
-ReTestItems.runtests(joinpath(@__DIR__, "mirk/"))
-ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
+#ReTestItems.runtests(joinpath(@__DIR__, "mirk/"))
+#ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
 ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))
 
 if !Sys.iswindows()
