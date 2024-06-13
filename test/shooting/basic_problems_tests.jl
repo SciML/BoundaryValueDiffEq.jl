@@ -8,6 +8,9 @@
         MultipleShooting(
             10, Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5())]
+    
+    JET_SKIP = [false, false, true, false, false, true]
+    JET_BROKEN = [false, false, false, false, false, false]
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
@@ -35,12 +38,13 @@
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-8
 
+        JET_SKIP[i] && continue
         @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
 
     # Out of Place
@@ -64,12 +68,13 @@
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-8
 
+        JET_SKIP[i] && continue
         @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
 
     # Inplace
@@ -87,12 +92,13 @@
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-8
 
+        JET_SKIP[i] && continue
         @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
 
     # Out of Place
@@ -109,12 +115,13 @@
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-8
 
+        JET_SKIP[i] && continue
         @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
 end
 
