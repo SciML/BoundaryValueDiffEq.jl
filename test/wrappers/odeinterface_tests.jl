@@ -108,3 +108,51 @@ end
     sol_colnew = solve(prob, COLNEW(), dt = 0.01)
     @test SciMLBase.successful_retcode(sol_colnew)
 end
+
+@testitem "COLNEW for multi-points BVP" setup=[ODEInterfaceWrapperTestSetup] begin
+    using ODEInterface, RecursiveArrayTools
+
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = u[3]
+        du[3] = u[1] - u[2] + u[3] + t^2 + t
+    end
+
+    # just to construct the BVProblem, we don't use it
+    function fakebc!(res, u, p, t)
+        nothing
+    end
+
+    function bc(i, z, bc)
+        if i == 1
+            bc[1] = z[1]
+        elseif i == 2
+            bc[1] = z[2] - 1.0
+        elseif i == 3
+            bc[1] = z[3] + 2.0
+        end
+    end
+
+    function dbc(i, z, dbc)
+        if i == 1
+            dbc[1] = 1.0
+            dbc[2] = 0.0
+            dbc[3] = 0.0
+        elseif i == 2
+            dbc[1] = 0.0
+            dbc[2] = 1.0
+            dbc[3] = 0.0
+        elseif i == 3
+            dbc[1] = 0.0
+            dbc[2] = 0.0
+            dbc[3] = 1.0
+        end
+    end
+
+    tspan = (0.0, pi / 2)
+    zeta = [0.0, pi / 4, pi / 2]
+
+    prob = BVProblem(f!, fakebc!, [1.0, 1.0, 0.0], tspan)
+    sol_colnew = solve(prob, COLNEW(bc_func = bc, dbc_func = dbc, zeta = zeta), dt = 0.01)
+    @test SciMLBase.successful_retcode(sol_colnew)
+end

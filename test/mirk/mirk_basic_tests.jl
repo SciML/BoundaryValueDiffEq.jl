@@ -95,9 +95,9 @@ end
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_opt target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
         end
     end
@@ -212,9 +212,12 @@ end
 
     tspan = (0.0, 1.0)
     u0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    jac_alg = BVPJacobianAlgorithm(;
+        bc_diffmode = AutoForwardDiff(), nonbc_diffmode = AutoSparse(AutoForwardDiff()))
     prob = BVProblem(swirling_flow!, swirling_flow_bc!, u0, tspan, eps)
 
-    @test_nowarn solve(prob, MIRK4(); dt = 0.01)
+    sol = solve(prob, MIRK4(; jac_alg); dt = 0.01)
+    @test SciMLBase.successful_retcode(sol.retcode)
 end
 
 @testitem "Solve using Continuation" begin
