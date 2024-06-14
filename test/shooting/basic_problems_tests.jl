@@ -196,9 +196,9 @@ end
     flow_bvp = BVProblem{true}(flow_in_a_channel!, bc_flow!, u0, tspan, p)
 
     for solver in [
-        Shooting(AutoVern7(Rosenbrock23()),
+        Shooting(AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
-        MultipleShooting(10, AutoVern7(Rosenbrock23()),
+        MultipleShooting(10, AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8)))]
         sol = solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-8))
