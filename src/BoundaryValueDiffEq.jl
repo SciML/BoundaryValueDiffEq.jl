@@ -3,7 +3,7 @@ module BoundaryValueDiffEq
 import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidations
 
 @recompile_invalidations begin
-    using ADTypes, Adapt, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
+    using ADTypes, Adapt, DiffEqBase, FiniteDiff, ForwardDiff, LinearAlgebra, NonlinearSolve,
           OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
           SparseDiffTools
 
@@ -21,7 +21,7 @@ import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidat
     import ForwardDiff: ForwardDiff, pickchunksize
     import Logging
     import RecursiveArrayTools: ArrayPartition, DiffEqArray
-    import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
+    import SciMLBase: AbstractDiffEqInterpolation, AbstractBVProblem, StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
     import SparseDiffTools: AbstractSparseADType
 end
 
@@ -33,13 +33,17 @@ include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 
-include("mirk_tableaus.jl")
+include("tableaus/mirk_tableaus.jl")
+include("tableaus/mirkn_tableaus.jl")
 
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
 include("solve/mirk.jl")
+include("solve/mirkn.jl")
 
-include("collocation.jl")
+include("collocation/mirk_collocation.jl")
+include("collocation/mirkn_collocation.jl")
+
 include("sparse_jacobians.jl")
 
 include("adaptivity.jl")
@@ -47,7 +51,7 @@ include("interpolation.jl")
 
 include("default_nlsolve.jl")
 
-function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
+function __solve(prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end
@@ -275,6 +279,7 @@ end
 
 export Shooting, MultipleShooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
+export MIRKN2, MIRKN4, MIRKN6
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
 export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm

@@ -72,7 +72,7 @@ end
 
 ## Easier to dispatch
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
-eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
+eval_bc_residual(::StandardBVProblem, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
     ub = sol isa AbstractVector ? sol[end] : sol(last(t))
@@ -80,19 +80,32 @@ function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where 
     residb = bcb(ub, p)
     return (resida, residb)
 end
+function general_eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, p, mesh) where {BC}
+    M = length(y[1])
+    L = length(mesh)
+    res_bc = bc(y[(L+1):end], y[1:L], p, mesh)
+    return res_bc
+end
+function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, p, mesh) where {BC}
+    L = length(mesh)
+    res_bc = bc(y[(L+1):end], y[1:L], p, mesh)
+    return res_bc
+end
+function eval_bc_residual(::TwoPointSecondOrderBVProblem, bc::BC, sol, p, mesh) where {BC}
+    M = length(sol[1])
+    L = length(mesh)
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))[1:M]
+    ub = sol isa AbstractVector ? sol[L] : sol(last(t))[1:M]
+    dua = sol isa AbstractVector ? sol[L+1] : sol(first(t))[M+1:end]
+    dub = sol isa AbstractVector ? sol[end] : sol(last(t))[M+1:end]
+    return vcat(bc[1](dua, ua, p), bc[2](dub, ub, p))
+end
 
 function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
-eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(
-        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
-    bca!(resid.resida, ua, p)
-    bcb!(resid.residb, ub, p)
-    return resid
-end
+eval_bc_residual!(resid, ::StandardBVProblem, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
+eval_bc_residual!(resid, ::StandardSecondOrderBVProblem, bc!::BC, dsol, sol, p, t) where {BC} = bc!(resid, dsol, sol, p, t)
 @views function eval_bc_residual!(
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
@@ -100,6 +113,28 @@ end
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
+end
+function general_eval_bc_residual!(resid, ::StandardSecondOrderBVProblem, bc!::BC, y, p, mesh) where {BC}
+    L = length(mesh)
+    bc!(resid, y[(L+1):end], y[1:L], p, mesh)
+end
+function eval_bc_residual!(resid, ::StandardSecondOrderBVProblem, bc!::BC, y, p, mesh) where {BC}
+    M = length(y[1])
+    L = length(mesh)
+    res_bc = vcat(resid[1], resid[2])
+    bc!(res_bc, y[(L+1):end], y[1:L], p, mesh)
+    copyto!(resid[1], res_bc[1:M])
+    copyto!(resid[2], res_bc[(M+1):end])
+end
+function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem, bc::BC, sol, p, mesh) where {BC}
+    M = length(sol[1])
+    L = length(mesh)
+    ua = sol isa AbstractVector ? sol[1] : sol(first(t))[1:M]
+    ub = sol isa AbstractVector ? sol[L] : sol(last(t))[1:M]
+    dua = sol isa AbstractVector ? sol[L+1] : sol(first(t))[M+1:end]
+    dub = sol isa AbstractVector ? sol[end] : sol(last(t))[M+1:end]
+    bc[1](resid[1], dua, ua, p)
+    bc[2](resid[2], dub, ub, p)
 end
 
 __append_similar!(::Nothing, n, _) = nothing
@@ -185,6 +220,20 @@ function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     return prototype, size(prototype)
 end
 
+function __get_bcresid_prototype(::TwoPointSecondOrderBVProblem, prob::BVProblem, u)
+    prototype = if prob.f.bcresid_prototype !== nothing
+        prob.f.bcresid_prototype.x
+    else
+        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
+    end
+    return prototype, size.(prototype)
+end
+function __get_bcresid_prototype(::StandardSecondOrderBVProblem, prob::BVProblem, u)
+    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
+                __zeros_like(u)
+    return prototype, size(prototype)
+end
+
 @inline function __fill_like(v, x, args...)
     y = similar(x, args...)
     fill!(y, v)
@@ -219,6 +268,27 @@ end
 
 __vec_bc(sol, p, t, bc, u_size) = vec(bc(__restructure_sol(sol, u_size), p, t))
 __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
+
+# Restructure Non-Vector Inputs
+function __vec_f!(ddu, du, u, p, t, f!, u_size)
+    f!(reshape(ddu, u_size), reshape(du, u_size), reshape(u, u_size), p, t)
+    return nothing
+end
+
+__vec_f(du, u, p, t, f, u_size) = vec(f(reshape(du, u_size), reshape(u, u_size), p, t))
+
+function __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), __restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t)
+    return nothing
+end
+
+function __vec_so_bc!(resid, dsol, sol, p, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), reshape(dsol, u_size), reshape(sol, u_size), p)
+    return nothing
+end
+
+__vec_so_bc(dsol, sol, p, t, bc, u_size) = vec(bc(__restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t))
+__vec_so_bc(dsol, sol, p, bc, u_size) = vec(bc(reshape(dsol, u_size), reshape(sol, u_size), p))
 
 __get_non_sparse_ad(ad::AbstractADType) = ad
 function __get_non_sparse_ad(ad::AbstractSparseADType)
@@ -371,6 +441,9 @@ end
 end
 @inline function __initial_guess_on_mesh(u₀::F, mesh, p, alias_u0::Bool) where {F}
     return [vec(__initial_guess(u₀, p, t)) for t in mesh]
+end
+@inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p, alias_u0::Bool)
+    return [copy(vec(u₀)) for _ in 1:2*(Nig+1)]
 end
 
 # Construct BVP Solution
