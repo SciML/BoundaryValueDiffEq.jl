@@ -60,7 +60,8 @@ function create_simple_pendulum_benchmark()
     end
     for alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
         if @isdefined(alg)
-            iip_suite["$alg()"] = @benchmarkable solve($SimplePendulumBenchmark.prob_iip, $alg(), dt=0.05)
+            iip_suite["$alg()"] = @benchmarkable solve(
+                $SimplePendulumBenchmark.prob_iip, $alg(), dt = 0.05)
         end
     end
 
@@ -82,7 +83,8 @@ function create_simple_pendulum_benchmark()
     end
     for alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
         if @isdefined(alg)
-            oop_suite["$alg()"] = @benchmarkable solve($SimplePendulumBenchmark.prob_oop, $alg(), dt=0.05)
+            oop_suite["$alg()"] = @benchmarkable solve(
+                $SimplePendulumBenchmark.prob_oop, $alg(), dt = 0.05)
         end
     end
 

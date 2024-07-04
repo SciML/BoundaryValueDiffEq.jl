@@ -1,29 +1,25 @@
 module BoundaryValueDiffEq
 
-import PrecompileTools: @compile_workload, @setup_workload, @recompile_invalidations
+import PrecompileTools: @compile_workload, @setup_workload
+using ADTypes, Adapt, DiffEqBase, FiniteDiff, ForwardDiff, LinearAlgebra, NonlinearSolve,
+      OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+      SparseDiffTools
 
-@recompile_invalidations begin
-    using ADTypes, Adapt, DiffEqBase, FiniteDiff, ForwardDiff, LinearAlgebra, NonlinearSolve,
-          OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
-          SparseDiffTools
+using PreallocationTools: PreallocationTools, DiffCache
 
-    using PreallocationTools: PreallocationTools, DiffCache
+# Special Matrix Types
+using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
-    # Special Matrix Types
-    using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
-
-    import ADTypes: AbstractADType
-    import ArrayInterface: matrix_colors, parameterless_type, undefmatrix,
-                           fast_scalar_indexing
-    import ConcreteStructs: @concrete
-    import DiffEqBase: solve
-    import FastClosures: @closure
-    import ForwardDiff: ForwardDiff, pickchunksize
-    import Logging
-    import RecursiveArrayTools: ArrayPartition, DiffEqArray
-    import SciMLBase: AbstractDiffEqInterpolation, AbstractBVProblem, StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
-    import SparseDiffTools: AbstractSparseADType
-end
+import ADTypes: AbstractADType
+import ArrayInterface: matrix_colors, parameterless_type, undefmatrix,
+                       fast_scalar_indexing
+import ConcreteStructs: @concrete
+import DiffEqBase: solve
+import FastClosures: @closure
+import ForwardDiff: ForwardDiff, pickchunksize
+import Logging
+import RecursiveArrayTools: ArrayPartition, DiffEqArray
+import SciMLBase: AbstractDiffEqInterpolation, AbstractBVProblem, StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
                 SciMLBase
@@ -96,8 +92,8 @@ end
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg; dt = 0.2)
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
         end
     end
 
@@ -154,8 +150,8 @@ end
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg; dt = 0.2, abstol = 1e-2)
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1e-2)
         end
     end
 
@@ -196,12 +192,12 @@ end
                 nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(;
                     bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                    nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))))
+                    nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 2)))))
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg)
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg)
         end
     end
 
@@ -261,18 +257,18 @@ end
                     nlsolve = LevenbergMarquardt(; disable_geodesic = Val(true)),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2))),
+                        nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 2)))),
                 MultipleShooting(10,
                     Tsit5();
                     nlsolve = GaussNewton(),
                     jac_alg = BVPJacobianAlgorithm(;
                         bc_diffmode = AutoForwardDiff(; chunksize = 2),
-                        nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 2)))])
+                        nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 2))))])
     end
 
     @compile_workload begin
-        for prob in probs, alg in algs
-            solve(prob, alg; nlsolve_kwargs = (; abstol = 1e-2))
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; nlsolve_kwargs = (; abstol = 1e-2))
         end
     end
 end

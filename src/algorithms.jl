@@ -85,10 +85,11 @@ Significantly more stable than Single Shooting.
     on the input types and problem type.
 
       + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-        `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+        `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
       + For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
-        we default to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
-        `bc_diffmode`, we default to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
+        we default to `AutoSparse(AutoForwardDiff())` if possible else
+        `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, we default to `AutoForwardDiff`
+        if possible else `AutoFiniteDiff`.
   - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
     solution. Possible Choices:
 
@@ -161,10 +162,10 @@ for order in (2, 3, 4, 5, 6)
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
             - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-              `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+              `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
             - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-              `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
-              `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+              `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
+              `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
               possible else `AutoFiniteDiff`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
