@@ -142,13 +142,6 @@ function concrete_jacobian_algorithm(
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-struct BoundaryValueDiffEqTag end
-
-function ForwardDiff.checktag(::Type{<:ForwardDiff.Tag{<:BoundaryValueDiffEqTag, <:T}},
-        f::F, x::AbstractArray{T}) where {T, F}
-    return true
-end
-
 @inline function __default_sparse_ad(x::AbstractArray{T}) where {T}
     return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
 end

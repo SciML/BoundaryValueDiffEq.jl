@@ -213,9 +213,9 @@ for order in (2, 4, 6)
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
-            - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+            - For `TwoPointSecondOrderBVProblem`, only `diffmode` is used (defaults to
               `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
-            - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+            - For `SecondOrderBVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
               `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
               `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
               possible else `AutoFiniteDiff`.
