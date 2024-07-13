@@ -95,9 +95,9 @@ end
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_opt target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
         end
     end
