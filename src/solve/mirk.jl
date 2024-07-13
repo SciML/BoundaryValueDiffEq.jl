@@ -47,9 +47,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     fᵢ_cache = __alloc(similar(X))
     fᵢ₂_cache = vec(similar(X))
 
-    defect_threshold = T(alg.defect_threshold)
-    MxNsub = alg.max_num_subintervals
-
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
 
@@ -110,7 +107,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        resid₁_size, (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+        resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -131,14 +128,13 @@ function __expand_cache!(cache::MIRKCache)
     return cache
 end
 
-function __split_mirk_kwargs(;
-        defect_threshold, MxNsub, abstol, dt, adaptive = true, kwargs...)
+function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
     return (
-        (defect_threshold, MxNsub, abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
+        (abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
-    (_, _, abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, dt), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
