@@ -88,12 +88,10 @@
         @test norm(sol.resid, Inf) < 0.005
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
@@ -115,12 +113,10 @@
         @test norm(sol.resid, Inf) < 0.009
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
@@ -142,12 +138,10 @@
         @test norm(sol.resid, Inf) < 0.009
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end

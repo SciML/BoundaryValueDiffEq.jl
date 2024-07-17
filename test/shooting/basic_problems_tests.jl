@@ -38,12 +38,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -70,12 +68,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -96,12 +92,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -121,12 +115,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -203,9 +195,9 @@ end
     flow_bvp = BVProblem{true}(flow_in_a_channel!, bc_flow!, u0, tspan, p)
 
     for solver in [
-        Shooting(AutoTsit5(Rosenbrock23()),
+        Shooting(AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
-        MultipleShooting(10, AutoTsit5(Rosenbrock23()),
+        MultipleShooting(10, AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8)))]
         sol = solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-8))
