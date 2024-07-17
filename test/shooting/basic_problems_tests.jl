@@ -351,7 +351,7 @@ end
         nlsolve = TrustRegion(),
         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
             nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
-    alg_default = MultipleShooting(10, AutoVern7(Rosenbrock23()); grid_coarsening = true)
+    alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
     for (prob, alg) in Iterators.product(
         (prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))

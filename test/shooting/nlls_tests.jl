@@ -2,7 +2,7 @@
     using LinearAlgebra, JET
 
     SOLVERS = [
-        Shooting(Tsit5(); jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
         Shooting(
             Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
@@ -49,12 +49,10 @@
         @test norm(sol.resid, Inf) < 0.005
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
     end
