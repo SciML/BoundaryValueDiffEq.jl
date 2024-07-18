@@ -18,18 +18,31 @@ function bc_pendulum!(residual, u, p, t)
     return nothing
 end
 
+function bc_pendulum_mirk!(residual, u, p, t)
+    residual[1] = u[end ÷ 2][1] + π / 2
+    residual[2] = u[end][1] - π / 2
+    return nothing
+end
+
 function simple_pendulum(u, p, t)
     g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
     return [dθ, -(g / L) * sin(θ)]
 end
 
 function bc_pendulum(u, p, t)
-    t0, t1 = tspan
     return [u((t0 + t1) / 2)[1] + π / 2, u(t1)[1] - π / 2]
+end
+
+function bc_pendulum_mirk(u, p, t)
+    return [u[end ÷ 2][1] + π / 2, u[end][1] - π / 2]
 end
 
 const prob_oop = BVProblem{false}(simple_pendulum, bc_pendulum, [π / 2, π / 2], tspan)
 const prob_iip = BVProblem{true}(simple_pendulum!, bc_pendulum!, [π / 2, π / 2], tspan)
+const prob_oop_mirk = BVProblem{false}(
+    simple_pendulum, bc_pendulum_mirk, [π / 2, π / 2], tspan)
+const prob_iip_mirk = BVProblem{true}(
+    simple_pendulum!, bc_pendulum_mirk!, [π / 2, π / 2], tspan)
 
 end
 
@@ -61,7 +74,7 @@ function create_simple_pendulum_benchmark()
     for alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
         if @isdefined(alg)
             iip_suite["$alg()"] = @benchmarkable solve(
-                $SimplePendulumBenchmark.prob_iip, $alg(), dt = 0.05)
+                $SimplePendulumBenchmark.prob_iip_mirk, $alg(), dt = 0.05)
         end
     end
 
@@ -84,7 +97,7 @@ function create_simple_pendulum_benchmark()
     for alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6)
         if @isdefined(alg)
             oop_suite["$alg()"] = @benchmarkable solve(
-                $SimplePendulumBenchmark.prob_oop, $alg(), dt = 0.05)
+                $SimplePendulumBenchmark.prob_oop_mirk, $alg(), dt = 0.05)
         end
     end
 

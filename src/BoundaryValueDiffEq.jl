@@ -12,8 +12,7 @@ using PreallocationTools: PreallocationTools, DiffCache
 using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
 import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors, parameterless_type, undefmatrix,
-                       fast_scalar_indexing
+import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import FastClosures: @closure
