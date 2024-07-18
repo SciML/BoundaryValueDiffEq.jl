@@ -353,13 +353,6 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
     dbc_func
     zeta::AbstractVector
 
-    function COLNEW(;
-            bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
-            max_num_subintervals::Int = 3000, bc_func = nothing,
-            dbc_func = nothing, zeta::AbstractVector = nothing)
-        return COLNEW(bvpclass, collocationpts, diagnostic_output,
-            max_num_subintervals, bc_func, dbc_func, zeta)
-    end
     function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
             max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector)
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
@@ -368,4 +361,11 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
         return new(bvpclass, collocationpts, diagnostic_output,
             max_num_subintervals, bc_func, dbc_func, zeta)
     end
+end
+
+function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
+    max_num_subintervals::Int = 3000, bc_func = nothing,
+    dbc_func = nothing, zeta::AbstractVector = nothing)
+        return COLNEW(bvpclass, collocationpts, diagnostic_output,
+            max_num_subintervals, bc_func, dbc_func, zeta)
 end
