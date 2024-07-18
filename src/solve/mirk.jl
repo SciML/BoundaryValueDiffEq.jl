@@ -236,9 +236,8 @@ end
 @views function __mirk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    sol_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, y_)
     resids = [get_tmp(r, u) for r in residual]
-    eval_bc_residual!(resids[1], pt, bc!, sol_, p, mesh)
+    eval_bc_residual!(resids[1], pt, bc!, y_, p, mesh)
     Φ!(resids[2:end], cache, y_, u, p)
     recursive_flatten!(resid, resids)
     return nothing
@@ -258,7 +257,8 @@ end
 
 @views function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    sol_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, y_)
+    tmp_y = [get_tmp(r, u) for r in y_]
+    sol_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, tmp_y)
     resid_bc = eval_bc_residual(pt, bc, sol_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
@@ -274,15 +274,13 @@ end
 
 @views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    sol_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, y_)
-    eval_bc_residual!(resid, pt, bc!, sol_, p, mesh)
+    eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
     return nothing
 end
 
 @views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    sol_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, y_)
-    return eval_bc_residual(pt, bc!, sol_, p, mesh)
+    return eval_bc_residual(pt, bc!, y_, p, mesh)
 end
 
 @views function __mirk_loss_collocation!(resid, u, p, y, mesh, residual, cache)
