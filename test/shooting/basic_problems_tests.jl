@@ -358,6 +358,7 @@ end
         sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
 
+        @test sol.retcode == ReturnCode.Default
         @test SciMLBase.successful_retcode(sol.retcode)
         @test norm(sol.resid, Inf) < 1e-6
     end
