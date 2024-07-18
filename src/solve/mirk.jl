@@ -105,9 +105,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     return MIRKCache{iip, T}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
+        k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect,
+        new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -129,8 +129,7 @@ function __expand_cache!(cache::MIRKCache)
 end
 
 function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return (
-        (abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
+    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
@@ -210,7 +209,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {
     pt = cache.problem_type
 
     loss_bc = if iip
-        @closure (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
+        @closure (du, u, p) -> __mirk_loss_bc!(
+            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     else
         @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     end
@@ -270,7 +270,8 @@ end
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-@views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+@views function __mirk_loss_bc!(
+        resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
     return nothing

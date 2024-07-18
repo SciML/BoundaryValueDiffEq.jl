@@ -223,8 +223,7 @@ end
         μy = uy(x, y, z, p) # ∂(slowness)/∂y, function of space
         μz = uz(x, y, z, p) # ∂(slowness)/∂z, function of space
 
-        return [S * nu * ξ, S * nu * η, S * nu * ζ, S * μx,
-        S * μy, S * μz, S / nu, 0]
+        return [S * nu * ξ, S * nu * η, S * nu * ζ, S * μx, S * μy, S * μz, S / nu, 0]
     end
 
     function ray_tracing!(du, u, p, t)
@@ -254,8 +253,9 @@ end
         ub = sol(1.0)
         nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
 
-        return [ua[1] - p[4], ua[2] - p[5], ua[3] - p[6], ua[7],
-        ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2, ub[1] - p[7], ub[2] - p[8], ub[3] - p[9]]
+        return [ua[1] - p[4], ua[2] - p[5], ua[3] - p[6],
+            ua[7], ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2,
+            ub[1] - p[7], ub[2] - p[8], ub[3] - p[9]]
     end
 
     function ray_tracing_bc!(res, sol, p, t)
@@ -351,7 +351,8 @@ end
         nlsolve = TrustRegion(),
         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
             nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
-    alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
+    alg_default = MultipleShooting(
+        10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
     for (prob, alg) in Iterators.product(
         (prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))

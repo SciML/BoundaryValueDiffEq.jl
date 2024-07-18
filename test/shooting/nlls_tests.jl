@@ -2,7 +2,8 @@
     using LinearAlgebra, JET
 
     SOLVERS = [
-        Shooting(Tsit5(), NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
         Shooting(
             Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
@@ -10,8 +11,8 @@
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(
-            10, Tsit5(), NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(
             10, Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
