@@ -257,9 +257,7 @@ end
 
 @views function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    tmp_y = [get_tmp(r, u) for r in y_]
-    sol_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, tmp_y)
-    resid_bc = eval_bc_residual(pt, bc, sol_, p, mesh)
+    resid_bc = eval_bc_residual(pt, bc, y_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
