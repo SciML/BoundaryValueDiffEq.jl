@@ -5,7 +5,7 @@ import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess, __extract_mes
                             __initial_guess_length, __initial_guess, __has_initial_guess
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
-                     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS,
+                     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
                      OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
 import ODEInterface: Bvpm2, bvpm2_init, bvpm2_solve, bvpm2_destroy, bvpm2_get_x
 import ODEInterface: bvpsol
