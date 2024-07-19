@@ -349,12 +349,13 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
     collocationpts::Int
     diagnostic_output::Int
     max_num_subintervals::Int
-    bc_func
-    dbc_func
-    zeta::AbstractVector
+    bc_func::Union{Function, Nothing}
+    dbc_func::Union{Function, Nothing}
+    zeta::Union{AbstractVector, Nothing}
 
     function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
-            max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector)
+            max_num_subintervals::Int, bc_func::Union{Function, Nothing},
+            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`COLNEW` requires `ODEInterface.jl` to be loaded")
         end
@@ -364,8 +365,9 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
 end
 
 function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
-    max_num_subintervals::Int = 3000, bc_func = nothing,
-    dbc_func = nothing, zeta::AbstractVector = nothing)
-        return COLNEW(bvpclass, collocationpts, diagnostic_output,
-            max_num_subintervals, bc_func, dbc_func, zeta)
+        max_num_subintervals::Int = 3000, bc_func::Union{Function, Nothing} = nothing,
+        dbc_func::Union{Function, Nothing} = nothing,
+        zeta::Union{AbstractVector, Nothing} = nothing)
+    return COLNEW(bvpclass, collocationpts, diagnostic_output,
+        max_num_subintervals, bc_func, dbc_func, zeta)
 end

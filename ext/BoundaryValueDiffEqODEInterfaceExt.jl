@@ -299,10 +299,18 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
         fixed_points = alg.zeta[left_index:right_index]
     end
 
-    opt = OptionsODE(OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
-        OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
-        OPT_MAXSUBINTERVALS => alg.max_num_subintervals,
-        OPT_RTOL => reltol, OPT_ADDGRIDPOINTS => fixed_points)
+    if fixed_points === nothing
+        opt = OptionsODE(
+            OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
+            OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
+            OPT_MAXSUBINTERVALS => alg.max_num_subintervals, OPT_RTOL => reltol)
+    else
+        opt = OptionsODE(
+            OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
+            OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
+            OPT_MAXSUBINTERVALS => alg.max_num_subintervals,
+            OPT_RTOL => reltol, OPT_ADDGRIDPOINTS => fixed_points)
+    end
 
     sol, retcode, stats = colnew(_tspan, orders, zeta, rhs, Drhs, bc, Dbc, nothing, opt)
 
