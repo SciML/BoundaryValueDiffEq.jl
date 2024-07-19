@@ -302,9 +302,10 @@ end
 
 """
     COLNEW(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
-        max_num_subintervals = 3000)
+        max_num_subintervals = 3000, bc_func = nothing, dbc_func = nothing,
+        zeta = nothing)
     COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
-        max_num_subintervals::Int)
+        max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector)
 
 ## Keyword Arguments:
 
@@ -327,6 +328,9 @@ end
       + `0`: Selected printout.
       + `1`: No printout.
   - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+  - `bc_func`: Boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
+  - `dbc_func`: Jacobian of boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
+  - `zeta`: The points in interval where boundary conditions are specified, only used for multi-points BVP.
 
 A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
 ODEs. It incorporates a new basis representation replacing b-splines, and improvements for
@@ -345,16 +349,25 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
     collocationpts::Int
     diagnostic_output::Int
     max_num_subintervals::Int
+    bc_func::Union{Function, Nothing}
+    dbc_func::Union{Function, Nothing}
+    zeta::Union{AbstractVector, Nothing}
 
-    function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7,
-            diagnostic_output::Int = 1, max_num_subintervals::Int = 3000)
-        return COLNEW(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
-    end
-    function COLNEW(bvpclass::Int, collocationpts::Int,
-            diagnostic_output::Int, max_num_subintervals::Int)
+    function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+            max_num_subintervals::Int, bc_func::Union{Function, Nothing},
+            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`COLNEW` requires `ODEInterface.jl` to be loaded")
         end
-        return new(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
+        return new(bvpclass, collocationpts, diagnostic_output,
+            max_num_subintervals, bc_func, dbc_func, zeta)
     end
+end
+
+function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
+        max_num_subintervals::Int = 3000, bc_func::Union{Function, Nothing} = nothing,
+        dbc_func::Union{Function, Nothing} = nothing,
+        zeta::Union{AbstractVector, Nothing} = nothing)
+    return COLNEW(bvpclass, collocationpts, diagnostic_output,
+        max_num_subintervals, bc_func, dbc_func, zeta)
 end
