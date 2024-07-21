@@ -53,8 +53,8 @@
     bvp = BVProblem(orbital!, cur_bc!, y0, tspan; nlls = Val(false))
     for autodiff in (
         AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
-        AutoSparseForwardDiff(; chunksize = 6),
-        AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparseFiniteDiff())
+        AutoSparse(AutoForwardDiff(; chunksize = 6)),
+        AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparse(AutoFiniteDiff()))
         nlsolve = TrustRegion(; autodiff)
 
         sol = solve(
@@ -77,9 +77,9 @@
     bvp = TwoPointBVProblem(orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
         bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)),
         nlls = Val(false))
-    for autodiff in (AutoForwardDiff(; chunksize = 6), AutoSparseFiniteDiff(),
-        AutoFiniteDiff(; fdtype = Val(:central)),
-        AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparseForwardDiff(; chunksize = 6))
+    for autodiff in (AutoForwardDiff(; chunksize = 6), AutoSparse(AutoFiniteDiff()),
+        AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
+        AutoSparse(AutoForwardDiff(; chunksize = 6)))
         nlsolve = TrustRegion(; autodiff)
 
         sol = solve(

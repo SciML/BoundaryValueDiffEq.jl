@@ -85,10 +85,11 @@ Significantly more stable than Single Shooting.
     on the input types and problem type.
 
       + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-        `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+        `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
       + For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For `nonbc_diffmode`
-        we default to `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`. For
-        `bc_diffmode`, we default to `AutoForwardDiff` if possible else `AutoFiniteDiff`.
+        we default to `AutoSparse(AutoForwardDiff())` if possible else
+        `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, we default to `AutoForwardDiff`
+        if possible else `AutoFiniteDiff`.
   - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
     solution. Possible Choices:
 
@@ -161,10 +162,10 @@ for order in (2, 3, 4, 5, 6)
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
             - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-              `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+              `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
             - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-              `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
-              `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+              `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
+              `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
               possible else `AutoFiniteDiff`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
@@ -667,9 +668,10 @@ end
 
 """
     COLNEW(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
-        max_num_subintervals = 3000)
+        max_num_subintervals = 3000, bc_func = nothing, dbc_func = nothing,
+        zeta = nothing)
     COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
-        max_num_subintervals::Int)
+        max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector)
 
 ## Keyword Arguments:
 
@@ -692,6 +694,9 @@ end
       + `0`: Selected printout.
       + `1`: No printout.
   - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+  - `bc_func`: Boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
+  - `dbc_func`: Jacobian of boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
+  - `zeta`: The points in interval where boundary conditions are specified, only used for multi-points BVP.
 
 A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
 ODEs. It incorporates a new basis representation replacing b-splines, and improvements for
@@ -710,16 +715,25 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
     collocationpts::Int
     diagnostic_output::Int
     max_num_subintervals::Int
+    bc_func::Union{Function, Nothing}
+    dbc_func::Union{Function, Nothing}
+    zeta::Union{AbstractVector, Nothing}
 
-    function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7,
-            diagnostic_output::Int = 1, max_num_subintervals::Int = 3000)
-        return COLNEW(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
-    end
-    function COLNEW(bvpclass::Int, collocationpts::Int,
-            diagnostic_output::Int, max_num_subintervals::Int)
+    function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+            max_num_subintervals::Int, bc_func::Union{Function, Nothing},
+            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`COLNEW` requires `ODEInterface.jl` to be loaded")
         end
-        return new(bvpclass, collocationpts, diagnostic_output, max_num_subintervals)
+        return new(bvpclass, collocationpts, diagnostic_output,
+            max_num_subintervals, bc_func, dbc_func, zeta)
     end
+end
+
+function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
+        max_num_subintervals::Int = 3000, bc_func::Union{Function, Nothing} = nothing,
+        dbc_func::Union{Function, Nothing} = nothing,
+        zeta::Union{AbstractVector, Nothing} = nothing)
+    return COLNEW(bvpclass, collocationpts, diagnostic_output,
+        max_num_subintervals, bc_func, dbc_func, zeta)
 end

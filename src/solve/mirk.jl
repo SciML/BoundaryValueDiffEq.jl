@@ -47,9 +47,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     fᵢ_cache = __alloc(similar(X))
     fᵢ₂_cache = vec(similar(X))
 
-    defect_threshold = T(alg.defect_threshold)
-    MxNsub = alg.max_num_subintervals
-
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
 
@@ -108,9 +105,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     return MIRKCache{iip, T}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
-        resid₁_size, (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
+        k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect,
+        new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -141,14 +138,12 @@ function __expand_cache!(cache::FIRKCacheNested)
     return cache
 end
 
-function __split_mirk_kwargs(;
-        defect_threshold, MxNsub, abstol, dt, adaptive = true, kwargs...)
-    return (
-        (defect_threshold, MxNsub, abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
+function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
+    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
 function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
-    (_, _, abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, dt), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -224,9 +219,10 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
     pt = cache.problem_type
 
     loss_bc = if iip
-        @closure (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh)
+        @closure (du, u, p) -> __mirk_loss_bc!(
+            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     else
-        @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh)
+        @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     end
 
     loss_collocation = if iip
@@ -284,13 +280,14 @@ end
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-@views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh) where {BC}
+@views function __mirk_loss_bc!(
+        resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
     return nothing
 end
 
-@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh) where {BC}
+@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     return eval_bc_residual(pt, bc!, y_, p, mesh)
 end
@@ -321,12 +318,12 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
 
-    sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+    sd_bc = jac_alg.bc_diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
     cache_bc = __sparse_jacobian_cache(
         Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bcₚ, resid_bc, y)
 
-    sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
+    sd_collocation = if jac_alg.nonbc_diffmode isa AutoSparse
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             colored_matrix = __generate_sparse_jacobian_prototype(
@@ -426,7 +423,7 @@ function __construct_nlproblem(cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
-    sd = if jac_alg.diffmode isa AbstractSparseADType
+    sd = if jac_alg.diffmode isa AutoSparse
         __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
             cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),

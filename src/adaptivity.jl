@@ -150,7 +150,7 @@ Generate new mesh based on the defect.
 """
 @views function mesh_selector!(cache::Union{MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
     (; M, order, defect, mesh, mesh_dt) = cache
-    (_, MxNsub, abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
 
     safety_factor = T(1.3)
@@ -174,7 +174,7 @@ Generate new mesh based on the defect.
 
     if r₁ ≤ ρ * r₂
         Nsub_star = 2 * (N - 1)
-        if Nsub_star > MxNsub # Need to determine the too large threshold
+        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt
@@ -185,7 +185,7 @@ Generate new mesh based on the defect.
         end
     else
         Nsub_star = clamp(n_predict, Nsub_star_lb, Nsub_star_ub)
-        if Nsub_star > MxNsub
+        if Nsub_star > cache.alg.max_num_subintervals
             # Mesh redistribution fails
             info = ReturnCode.Failure
             meshₒ = mesh

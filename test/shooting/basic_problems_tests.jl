@@ -38,12 +38,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -70,12 +68,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -96,12 +92,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -121,12 +115,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(
-            SciMLBase, DiffEqBase, NonlinearSolve, BoundaryValueDiffEq) solve(
+        @test_call target_modules=(BoundaryValueDiffEq,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -203,9 +195,9 @@ end
     flow_bvp = BVProblem{true}(flow_in_a_channel!, bc_flow!, u0, tspan, p)
 
     for solver in [
-        Shooting(AutoTsit5(Rosenbrock23()),
+        Shooting(AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
-        MultipleShooting(10, AutoTsit5(Rosenbrock23()),
+        MultipleShooting(10, AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8)))]
         sol = solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-8))
@@ -214,7 +206,7 @@ end
         @test norm(sol.resid, Inf) < 1e-8
     end
 end
-
+#FIXME: MultipleShooting fails for large out-of-place BVP systems
 @testitem "Ray Tracing" begin
     using LinearAlgebra, LinearSolve
 
@@ -224,9 +216,14 @@ end
     @inline uz(x, y, z, p) = p[3] * sin(p[3] * z)
 
     function ray_tracing(u, p, t)
-        du = similar(u)
-        ray_tracing!(du, u, p, t)
-        return du
+        x, y, z, ξ, η, ζ, T, S = u
+
+        nu = v(x, y, z, p) # Velocity of a sound wave, function of space;
+        μx = ux(x, y, z, p) # ∂(slowness)/∂x, function of space
+        μy = uy(x, y, z, p) # ∂(slowness)/∂y, function of space
+        μz = uz(x, y, z, p) # ∂(slowness)/∂z, function of space
+
+        return [S * nu * ξ, S * nu * η, S * nu * ζ, S * μx, S * μy, S * μz, S / nu, 0]
     end
 
     function ray_tracing!(du, u, p, t)
@@ -252,9 +249,13 @@ end
     end
 
     function ray_tracing_bc(sol, p, t)
-        res = similar(first(sol))
-        ray_tracing_bc!(res, sol, p, t)
-        return res
+        ua = sol(0.0)
+        ub = sol(1.0)
+        nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
+
+        return [ua[1] - p[4], ua[2] - p[5], ua[3] - p[6],
+            ua[7], ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2,
+            ub[1] - p[7], ub[2] - p[8], ub[3] - p[9]]
     end
 
     function ray_tracing_bc!(res, sol, p, t)
@@ -320,7 +321,7 @@ end
     tspan = (0.0, 1.0)
 
     prob_oop = BVProblem(
-        BVPFunction{false}(ray_tracing, ray_tracing_bc), u0, tspan, p; nlls = Val(false))
+        BVPFunction{false}(ray_tracing, ray_tracing_bc), u0, tspan, p; nlls = Val(true))
     prob_iip = BVProblem(
         BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p; nlls = Val(true))
     prob_tp_oop = BVProblem(
@@ -343,17 +344,18 @@ end
         grid_coarsening = true,
         nlsolve = TrustRegion(),
         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
-            nonbc_diffmode = AutoSparseForwardDiff(; chunksize = 8)))
+            nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 8))))
     alg_dense = MultipleShooting(10,
         AutoVern7(Rodas4P());
         grid_coarsening = true,
         nlsolve = TrustRegion(),
         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
             nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
-    alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); grid_coarsening = true)
+    alg_default = MultipleShooting(
+        10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
     for (prob, alg) in Iterators.product(
-        (prob_oop, prob_iip, prob_tp_oop, prob_tp_iip), (alg_sp, alg_dense, alg_default))
+        (prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))
         sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
 

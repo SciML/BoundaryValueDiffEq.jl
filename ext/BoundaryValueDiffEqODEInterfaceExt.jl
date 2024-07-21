@@ -5,7 +5,7 @@ import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess, __extract_mes
                             __initial_guess_length, __initial_guess, __has_initial_guess
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
-                     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS,
+                     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
                      OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
 import ODEInterface: Bvpm2, bvpm2_init, bvpm2_solve, bvpm2_destroy, bvpm2_get_x
 import ODEInterface: bvpsol
@@ -190,11 +190,6 @@ end
 #-------
 function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
         reltol = 1e-3, dt = 0.0, verbose = true, kwargs...)
-    # FIXME: COLNEW does support MP-BVPs but in a very clunky way
-    if !(prob.problem_type isa TwoPointBVProblem)
-        throw(ArgumentError("`COLNEW` only supports `TwoPointBVProblem!`"))
-    end
-
     dt ≤ 0 && throw(ArgumentError("`dt` must be positive"))
 
     t₀, t₁ = prob.tspan
@@ -221,9 +216,6 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
 
     T = eltype(u0)
     # mesh = collect(range(prob.tspan[1], stop = prob.tspan[2], length = n + 1))
-    opt = OptionsODE(OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
-        OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
-        OPT_MAXSUBINTERVALS => alg.max_num_subintervals, OPT_RTOL => reltol)
     orders = ones(Int, no_odes)
     _tspan = [prob.tspan[1], prob.tspan[2]]
     iip = SciMLBase.isinplace(prob)
@@ -261,40 +253,63 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
     bcresid_prototype, _ = BoundaryValueDiffEq.__get_bcresid_prototype(
         prob.problem_type, prob, u0)
 
-    n_bc_a = length(first(bcresid_prototype))
-    n_bc_b = length(last(bcresid_prototype))
-    zeta = vcat(fill(first(prob.tspan), n_bc_a), fill(last(prob.tspan), n_bc_b))
-    bc = @closure (i, z, resid) -> begin
-        tmpa = copy(z)
-        tmpb = copy(z)
-        tmp_resid_a = zeros(T, n_bc_a)
-        tmp_resid_b = zeros(T, n_bc_b)
-        prob.f.bc[1](tmp_resid_a, tmpa, prob.p)
-        prob.f.bc[2](tmp_resid_b, tmpb, prob.p)
+    if prob.problem_type isa TwoPointBVProblem
+        n_bc_a = length(first(bcresid_prototype))
+        n_bc_b = length(last(bcresid_prototype))
+        zeta = vcat(fill(first(prob.tspan), n_bc_a), fill(last(prob.tspan), n_bc_b))
+        bc = @closure (i, z, resid) -> begin
+            tmpa = copy(z)
+            tmpb = copy(z)
+            tmp_resid_a = zeros(T, n_bc_a)
+            tmp_resid_b = zeros(T, n_bc_b)
+            prob.f.bc[1](tmp_resid_a, tmpa, prob.p)
+            prob.f.bc[2](tmp_resid_b, tmpb, prob.p)
 
-        for j in 1:n_bc_a
-            if i == j
-                resid[1] = tmp_resid_a[j]
+            for j in 1:n_bc_a
+                if i == j
+                    resid[1] = tmp_resid_a[j]
+                end
+            end
+            for j in 1:n_bc_b
+                if i == (j + n_bc_a)
+                    resid[1] = tmp_resid_b[j]
+                end
             end
         end
-        for j in 1:n_bc_b
-            if i == (j + n_bc_a)
-                resid[1] = tmp_resid_b[j]
+
+        Dbc = @closure (i, z, dbc) -> begin
+            for j in 1:n_bc_a
+                if i == j
+                    dbc[i] = 1.0
+                end
+            end
+            for j in 1:n_bc_b
+                if i == (j + n_bc_a)
+                    dbc[i] = 1.0
+                end
             end
         end
+        fixed_points = nothing
+    else
+        zeta = sort(alg.zeta)
+        bc = alg.bc_func
+        Dbc = alg.dbc_func
+        left_index = findlast(x -> x ≈ t₀, zeta) + 1
+        right_index = findfirst(x -> x ≈ t₁, zeta) - 1
+        fixed_points = alg.zeta[left_index:right_index]
     end
 
-    Dbc = @closure (i, z, dbc) -> begin
-        for j in 1:n_bc_a
-            if i == j
-                dbc[i] = 1.0
-            end
-        end
-        for j in 1:n_bc_b
-            if i == (j + n_bc_a)
-                dbc[i] = 1.0
-            end
-        end
+    if fixed_points === nothing
+        opt = OptionsODE(
+            OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
+            OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
+            OPT_MAXSUBINTERVALS => alg.max_num_subintervals, OPT_RTOL => reltol)
+    else
+        opt = OptionsODE(
+            OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
+            OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
+            OPT_MAXSUBINTERVALS => alg.max_num_subintervals,
+            OPT_RTOL => reltol, OPT_ADDGRIDPOINTS => fixed_points)
     end
 
     sol, retcode, stats = colnew(_tspan, orders, zeta, rhs, Drhs, bc, Dbc, nothing, opt)

@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEq"
 uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
-version = "5.7.1"
+version = "5.9.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -34,7 +34,7 @@ ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
 
 [compat]
-ADTypes = "0.2.6"
+ADTypes = "1.2"
 Adapt = "4"
 Aqua = "0.8"
 ArrayInterface = "7.7"
@@ -59,7 +59,7 @@ Random = "1.10"
 ReTestItems = "1.23.1"
 RecursiveArrayTools = "3.4"
 Reexport = "1.2"
-SciMLBase = "2.31"
+SciMLBase = "2.40"
 Setfield = "1"
 SparseArrays = "1.10"
 SparseDiffTools = "2.14"
