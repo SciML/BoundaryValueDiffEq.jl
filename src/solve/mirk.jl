@@ -281,13 +281,13 @@ end
 end
 
 @views function __mirk_loss_bc!(
-        resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+        resid, u, p, pt, bc!::BC, y, mesh, cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     eval_bc_residual!(resid, pt, bc!, y_, p, mesh)
     return nothing
 end
 
-@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     return eval_bc_residual(pt, bc!, y_, p, mesh)
 end

@@ -355,7 +355,7 @@ function solve_cache!(nest_cache, _u0, p_nest) # TODO: Make work with ForwardDif
 end
 
 function SciMLBase.solve!(cache::FIRKCacheExpand)
-    (_, _, abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -446,7 +446,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
 
-    sd_bc = jac_alg.bc_diffmode isa AbstractSparseADType ? SymbolicsSparsityDetection() :
+    sd_bc = jac_alg.bc_diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
             NoSparsityDetection()
     cache_bc = __sparse_jacobian_cache(Val(iip),
         jac_alg.bc_diffmode,
@@ -455,7 +455,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
         resid_bc,
         y)
 
-    sd_collocation = if jac_alg.nonbc_diffmode isa AbstractSparseADType
+    sd_collocation = if jac_alg.nonbc_diffmode isa AutoSparse
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             colored_matrix = __generate_sparse_jacobian_prototype(cache,
@@ -502,7 +502,9 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
     end
 
     jac = if iip
-        @closure (J, u, p) -> __mirk_mpoint_jacobian!(J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc, resid_collocation, L)
+        @closure (J, u, p) -> __mirk_mpoint_jacobian!(
+            J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc,
+            cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc, resid_collocation, L)
     else
         @closure (u, p) -> __mirk_mpoint_jacobian(jac_prototype, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, L)
     end

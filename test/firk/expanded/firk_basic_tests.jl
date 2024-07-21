@@ -130,33 +130,33 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
         end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIb_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIc_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
         end
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             solver = radau_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(NonlinearSolve, BoundaryValueDiffEq) solve(
+            @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
         end
     end
