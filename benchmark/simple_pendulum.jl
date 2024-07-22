@@ -30,6 +30,7 @@ function simple_pendulum(u, p, t)
 end
 
 function bc_pendulum(u, p, t)
+    t0, t1 = tspan
     return [u((t0 + t1) / 2)[1] + π / 2, u(t1)[1] - π / 2]
 end
 
