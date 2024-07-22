@@ -102,7 +102,7 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(prob,
                 lobattoIIIa_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
@@ -111,7 +111,7 @@ end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(prob,
                 lobattoIIIb_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
@@ -120,7 +120,7 @@ end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(prob,
                 lobattoIIIc_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
@@ -130,7 +130,7 @@ end
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob,
                 radau_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
@@ -189,7 +189,7 @@ end
             @time sim = test_convergence(dts,
                 prob,
                 lobattoIIIa_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 abstol = 1e-8,
                 reltol = 1e-8)
@@ -204,7 +204,7 @@ end
             @time sim = test_convergence(dts,
                 prob,
                 lobattoIIIb_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 abstol = 1e-8,
                 reltol = 1e-8)
@@ -219,7 +219,7 @@ end
             @time sim = test_convergence(dts,
                 prob,
                 lobattoIIIc_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 abstol = 1e-8,
                 reltol = 1e-8)
@@ -235,7 +235,7 @@ end
             @time sim = test_convergence(dts,
                 prob,
                 radau_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()),
+                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
                     nested_nlsolve = nested);
                 abstol = 1e-8,
                 reltol = 1e-8)
@@ -267,8 +267,8 @@ end
     u0 = MVector{2}([pi / 2, pi / 2])
     bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
-    jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
-        nonbc_diffmode = AutoSparseFiniteDiff())
+    jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
+        nonbc_diffmode = AutoSparse(AutoFiniteDiff()))
     nl_solve = NewtonRaphson()
     nested = true
 
@@ -343,25 +343,25 @@ end
     for stage in (2, 3, 5, 7)
         s = Symbol("RadauIIa$(stage)")
         @eval radau_solver(::Val{$stage}) = $(s)(
-            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested)
+            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())); nested)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIa$(stage)")
         @eval lobattoIIIa_solver(::Val{$stage}) = $(s)(
-            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested)
+            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())); nested)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIb$(stage)")
         @eval lobattoIIIb_solver(::Val{$stage}) = $(s)(
-            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested)
+            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())); nested)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIc$(stage)")
         @eval lobattoIIIc_solver(::Val{$stage}) = $(s)(
-            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparseFiniteDiff()); nested)
+            NewtonRaphson(), BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())); nested)
     end
 
     @testset "Radau interpolations" begin
@@ -450,7 +450,7 @@ end =#
         -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     sol3 = solve(bvp3,
         RadauIIa5(;
-            jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested_nlsolve = true),
+            jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())), nested_nlsolve = true),
         dt = 0.05)
 
     # Needs a SciMLBase fix
@@ -458,13 +458,13 @@ end =#
         pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     @test_broken solve(bvp4,
         RadauIIa5(;
-            jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested_nlsolve = true),
+            jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())), nested_nlsolve = true),
         dt = 0.05) isa SciMLBase.ODESolution
 
     bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     @test_broken SciMLBase.successful_retcode(solve(bvp5,
         RadauIIa5(;
-            jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested_nlsolve = true),
+            jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())), nested_nlsolve = true),
         dt = 0.05).retcode)
 end

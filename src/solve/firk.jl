@@ -205,7 +205,7 @@ function init_nested(prob::BVProblem,
 
     K0 = repeat(avg_u0, 1, s) # Somewhat arbitrary initialization of K
 
-    if alg.jac_alg.diffmode isa AbstractSparseADType
+    if alg.jac_alg.diffmode isa AutoSparse
         _chunk = pickchunksize(length(K0))
     else
         _chunk = chunksize
@@ -535,7 +535,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 
     TU, ITU = constructRK(cache.alg, eltype(y))
     (; s) = TU
-    sd = if jac_alg.nonbc_diffmode isa AbstractSparseADType
+    sd = if jac_alg.nonbc_diffmode isa AutoSparse
         block_size = cache.M * (s + 2)
         J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (s + 1) * (N - 1),
                 cache.M * (s + 1) * (N - 1) + cache.M),

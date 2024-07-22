@@ -236,7 +236,7 @@ end
     bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
     jac_alg = BVPJacobianAlgorithm(;
-        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparseFiniteDiff())
+        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff()))
     nl_solve = NewtonRaphson()
     nested = false
 
