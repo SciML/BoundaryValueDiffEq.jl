@@ -215,10 +215,10 @@ for stage in (1, 2, 3, 5, 7)
           `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
           use based on the input types and problem type.
           - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-            `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+            `AutoSparse(AutoForwardDiff)` if possible else `AutoSparse(AutoFiniteDiff)`).
           - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-            `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
-            `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+            `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff)` if possible else
+            `AutoSparse(AutoFiniteDiff)`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
             possible else `AutoFiniteDiff`.
         - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the 
         implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are 
@@ -304,10 +304,10 @@ for stage in (2, 3, 4, 5)
           `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
           use based on the input types and problem type.
           - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-            `AutoSparseForwardDiff` if possible else `AutoSparseFiniteDiff`).
+            `AutoSparse(AutoForwardDiff)` if possible else `AutoSparse(AutoFiniteDiff)`).
           - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-            `nonbc_diffmode` defaults to `AutoSparseForwardDiff` if possible else
-            `AutoSparseFiniteDiff`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+            `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff)` if possible else
+            `AutoSparse(AutoFiniteDiff)`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
             possible else `AutoFiniteDiff`.
         - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the 
         implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are 
