@@ -184,7 +184,7 @@ end
     end
 
     @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
-        sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001, adaptive=false)
+        sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
         @test_nowarn sol(0.01)
         @test_nowarn sol(0.01; idxs = [1, 2])
         @test_nowarn sol(0.01; idxs = 1)
