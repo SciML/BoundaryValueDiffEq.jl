@@ -56,8 +56,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, N, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig]
-    k_interp = [similar(X, ifelse(adaptive, N, 0), ifelse(adaptive, ITU.s_star - stage, 0))
-                for _ in 1:Nig]
+    k_interp = [similar(X, N, ITU.s_star - stage) for _ in 1:Nig]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -72,7 +71,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     end
 
     defect = [similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
-    new_stages = [similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
+    new_stages = [similar(X, N) for _ in 1:Nig]
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
