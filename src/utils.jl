@@ -55,7 +55,7 @@ function diff!(dx, x)
     return dx
 end
 
-function __maybe_matmul!(z::Array, A, b, α = eltype(z)(1), β = eltype(z)(0))
+function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
     mul!(z, A, b, α, β)
 end
 
