@@ -259,3 +259,29 @@ end
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05).retcode)
 end
+
+@testitem "Compatibility with StaticArrays" begin
+    using StaticArrays
+    const g = 9.81
+    L = 1.0
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
+
+    function bc2a!(resid_a, u_a, p) # u_a is at the beginning of the time span
+        resid_a[1] = u_a[1] + pi / 2 # the solution at the beginning of the time span should be -pi/2
+    end
+    function bc2b!(resid_b, u_b, p) # u_b is at the ending of the time span
+        resid_b[1] = u_b[1] - pi / 2 # the solution at the end of the time span should be pi/2
+    end
+
+    bvp_SA = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), MVector{2}([pi / 2, pi / 2]),
+        tspan; bcresid_prototype = (zeros(1), zeros(1)))
+    sol_SA = solve(bvp_SA, MIRK4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol_SA.retcode)
+end
