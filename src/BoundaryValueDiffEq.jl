@@ -2,7 +2,7 @@ module BoundaryValueDiffEq
 
 import PrecompileTools: @compile_workload, @setup_workload
 
-using ADTypes, Adapt, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
+using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
       OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
       SparseDiffTools
 
