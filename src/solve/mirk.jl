@@ -42,10 +42,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(N * (Nig - 1))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __maybe_allocate_diffcache(vec(__similar(x)), chunksize, alg.jac_alg)
 
-    fᵢ_cache = __alloc(similar(X))
-    fᵢ₂_cache = vec(similar(X))
+    fᵢ_cache = __alloc(__similar(X))
+    fᵢ₂_cache = vec(__similar(X))
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
@@ -54,9 +54,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(similar(X, N, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(__similar(X, N, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig]
-    k_interp = [similar(X, N, ITU.s_star - stage) for _ in 1:Nig]
+    k_interp = [__similar(X, ifelse(adaptive, N, 0), ifelse(adaptive, ITU.s_star - stage, 0))
+                for _ in 1:Nig]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -70,8 +71,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
         nothing
     end
 
-    defect = [similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
-    new_stages = [similar(X, N) for _ in 1:Nig]
+    defect = [__similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
+    new_stages = [__similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -302,7 +303,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = similar(y, cache.M * (N - 1))
+    resid_collocation = __similar(y, cache.M * (N - 1))
 
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
@@ -335,8 +336,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         Val(iip), jac_alg.nonbc_diffmode, sd_collocation,
         loss_collocationₚ, resid_collocation, y)
 
-    J_bc = init_jacobian(cache_bc)
-    J_c = init_jacobian(cache_collocation)
+    J_bc = __init_bigfloat_array!!(init_jacobian(cache_bc))
+    J_c = __init_bigfloat_array!!(init_jacobian(cache_collocation))
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
     else
@@ -408,7 +409,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-        similar(y, cache.M * (N - 1)),
+        __similar(y, cache.M * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
@@ -422,7 +423,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         NoSparsityDetection()
     end
     diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-    jac_prototype = init_jacobian(diffcache)
+    jac_prototype = __init_bigfloat_array!!(init_jacobian(diffcache))
 
     jac = if iip
         @closure (J, u, p) -> __mirk_2point_jacobian!(
