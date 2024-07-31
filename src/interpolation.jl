@@ -35,7 +35,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interpolant!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt, deriv)
         vals[j] = idxs !== nothing ? z[idxs] : z
     end
     return DiffEqArray(vals, tvals)
@@ -49,7 +49,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interpolant!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt, deriv)
         vals[j] = z
     end
 end
@@ -57,6 +57,25 @@ end
 @inline function interpolation(
         tval::Number, id::I, idxs, deriv::D, p, continuity::Symbol = :left) where {I, D}
     z = similar(id.cache.fᵢ₂_cache)
-    interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
+    interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
+end
+
+@inline function interpolant!(
+        z::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt, T::Type{Val{0}})
+    i = interval(mesh, t)
+    dt = mesh_dt[i]
+    τ = (t - mesh[i]) / dt
+    w, w′ = interp_weights(τ, cache.alg)
+    sum_stages!(z, cache, w, i)
+end
+
+@inline function interpolant!(
+        dz::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt, T::Type{Val{1}})
+    i = interval(mesh, t)
+    dt = mesh_dt[i]
+    τ = (t - mesh[i]) / dt
+    w, w′ = interp_weights(τ, cache.alg)
+    z = similar(dz)
+    sum_stages!(z, dz, cache, w, w′, i)
 end
