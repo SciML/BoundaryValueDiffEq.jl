@@ -41,9 +41,11 @@ end
     return recursive_unflatten!(get_tmp.(y, (x,)), x)
 end
 
-function recursive_fill!(y::Vector{<:AbstractArray}, x)
+@views function recursive_unflatten!(y::AbstractVectorOfArray, x::AbstractVector)
+    i = 0
     for yᵢ in y
-        fill!(yᵢ, x)
+        copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])
+        i += length(yᵢ)
     end
     return y
 end
@@ -120,6 +122,14 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
     chunksize = pickchunksize(M * (N + length(x)))
     append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVectorOfArray, n, _)
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, VectorOfArray([similar(last(x)) for _ in 1:N]))
     return x
 end
 
@@ -336,25 +346,21 @@ initial guess, it returns `vec(u₀)`.
 
 Returns the initial guess on the mesh. For `DiffEqArray` assumes that the mesh is the same
 as the mesh of the `DiffEqArray`.
-
-If `alias_u0` is set to `true`, we try our best to minimize copies. This means that `u₀`
-or parts of it will get mutated.
 """
-@inline function __initial_guess_on_mesh(
-        u₀::AbstractVector{<:AbstractArray}, _, p, alias_u0::Bool)
-    return alias_u0 ? vec.(u₀) : [copy(vec(u)) for u in u₀]
+@inline function __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, _, p)
+    return VectorOfArray([copy(vec(u)) for u in u₀])
 end
-@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p, alias_u0::Bool)
-    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p)
+    return copy(u₀)
 end
-@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p, alias_u0::Bool)
-    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p)
+    return copy(u₀)
 end
-@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p, alias_u0::Bool)
-    return [copy(vec(u₀)) for _ in mesh]
+@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p)
+    return VectorOfArray([copy(vec(u₀)) for _ in mesh])
 end
-@inline function __initial_guess_on_mesh(u₀::F, mesh, p, alias_u0::Bool) where {F}
-    return [vec(__initial_guess(u₀, p, t)) for t in mesh]
+@inline function __initial_guess_on_mesh(u₀::F, mesh, p) where {F}
+    return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
 end
 
 # Construct BVP Solution

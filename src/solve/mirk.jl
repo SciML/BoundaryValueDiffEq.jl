@@ -48,30 +48,30 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     fᵢ₂_cache = vec(similar(X))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
 
-    y = __alloc.(copy.(y₀))
+    y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, N, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig]
-    k_interp = [similar(X, N, ITU.s_star - stage) for _ in 1:Nig]
+    k_interp = VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
     residual = if iip
         if prob.problem_type isa TwoPointBVProblem
-            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
+            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀.u[2:end]))))
         else
-            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
+            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀.u[2:end]))))
         end
     else
         nothing
     end
 
-    defect = [similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
-    new_stages = [similar(X, N) for _ in 1:Nig]
+    defect = VectorOfArray([similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig])
+    new_stages = VectorOfArray([similar(X, N) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -132,7 +132,7 @@ function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
-    (abstol, adaptive, dt), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -147,7 +147,7 @@ function SciMLBase.solve!(cache::MIRKCache)
         end
     end
 
-    u = [reshape(y, cache.in_size) for y in cache.y₀]
+    u = recursivecopy(cache.y₀)
 
     odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u;
         interp = MIRKInterpolation(cache.mesh, u, cache), retcode = info)
@@ -155,8 +155,8 @@ function SciMLBase.solve!(cache::MIRKCache)
 end
 
 function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive; nlsolve_kwargs = (;), kwargs...)
-    nlprob = __construct_nlproblem(cache, recursive_flatten(cache.y₀))
+        cache::MIRKCache, abstol, adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
+    nlprob = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
         nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
@@ -167,7 +167,7 @@ function __perform_mirk_iteration(
     # Early terminate if non-adaptive
     adaptive || return sol_nlprob, sol_nlprob.retcode, defect_norm
 
-    info = sol_nlprob.retcode
+    info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
         defect_norm = defect_estimate!(cache)
@@ -182,7 +182,7 @@ function __perform_mirk_iteration(
             if info == ReturnCode.Success
                 __append_similar!(cache.y₀, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)
-                    interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                    interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end
                 __expand_cache!(cache)
             end
@@ -195,7 +195,7 @@ function __perform_mirk_iteration(
         else
             half_mesh!(cache)
             __expand_cache!(cache)
-            recursive_fill!(cache.y₀, 0)
+            recursivefill!(cache.y₀, 0)
             info = ReturnCode.Success # Force a restart
         end
     end
