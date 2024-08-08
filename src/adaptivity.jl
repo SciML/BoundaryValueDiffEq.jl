@@ -177,10 +177,10 @@ an interpolant
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
-        defect[:, i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
     end
 
-    return maximum(Base.Fix1(maximum, abs), defect)
+    return maximum(Base.Fix1(maximum, abs), defect.u)
 end
 
 """

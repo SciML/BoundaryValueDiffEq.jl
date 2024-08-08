@@ -149,13 +149,13 @@ function SciMLBase.solve!(cache::MIRKCache)
 
     u = recursivecopy(cache.y₀)
 
-    odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u;
-        interp = MIRKInterpolation(cache.mesh, u, cache), retcode = info)
+    odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u.u;
+        interp = MIRKInterpolation(cache.mesh, u.u, cache), retcode = info)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
 function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
+        cache::MIRKCache, abstol, adaptive::Bool; nlsolve_kwargs=(;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
