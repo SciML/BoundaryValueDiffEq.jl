@@ -62,7 +62,7 @@
 
     for solver in SOLVERS
         sol = solve(bvp3, solver; verbose = false, dt = 1.0)
-        @test norm(vcat(bc1a(sol[1], nothing), bc1b(sol[end], nothing)), Inf) < 1e-2
+        @test norm(vcat(bc1a(sol.u[1], nothing), bc1b(sol.u[end], nothing)), Inf) < 1e-2
     end
 
     # IIP TP-BVP
