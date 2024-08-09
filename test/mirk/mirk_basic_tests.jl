@@ -82,7 +82,7 @@ end
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
     end
 end
