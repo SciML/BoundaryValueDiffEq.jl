@@ -73,7 +73,7 @@ end
 end
 
 ## Easier to dispatch
-eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
+eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol.u, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
     ua = sol isa AbstractVector ? sol[1] : sol(first(t))
@@ -84,7 +84,7 @@ function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where 
 end
 
 function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
-    return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
+    return eval_bc_residual!(resid, pt, bc!, sol.u, p, sol.t)
 end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
 @views function eval_bc_residual!(
