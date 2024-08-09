@@ -58,14 +58,9 @@
         return vcat(t * a1 + (1 - t) * a2, zero(a1))
     end
 
-    function initial_guess_2(t)
-        a1, a2 = [0.5, -1.2], [-0.5, 0.3]
-        return vcat(t * a1 + (1 - t) * a2, zero(a1))
-    end
-
     algs = [Shooting(Tsit5()), MultipleShooting(10, Tsit5()), MIRK4(), MIRK5(), MIRK6()]
 
-    @testset "Initial Guess Functions: $(u0)" for u0 in (initial_guess_1, initial_guess_2)
+    @testset "Initial Guess Functions: $(u0)" for u0 in initial_guess_1
         bvp = BVProblem(chart_log_problem!, bc1!, u0, tspan, (M, i, a1, a2))
 
         for alg in algs

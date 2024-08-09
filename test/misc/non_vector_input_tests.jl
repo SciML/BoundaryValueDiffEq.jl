@@ -53,7 +53,7 @@
 
         @testset "Single Shooting" begin
             for prob in probs
-                sol = solve(prob, Shooting(Tsit5()))
+                sol = solve(prob, Shooting(Tsit5(), NewtonRaphson()))
                 @test norm(boundary(sol.u, prob.p, nothing), Inf) < 0.01
             end
         end
