@@ -9,8 +9,8 @@
 
     bc(sol, p, t) = [sol.u[1][1] - 1, sol.u[end][2] - 2]
     function bc!(res, sol, p, t)
-        res[1] = sol.u[1][1] - 1
-        res[2] = sol.u[end][2] - 2
+        res[1] = sol[1][1] - 1
+        res[2] = sol[end][2] - 2
     end
     twobc_a(ua, p) = [ua[1] - 1]
     twobc_b(ub, p) = [ub[2] - 2]

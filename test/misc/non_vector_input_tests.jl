@@ -47,14 +47,14 @@
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             for prob in probs
                 sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
-                @test norm(boundary(sol, prob.p, nothing), Inf) < 0.01
+                @test norm(boundary(sol.u, prob.p, nothing), Inf) < 0.01
             end
         end
 
         @testset "Single Shooting" begin
             for prob in probs
                 sol = solve(prob, Shooting(Tsit5()))
-                @test norm(boundary(sol, prob.p, nothing), Inf) < 0.01
+                @test norm(boundary(sol.u, prob.p, nothing), Inf) < 0.01
             end
         end
 
@@ -63,7 +63,7 @@
             for prob in probs
                 @test_broken begin
                     sol = solve(prob, MultipleShooting(5, Tsit5()))
-                    norm(boundary(sol, prob.p, nothing), Inf) < 0.01
+                    norm(boundary(sol.u, prob.p, nothing), Inf) < 0.01
                 end
             end
         end

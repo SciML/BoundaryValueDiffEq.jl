@@ -76,7 +76,7 @@
             end
             @test SciMLBase.successful_retcode(sol)
             resid = zeros(4)
-            bc1!(resid, sol, (M, i, a1, a2), sol.t)
+            bc1!(resid, sol.u, (M, i, a1, a2), sol.t)
             @test norm(resid, Inf) < 1e-10
         end
     end
