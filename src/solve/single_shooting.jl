@@ -94,7 +94,7 @@ function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
     SciMLBase.reinit!(cache, reshape(u0_, u0_size))
     odesol = solve!(cache)
 
-    eval_bc_residual!(resid, pt, bc, odesol, p)
+    eval_bc_residual!(resid, pt, bc, odesol.u, p)
 
     return nothing
 end
@@ -106,7 +106,7 @@ function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
     SciMLBase.reinit!(cache, reshape(u0_, u0_size))
     odesol = solve!(cache)
 
-    eval_bc_residual!(resid, pt, bc, odesol, p)
+    eval_bc_residual!(resid, pt, bc, odesol.u, p)
 
     return nothing
 end
@@ -114,7 +114,7 @@ end
 function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
     SciMLBase.reinit!(cache, reshape(u, u0_size))
     odesol = solve!(cache)
-    return __vec(eval_bc_residual(pt, bc, odesol, p))
+    return __vec(eval_bc_residual(pt, bc, odesol.u, p))
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}
