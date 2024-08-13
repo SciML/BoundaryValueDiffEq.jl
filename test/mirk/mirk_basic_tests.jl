@@ -154,6 +154,12 @@ end
             (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a))]
     end
 
+    function prob_bvp_linear_analytic_derivative(u, λ, t)
+        a = 1 / sqrt(λ)
+        return [(-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a))]
+    end
+
     function prob_bvp_linear_f!(du, u, p, t)
         du[1] = u[2]
         du[2] = 1 / p * u[1]
@@ -177,18 +183,30 @@ end
 
     @testset "Interpolation for adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
         sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
-        @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-        @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-        @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-        @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
+
+        @test sol(0.001)≈sol_analytic atol=testTol
+        @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
+        @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
+        @test sol(0.001; idxs = 2)≈sol_analytic[2] atol=testTol
     end
 
     @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
         sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
+
         @test_nowarn sol(0.01)
         @test_nowarn sol(0.01; idxs = [1, 2])
         @test_nowarn sol(0.01; idxs = 1)
         @test_nowarn sol(0.01; idxs = 2)
+    end
+
+    @testset "Interpolation for solution derivative" for order in (2, 3, 4, 5, 6)
+        sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
+        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
+        dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
+
+        @test sol(0.04, Val{0})≈sol_analytic atol=testTol
+        @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
     end
 end
 
@@ -258,4 +276,30 @@ end
     bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05).retcode)
+end
+
+@testitem "Compatibility with StaticArrays" begin
+    using StaticArrays
+    const g = 9.81
+    L = 1.0
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
+
+    function bc2a!(resid_a, u_a, p) # u_a is at the beginning of the time span
+        resid_a[1] = u_a[1] + pi / 2 # the solution at the beginning of the time span should be -pi/2
+    end
+    function bc2b!(resid_b, u_b, p) # u_b is at the ending of the time span
+        resid_b[1] = u_b[1] - pi / 2 # the solution at the end of the time span should be pi/2
+    end
+
+    bvp_SA = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), MVector{2}([pi / 2, pi / 2]),
+        tspan; bcresid_prototype = (zeros(1), zeros(1)))
+    sol_SA = solve(bvp_SA, MIRK4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol_SA.retcode)
 end
