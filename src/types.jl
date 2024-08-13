@@ -152,13 +152,54 @@ end
     du
 end
 
+# hacking DiffCache to handling with BigFloat case
+@concrete struct BigFloatDiffCache{T <: AbstractArray, S <: AbstractArray}
+    du::T
+    dual_du::S
+    any_du::Vector{Any}
+end
+
+function BigFloatDiffCache(u::AbstractArray{T}, siz, chunk_sizes) where {T}
+    x = adapt(ArrayInterface.parameterless_type(u),
+        zeros(T, prod(chunk_sizes .+ 1) * prod(siz)))
+    xany = Any[]
+    BigFloatDiffCache(u, x, xany)
+end
+function BigFloatDiffCache(u::AbstractArray, N::Int = ForwardDiff.pickchunksize(length(u));
+    levels::Int = 1)
+    BigFloatDiffCache(u, size(u), N * ones(Int, levels))
+end
+BigFloatDiffCache(u::AbstractArray, N::AbstractArray{<:Int}) = BigFloatDiffCache(u, size(u), N)
+function BigFloatDiffCache(u::AbstractArray, ::Type{Val{N}}; levels::Int = 1) where {N}
+    BigFloatDiffCache(u, N; levels)
+end
+BigFloatDiffCache(u::AbstractArray, ::Val{N}; levels::Int = 1) where {N} = BigFloatDiffCache(u, N; levels)
+
+function get_tmp(dc::BigFloatDiffCache, u::T) where {T <: ForwardDiff.Dual}
+    nelem = length(dc.du)
+    PreallocationTools._restructure(dc.du, view(T.(dc.dual_du), 1:nelem))
+end
+function get_tmp(dc::BigFloatDiffCache, u::AbstractArray{T}) where {T <: ForwardDiff.Dual}
+    nelem = length(dc.du)
+    PreallocationTools._restructure(dc.du, view(T.(dc.dual_du), 1:nelem))
+end
+function get_tmp(dc::BigFloatDiffCache, u::Union{Number, AbstractArray})
+    return dc.du
+end
+function get_tmp(dc::BigFloatDiffCache, ::Type{T}) where {T <: Number}
+    return dc.du
+end
+get_tmp(dc::Vector{BigFloat}, u::Vector{BigFloat}) = dc
+
 function __maybe_allocate_diffcache(x, chunksize, jac_alg)
+    eltype(x) <: BigFloat && return (__needs_diffcache(jac_alg) ? BigFloatDiffCache(x, chunksize) : FakeDiffCache(x))
     return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : FakeDiffCache(x)
 end
 __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(__similar(x.du), chunksize)
 __maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(__similar(x.du))
+__maybe_allocate_diffcache(x::BigFloatDiffCache, chunksize) = BigFloatDiffCache(x.du, chunksize)
 
-const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
+const MaybeDiffCache = Union{DiffCache, FakeDiffCache, BigFloatDiffCache}
 
 ## get_tmp shows a warning as it should on cache exapansion, this behavior however is
 ## expected for adaptive BVP solvers so we write our own `get_tmp` and drop the warning logs

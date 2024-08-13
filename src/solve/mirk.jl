@@ -70,7 +70,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     else
         nothing
     end
-
     defect = [__similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
     new_stages = [__similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
 
