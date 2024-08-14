@@ -76,8 +76,8 @@ end
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
+    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
     resida = bca(ua, p)
     residb = bcb(ub, p)
     return (resida, residb)
@@ -89,16 +89,16 @@ end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
 @views function eval_bc_residual!(
         resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
+    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
 @views function eval_bc_residual!(
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
+    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
@@ -376,3 +376,6 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
+
+
+# convert every vector of vector to AbstractVectorOfArray, especially if them come from get_tmp of PreallocationTools.jl

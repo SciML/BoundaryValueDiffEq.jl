@@ -19,8 +19,8 @@ function bc_pendulum!(residual, u, p, t)
 end
 
 function bc_pendulum_mirk!(residual, u, p, t)
-    residual[1] = u[end ÷ 2][1] + π / 2
-    residual[2] = u[end][1] - π / 2
+    residual[1] = u[:, end ÷ 2][1] + π / 2
+    residual[2] = u[:, end][1] - π / 2
     return nothing
 end
 
@@ -35,7 +35,7 @@ function bc_pendulum(u, p, t)
 end
 
 function bc_pendulum_mirk(u, p, t)
-    return [u[end ÷ 2][1] + π / 2, u[end][1] - π / 2]
+    return [u[:, end ÷ 2][1] + π / 2, u[:, end][1] - π / 2]
 end
 
 const prob_oop = BVProblem{false}(simple_pendulum, bc_pendulum, [π / 2, π / 2], tspan)
