@@ -56,11 +56,11 @@ end
     f1 = @closure (u, p, t) -> [u[2], 0]
 
     bc1! = @closure (residual, u, p, t) -> begin
-        residual[1] = u[1][1] - 5
-        residual[2] = u[lastindex(u)][1]
+        residual[1] = u[:, 1][1] - 5
+        residual[2] = u[:, lastindex(u)][1]
     end
 
-    bc1 = @closure (u, p, t) -> [u[1][1] - 5, u[lastindex(u)][1]]
+    bc1 = @closure (u, p, t) -> [u[:, 1][1] - 5, u[:, lastindex(u)][1]]
 
     bc1_a! = @closure (residual, ua, p) -> (residual[1] = ua[1] - 5)
     bc1_b! = @closure (residual, ub, p) -> (residual[1] = ub[1])
@@ -101,15 +101,15 @@ end
     f1_nlls = @closure (u, p, t) -> [u[2], -u[1]]
 
     bc1_nlls! = @closure (resid, sol, p, t) -> begin
-        solₜ₁ = sol[1]
-        solₜ₂ = sol[lastindex(sol)]
+        solₜ₁ = sol[:, 1]
+        solₜ₂ = sol[:, lastindex(sol)]
         resid[1] = solₜ₁[1]
         resid[2] = solₜ₂[1] - 1
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
     bc1_nlls = @closure (sol, p, t) -> [
-        sol[1][1], sol[lastindex(sol)][1] - 1, sol[lastindex(sol)][2] + 1.729109]
+        sol[:, 1][1], sol[:, lastindex(sol)][1] - 1, sol[:, lastindex(sol)][2] + 1.729109]
 
     bc1_nlls_a! = @closure (resid, ua, p) -> (resid[1] = ua[1])
     bc1_nlls_b! = @closure (resid, ub, p) -> (resid[1] = ub[1] - 1;
