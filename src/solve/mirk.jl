@@ -276,14 +276,14 @@ end
 @views function __mirk_loss_bc!(
         resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray([[r[i] for i in 1:cache.M] for r in y_])
+    soly_ = VectorOfArray(y_)
     eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
     return nothing
 end
 
 @views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray([[r[i] for i in 1:cache.M] for r in y_])
+    soly_ = VectorOfArray(y_)
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
 end
 

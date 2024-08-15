@@ -234,8 +234,8 @@ __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 @inline __get_non_sparse_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
 # Restructure Solution
-function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
-    return map(Base.Fix2(reshape, u_size), sol)
+function __restructure_sol(sol::AbstractVectorOfArray, u_size)
+    return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
 end
 
 # Override the checks for NonlinearFunction
