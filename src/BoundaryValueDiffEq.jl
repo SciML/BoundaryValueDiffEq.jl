@@ -49,24 +49,24 @@ function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kw
 end
 
 @setup_workload begin
-    f1! = @closure (du, u, p, t) -> begin
+    function f1!(du, u, p, t)
         du[1] = u[2]
         du[2] = 0
     end
-    f1 = @closure (u, p, t) -> [u[2], 0]
+    f1 = (u, p, t) -> [u[2], 0]
 
-    bc1! = @closure (residual, u, p, t) -> begin
+    function bc1!(residual, u, p, t)
         residual[1] = u[:, 1][1] - 5
         residual[2] = u[:, end][1]
     end
 
-    bc1 = @closure (u, p, t) -> [u[:, 1][1] - 5, u[:, end][1]]
+    bc1 = (u, p, t) -> [u[:, 1][1] - 5, u[:, end][1]]
 
-    bc1_a! = @closure (residual, ua, p) -> (residual[1] = ua[1] - 5)
-    bc1_b! = @closure (residual, ub, p) -> (residual[1] = ub[1])
+    bc1_a! = (residual, ua, p) -> (residual[1] = ua[1] - 5)
+    bc1_b! = (residual, ub, p) -> (residual[1] = ub[1])
 
-    bc1_a = @closure (ua, p) -> [ua[1] - 5]
-    bc1_b = @closure (ub, p) -> [ub[1]]
+    bc1_a = (ua, p) -> [ua[1] - 5]
+    bc1_b = (ub, p) -> [ub[1]]
 
     tspan = (0.0, 5.0)
     u0 = [5.0, -3.5]
@@ -93,14 +93,14 @@ end
         end
     end
 
-    f1_nlls! = @closure (du, u, p, t) -> begin
+    f1_nlls! = (du, u, p, t) -> begin
         du[1] = u[2]
         du[2] = -u[1]
     end
 
-    f1_nlls = @closure (u, p, t) -> [u[2], -u[1]]
+    f1_nlls = (u, p, t) -> [u[2], -u[1]]
 
-    bc1_nlls! = @closure (resid, sol, p, t) -> begin
+    bc1_nlls! = (resid, sol, p, t) -> begin
         solₜ₁ = sol[:, 1]
         solₜ₂ = sol[:, end]
         resid[1] = solₜ₁[1]
@@ -108,15 +108,15 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls = @closure (sol, p, t) -> [
+    bc1_nlls = (sol, p, t) -> [
         sol[:, 1][1], sol[:, end][1] - 1, sol[:, end][2] + 1.729109]
 
-    bc1_nlls_a! = @closure (resid, ua, p) -> (resid[1] = ua[1])
-    bc1_nlls_b! = @closure (resid, ub, p) -> (resid[1] = ub[1] - 1;
+    bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
+    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
     resid[2] = ub[2] + 1.729109)
 
-    bc1_nlls_a = @closure (ua, p) -> [ua[1]]
-    bc1_nlls_b = @closure (ub, p) -> [ub[1] - 1, ub[2] + 1.729109]
+    bc1_nlls_a = (ua, p) -> [ua[1]]
+    bc1_nlls_b = (ub, p) -> [ub[1] - 1, ub[2] + 1.729109]
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
@@ -151,18 +151,18 @@ end
         end
     end
 
-    bc1! = @closure (residual, u, p, t) -> begin
+    function bc2!(residual, u, p, t)
         residual[1] = u(0.0)[1] - 5
         residual[2] = u(5.0)[1]
     end
-    bc1 = @closure (u, p, t) -> [u(0.0)[1] - 5, u(5.0)[1]]
+    bc2 = (u, p, t) -> [u(0.0)[1] - 5, u(5.0)[1]]
 
     tspan = (0.0, 5.0)
     u0 = [5.0, -3.5]
     bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
-    probs = [BVProblem(BVPFunction{true}(f1!, bc1!), u0, tspan; nlls = Val(false)),
-        BVProblem(BVPFunction{false}(f1, bc1), u0, tspan; nlls = Val(false)),
+    probs = [BVProblem(BVPFunction{true}(f1!, bc2!), u0, tspan; nlls = Val(false)),
+        BVProblem(BVPFunction{false}(f1, bc2), u0, tspan; nlls = Val(false)),
         BVProblem(
             BVPFunction{true}(
                 f1!, (bc1_a!, bc1_b!); bcresid_prototype, twopoint = Val(true)),
@@ -197,7 +197,7 @@ end
         end
     end
 
-    bc1_nlls! = @closure (resid, sol, p, t) -> begin
+    bc1_nlls! = (resid, sol, p, t) -> begin
         solₜ₁ = sol(0.0)
         solₜ₂ = sol(100.0)
         resid[1] = solₜ₁[1]
@@ -205,7 +205,7 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls = @closure (sol, p, t) -> [
+    bc1_nlls = (sol, p, t) -> [
         sol(0.0)[1], sol(100.0)[1] - 1, sol(1.0)[2] + 1.729109]
 
     tspan = (0.0, 100.0)

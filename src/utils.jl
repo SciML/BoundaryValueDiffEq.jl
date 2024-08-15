@@ -237,6 +237,9 @@ __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 function __restructure_sol(sol::AbstractVectorOfArray, u_size)
     return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
 end
+function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
+    return map(Base.Fix2(reshape, u_size), sol)
+end
 
 # Override the checks for NonlinearFunction
 struct __unsafe_nonlinearfunction{iip} end
