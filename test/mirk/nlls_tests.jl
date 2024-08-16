@@ -21,7 +21,7 @@
 
     for solver in SOLVERS
         sol = solve(bvp1, solver; verbose = false, dt = 1.0)
-        @test norm(bc1(sol.u, nothing, sol.t), Inf) < 1e-2
+        @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-2
     end
 
     # IIP MP-BVP
@@ -46,7 +46,7 @@
     for solver in SOLVERS
         sol = solve(bvp2, solver; verbose = false, dt = 1.0)
         resid_f = Array{Float64}(undef, 3)
-        bc1!(resid_f, sol.u, nothing, sol.t)
+        bc1!(resid_f, sol, nothing, sol.t)
         @test norm(resid_f, Inf) < 1e-2
     end
 
