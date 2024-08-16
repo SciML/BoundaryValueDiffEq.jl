@@ -60,8 +60,8 @@
 
     algs = [Shooting(Tsit5()), MultipleShooting(10, Tsit5()), MIRK4(), MIRK5(), MIRK6()]
 
-    @testset "Initial Guess Functions: $(u0)" for u0 in (initial_guess_1)
-        bvp = BVProblem(chart_log_problem!, bc1!, u0, tspan, (M, i, a1, a2))
+    @testset "Initial Guess Functions" begin
+        bvp = BVProblem(chart_log_problem!, bc1!, initial_guess_1, tspan, (M, i, a1, a2))
 
         for alg in algs
             if alg isa Shooting || alg isa MultipleShooting
