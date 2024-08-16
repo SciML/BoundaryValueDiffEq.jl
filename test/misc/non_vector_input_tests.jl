@@ -16,8 +16,8 @@
     end
 
     function boundary!(residual, u, p, t)
-        residual[1, 1] = u[:, 1][1, 1] - 5
-        residual[1, 2] = u[:, end][1, 1]
+        residual[1, 1] = u.u[1][1, 1] - 5
+        residual[1, 2] = u.u[end][1, 1]
     end
 
     function boundary_a!(resida, ua, p)
@@ -28,7 +28,7 @@
     end
 
     function boundary(u, p, t)
-        return [u[:, 1][1, 1] - 5 u[:, end][1, 1]]
+        return [u.u[1][1, 1] - 5 u.u[end][1, 1]]
     end
 
     boundary_a = (ua, p) -> [ua[1, 1] - 5]
