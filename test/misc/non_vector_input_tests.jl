@@ -46,8 +46,8 @@
     @testset "Affineness" begin
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             for prob in probs
-                sol = solve(probs, mirk_solver(Val(order)); dt = 0.2)
-                @test norm(boundary(sol, probs.p, nothing), Inf) < 0.01
+                sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
+                @test norm(boundary(sol, prob.p, nothing), Inf) < 0.01
             end
         end
 
