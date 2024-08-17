@@ -2,7 +2,7 @@ recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
 function recursive_flatten(x::Vector{<:AbstractArray})
-    y = __similar(first(x), recursive_length(x))
+    y = zero(first(x), recursive_length(x))
     recursive_flatten!(y, x)
     return y
 end
@@ -112,7 +112,7 @@ function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [__similar(last(x)) for _ in 1:N])
+    append!(x, [zero(last(x)) for _ in 1:N])
     return x
 end
 
@@ -191,14 +191,13 @@ function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
-                __zeros_like(u)
+                zero(u)
     return prototype, size(prototype)
 end
 
 @inline function __similar(x, args...)
     y = similar(x, args...)
-    eltype(y) <: BigFloat && fill!(y, BigFloat(0))
-    return y
+    return zero(y)
 end
 
 @inline function __fill_like(v, x)
@@ -206,13 +205,7 @@ end
     fill!(y, v)
     return y
 end
-@inline function __zeros_like(u)
-    if ArrayInterface.can_setindex(u)
-        eltype(u) <: BigFloat && __fill_like(BigFloat(0), u)
-        return u
-    end
-    return __fill_like(0, u)
-end
+
 @inline __ones_like(args...) = __fill_like(1, args...)
 
 @inline __safe_vec(x) = vec(x)
