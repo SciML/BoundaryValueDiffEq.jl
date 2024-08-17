@@ -18,7 +18,7 @@ function __FastShortcutBVPCompatibleNLLSPolyalg(
                 linsolve, precs, disable_geodesic = Val(true), autodiff, kwargs...),
             TrustRegion(; concrete_jac, linsolve, precs, autodiff, kwargs...),
             GaussNewton(; concrete_jac, linsolve, precs,
-                linesearch = NonlinearSolve.LineSearchesJL(; method = BackTracking()),
+                linesearch = BackTracking(),
                 autodiff, kwargs...),
             LevenbergMarquardt(; linsolve, precs, autodiff, kwargs...))
     end
