@@ -2,7 +2,7 @@ recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
 function recursive_flatten(x::Vector{<:AbstractArray})
-    y = similar(first(x), recursive_length(x))
+    y = zero(first(x), recursive_length(x))
     recursive_flatten!(y, x)
     return y
 end
@@ -41,9 +41,11 @@ end
     return recursive_unflatten!(get_tmp.(y, (x,)), x)
 end
 
-function recursive_fill!(y::Vector{<:AbstractArray}, x)
+@views function recursive_unflatten!(y::AbstractVectorOfArray, x::AbstractVector)
+    i = 0
     for yᵢ in y
-        fill!(yᵢ, x)
+        copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])
+        i += length(yᵢ)
     end
     return y
 end
@@ -55,7 +57,7 @@ function diff!(dx, x)
     return dx
 end
 
-function __maybe_matmul!(z::Array, A, b, α = eltype(z)(1), β = eltype(z)(0))
+function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
     mul!(z, A, b, α, β)
 end
 
@@ -74,8 +76,8 @@ end
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
+    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
     resida = bca(ua, p)
     residb = bcb(ub, p)
     return (resida, residb)
@@ -87,16 +89,16 @@ end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
 @views function eval_bc_residual!(
         resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
+    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
 @views function eval_bc_residual!(
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa AbstractVector ? sol[1] : sol(first(t))
-    ub = sol isa AbstractVector ? sol[end] : sol(last(t))
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
+    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
@@ -110,7 +112,7 @@ function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [similar(last(x)) for _ in 1:N])
+    append!(x, [zero(last(x)) for _ in 1:N])
     return x
 end
 
@@ -147,6 +149,13 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache},
 end
 
 __append_similar!(::Nothing, n, _, _) = nothing
+function __append_similar!(x::AbstractVectorOfArray, n, _)
+    N = n - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, VectorOfArray([similar(last(x)) for _ in 1:N]))
+    return x
+end
 
 ## Problem with Initial Guess
 function __extract_problem_details(prob; kwargs...)
@@ -206,16 +215,21 @@ function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
-                __zeros_like(u)
+                zero(u)
     return prototype, size(prototype)
 end
 
-@inline function __fill_like(v, x, args...)
+@inline function __similar(x, args...)
     y = similar(x, args...)
+    return zero(y)
+end
+
+@inline function __fill_like(v, x)
+    y = __similar(x)
     fill!(y, v)
     return y
 end
-@inline __zeros_like(args...) = __fill_like(0, args...)
+
 @inline __ones_like(args...) = __fill_like(1, args...)
 
 @inline __safe_vec(x) = vec(x)
@@ -249,6 +263,9 @@ __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 @inline __get_non_sparse_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
 # Restructure Solution
+function __restructure_sol(sol::AbstractVectorOfArray, u_size)
+    return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
+end
 function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)
 end
@@ -361,25 +378,21 @@ initial guess, it returns `vec(u₀)`.
 
 Returns the initial guess on the mesh. For `DiffEqArray` assumes that the mesh is the same
 as the mesh of the `DiffEqArray`.
-
-If `alias_u0` is set to `true`, we try our best to minimize copies. This means that `u₀`
-or parts of it will get mutated.
 """
-@inline function __initial_guess_on_mesh(
-        u₀::AbstractVector{<:AbstractArray}, _, p, alias_u0::Bool)
-    return alias_u0 ? vec.(u₀) : [copy(vec(u)) for u in u₀]
+@inline function __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, _, p)
+    return VectorOfArray([copy(vec(u)) for u in u₀])
 end
-@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p, alias_u0::Bool)
-    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p)
+    return copy(u₀)
 end
-@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p, alias_u0::Bool)
-    return alias_u0 ? u₀.u : [copy(vec(u)) for u in u₀.u]
+@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p)
+    return copy(u₀)
 end
-@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p, alias_u0::Bool)
-    return [copy(vec(u₀)) for _ in mesh]
+@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p)
+    return VectorOfArray([copy(vec(u₀)) for _ in mesh])
 end
-@inline function __initial_guess_on_mesh(u₀::F, mesh, p, alias_u0::Bool) where {F}
-    return [vec(__initial_guess(u₀, p, t)) for t in mesh]
+@inline function __initial_guess_on_mesh(u₀::F, mesh, p) where {F}
+    return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
 end
 
 # Construct BVP Solution
@@ -395,3 +408,6 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
+
+
+# convert every vector of vector to AbstractVectorOfArray, especially if them come from get_tmp of PreallocationTools.jl

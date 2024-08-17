@@ -300,10 +300,10 @@ an interpolant
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
-        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
     end
 
-    return maximum(Base.Fix1(maximum, abs), defect)
+    return maximum(Base.Fix1(maximum, abs), defect.u)
 end
 
 @views function defect_estimate!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
@@ -440,22 +440,22 @@ Here, the ki_interp is the stages in one subinterval.
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
         for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
+            __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
         end
         if r > 1
             for j in eachindex(k_interp)
                 __maybe_matmul!(
-                    new_stages[j], k_interp[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1))
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1))
             end
         end
         for i in eachindex(new_stages)
-            new_stages[i] .= new_stages[i] .* mesh_dt[i] .+
+            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                              (1 - v_star[r]) .* vec(y[i].du) .+
                              v_star[r] .* vec(y[i + 1].du)
             if iip
-                f(k_interp[i][:, r], new_stages[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp[i][:, r] .= f(new_stages[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             end
         end
     end
@@ -479,7 +479,7 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ cache.y₀[i]
 
     return z
@@ -492,12 +492,12 @@ end
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
     __maybe_matmul!(
-        z′, k_interp[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
-    z .= z .* dt[1] .+ cache.y₀[i]
+        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+    z .= z .* dt[1] .+ cache.y₀.u[i]
 
     return z, z′
 end

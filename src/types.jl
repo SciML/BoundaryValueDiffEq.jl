@@ -180,8 +180,8 @@ end
 function __maybe_allocate_diffcache(x, chunksize, jac_alg)
     return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : FakeDiffCache(x)
 end
-__maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(similar(x.du), chunksize)
-__maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(similar(x.du))
+__maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(zero(x.du), chunksize)
+__maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(zero(x.du))
 
 const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
 
