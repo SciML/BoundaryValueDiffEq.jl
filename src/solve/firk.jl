@@ -61,7 +61,7 @@ end
 Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N::Int, stage::Int)
-    y_extended = similar(y, (N - 1) * (stage + 1) + 1)
+    y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)
     y_extended[1] = y[1]
     let ctr1 = 2
         for i in 2:N
@@ -71,7 +71,7 @@ function extend_y(y, N::Int, stage::Int)
             end
         end
     end
-    return y_extended
+    return VectorOfArray(y_extended)
 end
 
 function shrink_y(y, N, M, stage)
@@ -280,9 +280,9 @@ function init_expanded(prob::BVProblem,
     MxNsub = alg.max_num_subintervals
 
     # Don't flatten this here, since we need to expand it later if needed
-    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
+    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
     y₀ = extend_y(_y₀, Nig + 1, alg_stage(alg))
-    y = __alloc.(copy.(y₀)) # Runtime dispatch
+    y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig] # Runtime dispatch
@@ -291,15 +291,15 @@ function init_expanded(prob::BVProblem,
 
     residual = if iip
         if prob.problem_type isa TwoPointBVProblem
-            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
+            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀.u[2:end]))))
         else
-            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
+            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀.u[2:end]))))
         end
     else
         nothing
     end
 
-    defect = [similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig]
+    defect = VectorOfArray([similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -382,7 +382,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
 end
 
 function __perform_firk_iteration(cache::FIRKCacheExpand, abstol, adaptive; nlsolve_kwargs = (;), kwargs...)
-    nlprob = __construct_nlproblem(cache, recursive_flatten(cache.y₀))
+    nlprob = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
         nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
@@ -421,7 +421,7 @@ function __perform_firk_iteration(cache::FIRKCacheExpand, abstol, adaptive; nlso
         else
             half_mesh!(cache)
             __expand_cache!(cache)
-            recursive_fill!(cache.y₀, 0)
+            recursivefill!(cache.y₀, 0)
             info = ReturnCode.Success # Force a restart
         end
     end

@@ -148,6 +148,18 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache},
     return x
 end
 
+function __append_similar!(x::AbstractVectorOfArray,
+        n,
+        M,
+        TU::FIRKTableau{false})
+    (; s) = TU
+    N = (n - 1) * (s + 1) + 1 - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, VectorOfArray([similar(last(x)) for _ in 1:N]))
+    return x
+end
+
 __append_similar!(::Nothing, n, _, _) = nothing
 function __append_similar!(x::AbstractVectorOfArray, n, _)
     N = n - length(x)
@@ -224,8 +236,8 @@ end
     return zero(y)
 end
 
-@inline function __fill_like(v, x)
-    y = __similar(x)
+@inline function __fill_like(v, x, args...)
+    y = __similar(x, args...)
     fill!(y, v)
     return y
 end

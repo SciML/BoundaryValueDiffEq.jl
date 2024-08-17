@@ -13,8 +13,8 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 end
 
 @views function interp_eval!(y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
-    i = findfirst(x -> x == y, cache.y₀)
-    interp_eval!(cache.y₀, i, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt)
+    i = findfirst(x -> x == y, cache.y₀.u)
+    interp_eval!(cache.y₀.u, i, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt)
     return y
 end
 
@@ -342,7 +342,7 @@ end
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
-        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
         ctr += stage + 1 # Advance one step
     end
 
@@ -391,7 +391,7 @@ end
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
-        defect[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
     end
 
     return maximum(Base.Fix1(maximum, abs), defect)

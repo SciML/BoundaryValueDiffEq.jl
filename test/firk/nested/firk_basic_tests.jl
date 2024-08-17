@@ -260,8 +260,8 @@ end
     end
 
     function bc_pendulum!(residual, u, p, t)
-        residual[1] = u[end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-        residual[2] = u[end][1] - π / 2 # the solution at the end of the time span should be pi/2
+        residual[1] = u[:, end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
+        residual[2] = u[:, end][1] - π / 2 # the solution at the end of the time span should be pi/2
     end
 
     u0 = MVector{2}([pi / 2, pi / 2])
@@ -327,8 +327,8 @@ end
         du[2] = 1 / p * u[1]
     end
     function prob_bvp_linear_bc!(res, u, p, t)
-        res[1] = u[1][1] - 1
-        res[2] = u[end][1]
+        res[1] = u[:, 1][1] - 1
+        res[2] = u[:, end][1]
     end
 
     prob_bvp_linear_function = ODEFunction(
