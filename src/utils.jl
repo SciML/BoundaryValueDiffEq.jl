@@ -197,15 +197,8 @@ end
 
 @inline function __similar(x, args...)
     y = similar(x, args...)
-    return __init_bigfloat_array!!(y)
-end
-
-@inline function __init_bigfloat_array!!(x)
-    if ArrayInterface.can_setindex(x)
-        eltype(x) <: BigFloat && fill!(x, BigFloat(0))
-        return x
-    end
-    return x
+    eltype(y) <: BigFloat && fill!(y, BigFloat(0))
+    return y
 end
 
 @inline function __fill_like(v, x)

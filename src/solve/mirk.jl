@@ -335,8 +335,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         Val(iip), jac_alg.nonbc_diffmode, sd_collocation,
         loss_collocationₚ, resid_collocation, y)
 
-    J_bc = __init_bigfloat_array!!(init_jacobian(cache_bc))
-    J_c = __init_bigfloat_array!!(init_jacobian(cache_collocation))
+    J_bc = __similar(init_jacobian(cache_bc))
+    J_c = __similar(init_jacobian(cache_collocation))
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
     else
@@ -422,7 +422,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         NoSparsityDetection()
     end
     diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-    jac_prototype = __init_bigfloat_array!!(init_jacobian(diffcache))
+    jac_prototype = __similar(init_jacobian(diffcache))
 
     jac = if iip
         @closure (J, u, p) -> __mirk_2point_jacobian!(
