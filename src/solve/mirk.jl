@@ -42,10 +42,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(N * (Nig - 1))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(__similar(x)), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
-    fᵢ_cache = __alloc(__similar(X))
-    fᵢ₂_cache = vec(__similar(X))
+    fᵢ_cache = __alloc(zero(X))
+    fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
@@ -341,8 +341,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         Val(iip), jac_alg.nonbc_diffmode, sd_collocation,
         loss_collocationₚ, resid_collocation, y)
 
-    J_bc = __similar(init_jacobian(cache_bc))
-    J_c = __similar(init_jacobian(cache_collocation))
+    J_bc = zero(init_jacobian(cache_bc))
+    J_c = zero(init_jacobian(cache_collocation))
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
     else
@@ -428,7 +428,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         NoSparsityDetection()
     end
     diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-    jac_prototype = __similar(init_jacobian(diffcache))
+    jac_prototype = zero(init_jacobian(diffcache))
 
     jac = if iip
         @closure (J, u, p) -> __mirk_2point_jacobian!(
