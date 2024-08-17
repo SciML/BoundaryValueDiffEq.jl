@@ -31,7 +31,7 @@ function __FastShortcutBVPCompatibleNonlinearPolyalg(
         algs = (NewtonRaphson(; concrete_jac, linsolve, precs, autodiff),)
     else
         algs = (NewtonRaphson(; concrete_jac, linsolve, precs, autodiff),
-                NewtonRaphson(;
+            NewtonRaphson(;
                 concrete_jac, linsolve, precs, linesearch = BackTracking(), autodiff),
             TrustRegion(; concrete_jac, linsolve, precs, autodiff))
     end
