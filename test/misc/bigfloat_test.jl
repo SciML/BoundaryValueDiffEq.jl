@@ -8,8 +8,8 @@
         du[2] = -9.81 * sin(θ)
     end
     function bc!(residual, u, p, t)
-        residual[1] = u[end ÷ 2][1] + big(pi / 2)
-        residual[2] = u[end][1] - big(pi / 2)
+        residual[1] = u[:, end ÷ 2][1] + big(pi / 2)
+        residual[2] = u[:, end][1] - big(pi / 2)
     end
     u0 = BigFloat.([pi / 2, pi / 2])
     prob = BVProblem(simplependulum!, bc!, u0, tspan)

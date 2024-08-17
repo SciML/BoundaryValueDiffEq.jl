@@ -237,7 +237,7 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
-    z .= z .* dt .+ cache.y₀[i]
+    z .= z .* dt .+ cache.y₀.u[i]
 
     return z
 end
