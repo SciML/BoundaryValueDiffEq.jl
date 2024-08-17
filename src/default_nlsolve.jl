@@ -33,7 +33,8 @@ function __FastShortcutBVPCompatibleNonlinearPolyalg(
     else
         algs = (NewtonRaphson(; concrete_jac, linsolve, precs, autodiff),
             NewtonRaphson(; concrete_jac, linsolve, precs,
-                linesearch = NonlinearSolve.LineSearchesJL(; method = BackTracking()), autodiff),
+                linesearch = NonlinearSolve.LineSearchesJL(; method = BackTracking()),
+                autodiff),
             TrustRegion(; concrete_jac, linsolve, precs, autodiff))
     end
     return NonlinearSolvePolyAlgorithm(algs, Val(:NLS))
