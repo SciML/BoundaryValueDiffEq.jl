@@ -1,6 +1,6 @@
 @testsetup module FIRKNLLSTests
 
-using BoundaryValueDiffEq
+using BoundaryValueDiffEq, LinearAlgebra
 
 SOLVERS = [firk(; nlsolve)
            for firk in (

@@ -102,22 +102,22 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(
                 prob, lobattoIIIa_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(
                 prob, lobattoIIIb_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(
                 prob, lobattoIIIc_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
 
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob, radau_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
     end
 end
@@ -130,7 +130,7 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
+            @test_opt target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
             @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)

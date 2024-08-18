@@ -62,11 +62,11 @@ Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N::Int, stage::Int)
     y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)
-    y_extended[1] = y[1]
+    y_extended[1] = y.u[1]
     let ctr1 = 2
         for i in 2:N
             for j in 1:(stage + 1)
-                y_extended[(ctr1)] = y[i]
+                y_extended[(ctr1)] = y.u[i]
                 ctr1 += 1
             end
         end
@@ -134,35 +134,32 @@ function init_nested(prob::BVProblem,
     chunksize = pickchunksize(N * (Nig - 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
-    fᵢ_cache = __alloc(similar(X))
-    fᵢ₂_cache = vec(similar(X))
-
-    defect_threshold = T(alg.defect_threshold)
-    MxNsub = alg.max_num_subintervals
+    fᵢ_cache = __alloc(zero(X))
+    fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p, false)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
 
-    y = __alloc.(copy.(y₀))
+    y = __alloc.(copy.(y₀.u))
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(similar(X, N, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(__similar(X, N, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
     residual = if iip
         if prob.problem_type isa TwoPointBVProblem
-            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀[2:end]))))
+            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀.u[2:end]))))
         else
-            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀[2:end]))))
+            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀.u[2:end]))))
         end
     else
         nothing
     end
 
-    defect = [similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig]
+    defect = VectorOfArray([__similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -236,10 +233,8 @@ function init_nested(prob::BVProblem,
             p_nestprob_cache)
     end
 
-    tol = alg.nest_tol > eps(T) ? alg.nest_tol : nothing
-    nest_cache = init(nestprob,
-        NewtonRaphson(autodiff = alg.jac_alg.diffmode);
-        abstol = tol)
+    
+    nest_cache = init(nestprob, NewtonRaphson(autodiff = alg.jac_alg.diffmode); abstol = (alg.nest_tol > eps(T) ? alg.nest_tol : nothing))
 
     return FIRKCacheNested{iip, T}(alg_order(alg), stage, N, size(X), f, bc, prob_,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
@@ -273,18 +268,15 @@ function init_expanded(prob::BVProblem,
     chunksize = pickchunksize(M + M * Nig * (stage + 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
-    fᵢ_cache = __alloc(similar(X)) # Runtime dispatch
-    fᵢ₂_cache = vec(similar(X))
-
-    defect_threshold = T(alg.defect_threshold) # Runtime dispatch
-    MxNsub = alg.max_num_subintervals
+    fᵢ_cache = __alloc(zero(X)) # Runtime dispatch
+    fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
     _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
     y₀ = extend_y(_y₀, Nig + 1, alg_stage(alg))
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
-    k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(__similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig] # Runtime dispatch
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
