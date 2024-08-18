@@ -245,7 +245,7 @@ function init_nested(prob::BVProblem,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, p_nestprob_cache,
         nest_cache, resid₁_size,
-        (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+        (; abstol, dt, adaptive, kwargs...))
 end
 
 function init_expanded(prob::BVProblem,
@@ -330,7 +330,7 @@ function init_expanded(prob::BVProblem,
     return FIRKCacheExpand{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_, 
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size,
-        (; defect_threshold, MxNsub, abstol, dt, adaptive, kwargs...))
+        (; abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -372,7 +372,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
 
     # sync y and y0 caches
     for i in axes(cache.y₀, 1)
-        cache.y[i].du .= cache.y₀[i]
+        cache.y[i].du .= cache.y₀.u[i]
     end
 
     u = shrink_y([reshape(y, cache.in_size) for y in cache.y₀], length(cache.mesh), cache.M, alg_stage(cache.alg))

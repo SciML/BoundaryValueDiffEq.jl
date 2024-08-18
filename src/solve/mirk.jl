@@ -142,7 +142,7 @@ function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
 end
 
 function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
-    (abstol, adaptive, dt), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
