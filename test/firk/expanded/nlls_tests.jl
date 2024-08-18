@@ -8,6 +8,9 @@ SOLVERS = [firk(; nlsolve)
     LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5),
 nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
 
+SOLVERS_NAMES = ["$solver with $nlsolve" for solver in ["RadauIIa3", "RadauIIa5", "RadauIIa7", "LobattoIIIa3", "LobattoIIIa4", "LobattoIIIa5",
+    "LobattoIIIb3", "LobattoIIIb4", "LobattoIIIb5", "LobattoIIIc3", "LobattoIIIc4", "LobattoIIIc5"], nlsolve in ["LevenbergMarquardt", "GaussNewton", "TrustRegion", "nothing"]]
+
 ### Overconstrained BVP ###
 
 # OOP MP-BVP
@@ -149,7 +152,7 @@ p = vcat(p0, R0, pL, RL)
 UnderconstrainedProbArr = [TwoPointBVProblem(rod_ode!, (bc_a!, bc_b!), y0, tspan, p, bcresid_prototype = (zeros(6), zeros(6))),
         BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, rod_tspan, p)]
 
-export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS
+export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS, SOLVERS_NAMES, bc1
 
 end
 
@@ -158,7 +161,7 @@ end
 
     @testset "Problem: $i" for i in 1:4
         prob = OverconstrainedProbArr[i]
-        @testset "Solver: $solver" for solver in SOLVERS
+        @testset "Solver: $name" for (name, solver) in zip(SOLVERS_NAMES, SOLVERS)
             sol = solve(prob, solver; verbose = false, dt = 1.0)
             @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-2
         end
@@ -172,9 +175,7 @@ end
 
     @testset "Problem: $i" for i in 1:2
         prob = UnderconstrainedProbArr[i]
-        @testset "Solver: $solver" for solver in SOLVERS
-            tp_sol = solve(prob_tp, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
-            @test SciMLBase.successful_retcode(tp_sol.retcode)
+        @testset "Solver: $name" for (name, solver) in zip(SOLVERS_NAMES, SOLVERS)
             sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
             @test SciMLBase.successful_retcode(sol.retcode)
         end
