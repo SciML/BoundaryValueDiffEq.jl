@@ -23,8 +23,8 @@
 
     @testset "$(solver)" for solver in (RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7) # RadauIIa1 doesn't have adaptivity
         jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
-            BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
-                                nonbc_diffmode = AutoSparseFiniteDiff())]
+            BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
+                                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
             sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
                 trajectories = 10, dt = 0.1)
@@ -34,8 +34,8 @@
 
     @testset "$(solver)" for solver in (LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5)
         jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
-            BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
-                                nonbc_diffmode = AutoSparseFiniteDiff())]
+            BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
+                                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
             sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
                 trajectories = 10, dt = 0.1)
@@ -45,8 +45,8 @@
 
     @testset "$(solver)" for solver in (LobattoIIIb3, LobattoIIIb4, LobattoIIIb5) # LobattoIIIb2 doesn't have adaptivity
         jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
-            BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
-                                nonbc_diffmode = AutoSparseFiniteDiff())]
+            BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
+                                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
             sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
                 trajectories = 10, dt = 0.1)
@@ -56,8 +56,8 @@
 
     @testset "$(solver)" for solver in (LobattoIIIc3, LobattoIIIc4, LobattoIIIc5) # LobattoIIIc2 doesn't have adaptivity
         jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
-            BVPJacobianAlgorithm(AutoSparseFiniteDiff(); bc_diffmode = AutoFiniteDiff(),
-                                nonbc_diffmode = AutoSparseFiniteDiff())]
+            BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
+                                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
             sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
                 trajectories = 10, dt = 0.1)

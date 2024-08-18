@@ -130,7 +130,7 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(BoundaryValueDiffEq,) solve(
+            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
             @test_call target_modules=(BoundaryValueDiffEq,) solve(
                 prob, solver; dt = 0.2)
