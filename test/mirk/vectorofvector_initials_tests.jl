@@ -55,9 +55,9 @@
     # The BVP set up
     # This is not really kind of Two-Point BVP we support.
     function bc_po!(residual, u, p, t)
-        residual[1] = u[:, 1][1] - u[:, end][1]
-        residual[2] = u[:, 1][2] - u[:, end][2]
-        residual[3] = u[:, 1][3] - u[:, end][3]
+        residual[1] = u(0.0)[1] - u(T)[1]
+        residual[2] = u(0.0)[2] - u(T)[2]
+        residual[3] = u(0.0)[3] - u(T)[3]
     end
 
     #This is the part of the code that has problems

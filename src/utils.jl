@@ -385,5 +385,30 @@ end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
 
+### Intermidiate solution when we are evaluating the boundry conditions
+@concrete struct MIRKSol
+    u
+    t
+end
 
-# convert every vector of vector to AbstractVectorOfArray, especially if them come from get_tmp of PreallocationTools.jl
+function (s::MIRKSol)(tval::Number)
+    (; u, t) = s
+    z = similar(u[1])
+    i = interval(t, tval)
+    dt = t[i]-t[i-1]
+    θ = (tval - t[i-1])/dt
+    z = (1-θ) * u[i-1] + θ * u[i]
+    return z
+end
+
+function (s::MIRKSol)(tvals::AbstractArray{<:Number})
+    (; u, t) = s
+    z = [similar(u[1]) for _ in tvals]
+    dt = t[i] - t[i-1]
+    for (i, tval) in enumerate(tvals)
+        i = interval(t, tval)
+        θ = (tval - t[i-1])/dt
+        z[i] = (1-θ) * u[i-1] + θ * u[i]
+    end
+    return z
+end

@@ -27,9 +27,9 @@
 
     function bc1!(residual, u, params, t)
         M, i, a1, a2 = params
-        mid = div(length(u[:, 1]), 2)
-        residual[1:mid] = u[:, 1][1:mid] - a1
-        residual[(mid + 1):end] = u[:, end][1:mid] - a2
+        mid = div(length(first(u)), 2)
+        residual[1:mid] = u(0.0)[1:mid] - a1
+        residual[(mid + 1):end] = u(1.0)[1:mid] - a2
         return
     end
 

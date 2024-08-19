@@ -56,11 +56,11 @@ end
     f1 = (u, p, t) -> [u[2], 0]
 
     function bc1!(residual, u, p, t)
-        residual[1] = u[:, 1][1] - 5
-        residual[2] = u[:, end][1]
+        residual[1] = u(0.0)[1] - 5
+        residual[2] = u(5.0)[1]
     end
 
-    bc1 = (u, p, t) -> [u[:, 1][1] - 5, u[:, end][1]]
+    bc1 = (u, p, t) -> [u(0.0)[1] - 5, u(5.0)[1]]
 
     bc1_a! = (residual, ua, p) -> (residual[1] = ua[1] - 5)
     bc1_b! = (residual, ub, p) -> (residual[1] = ub[1])
@@ -101,15 +101,15 @@ end
     f1_nlls = (u, p, t) -> [u[2], -u[1]]
 
     bc1_nlls! = (resid, sol, p, t) -> begin
-        solₜ₁ = sol[:, 1]
-        solₜ₂ = sol[:, end]
+        solₜ₁ = sol(0.0)
+        solₜ₂ = sol(100.0)
         resid[1] = solₜ₁[1]
         resid[2] = solₜ₂[1] - 1
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
     bc1_nlls = (sol, p, t) -> [
-        sol[:, 1][1], sol[:, end][1] - 1, sol[:, end][2] + 1.729109]
+        sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
     bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
