@@ -395,20 +395,20 @@ function (s::MIRKSol)(tval::Number)
     (; u, t) = s
     z = similar(u[1])
     i = interval(t, tval)
-    dt = t[i]-t[i-1]
-    θ = (tval - t[i-1])/dt
-    z = (1-θ) * u[i-1] + θ * u[i]
+    dt = t[i+1]-t[i]
+    θ = (tval - t[i])/dt
+    z = (1-θ) * u[i] + θ * u[i+1]
     return z
 end
 
 function (s::MIRKSol)(tvals::AbstractArray{<:Number})
     (; u, t) = s
     z = [similar(u[1]) for _ in tvals]
-    dt = t[i] - t[i-1]
+    dt = t[i+1] - t[i]
     for (i, tval) in enumerate(tvals)
         i = interval(t, tval)
-        θ = (tval - t[i-1])/dt
-        z[i] = (1-θ) * u[i-1] + θ * u[i]
+        θ = (tval - t[i])/dt
+        z[i] = (1-θ) * u[i] + θ * u[i+1]
     end
     return z
 end
