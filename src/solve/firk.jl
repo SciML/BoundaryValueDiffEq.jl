@@ -400,7 +400,7 @@ function __perform_firk_iteration(cache::FIRKCacheExpand, abstol, adaptive; nlso
             if info == ReturnCode.Success
                 __append_similar!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
                 for (i, m) in enumerate(cache.mesh)
-                    interp_eval!(cache.y₀[i], cache, m, mesh, mesh_dt)
+                    interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end
                 __expand_cache!(cache)
             end
