@@ -384,38 +384,3 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
-
-### Intermidiate solution when we are evaluating the boundry conditions
-@concrete struct MIRKSol
-    u
-    t
-    cache
-end
-
-function (s::MIRKSol)(tval::Number)
-    (; u, t, cache) = s
-    (; mesh_dt) = cache
-    z = similar(u[1])
-    i = interval(t, tval)
-    dt = mesh_dt[i]
-    θ = (tval - t[i])/dt
-    z = (1-θ) * u[i] + θ * u[i+1]
-    return z
-end
-
-function (s::MIRKSol)(tvals::AbstractArray{<:Number})
-    (; u, t, cache) = s
-    (; mesh_dt) = cache
-    z = [similar(u[1]) for _ in tvals]
-    for (i, tval) in enumerate(tvals)
-        i = interval(t, tval)
-        dt = mesh_dt[i]
-        θ = (tval - t[i])/dt
-        z[i] = (1-θ) * u[i] + θ * u[i+1]
-    end
-    return z
-end
-
-function Base.iterate(s::MIRKSol, state = 1)
-    state >= length(s.u) + 1 ? nothing : (s.u[state], state + 1)
-end
