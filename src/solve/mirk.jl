@@ -236,7 +236,7 @@ end
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    soly_ = MIRKSol(y_, mesh)
+    soly_ = MIRKSol(y_, mesh, cache)
     eval_bc_residual!(resids[1], pt, bc!, soly_, p, mesh)
     Φ!(resids[2:end], cache, y_, u, p)
     recursive_flatten!(resid, resids)
@@ -258,7 +258,7 @@ end
 
 @views function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = MIRKSol(y_, mesh)
+    soly_ = MIRKSol(y_, mesh, cache)
     resid_bc = eval_bc_residual(pt, bc, soly_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
@@ -267,7 +267,7 @@ end
 @views function __mirk_loss(
         u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh, cache) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    soly_ = MIRKSol(y_, mesh)
+    soly_ = MIRKSol(y_, mesh, cache)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
@@ -276,14 +276,14 @@ end
 @views function __mirk_loss_bc!(
         resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = MIRKSol(y_, mesh)
+    soly_ = MIRKSol(y_, mesh, cache)
     eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
     return nothing
 end
 
 @views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = MIRKSol(y_, mesh)
+    soly_ = MIRKSol(y_, mesh, cache)
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
 end
 

@@ -389,26 +389,33 @@ end
 @concrete struct MIRKSol
     u
     t
+    cache
 end
 
 function (s::MIRKSol)(tval::Number)
-    (; u, t) = s
+    (; u, t, cache) = s
+    (; mesh_dt) = cache
     z = similar(u[1])
     i = interval(t, tval)
-    dt = t[i+1]-t[i]
+    dt = mesh_dt[i]
     θ = (tval - t[i])/dt
     z = (1-θ) * u[i] + θ * u[i+1]
     return z
 end
 
 function (s::MIRKSol)(tvals::AbstractArray{<:Number})
-    (; u, t) = s
+    (; u, t, cache) = s
+    (; mesh_dt) = cache
     z = [similar(u[1]) for _ in tvals]
-    dt = t[i+1] - t[i]
     for (i, tval) in enumerate(tvals)
         i = interval(t, tval)
+        dt = mesh_dt[i]
         θ = (tval - t[i])/dt
         z[i] = (1-θ) * u[i] + θ * u[i+1]
     end
     return z
+end
+
+function Base.iterate(s::MIRKSol, state = 1)
+    state >= length(s.u) + 1 ? nothing : (s.u[state], state + 1)
 end
