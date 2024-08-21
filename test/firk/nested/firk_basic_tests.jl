@@ -39,8 +39,8 @@ end
 f2(u, p, t) = [u[2], -u[1]]
 
 function boundary!(residual, u, p, t)
-    residual[1] = u[1][1] - 5
-    residual[2] = u[end][1]
+    residual[1] = u[:, 1][1] - 5
+    residual[2] = u[:, end][1]
 end
 boundary(u, p, t) = [u[1][1] - 5, u[end][1]]
 
@@ -106,7 +106,7 @@ end
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(prob,
@@ -115,7 +115,7 @@ end
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(prob,
@@ -124,7 +124,7 @@ end
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
 
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
@@ -134,7 +134,7 @@ end
                     nested_nlsolve = nested);
                 dt = 0.2,
                 adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
     end
 end
