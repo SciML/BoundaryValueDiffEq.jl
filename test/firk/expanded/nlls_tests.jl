@@ -3,13 +3,10 @@
 using BoundaryValueDiffEq, LinearAlgebra
 
 SOLVERS = [firk(; nlsolve)
-           for firk in (
-    RadauIIa3, RadauIIa5, RadauIIa7, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5,
-    LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5),
+           for firk in (RadauIIa7, LobattoIIIa5, LobattoIIIb5, LobattoIIIc5),
 nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
 
-SOLVERS_NAMES = ["$solver with $nlsolve" for solver in ["RadauIIa3", "RadauIIa5", "RadauIIa7", "LobattoIIIa3", "LobattoIIIa4", "LobattoIIIa5",
-    "LobattoIIIb3", "LobattoIIIb4", "LobattoIIIb5", "LobattoIIIc3", "LobattoIIIc4", "LobattoIIIc5"], nlsolve in ["LevenbergMarquardt", "GaussNewton", "TrustRegion", "nothing"]]
+SOLVERS_NAMES = ["$solver with $nlsolve" for solver in ["RadauIIa7", "LobattoIIIa5", "LobattoIIIb5", "LobattoIIIc5"], nlsolve in ["LevenbergMarquardt", "GaussNewton", "TrustRegion", "nothing"]]
 
 ### Overconstrained BVP ###
 
@@ -149,7 +146,7 @@ rod_tspan = (0.0, L)
 rod_ode!(dy, y, p, t) = rod_ode!(dy, y, p, t, inv(Kse), inv(Kbt), rho, A, g)
 y0 = vcat(p0, R0, zeros(6))
 p = vcat(p0, R0, pL, RL)
-UnderconstrainedProbArr = [TwoPointBVProblem(rod_ode!, (bc_a!, bc_b!), y0, tspan, p, bcresid_prototype = (zeros(6), zeros(6))),
+UnderconstrainedProbArr = [TwoPointBVProblem(rod_ode!, (bc_a!, bc_b!), y0, rod_tspan, p, bcresid_prototype = (zeros(6), zeros(6))),
         BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, rod_tspan, p)]
 
 export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS, SOLVERS_NAMES, bc1
