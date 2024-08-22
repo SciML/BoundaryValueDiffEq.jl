@@ -205,8 +205,8 @@ end
 
 
 @inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)    
-@inline __build_interpolation(cache::FIRKCacheExpand, u::AbstractVector) = FIRKCacheExpand(cache.mesh, u, cache)
-@inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKCacheNested(cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheExpand, u::AbstractVector) = FIRKExpandInterpolation(cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(cache.mesh, u, cache)
 
 
 """
