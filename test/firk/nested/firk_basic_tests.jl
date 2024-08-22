@@ -42,7 +42,7 @@ function boundary!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
     residual[2] = u[:, end][1]
 end
-boundary(u, p, t) = [u[1][1] - 5, u[end][1]]
+boundary(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
 
 function boundary_two_point_a!(resida, ua, p)
     resida[1] = ua[1] - 5

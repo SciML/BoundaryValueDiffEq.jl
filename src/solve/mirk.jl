@@ -159,8 +159,10 @@ function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
 
     u = recursivecopy(cache.y₀)
 
+    interpolation = __build_interpolation(cache, u.u)
+
     odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u.u;
-        interp = MIRKInterpolation(cache.mesh, u.u, cache), retcode = info)
+        interp = interpolation, retcode = info)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 

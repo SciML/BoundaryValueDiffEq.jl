@@ -59,14 +59,16 @@ end
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     #FIXME: need a better way to fix this
-    eltype(y) <: AbstractArray ? (y[ctr_y0] = S_interpolate(τ * h, S_coeffs)) : (y .= S_interpolate(τ * h, S_coeffs))
+    #eltype(y) <: AbstractArray ? (y[ctr_y0] = S_interpolate(τ * h, S_coeffs)) : (y .= S_interpolate(τ * h, S_coeffs))
+    y .= S_interpolate(τ * h, S_coeffs)
+    return y#=
     if ctr_y0 > length(y)
         for (k, ci) in enumerate(c)
             eltype(y) <: AbstractArray ? (y[ctr_y0 + k] = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs)) : (y = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs))
         end
     end
-
-    return eltype(y) <: AbstractArray ? y[ctr_y0] : y
+=#
+    #return eltype(y) <: AbstractArray ? y[ctr_y0] : y
 end
 
 @views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
@@ -109,7 +111,6 @@ end
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     y .= S_interpolate(τ * h, S_coeffs)
-
     return y
 end
 

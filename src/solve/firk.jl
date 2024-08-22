@@ -190,17 +190,17 @@ function init_nested(prob::BVProblem,
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     # Initialize internal nonlinear problem cache
-    (; c, a, b, s) = TU
+    (; c, a, b) = TU
     p_nestprob = zeros(T, N + 2)
 
-    if isa(u0, AbstractArray) && eltype(prob.u0) <: AbstractVector
+    if isa(prob.u0, AbstractArray) && eltype(prob.u0) <: AbstractVector
         u0_mat = hcat(prob.u0...)
         avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
     else
         avg_u0 = prob.u0
     end
 
-    K0 = repeat(avg_u0, 1, s) # Somewhat arbitrary initialization of K
+    K0 = repeat(avg_u0, 1, stage) # Somewhat arbitrary initialization of K
 
     if alg.jac_alg.diffmode isa AutoSparse
         _chunk = pickchunksize(length(K0))
@@ -369,7 +369,8 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
 
     u = shrink_y([reshape(y, cache.in_size) for y in cache.y₀], length(cache.mesh), cache.M, alg_stage(cache.alg))
 
-    odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u; interp = FIRKExpandInterpolation(cache.mesh, u, cache), retcode = info)
+    interpolation = __build_interpolation(cache, u)
+    odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u; interp = interpolation, retcode = info)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
