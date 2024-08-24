@@ -433,9 +433,6 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
     L = length(resid_bc)
     resid_collocation = similar(y, cache.M * (N - 1) * (TU.s + 1))
 
-    #loss_bcₚ = iip ? ((du, u) -> loss_bc(du, u, cache.p)) : (u -> loss_bc(u, cache.p))
-    #loss_collocationₚ = iip ? ((du, u) -> loss_collocation(du, u, cache.p)) :(u -> loss_collocation(u, cache.p))
-
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
 
@@ -514,10 +511,10 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
+    TU, ITU = constructRK(cache.alg, eltype(y))
+    (; s) = TU
 
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
-
-    TU, ITU = constructRK(cache.alg, eltype(y))
 
     resid_collocation = similar(y, cache.M * (N - 1) * (TU.s + 1))
 
@@ -526,8 +523,6 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
-    TU, ITU = constructRK(cache.alg, eltype(y))
-    (; s) = TU
     sd = if jac_alg.nonbc_diffmode isa AutoSparse
         block_size = cache.M * (s + 2)
         J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (s + 1) * (N - 1),
