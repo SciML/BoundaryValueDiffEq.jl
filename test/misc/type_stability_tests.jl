@@ -7,7 +7,7 @@
         du[2] = p[3] * u[1] * u[2] - p[4] * u[2]
     end
 
-    bc(sol, p, t) = [sol[1][1] - 1, sol[end][2] - 2]
+    bc(sol, p, t) = [sol[:, 1][1] - 1, sol[:, end][2] - 2]
     function bc!(res, sol, p, t)
         res[1] = sol[:, 1][1] - 1
         res[2] = sol[:, end][2] - 2
