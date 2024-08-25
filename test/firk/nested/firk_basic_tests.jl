@@ -407,12 +407,12 @@ end
     end
 
     function swirling_flow_bc!(res, u, p, t)
-        res[1] = u[1][1] + 1.0
-        res[2] = u[1][3]
-        res[3] = u[1][4]
-        res[4] = u[end][1] - 1.0
-        res[5] = u[end][3]
-        res[6] = u[end][4]
+        res[1] = u[:, 1][1] + 1.0
+        res[2] = u[:, 1][3]
+        res[3] = u[:, 1][4]
+        res[4] = u[:, end][1] - 1.0
+        res[5] = u[:, end][3]
+        res[6] = u[:, end][4]
         return
     end
 
@@ -420,7 +420,7 @@ end
     u0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prob = BVProblem(swirling_flow!, swirling_flow_bc!, u0, tspan, eps)
 
-    @test_nowarn solve(prob, RadauIIa5(;jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested_nlsolve = true); dt = 0.01)
+    @test_nowarn solve(prob, RadauIIa5(nested_nlsolve = true); dt = 0.01)
 end =#
 
 @testitem "Solve using Continuation" begin
@@ -448,23 +448,14 @@ end =#
     bvp3 = TwoPointBVProblem(
         simplependulum!, (bc2a!, bc2b!), [pi / 2, pi / 2], (pi / 4, pi / 2),
         -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    sol3 = solve(bvp3,
-        RadauIIa5(;
-            jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())), nested_nlsolve = true),
-        dt = 0.05)
+    sol3 = solve(bvp3, RadauIIa5(; nested_nlsolve = true), dt = 0.05)
 
     # Needs a SciMLBase fix
-    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
+    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3.u, (0, pi / 2),
         pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test_broken solve(bvp4,
-        RadauIIa5(;
-            jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())), nested_nlsolve = true),
-        dt = 0.05) isa SciMLBase.ODESolution
+    @test_broken solve(bvp4, RadauIIa5(; nested_nlsolve = true), dt = 0.05) isa SciMLBase.ODESolution
 
     bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test_broken SciMLBase.successful_retcode(solve(bvp5,
-        RadauIIa5(;
-            jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())), nested_nlsolve = true),
-        dt = 0.05).retcode)
+    @test_broken SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05).retcode)
 end

@@ -22,7 +22,7 @@
     nested = true
 
     @testset "$(solver)" for solver in (RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7) # RadauIIa1 doesn't have adaptivity
-        jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
+        jac_algs = [BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
@@ -33,7 +33,7 @@
     end
 
     @testset "$(solver)" for solver in (LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5)
-        jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
+        jac_algs = [BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
@@ -44,7 +44,7 @@
     end
 
     @testset "$(solver)" for solver in (LobattoIIIb3, LobattoIIIb4, LobattoIIIb5) # LobattoIIIb2 doesn't have adaptivity
-        jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
+        jac_algs = [BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
@@ -55,7 +55,7 @@
     end
 
     @testset "$(solver)" for solver in (LobattoIIIc3, LobattoIIIc4, LobattoIIIc5) # LobattoIIIc2 doesn't have adaptivity
-        jac_algs = [#BVPJacobianAlgorithm(), TODO: Fix Forward AD for nested
+        jac_algs = [BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs

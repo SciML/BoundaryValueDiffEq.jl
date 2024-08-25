@@ -58,20 +58,12 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    #FIXME: need a better way to fix this
-    #eltype(y) <: AbstractArray ? (y[ctr_y0] = S_interpolate(τ * h, S_coeffs)) : (y .= S_interpolate(τ * h, S_coeffs))
     y .= S_interpolate(τ * h, S_coeffs)
-    return y#=
-    if ctr_y0 > length(y)
-        for (k, ci) in enumerate(c)
-            eltype(y) <: AbstractArray ? (y[ctr_y0 + k] = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs)) : (y = dS_interpolate(τ * h + (1 - τ * h) * ci, S_coeffs))
-        end
-    end
-=#
-    #return eltype(y) <: AbstractArray ? y[ctr_y0] : y
+    return y
 end
 
 @views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
+    (; nest_prob, nest_tol) = cache
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -80,9 +72,13 @@ end
     end
     τ = (t - mesh[j]) / h
 
-    (; f, M, p, k_discrete, ITU, TU, nest_cache, p_nestprob, prob) = cache
+    (; f, M, p, k_discrete, ITU, TU, nest_prob, nest_tol, alg) = cache
     (; c, a, b) = TU
     (; q_coeff, stage) = ITU
+    T = eltype(cache)
+
+    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nestprob_p = zeros(T, cache.M + 2)
 
     yᵢ = copy(cache.y[j].du)
     yᵢ₊₁ = copy(cache.y[j + 1].du)
@@ -101,11 +97,13 @@ end
     # Load interpolation residual
     y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
 
-    p_nestprob[1:2] .= promote(mesh[j], mesh_dt[j], one(eltype(y_i)))[1:2]
-    p_nestprob[3:end] .= y_i
+    nestprob_p[1] = mesh[j]
+    nestprob_p[2] = mesh_dt[j]
+    nestprob_p[3:end] .= y_i
 
-    solve_cache!(nest_cache, k_discrete[j].du, p_nestprob)
-    K = nest_cache.u
+    _nestprob = remake(nest_prob, p = nestprob_p)
+    nestsol = __solve(_nestprob, nest_nlsolve_alg; abstol = nest_tol)
+    K = nestsol.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
@@ -151,7 +149,7 @@ end
 Generate new mesh based on the defect.
 """
 @views function mesh_selector!(cache::Union{MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
-    (; M, order, defect, mesh, mesh_dt) = cache
+    (; order, defect, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
 
@@ -268,8 +266,8 @@ the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
 @views function defect_estimate!(cache::MIRKCache{iip, T}) where {iip, T}
-    (; M, stage, f, alg, mesh, mesh_dt, defect) = cache
-    (; s_star, τ_star) = cache.ITU
+    (; f, alg, mesh, mesh_dt, defect) = cache
+    (; τ_star) = cache.ITU
 
     # Evaluate at the first sample point
     w₁, w₁′ = interp_weights(τ_star, alg)
@@ -351,9 +349,11 @@ end
 end
 
 @views function defect_estimate!(cache::FIRKCacheNested{iip, T}) where {iip, T}
-    (; f, M, stage, mesh, mesh_dt, defect, TU, ITU, nest_cache, p_nestprob, prob) = cache
-    (; a, c) = TU
+    (; f, mesh, mesh_dt, defect, ITU, nest_prob, nest_tol) = cache
     (; q_coeff, τ_star) = ITU
+
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
+    nestprob_p = zeros(T, cache.M+2)
 
     for i in 1:(length(mesh) - 1)
         h = mesh_dt[i]
@@ -366,14 +366,15 @@ end
             K = fill(one(eltype(K)), size(K))
         end
 
-        y_i = eltype(yᵢ₁) == Float64 ? yᵢ₁ : [y.value for y in yᵢ₁]
+        nestprob_p[1] = mesh[i]
+        nestprob_p[2] = mesh_dt[i]
+        nestprob_p[3:end] .= yᵢ₁
 
-        p_nestprob[1:2] .= promote(mesh[i], mesh_dt[i], one(eltype(y_i)))[1:2]
-        p_nestprob[3:end] = y_i
-        solve_cache!(nest_cache, K, p_nestprob)
+        _nestprob = remake(nest_prob, p = nestprob_p)
+        nest_sol = __solve(_nestprob, nlsolve_alg; abstol = nest_tol)
 
         # Defect estimate from q(x) at y_i + τ* * h
-        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_cache.u)
+        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_sol.u)
         if iip
             f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
         else
@@ -383,7 +384,7 @@ end
         est₁ = maximum(abs, yᵢ₁)
 
         # Defect estimate from q(x) at y_i + (1-τ*) * h
-        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, nest_cache.u)
+        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, nest_sol.u)
         if iip
             f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         else
@@ -474,7 +475,7 @@ function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
 end
 
 function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
-    (; M, stage, mesh, k_discrete, k_interp, mesh_dt) = cache
+    (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
     z .= zero(z)
@@ -487,7 +488,7 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
 end
 
 @views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
-    (; M, stage, mesh, k_discrete, k_interp, mesh_dt) = cache
+    (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
     z .= zero(z)
@@ -620,7 +621,7 @@ for order in (2, 3, 4, 5, 6)
 end
 
 function sol_eval(cache::MIRKCache{T}, t::T) where {T}
-    (; M, mesh, mesh_dt, alg, k_discrete, k_interp, y) = cache
+    (; M, mesh, mesh_dt, alg) = cache
 
     @assert mesh[1] ≤ t ≤ mesh[end]
     i = interval(mesh, t)

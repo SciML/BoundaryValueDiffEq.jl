@@ -1,5 +1,4 @@
-# Doesn't seem to converge for nested solver
-#= @testitem "Overconstrained BVP" begin
+@testitem "Overconstrained BVP" begin
     using LinearAlgebra
 
     SOLVERS = [firk(; nlsolve, nested_nlsolve = true, jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()))
@@ -14,8 +13,8 @@
     f1(u, p, t) = [u[2], -u[1]]
 
     function bc1(sol, p, t)
-        solₜ₁ = sol[1]
-        solₜ₂ = sol[end]
+        solₜ₁ = sol[:, 1]
+        solₜ₂ = sol[:, end]
         return [solₜ₁[1], solₜ₂[1] - 1, solₜ₂[2] + 1.729109]
     end
 
@@ -37,8 +36,8 @@
     end
 
     function bc1!(resid, sol, p, t)
-        solₜ₁ = sol[1]
-        solₜ₂ = sol[end]
+        solₜ₁ = sol[:, 1]
+        solₜ₂ = sol[:, end]
         # We know that this overconstrained system has a solution
         resid[1] = solₜ₁[1]
         resid[2] = solₜ₂[1] - 1
@@ -208,4 +207,3 @@ end
         @test SciMLBase.successful_retcode(sol.retcode)
     end
 end
- =#

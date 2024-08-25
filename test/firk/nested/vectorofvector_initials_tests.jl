@@ -1,4 +1,4 @@
-#= @testitem "VectorOfVector Initial Condition" begin
+@testitem "VectorOfVector Initial Condition" begin
     #System Constants
     ss = 1 #excitatory parameter
     sj = 0 #inhibitory parameter
@@ -55,18 +55,16 @@
     # The BVP set up
     # This is not really kind of Two-Point BVP we support.
     function bc_po!(residual, u, p, t)
-        residual[1] = u[1][1] - u[end][1]
-        residual[2] = u[1][2] - u[end][2]
-        residual[3] = u[1][3] - u[end][3]
+        residual[1] = u[:, 1][1] - u[:, end][1]
+        residual[2] = u[:, 1][2] - u[:, end][2]
+        residual[3] = u[:, 1][3] - u[:, end][3]
     end
 
-    #This is the part of the code that has problems
     bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
-    sol5 = solve(bvp1,  RadauIIa5(;jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested_nlsolve = true); dt = 0.5)
+    sol5 = solve(bvp1,  RadauIIa5(; nested_nlsolve = true); dt = 0.5)
     @test SciMLBase.successful_retcode(sol5.retcode)
 
     bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-    sol5 = solve(bvp1, RadauIIa5(;jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()), nested_nlsolve = true); dt = 0.1, abstol = 1e-14)
+    sol5 = solve(bvp1, RadauIIa5(; nested_nlsolve = true); dt = 0.1, abstol = 1e-14)
     @test SciMLBase.successful_retcode(sol5.retcode)
 end
- =#

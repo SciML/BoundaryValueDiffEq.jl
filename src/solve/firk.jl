@@ -23,8 +23,8 @@
     fᵢ_cache
     fᵢ₂_cache
     defect
-    p_nestprob
-    nest_cache
+    nest_prob
+    nest_tol
     resid_size
     kwargs
 end
@@ -117,10 +117,6 @@ function init_nested(prob::BVProblem,
         kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
-    if __needs_diffcache(alg.jac_alg.diffmode)
-        error("ForwardDiff not yet available for nested FIRK solver, use the expanded version instead.")
-    end
-
     iip = isinplace(prob)
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
@@ -189,57 +185,40 @@ function init_nested(prob::BVProblem,
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    # Initialize internal nonlinear problem cache
-    (; c, a, b) = TU
-    p_nestprob = zeros(T, N + 2)
-
     if isa(prob.u0, AbstractArray) && eltype(prob.u0) <: AbstractVector
         u0_mat = hcat(prob.u0...)
         avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
     else
         avg_u0 = prob.u0
     end
-
+    
     K0 = repeat(avg_u0, 1, stage) # Somewhat arbitrary initialization of K
 
-    if alg.jac_alg.diffmode isa AutoSparse
-        _chunk = pickchunksize(length(K0))
-    else
-        _chunk = chunksize
-    end
-
-    p_nestprob_cache = copy(p_nestprob)
+    nestprob_p = zeros(T, N + 2)
+    nest_tol = (alg.nest_tol > eps(T) ? alg.nest_tol : nothing)
 
     if iip
         nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res,
                 K,
                 p_nestprob,
                 f,
-                a,
-                c,
-                stage,
+                TU,
                 prob.p),
             K0,
-            p_nestprob_cache)
+            nestprob_p)
     else
         nestprob = NonlinearProblem((K, p_nestprob) -> FIRK_nlsolve(K,
                 p_nestprob,
                 f,
-                a,
-                c,
-                stage,
+                TU,
                 prob.p),
             K0,
-            p_nestprob_cache)
+            nestprob_p)
     end
-
-    
-    nest_cache = init(nestprob, NewtonRaphson(autodiff = alg.jac_alg.diffmode); abstol = (alg.nest_tol > eps(T) ? alg.nest_tol : nothing))
 
     return FIRKCacheNested{iip, T}(alg_order(alg), stage, N, size(X), f, bc, prob_,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
-        k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, p_nestprob_cache,
-        nest_cache, resid₁_size,
+        k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, nest_tol, resid₁_size,
         (; abstol, dt, adaptive, kwargs...))
 end
 
@@ -339,11 +318,6 @@ function __expand_cache!(cache::FIRKCacheExpand)
     __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
     __append_similar!(cache.defect, Nₙ - 1, cache.M, cache.TU)
     return cache
-end
-
-function solve_cache!(nest_cache, _u0, p_nest) # TODO: Make work with ForwardDiff
-    reinit!(nest_cache, p = p_nest)
-    return solve!(nest_cache)
 end
 
 function SciMLBase.solve!(cache::FIRKCacheExpand)
