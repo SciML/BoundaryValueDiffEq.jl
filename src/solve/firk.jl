@@ -123,11 +123,11 @@ function init_nested(prob::BVProblem,
     end
 
     t₀, t₁ = prob.tspan
-    ig, T, N, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
-    chunksize = pickchunksize(N * (Nig - 1))
+    chunksize = pickchunksize(M * (Nig - 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
     fᵢ_cache = __alloc(zero(X))
@@ -140,7 +140,7 @@ function init_nested(prob::BVProblem,
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(__similar(X, N, stage), chunksize, alg.jac_alg)
+    k_discrete = [__maybe_allocate_diffcache(__similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -155,7 +155,7 @@ function init_nested(prob::BVProblem,
         nothing
     end
 
-    defect = VectorOfArray([__similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig])
+    defect = VectorOfArray([__similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -194,7 +194,7 @@ function init_nested(prob::BVProblem,
     
     K0 = repeat(avg_u0, 1, stage) # Somewhat arbitrary initialization of K
 
-    nestprob_p = zeros(T, N + 2)
+    nestprob_p = zeros(T, M + 2)
     nest_tol = (alg.nest_tol > eps(T) ? alg.nest_tol : nothing)
 
     if iip
@@ -216,7 +216,7 @@ function init_nested(prob::BVProblem,
             nestprob_p)
     end
 
-    return FIRKCacheNested{iip, T}(alg_order(alg), stage, N, size(X), f, bc, prob_,
+    return FIRKCacheNested{iip, T}(alg_order(alg), stage, M, size(X), f, bc, prob_,
         prob.problem_type, prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, nest_tol, resid₁_size,
         (; abstol, dt, adaptive, kwargs...))
@@ -231,7 +231,7 @@ function init_expanded(prob::BVProblem,
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
-        error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
+        error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
 
     iip = isinplace(prob)
@@ -405,7 +405,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = similar(y, cache.M * (N - 1) * (TU.s + 1))
+    resid_collocation = __similar(y, cache.M * (N - 1) * (TU.s + 1))
 
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
@@ -456,8 +456,8 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
         resid_collocation,
         y)
 
-    J_bc = init_jacobian(cache_bc)
-    J_c = init_jacobian(cache_collocation)
+    J_bc = zero(init_jacobian(cache_bc))
+    J_c = zero(init_jacobian(cache_collocation))
 
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
@@ -490,7 +490,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
 
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
-    resid_collocation = similar(y, cache.M * (N - 1) * (TU.s + 1))
+    resid_collocation = __similar(y, cache.M * (N - 1) * (TU.s + 1))
 
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
         resid_collocation,
@@ -514,7 +514,7 @@ function __construct_nlproblem(cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss
     end
 
     diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-    jac_prototype = init_jacobian(diffcache)
+    jac_prototype = zero(init_jacobian(diffcache))
 
     jac = if iip
         @closure (J, u, p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, lossₚ, resid)

@@ -13,6 +13,12 @@
     end
     u0 = BigFloat.([pi / 2, pi / 2])
     prob = BVProblem(simplependulum!, bc!, u0, tspan)
-    sol = solve(prob, MIRK4(), dt = 0.05)
-    @test SciMLBase.successful_retcode(sol.retcode)
+    sol1 = solve(prob, MIRK4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol1.retcode)
+
+    sol2 = solve(prob, RadauIIa5(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol2.retcode)
+
+    sol3 = solve(prob, LobattoIIIa4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol3.retcode)
 end
