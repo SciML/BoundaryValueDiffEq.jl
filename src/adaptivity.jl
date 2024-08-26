@@ -30,7 +30,7 @@ end
     (; f, M, p, ITU) = cache
     (; q_coeff, stage) = ITU
 
-    K = __similar(eltype(cache.y[1].du), M, stage)
+    K = __similar(cache.y[1].du, M, stage)
 
     ctr_y0 = (i - 1) * (ITU.stage + 1) + 1
     ctr_y = (j - 1) * (ITU.stage + 1) + 1
