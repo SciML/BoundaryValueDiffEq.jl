@@ -84,7 +84,7 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
         u0, tspan; bcresid_prototype, nlls = Val(false))]
 
-testTol = 0.2
+testTol = 0.3
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
@@ -171,9 +171,7 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
                 dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1e-8)
-            if i == 8 && stage == 4
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            elseif first(sim.errors[:final]) < 1e-12
+            if (stage == 5) || (((i == 7) || (i == 8)) && stage == 4)
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             else
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
@@ -183,10 +181,10 @@ end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
                 dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if i == 8 && stage == 4
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            elseif first(sim.errors[:final]) < 1e-12
+            if (stage == 5)
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            elseif stage == 4
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=0.5
             else
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             end

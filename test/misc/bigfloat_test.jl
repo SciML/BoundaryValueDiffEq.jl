@@ -19,6 +19,6 @@
     sol2 = solve(prob, RadauIIa5(), dt = 0.05)
     @test SciMLBase.successful_retcode(sol2.retcode)
 
-    sol3 = solve(prob, LobattoIIIa4(), dt = 0.05)
+    sol3 = solve(prob, LobattoIIIa4(nested_nlsolve=true), dt = 0.05)
     @test SciMLBase.successful_retcode(sol3.retcode)
 end
