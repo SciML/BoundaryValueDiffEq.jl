@@ -27,8 +27,7 @@ end
     end
     τ = (t - mesh[j]) / h
 
-    (; f, M, p, ITU, TU) = cache
-    (; c, a, b) = TU
+    (; f, M, p, ITU) = cache
     (; q_coeff, stage) = ITU
 
     K = zeros(eltype(cache.y[1].du), M, stage)
@@ -40,8 +39,8 @@ end
     yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
 
     if iip
-        dyᵢ = copy(yᵢ)
-        dyᵢ₊₁ = copy(yᵢ₊₁)
+        dyᵢ = similar(yᵢ)
+        dyᵢ₊₁ = similar(yᵢ₊₁)
 
         f(dyᵢ, yᵢ, cache.p, mesh[j])
         f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
@@ -58,7 +57,7 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    y .= S_interpolate(τ * h, S_coeffs)
+    S_interpolate!(y, τ * h, S_coeffs)
     return y
 end
 
@@ -72,9 +71,8 @@ end
     end
     τ = (t - mesh[j]) / h
 
-    (; f, M, p, k_discrete, ITU, TU, nest_prob, nest_tol, alg) = cache
-    (; c, a, b) = TU
-    (; q_coeff, stage) = ITU
+    (; f, ITU, nest_prob, nest_tol, alg) = cache
+    (; q_coeff) = ITU
     T = eltype(cache)
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
@@ -84,8 +82,8 @@ end
     yᵢ₊₁ = copy(cache.y[j + 1].du)
 
     if iip
-        dyᵢ = copy(yᵢ)
-        dyᵢ₊₁ = copy(yᵢ₊₁)
+        dyᵢ = similar(yᵢ)
+        dyᵢ₊₁ = similar(yᵢ₊₁)
 
         f(dyᵢ, yᵢ, cache.p, mesh[j])
         f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
@@ -95,7 +93,8 @@ end
     end
 
     # Load interpolation residual
-    y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
+    # y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
+    # y_i = copy(yᵢ)
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
@@ -108,7 +107,7 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    y .= S_interpolate(τ * h, S_coeffs)
+    S_interpolate!(y, τ * h, S_coeffs)
     return y
 end
 
@@ -121,17 +120,17 @@ function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
 end
 
 # S forward Interpolation
-function S_interpolate(t, coeffs)
+function S_interpolate!(y::AbstractArray, t, coeffs)
     ts = [t^(i - 1) for i in axes(coeffs, 2)]
-    return coeffs * ts
+    y .= coeffs * ts
 end
 
-function dS_interpolate(t, S_coeffs)
+function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
     ts = zeros(size(S_coeffs, 2))
     for i in 2:size(S_coeffs, 2)
         ts[i] = (i - 1) * t^(i - 2)
     end
-    return S_coeffs * ts
+    dy .= S_coeffs * ts
 end
 
 """

@@ -188,13 +188,11 @@ end
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(dts,
                 prob,
-                lobattoIIIa_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
-                    nested_nlsolve = nested);
+                lobattoIIIa_solver(Val(stage); nested_nlsolve = nested);
                 abstol = 1e-8,
                 reltol = 1e-8)
             if first(sim.errors[:final]) < 1e-12
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             else
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             end
@@ -218,17 +216,10 @@ end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(dts,
                 prob,
-                lobattoIIIc_solver(
-                    Val(stage); jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoFiniteDiff())),
-                    nested_nlsolve = nested);
+                lobattoIIIc_solver(Val(stage); nested_nlsolve = nested);
                 abstol = 1e-8,
                 reltol = 1e-8)
-
-            if first(sim.errors[:final]) < 1e-12
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            else
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            end
         end
 
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
@@ -451,7 +442,7 @@ end =#
     sol3 = solve(bvp3, RadauIIa5(; nested_nlsolve = true), dt = 0.05)
 
     # Needs a SciMLBase fix
-    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3.u, (0, pi / 2),
+    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
         pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     @test_broken solve(bvp4, RadauIIa5(; nested_nlsolve = true), dt = 0.05) isa SciMLBase.ODESolution
 

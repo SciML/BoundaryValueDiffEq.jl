@@ -198,17 +198,17 @@ function init_nested(prob::BVProblem,
     nest_tol = (alg.nest_tol > eps(T) ? alg.nest_tol : nothing)
 
     if iip
-        nestprob = NonlinearProblem((res, K, p_nestprob) -> FIRK_nlsolve!(res,
+        nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res,
                 K,
-                p_nestprob,
+                p,
                 f,
                 TU,
                 prob.p),
             K0,
             nestprob_p)
     else
-        nestprob = NonlinearProblem((K, p_nestprob) -> FIRK_nlsolve(K,
-                p_nestprob,
+        nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K,
+                p,
                 f,
                 TU,
                 prob.p),

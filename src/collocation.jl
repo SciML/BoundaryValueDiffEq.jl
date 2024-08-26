@@ -108,12 +108,13 @@ end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
         mesh, mesh_dt, stage::Int, cache)
-    (; c, a, b) = TU
+    (; b) = TU
     (; nest_prob, nest_tol) = cache
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
+
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
         h = mesh_dt[i]
@@ -211,7 +212,7 @@ end
 
 @views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
         mesh, mesh_dt, stage::Int, cache)
-    (; c, a, b) = TU
+    (; b) = TU
     (; nest_prob, alg, nest_tol) = cache
 
     residuals = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]

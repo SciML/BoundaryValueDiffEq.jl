@@ -1,7 +1,7 @@
 @testitem "Overconstrained BVP" begin
     using LinearAlgebra
 
-    SOLVERS = [firk(; nlsolve, nested_nlsolve = true, jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()))
+    SOLVERS = [firk(; nlsolve, nested_nlsolve = true)
                for firk in (RadauIIa3, RadauIIa5, RadauIIa7, 
                 LobattoIIIa3, LobattoIIIa4, LobattoIIIa5, 
                 LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, 
@@ -95,7 +95,7 @@ end
     using LinearAlgebra
 
     # Force normal form for GN
-    SOLVERS = [firk(; nlsolve, nested_nlsolve = true, jac_alg = BVPJacobianAlgorithm(AutoSparseFiniteDiff()))
+    SOLVERS = [firk(; nlsolve, nested_nlsolve = true)
                for firk in (RadauIIa3, RadauIIa5, RadauIIa7, 
                 LobattoIIIa3, LobattoIIIa4, LobattoIIIa5, 
                 LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, 
