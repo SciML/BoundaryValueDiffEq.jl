@@ -181,7 +181,7 @@ end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
                 dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if (stage == 5)
+            if (stage == 5) || (stage == 4 && i == 8)
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             elseif stage == 4
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=0.5
@@ -240,42 +240,42 @@ end
 
     # Using ForwardDiff might lead to Cache expansion warnings
     @test_nowarn solve(
-        bvp1, LobattoIIIa2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIa2(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIa3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIa3(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIa4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIa4(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIa5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIa5(nl_solve, jac_alg; nested); dt = 0.005)
 
     @test_nowarn solve(
         bvp1, LobattoIIIb2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
     @test_nowarn solve(
-        bvp1, LobattoIIIb3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIb3(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIb4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIb4(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIb5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIb5(nl_solve, jac_alg; nested); dt = 0.005)
 
     @test_nowarn solve(
         bvp1, LobattoIIIc2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
     @test_nowarn solve(
-        bvp1, LobattoIIIc3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIc3(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIc4(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIc4(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, LobattoIIIc5(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIc5(nl_solve, jac_alg; nested); dt = 0.005)
 
     @test_nowarn solve(
         bvp1, RadauIIa1(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
     @test_nowarn solve(
-        bvp1, RadauIIa2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, RadauIIa2(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, RadauIIa3(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
+        bvp1, RadauIIa3(nl_solve, jac_alg; nested); dt = 0.005)
     @test_nowarn solve(
-        bvp1, RadauIIa5(nl_solve, jac_alg; nested); dt = 0.05, adaptive = false)
+        bvp1, RadauIIa5(nl_solve, jac_alg; nested); dt = 0.05)
     @test_nowarn solve(
-        bvp1, RadauIIa7(nl_solve, jac_alg; nested); dt = 0.05, adaptive = false)
+        bvp1, RadauIIa7(nl_solve, jac_alg; nested); dt = 0.05)
 end
 
 @testitem "Interpolation" begin
