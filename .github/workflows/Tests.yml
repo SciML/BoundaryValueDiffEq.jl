@@ -32,7 +32,10 @@ jobs:
           - "macos-latest"
           - "windows-latest"
         group:
-          - "CPU"
+          - "MIRK"
+          - "MISC"
+          - "SHOOTING"
+          - "FIRK"
     uses: "SciML/.github/.github/workflows/tests.yml@v1"
     with:
       os: "${{ matrix.os }}"
