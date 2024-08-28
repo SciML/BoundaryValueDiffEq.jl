@@ -34,6 +34,5 @@ jobs:
           - "FIRK"
     uses: "SciML/.github/.github/workflows/tests.yml@v1"
     with:
-      os: "${{ matrix.os }}"
       group: "${{ matrix.group }}"
     secrets: "inherit"
