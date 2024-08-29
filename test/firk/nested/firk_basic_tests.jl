@@ -353,6 +353,7 @@ end
                 @testset "LobattoIII$(id)$stage" for stage in (3, 4, 5)
                     @time sol = solve(
                         prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
+                    sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
                     @test sol(0.001)≈sol_analytic atol=testTol
                     @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
                     @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
