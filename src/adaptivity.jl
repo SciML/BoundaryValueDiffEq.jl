@@ -12,13 +12,15 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     return y
 end
 
-@views function interp_eval!(y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
+@views function interp_eval!(
+        y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
     i = findfirst(x -> x == y, cache.y₀.u)
     interp_eval!(cache.y₀.u, i, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt)
     return y
 end
 
-@views function interp_eval!(y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
+@views function interp_eval!(
+        y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -61,7 +63,8 @@ end
     return y
 end
 
-@views function interp_eval!(y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
+@views function interp_eval!(
+        y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
     (; nest_prob, nest_tol) = cache
     j = interval(mesh, t)
     h = mesh_dt[j]
@@ -98,7 +101,7 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= y_i
+    nestprob_p[3:end] .= yᵢ
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; abstol = nest_tol)
@@ -147,7 +150,8 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::Union{MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
+@views function mesh_selector!(cache::Union{
+        MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(cache.mesh)
@@ -255,7 +259,9 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
     end
     return mesh, mesh_dt
 end
-half_mesh!(cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand}) = half_mesh!(cache.mesh, cache.mesh_dt)
+function half_mesh!(cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand})
+    half_mesh!(cache.mesh, cache.mesh_dt)
+end
 
 """
     defect_estimate!(cache::MIRKCache)
@@ -290,7 +296,7 @@ an interpolant
 
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
         if iip
-            yᵢ₂ = cache.y[i+1].du
+            yᵢ₂ = cache.y[i + 1].du
             f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         else
             yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
@@ -352,7 +358,7 @@ end
     (; q_coeff, τ_star) = ITU
 
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
-    nestprob_p = zeros(T, cache.M+2)
+    nestprob_p = zeros(T, cache.M + 2)
 
     for i in 1:(length(mesh) - 1)
         h = mesh_dt[i]
@@ -451,12 +457,13 @@ Here, the ki_interp is the stages in one subinterval.
         end
         for i in eachindex(new_stages)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
-                             (1 - v_star[r]) .* vec(y[i].du) .+
-                             v_star[r] .* vec(y[i + 1].du)
+                               (1 - v_star[r]) .* vec(y[i].du) .+
+                               v_star[r] .* vec(y[i + 1].du)
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             end
         end
     end

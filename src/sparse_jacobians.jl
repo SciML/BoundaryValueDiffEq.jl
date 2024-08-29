@@ -53,16 +53,16 @@ function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
     return __generate_sparse_jacobian_prototype(cache, cache.problem_type, ya, yb, M, N)
 end
 
-function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested}, ::StandardBVProblem, ya, yb, M, 
-    N)
+function __generate_sparse_jacobian_prototype(
+        ::Union{MIRKCache, FIRKCacheNested}, ::StandardBVProblem, ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
     return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
 end
 
-function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested}, ::TwoPointBVProblem,
-        ya, yb, M, N)
+function __generate_sparse_jacobian_prototype(
+        ::Union{MIRKCache, FIRKCacheNested}, ::TwoPointBVProblem, ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
@@ -73,7 +73,8 @@ function __generate_sparse_jacobian_prototype(::Union{MIRKCache, FIRKCacheNested
     return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end
 
-function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
+function __generate_sparse_jacobian_prototype(
+        cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
     (; TU) = cache
     (; s) = TU
     # Get number of nonzeros
@@ -118,7 +119,8 @@ function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::Standard
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
 end
 
-function __generate_sparse_jacobian_prototype(cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
+function __generate_sparse_jacobian_prototype(
+        cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
     (; TU) = cache
     (; s) = TU
     # Get number of nonzeros

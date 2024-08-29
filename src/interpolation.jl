@@ -33,7 +33,8 @@ function (id::FIRKExpandInterpolation)(tvals, idxs, deriv, p, continuity::Symbol
     interpolation(tvals, id, idxs, deriv, p, continuity)
 end
 
-function (id::FIRKExpandInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol = :left)
+function (id::FIRKExpandInterpolation)(
+        val, tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation!(val, tvals, id, idxs, deriv, p, continuity)
 end
 
@@ -52,13 +53,13 @@ function (id::FIRKNestedInterpolation)(tvals, idxs, deriv, p, continuity::Symbol
     interpolation(tvals, id, idxs, deriv, p, continuity)
 end
 
-function (id::FIRKNestedInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol = :left)
+function (id::FIRKNestedInterpolation)(
+        val, tvals, idxs, deriv, p, continuity::Symbol = :left)
     interpolation!(val, tvals, id, idxs, deriv, p, continuity)
 end
 
-
-
-@inline function interpolation(tvals, id::MIRKInterpolation, idxs, deriv::D, p, continuity::Symbol = :left) where {D}
+@inline function interpolation(tvals, id::MIRKInterpolation, idxs, deriv::D,
+        p, continuity::Symbol = :left) where {D}
     (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -79,8 +80,8 @@ end
     return DiffEqArray(vals, tvals)
 end
 
-@inline function interpolation!(
-    vals, tvals, id::MIRKInterpolation, idxs, deriv::D, p, continuity::Symbol = :left) where {D}
+@inline function interpolation!(vals, tvals, id::MIRKInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -92,8 +93,8 @@ end
     end
 end
 
-@inline function interpolation(
-    tval::Number, id::MIRKInterpolation, idxs, deriv::D, p, continuity::Symbol = :left) where {D}
+@inline function interpolation(tval::Number, id::MIRKInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     z = similar(id.cache.fᵢ₂_cache)
     interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
@@ -118,8 +119,8 @@ end
     sum_stages!(z, dz, cache, w, w′, i)
 end
 
-@inline function interpolation(tvals, id::FIRKNestedInterpolation, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {D}
+@inline function interpolation(tvals, id::FIRKNestedInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -140,8 +141,8 @@ end
     return DiffEqArray(vals, tvals)
 end
 
-@inline function interpolation!(vals, tvals, id::FIRKNestedInterpolation, idxs, deriv::D, p,
-    continuity::Symbol = :left) where {D}
+@inline function interpolation!(vals, tvals, id::FIRKNestedInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -153,16 +154,16 @@ end
     end
 end
 
-@inline function interpolation(tval::Number, id::FIRKNestedInterpolation, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {D}
+@inline function interpolation(tval::Number, id::FIRKNestedInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     z = similar(id.cache.fᵢ₂_cache)
     interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return idxs !== nothing ? z[idxs] : z
 end
 
 ## Expanded
-@inline function interpolation(tvals, id::FIRKExpandInterpolation, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {D}
+@inline function interpolation(tvals, id::FIRKExpandInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -183,8 +184,8 @@ end
     return DiffEqArray(vals, tvals)
 end
 
-@inline function interpolation!(vals, tvals, id::FIRKExpandInterpolation, idxs, deriv::D, p,
-    continuity::Symbol = :left) where {D}
+@inline function interpolation!(vals, tvals, id::FIRKExpandInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -196,18 +197,19 @@ end
     end
 end
 
-@inline function interpolation(tval::Number, id::FIRKExpandInterpolation, idxs, deriv::D, p,
-        continuity::Symbol = :left) where {D}
+@inline function interpolation(tval::Number, id::FIRKExpandInterpolation, idxs,
+        deriv::D, p, continuity::Symbol = :left) where {D}
     z = similar(id.cache.fᵢ₂_cache)
     interp_eval!(z, 1, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return idxs !== nothing ? z[idxs] : z
 end
 
-
-@inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)    
-@inline __build_interpolation(cache::FIRKCacheExpand, u::AbstractVector) = FIRKExpandInterpolation(cache.mesh, u, cache)
-@inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(cache.mesh, u, cache)
-
+@inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(
+    cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheExpand, u::AbstractVector) = FIRKExpandInterpolation(
+    cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(
+    cache.mesh, u, cache)
 
 """
     get_ymid(yᵢ, coeffs, K, h)
@@ -249,4 +251,3 @@ function s_constraints(M, h)
     end
     return A
 end
-

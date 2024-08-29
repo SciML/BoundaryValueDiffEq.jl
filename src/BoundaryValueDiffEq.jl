@@ -2,9 +2,9 @@ module BoundaryValueDiffEq
 
 import PrecompileTools: @compile_workload, @setup_workload
 
-using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
-      OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
-      SparseDiffTools
+using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra,
+      NonlinearSolve, OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
+      Setfield, SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -111,8 +111,7 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls = (sol, p, t) -> [
-        sol[:, 1][1], sol[:, end][1] - 1, sol[:, end][2] + 1.729109]
+    bc1_nlls = (sol, p, t) -> [sol[:, 1][1], sol[:, end][1] - 1, sol[:, end][2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
     bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
@@ -208,8 +207,7 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls = (sol, p, t) -> [
-        sol(0.0)[1], sol(100.0)[1] - 1, sol(1.0)[2] + 1.729109]
+    bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(1.0)[2] + 1.729109]
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]

@@ -1,15 +1,15 @@
 function Φ!(residual, cache::Union{MIRKCache, FIRKCacheExpand}, y, u, p = cache.p)
-	return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-		y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f,
+        cache.TU, y, u, p, cache.mesh, cache.mesh_dt, cache.stage)
 end
 
 function Φ!(residual, cache::FIRKCacheNested, y, u, p = cache.p)
-	return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-		y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
+        y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, 
-        mesh, mesh_dt, stage::Int)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau,
+        y, u, p, mesh, mesh_dt, stage::Int)
     (; c, v, x, b) = TU
 
     tmp = get_tmp(fᵢ_cache, u)
@@ -34,8 +34,8 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p, 
-    mesh, mesh_dt, stage::Int)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false},
+        y, u, p, mesh, mesh_dt, stage::Int)
     (; c, a, b) = TU
     tmp1 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
@@ -106,8 +106,8 @@ function FIRK_nlsolve(K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
     return res
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true},
+        y, u, p, mesh, mesh_dt, stage::Int, cache)
     (; b) = TU
     (; nest_prob, nest_tol) = cache
 
@@ -142,12 +142,12 @@ function Φ(cache::Union{MIRKCache, FIRKCacheExpand}, y, u, p = cache.p)
 end
 
 function Φ(cache::FIRKCacheNested, y, u, p = cache.p)
-    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-        y, u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
+    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y,
+        u, p, cache.mesh, cache.mesh_dt, cache.stage, cache)
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt,
-    stage::Int)
+@views function Φ(
+        fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh, mesh_dt, stage::Int)
     (; c, v, x, b) = TU
     residuals = [__similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp = get_tmp(fᵢ_cache, u)
@@ -174,8 +174,8 @@ end
     return residuals
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int)
+@views function Φ(
+        fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y, u, p, mesh, mesh_dt, stage::Int)
     (; c, a, b) = TU
     residuals = [__similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp1 = get_tmp(fᵢ_cache, u)
@@ -210,8 +210,8 @@ end
     return residuals
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache)
+@views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true},
+        y, u, p, mesh, mesh_dt, stage::Int, cache)
     (; b) = TU
     (; nest_prob, alg, nest_tol) = cache
 

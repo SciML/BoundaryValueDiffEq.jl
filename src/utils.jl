@@ -134,10 +134,8 @@ function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTab
     return x
 end
 
-function __append_similar!(x::AbstractVector{<:MaybeDiffCache},
-        n,
-        M,
-        TU::FIRKTableau{false})
+function __append_similar!(
+        x::AbstractVector{<:MaybeDiffCache}, n, M, TU::FIRKTableau{false})
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
@@ -148,10 +146,7 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache},
     return x
 end
 
-function __append_similar!(x::AbstractVectorOfArray,
-        n,
-        M,
-        TU::FIRKTableau{false})
+function __append_similar!(x::AbstractVectorOfArray, n, M, TU::FIRKTableau{false})
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
@@ -226,8 +221,7 @@ function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     return prototype, size.(prototype)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
-    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
-                zero(u)
+    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype : zero(u)
     return prototype, size(prototype)
 end
 
@@ -420,6 +414,5 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
-
 
 # convert every vector of vector to AbstractVectorOfArray, especially if them come from get_tmp of PreallocationTools.jl
