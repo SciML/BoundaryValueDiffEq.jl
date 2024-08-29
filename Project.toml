@@ -36,7 +36,7 @@ BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
 [compat]
 ADTypes = "1.2"
 Adapt = "4"
-Aqua = "0.8"
+Aqua = "0.8.7"
 ArrayInterface = "7.7"
 BandedMatrices = "1.4"
 ConcreteStructs = "0.2.3"

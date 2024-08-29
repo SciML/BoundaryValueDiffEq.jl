@@ -31,7 +31,8 @@ jobs:
           - "MIRK"
           - "MISC"
           - "SHOOTING"
-          - "FIRK"
+          - "FIRK(EXPANDED)"
+          - "FIRK(NESTED)"
           - "WRAPPERS"
     uses: "SciML/.github/.github/workflows/tests.yml@v1"
     with:
