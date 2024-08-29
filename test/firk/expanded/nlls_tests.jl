@@ -1,4 +1,4 @@
-@testsetup module FIRKNLLSTests
+@testsetup module FIRKExpandedNLLSTests
 
 using BoundaryValueDiffEq, LinearAlgebra
 
@@ -164,7 +164,7 @@ export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS, SOLVERS_NAMES, 
 
 end
 
-@testitem "Overconstrained BVP" setup=[FIRKNLLSTests] begin
+@testitem "Overconstrained BVP" setup=[FIRKExpandedNLLSTests] begin
     using LinearAlgebra
 
     @testset "Problem: $i" for i in 1:4
@@ -178,7 +178,7 @@ end
 
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
-@testitem "Underconstrained BVP" setup=[FIRKNLLSTests] begin
+@testitem "Underconstrained BVP" setup=[FIRKExpandedNLLSTests] begin
     using LinearAlgebra, SciMLBase
 
     @testset "Problem: $i" for i in 1:2
