@@ -3,12 +3,12 @@
 using BoundaryValueDiffEq, LinearAlgebra
 
 SOLVERS = [firk(; nlsolve)
-           for firk in (RadauIIa7, LobattoIIIa5, LobattoIIIb5, LobattoIIIc5),
-nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
+           for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4),
+nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion())]
 
 SOLVERS_NAMES = ["$solver with $nlsolve"
-                 for solver in ["RadauIIa7", "LobattoIIIa5", "LobattoIIIb5", "LobattoIIIc5"],
-nlsolve in ["LevenbergMarquardt", "GaussNewton", "TrustRegion", "nothing"]]
+                 for solver in ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
+nlsolve in ["LevenbergMarquardt", "GaussNewton", "TrustRegion"]]
 
 ### Overconstrained BVP ###
 
