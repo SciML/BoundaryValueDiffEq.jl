@@ -125,6 +125,37 @@ function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     return x
 end
 
+function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTableau{false})
+    (; s) = TU
+    N = (n - 1) * (s + 1) + 1 - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, [similar(last(x)) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(
+        x::AbstractVector{<:MaybeDiffCache}, n, M, TU::FIRKTableau{false})
+    (; s) = TU
+    N = (n - 1) * (s + 1) + 1 - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    chunksize = isa(TU, FIRKTableau{false}) ? pickchunksize(M * (N + length(x) * (s + 1))) :
+                pickchunksize(M * (N + length(x)))
+    append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
+    return x
+end
+
+function __append_similar!(x::AbstractVectorOfArray, n, M, TU::FIRKTableau{false})
+    (; s) = TU
+    N = (n - 1) * (s + 1) + 1 - length(x)
+    N == 0 && return x
+    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
+    append!(x, VectorOfArray([similar(last(x)) for _ in 1:N]))
+    return x
+end
+
+__append_similar!(::Nothing, n, _, _) = nothing
 function __append_similar!(x::AbstractVectorOfArray, n, _)
     N = n - length(x)
     N == 0 && return x
@@ -190,8 +221,7 @@ function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     return prototype, size.(prototype)
 end
 function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
-    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
-                zero(u)
+    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype : zero(u)
     return prototype, size(prototype)
 end
 
@@ -200,8 +230,8 @@ end
     return zero(y)
 end
 
-@inline function __fill_like(v, x)
-    y = __similar(x)
+@inline function __fill_like(v, x, args...)
+    y = __similar(x, args...)
     fill!(y, v)
     return y
 end
@@ -384,6 +414,5 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
-
 
 # convert every vector of vector to AbstractVectorOfArray, especially if them come from get_tmp of PreallocationTools.jl
