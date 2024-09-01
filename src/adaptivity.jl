@@ -27,28 +27,28 @@ end
     if lf > 1
         h *= lf
     end
-    τ = (t - mesh[j]) / h
+    τ = (t - mesh[j])
 
     (; f, M, p, ITU) = cache
     (; q_coeff, stage) = ITU
 
     K = __similar(cache.y[1].du, M, stage)
 
-    ctr_y0 = (i - 1) * (ITU.stage + 1) + 1
-    ctr_y = (j - 1) * (ITU.stage + 1) + 1
+    ctr_y0 = (i - 1) * (stage + 1) + 1
+    ctr_y = (j - 1) * (stage + 1) + 1
 
     yᵢ = cache.y[ctr_y].du
-    yᵢ₊₁ = cache.y[ctr_y + ITU.stage + 1].du
+    yᵢ₊₁ = cache.y[ctr_y + stage + 1].du
 
     if iip
         dyᵢ = similar(yᵢ)
         dyᵢ₊₁ = similar(yᵢ₊₁)
 
-        f(dyᵢ, yᵢ, cache.p, mesh[j])
-        f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+        f(dyᵢ, yᵢ, p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, p, mesh[j + 1])
     else
-        dyᵢ = f(yᵢ, cache.p, mesh[j])
-        dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
+        dyᵢ = f(yᵢ, p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, p, mesh[j + 1])
     end
 
     # Load interpolation residual
@@ -59,24 +59,22 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    S_interpolate!(y, τ * h, S_coeffs)
+    S_interpolate!(y, τ, S_coeffs)
     return y
 end
 
 @views function interp_eval!(
-        y::AbstractArray, cache::FIRKCacheNested{iip}, t, mesh, mesh_dt) where {iip}
-    (; nest_prob, nest_tol) = cache
+        y::AbstractArray, cache::FIRKCacheNested{iip, T}, t, mesh, mesh_dt) where {iip, T}
+    (; f, ITU, nest_prob, nest_tol, alg) = cache
+    (; q_coeff) = ITU
+
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
-    τ = (t - mesh[j]) / h
-
-    (; f, ITU, nest_prob, nest_tol, alg) = cache
-    (; q_coeff) = ITU
-    T = eltype(cache)
+    τ = (t - mesh[j])
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
@@ -95,10 +93,6 @@ end
         dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
     end
 
-    # Load interpolation residual
-    # y_i = eltype(yᵢ) == Float64 ? yᵢ : [y.value for y in yᵢ]
-    # y_i = copy(yᵢ)
-
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
     nestprob_p[3:end] .= yᵢ
@@ -110,7 +104,7 @@ end
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
-    S_interpolate!(y, τ * h, S_coeffs)
+    S_interpolate!(y, τ, S_coeffs)
     return y
 end
 
@@ -154,7 +148,7 @@ Generate new mesh based on the defect.
         MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
-    N = length(cache.mesh)
+    N = length(mesh)
 
     safety_factor = T(1.3)
     ρ = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
@@ -209,7 +203,8 @@ end
 Generate a new mesh based on the `ŝ`.
 """
 function redistribute!(
-        cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
+        cache::Union{MIRKCache{iip, T}, FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}},
+        Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
     N = length(mesh)
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0

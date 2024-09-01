@@ -223,7 +223,7 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     # Don't flatten this here, since we need to expand it later if needed
     _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
-    y₀ = extend_y(_y₀, Nig + 1, alg_stage(alg))
+    y₀ = extend_y(_y₀, Nig + 1, stage)
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
     k_discrete = [__maybe_allocate_diffcache(
