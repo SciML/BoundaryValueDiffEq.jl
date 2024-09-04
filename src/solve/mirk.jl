@@ -54,8 +54,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(__similar(X, N, stage), chunksize, alg.jac_alg)
-                  for _ in 1:Nig]
+    k_discrete = [__maybe_allocate_diffcache(
+                      __similar(X, N, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
     k_interp = VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -127,11 +127,21 @@ function __expand_cache!(cache::MIRKCache)
     return cache
 end
 
+function __expand_cache!(cache::FIRKCacheNested)
+    Nₙ = length(cache.mesh)
+    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
+    __append_similar!(cache.y, Nₙ, cache.M)
+    __append_similar!(cache.y₀, Nₙ, cache.M)
+    __append_similar!(cache.residual, Nₙ, cache.M)
+    __append_similar!(cache.defect, Nₙ - 1, cache.M)
+    return cache
+end
+
 function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
     return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
-function SciMLBase.solve!(cache::MIRKCache)
+function SciMLBase.solve!(cache::Union{MIRKCache, FIRKCacheNested})
     (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
@@ -149,13 +159,15 @@ function SciMLBase.solve!(cache::MIRKCache)
 
     u = recursivecopy(cache.y₀)
 
-    odesol = DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, u.u;
-        interp = MIRKInterpolation(cache.mesh, u.u, cache), retcode = info)
+    interpolation = __build_interpolation(cache, u.u)
+
+    odesol = DiffEqBase.build_solution(
+        cache.prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive::Bool; nlsolve_kwargs=(;), kwargs...)
+function __perform_mirk_iteration(cache::Union{MIRKCache, FIRKCacheNested}, abstol,
+        adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
@@ -204,7 +216,9 @@ function __perform_mirk_iteration(
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector) where {iip}
+function __construct_nlproblem(
+        cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
+        y::AbstractVector) where {iip}
     pt = cache.problem_type
 
     loss_bc = if iip
@@ -273,15 +287,16 @@ end
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-@views function __mirk_loss_bc!(
-        resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+@views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh,
+        cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, y_, interp = MIRKInterpolation(cache.mesh, y_, cache))
     eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
     return nothing
 end
 
-@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh,
+        cache::Union{MIRKCache, FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = SciMLBase.build_solution(cache.prob, cache.alg, mesh, y_, interp = MIRKInterpolation(cache.mesh, y_, cache))
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
@@ -301,8 +316,9 @@ end
     return mapreduce(vec, vcat, resids)
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-        loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
+function __construct_nlproblem(
+        cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y, loss_bc::BC,
+        loss_collocation::C, loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
 
@@ -406,8 +422,9 @@ function __mirk_mpoint_jacobian(
     return J
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-        loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
+function __construct_nlproblem(
+        cache::Union{MIRKCache{iip}, FIRKCacheNested{iip}}, y, loss_bc::BC,
+        loss_collocation::C, loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
 

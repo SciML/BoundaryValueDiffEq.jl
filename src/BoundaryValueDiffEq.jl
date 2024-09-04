@@ -2,9 +2,9 @@ module BoundaryValueDiffEq
 
 import PrecompileTools: @compile_workload, @setup_workload
 
-using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra, NonlinearSolve,
-      OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
-      SparseDiffTools
+using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra,
+      NonlinearSolve, OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
+      Setfield, SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -30,9 +30,12 @@ include("algorithms.jl")
 include("alg_utils.jl")
 
 include("mirk_tableaus.jl")
+include("lobatto_tableaus.jl")
+include("radau_tableaus.jl")
 
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
+include("solve/firk.jl")
 include("solve/mirk.jl")
 
 include("collocation.jl")
@@ -205,8 +208,7 @@ end
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls = (sol, p, t) -> [
-        sol(0.0)[1], sol(100.0)[1] - 1, sol(1.0)[2] + 1.729109]
+    bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(1.0)[2] + 1.729109]
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
@@ -273,6 +275,10 @@ export Shooting, MultipleShooting
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
+export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
+export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
+export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
+export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
 export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
 
 end
