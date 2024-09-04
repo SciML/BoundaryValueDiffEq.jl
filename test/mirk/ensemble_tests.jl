@@ -7,8 +7,8 @@
     end
 
     function bc!(residual, u, p, t)
-        residual[1] = u[:, 1][1] - 1.0
-        residual[2] = u[:, end][1]
+        residual[1] = u(0.0)[1] - 1.0
+        residual[2] = u(1.0)[1]
     end
 
     prob_func(prob, i, repeat) = remake(prob, p = [rand()])
