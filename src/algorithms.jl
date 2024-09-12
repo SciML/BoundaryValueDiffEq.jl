@@ -224,7 +224,7 @@ for stage in (1, 2, 3, 5, 7)
         implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are 
         solved as a part of the global residual. The general recommendation is to choose 
         `true` for larger problems and `false` for smaller ones.
-        - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+        - `nest_tol`: The tolerance for the nested solver. Default is nothing which leads to 
         `NonlinearSolve` automatically selecting the tolerance.
         - `defect_threshold`: Threshold for defect control.
         - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
@@ -277,11 +277,11 @@ for stage in (1, 2, 3, 5, 7)
             nlsolve::N = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
-            nest_tol::Number = 0.0
+            nest_tol::Union{Number, Nothing} = nothing
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
+        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Union{Number, Nothing} = nothing, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
             N, J, T}(
             nlsolve, jac_alg, nested, nest_tol, defect_threshold, max_num_subintervals)
     end
@@ -315,7 +315,7 @@ for stage in (2, 3, 4, 5)
         implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are 
         solved as a part of the global residual. The general recommendation is to choose 
         `true` for larger problems and `false` for smaller ones.
-        - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+        - `nest_tol`: The tolerance for the nested solver. Default is nothing which leads to 
         `NonlinearSolve` automatically selecting the tolerance.
         - `defect_threshold`: Threshold for defect control.
         - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
@@ -369,11 +369,11 @@ for stage in (2, 3, 4, 5)
             nlsolve::N = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
-            nest_tol::Number = 0.0
+            nest_tol::Union{Number, Nothing} = nothing
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
+        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Union{Number, Nothing} = nothing, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
             N, J, T}(
             nlsolve, jac_alg, nested, nest_tol, defect_threshold, max_num_subintervals)
     end
@@ -407,7 +407,7 @@ for stage in (2, 3, 4, 5)
         implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
         solved as a part of the global residual. The general recommendation is to choose 
         `true` for larger problems and `false` for smaller ones.
-        - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+        - `nest_tol`: The tolerance for the nested solver. Default is nothing which leads to 
         `NonlinearSolve` automatically selecting the tolerance.
         - `defect_threshold`: Threshold for defect control.
         - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
@@ -461,11 +461,11 @@ for stage in (2, 3, 4, 5)
             nlsolve::N = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
-            nest_tol::Number = 0.0
+            nest_tol::Union{Number, Nothing} = nothing
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
+        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Union{Number, Nothing} = nothing, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
             N, J, T}(
             nlsolve, jac_alg, nested, nest_tol, defect_threshold, max_num_subintervals)
     end
@@ -499,7 +499,7 @@ for stage in (2, 3, 4, 5)
         implicit FIRK step. Defaults to `true`. If set to `false`, the FIRK stages are 
         solved as a part of the global residual. The general recommendation is to choose 
         `true` for larger problems and `false` for smaller ones.
-        - `nest_tol`: The tolerance for the nested solver. Default is 0.0 which leads to 
+        - `nest_tol`: The tolerance for the nested solver. Default is nothing which leads to 
         `NonlinearSolve` automatically selecting the tolerance.
         - `defect_threshold`: Threshold for defect control.
         - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
@@ -553,11 +553,11 @@ for stage in (2, 3, 4, 5)
             nlsolve::N = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
-            nest_tol::Number = 0.0
+            nest_tol::Union{Number, Nothing} = nothing
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Number = 0.0, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
+        $(alg)(nlsolve::N, jac_alg::J; nested = false, nest_tol::Union{Number, Nothing} = nothing, defect_threshold::T = 0.1, max_num_subintervals::Int = 3000) where {N, J, T} = $(alg){
             N, J, T}(
             nlsolve, jac_alg, nested, nest_tol, defect_threshold, max_num_subintervals)
     end

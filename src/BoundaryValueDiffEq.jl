@@ -96,6 +96,59 @@ end
         end
     end
 
+    algs = []
+
+    if Preferences.@load_preference("PrecompileRadau", false)
+        append!(algs,
+            [RadauIIa2(; jac_alg), RadauIIa3(; jac_alg),
+                RadauIIa5(; jac_alg), RadauIIa7(; jac_alg)])
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+
+    algs = []
+
+    if Preferences.@load_preference("PrecompileLobattoIIIa", false)
+        append!(algs,
+            [LobattoIIIa2(; jac_alg), LobattoIIIa3(; jac_alg),
+                LobattoIIIa4(; jac_alg), LobattoIIIa5(; jac_alg)])
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+
+    algs = []
+
+    if Preferences.@load_preference("PrecompileLobattoIIIb", false)
+        append!(algs,
+            [LobattoIIIb3(; jac_alg), LobattoIIIb4(; jac_alg), LobattoIIIb5(; jac_alg)])
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+    algs = []
+
+    if Preferences.@load_preference("PrecompileLobattoIIIc", false)
+        append!(algs,
+            [LobattoIIIc3(; jac_alg), LobattoIIIc4(; jac_alg), LobattoIIIc5(; jac_alg)])
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+
     f1_nlls! = (du, u, p, t) -> begin
         du[1] = u[2]
         du[2] = -u[1]
@@ -150,6 +203,73 @@ end
     @compile_workload begin
         @sync for prob in probs, alg in algs
             Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1e-2)
+        end
+    end
+
+    algs = []
+
+    jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+
+    if Preferences.@load_preference("PrecompileRadauNLLS", false)
+        for nlsolve in nlsolvers
+            append!(algs,
+                [RadauIIa1(; jac_alg, nlsolve), RadauIIa2(; jac_alg, nlsolve),
+                    RadauIIa3(; jac_alg, nlsolve), RadauIIa5(; jac_alg, nlsolve),
+                    RadauIIa7(; jac_alg, nlsolve)])
+        end
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+
+    algs = []
+
+    if Preferences.@load_preference("PrecompileLobattoIIIaNLLS", false)
+        for nlsolve in nlsolvers
+            append!(algs,
+                [LobattoIIIa2(; jac_alg, nlsolve), LobattoIIIa3(; jac_alg, nlsolve),
+                    LobattoIIIa4(; jac_alg, nlsolve), LobattoIIIa5(; jac_alg, nlsolve)])
+        end
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+
+    algs = []
+
+    if Preferences.@load_preference("PrecompileLobattoIIIbNLLS", false)
+        for nlsolve in nlsolvers
+            append!(algs,
+                [LobattoIIIb2(; jac_alg, nlsolve), LobattoIIIb3(; jac_alg, nlsolve),
+                    LobattoIIIb4(; jac_alg, nlsolve), LobattoIIIb5(; jac_alg, nlsolve)])
+        end
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
+        end
+    end
+
+    algs = []
+
+    if Preferences.@load_preference("PrecompileLobattoIIIcNLLS", false)
+        for nlsolve in nlsolvers
+            append!(algs,
+                [LobattoIIIc2(; jac_alg, nlsolve), LobattoIIIc3(; jac_alg, nlsolve),
+                    LobattoIIIc4(; jac_alg, nlsolve), LobattoIIIc5(; jac_alg, nlsolve)])
+        end
+    end
+
+    @compile_workload begin
+        @sync for prob in probs, alg in algs
+            Threads.@spawn solve(prob, alg; dt = 0.2)
         end
     end
 

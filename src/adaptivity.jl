@@ -14,13 +14,6 @@ end
 
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
-    i = findfirst(x -> x == y, cache.y₀.u)
-    interp_eval!(cache.y₀.u, i, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt)
-    return y
-end
-
-@views function interp_eval!(
-        y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -29,12 +22,11 @@ end
     end
     τ = (t - mesh[j])
 
-    (; f, M, p, ITU) = cache
-    (; q_coeff, stage) = ITU
+    (; f, M, stage, p, ITU) = cache
+    (; q_coeff) = ITU
 
     K = __similar(cache.y[1].du, M, stage)
 
-    ctr_y0 = (i - 1) * (stage + 1) + 1
     ctr_y = (j - 1) * (stage + 1) + 1
 
     yᵢ = cache.y[ctr_y].du
@@ -128,6 +120,34 @@ function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
         ts[i] = (i - 1) * t^(i - 2)
     end
     dy .= S_coeffs * ts
+end
+
+"""
+    s_constraints(M, h)
+
+Form the quartic interpolation constraint matrix, see bvp5c paper.
+"""
+function s_constraints(M, h)
+    t = vec(repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], 1, M))
+    A = zeros(6 * M, 6 * M)
+    for i in 1:6
+        row_start = (i - 1) * M + 1
+        for k in 0:(M - 1)
+            for j in 1:6
+                A[row_start + k, j + k * 6] = t[i + k * 6]^(j - 1)
+            end
+        end
+    end
+    for i in 4:6
+        row_start = (i - 1) * M + 1
+        for k in 0:(M - 1)
+            for j in 1:6
+                A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
+                                              (j - 1) * t[i + k * 6]^(j - 2)
+            end
+        end
+    end
+    return A
 end
 
 """

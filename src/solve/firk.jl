@@ -62,27 +62,19 @@ Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N::Int, stage::Int)
     y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)
-    y_extended[1] = y.u[1]
-    let ctr1 = 2
-        for i in 2:N
-            for j in 1:(stage + 1)
-                y_extended[(ctr1)] = y.u[i]
-                ctr1 += 1
-            end
-        end
+    for (i, ctr) in enumerate(2:(stage + 1):((N - 1) * (stage + 1) + 1))
+        @views fill!(y_extended[ctr:(ctr + stage)], y.u[i + 1])
     end
+    y_extended[1] = y.u[1]
     return VectorOfArray(y_extended)
 end
 
-function shrink_y(y, N, M, stage)
+function shrink_y(y, N, stage)
     y_shrink = similar(y, N)
-    y_shrink[1] = y[1]
-    let ctr = stage + 2
-        for i in 2:N
-            y_shrink[i] = y[ctr]
-            ctr += (stage + 1)
-        end
+    for (i, ctr) in enumerate((stage + 2):(stage + 1):((N - 1) * (stage + 1) + 1))
+        y_shrink[i + 1] = y[ctr]
     end
+    y_shrink[1] = y[1]
     return y_shrink
 end
 
@@ -180,7 +172,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     K0 = repeat(avg_u0, 1, stage) # Somewhat arbitrary initialization of K
 
     nestprob_p = zeros(T, M + 2)
-    nest_tol = (alg.nest_tol > eps(T) ? alg.nest_tol : nothing)
+    nest_tol = alg.nest_tol
 
     if iip
         nestprob = NonlinearProblem(
@@ -310,15 +302,11 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
         end
     end
 
-    # sync y and y0 caches
-    for i in axes(cache.y₀, 1)
-        cache.y[i].du .= cache.y₀.u[i]
-    end
-
-    u = shrink_y([reshape(y, cache.in_size) for y in cache.y₀],
-        length(cache.mesh), cache.M, alg_stage(cache.alg))
+    u = shrink_y(
+        [reshape(y, cache.in_size) for y in cache.y₀], length(cache.mesh), cache.stage)
 
     interpolation = __build_interpolation(cache, u)
+
     odesol = DiffEqBase.build_solution(
         cache.prob, cache.alg, cache.mesh, u; interp = interpolation, retcode = info)
     return __build_solution(cache.prob, odesol, sol_nlprob)
@@ -377,13 +365,12 @@ function __construct_nlproblem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
+    (; stage) = cache
     N = length(cache.mesh)
-    TU, ITU = constructRK(cache.alg, eltype(y))
-    (; s) = TU
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = __similar(y, cache.M * (N - 1) * (TU.s + 1))
+    resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
 
     loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
     loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
@@ -403,10 +390,10 @@ function __construct_nlproblem(
                 sparse(colored_matrix.M), colored_matrix.row_colorvec,
                 colored_matrix.col_colorvec))
         else
-            block_size = cache.M * (s + 2)
+            block_size = cache.M * (stage + 2)
             J_full_band = BandedMatrix(
-                Ones{eltype(y)}(
-                    L + cache.M * (s + 1) * (N - 1), cache.M * (s + 1) * (N - 1) + cache.M),
+                Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1),
+                    cache.M * (stage + 1) * (N - 1) + cache.M),
                 (block_size, block_size))
             __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M, N))
@@ -451,13 +438,12 @@ function __construct_nlproblem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
+    (; stage) = cache
     N = length(cache.mesh)
-    TU, ITU = constructRK(cache.alg, eltype(y))
-    (; s) = TU
 
     lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
 
-    resid_collocation = __similar(y, cache.M * (N - 1) * (TU.s + 1))
+    resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
 
     resid = vcat(
         @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]), resid_collocation,
@@ -465,10 +451,10 @@ function __construct_nlproblem(
     L = length(cache.bcresid_prototype)
 
     sd = if jac_alg.nonbc_diffmode isa AutoSparse
-        block_size = cache.M * (s + 2)
+        block_size = cache.M * (stage + 2)
         J_full_band = BandedMatrix(
-            Ones{eltype(y)}(
-                L + cache.M * (s + 1) * (N - 1), cache.M * (s + 1) * (N - 1) + cache.M),
+            Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1),
+                cache.M * (stage + 1) * (N - 1) + cache.M),
             (block_size, block_size))
         __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
             cache, cache.problem_type,
