@@ -111,6 +111,8 @@ end
 
 """
     __expand_cache!(cache::MIRKCache)
+    __expand_cache!(cache::FIRKCacheNested)
+    __expand_cache!(cache::MIRKCacheExpand)
 
 After redistributing or halving the mesh, this function expands the required vectors to
 match the length of the new mesh.

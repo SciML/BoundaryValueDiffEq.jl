@@ -1,5 +1,7 @@
 """
-    interp_eval!(y::AbstractArray, cache::MIRKCache, t)
+    interp_eval!(y::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt)
+    interp_eval!(y::AbstractArray, cache::FIRKCacheExpand, t, mesh, mesh_dt)
+    interp_eval!(y::AbstractArray, cache::FIRKCacheNested, t, mesh, mesh_dt)
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
@@ -161,6 +163,8 @@ end
 
 """
     mesh_selector!(cache::MIRKCache)
+    mesh_selector!(cache::FIRKCacheExpand)
+    mesh_selector!(cache::FIRKCacheNested)
 
 Generate new mesh based on the defect.
 """
@@ -219,6 +223,8 @@ end
 
 """
     redistribute!(cache::MIRKCache, Nsub_star, ŝ, mesh, mesh_dt)
+    redistribute!(cache::FIRKCacheExpand, Nsub_star, ŝ, mesh, mesh_dt)
+    redistribute!(cache::FIRKCacheNested, Nsub_star, ŝ, mesh, mesh_dt)
 
 Generate a new mesh based on the `ŝ`.
 """
@@ -255,6 +261,8 @@ end
 """
     half_mesh!(mesh, mesh_dt)
     half_mesh!(cache::MIRKCache)
+    half_mesh!(cache::FIRKCacheExpand)
+    half_mesh!(cache::FIRKCacheNested)
 
 The input mesh has length of `n + 1`. Divide the original subinterval into two equal length
 subinterval. The `mesh` and `mesh_dt` are modified in place.
@@ -280,6 +288,8 @@ end
 
 """
     defect_estimate!(cache::MIRKCache)
+    defect_estimate!(cache::FIRKCacheExpand)
+    defect_estimate!(cache::FIRKCacheNested)
 
 defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
