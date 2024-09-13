@@ -46,17 +46,9 @@ For the list of available solvers, please refer to the [DifferentialEquations.jl
 Precompilation can be controlled via `Preferences.jl`
 
   - `PrecompileMIRK` -- Precompile the MIRK2 - MIRK6 algorithms (default: `true`).
-  - `PrecompileRadau` -- Precompile the RadauIIa2 - RadauIIa7 algorithms (default: `true`).
-  - `PrecompileLobattoIIIa` -- Precompile the LobattoIIIa2 - LobattoIIIa5 algorithms (default: `true`).
-  - `PrecompileLobattoIIIb` -- Precompile the LobattoIIIb2 - LobattoIIIb5 algorithms (default: `true`).
-  - `PrecompileLobattoIIIc` -- Precompile the LobattoIIIc2 - LobattoIIIc5 algorithms (default: `true`).
   - `PrecompileShooting` -- Precompile the single shooting algorithms (default: `true`).
   - `PrecompileMultipleShooting` -- Precompile the multiple shooting algorithms (default: `true`).
   - `PrecompileMIRKNLLS` -- Precompile the MIRK2 - MIRK6 algorithms for under-determined and over-determined BVPs (default: `false`).
-  - `PrecompileRadauNLLS` -- Precompile the RadauIIa1 - RadauIIa7 algorithms for under-determined and over-determined BVPs (default: `false`).
-  - `PrecompileLobattoIIIaNLLS` -- Precompile the LobattoIIIa2 - LobattoIIIa5 algorithms for under-determined and over-determined BVPs (default: `false`).
-  - `PrecompileLobattoIIIbNLLS` -- Precompile the LobattoIIIb2 - LobattoIIIb5 algorithms for under-determined and over-determined BVPs (default: `false`).
-  - `PrecompileLobattoIIIcNLLS` -- Precompile the LobattoIIIc2 - LobattoIIIc5 algorithms for under-determined and over-determined BVPs (default: `false`).
   - `PrecompileShootingNLLS` -- Precompile the single shooting algorithms for under-determined and over-determined BVPs (default: `true`).
   - `PrecompileMultipleShootingNLLS` -- Precompile the multiple shooting algorithms for under-determined and over-determined BVPs (default: `true` ).
 
