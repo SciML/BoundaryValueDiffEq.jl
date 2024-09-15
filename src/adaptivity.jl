@@ -1,5 +1,7 @@
 """
-    interp_eval!(y::AbstractArray, cache::MIRKCache, t)
+    interp_eval!(y::AbstractArray, cache::MIRKCache, t, mesh, mesh_dt)
+    interp_eval!(y::AbstractArray, cache::FIRKCacheExpand, t, mesh, mesh_dt)
+    interp_eval!(y::AbstractArray, cache::FIRKCacheNested, t, mesh, mesh_dt)
 
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
@@ -14,13 +16,6 @@ end
 
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
-    i = findfirst(x -> x == y, cache.y₀.u)
-    interp_eval!(cache.y₀.u, i, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt)
-    return y
-end
-
-@views function interp_eval!(
-        y::AbstractArray, i::Int, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -29,12 +24,11 @@ end
     end
     τ = (t - mesh[j])
 
-    (; f, M, p, ITU) = cache
-    (; q_coeff, stage) = ITU
+    (; f, M, stage, p, ITU) = cache
+    (; q_coeff) = ITU
 
     K = __similar(cache.y[1].du, M, stage)
 
-    ctr_y0 = (i - 1) * (stage + 1) + 1
     ctr_y = (j - 1) * (stage + 1) + 1
 
     yᵢ = cache.y[ctr_y].du
@@ -131,6 +125,34 @@ function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
 end
 
 """
+    s_constraints(M, h)
+
+Form the quartic interpolation constraint matrix, see bvp5c paper.
+"""
+function s_constraints(M, h)
+    t = vec(repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], 1, M))
+    A = zeros(6 * M, 6 * M)
+    for i in 1:6
+        row_start = (i - 1) * M + 1
+        for k in 0:(M - 1)
+            for j in 1:6
+                A[row_start + k, j + k * 6] = t[i + k * 6]^(j - 1)
+            end
+        end
+    end
+    for i in 4:6
+        row_start = (i - 1) * M + 1
+        for k in 0:(M - 1)
+            for j in 1:6
+                A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
+                                              (j - 1) * t[i + k * 6]^(j - 2)
+            end
+        end
+    end
+    return A
+end
+
+"""
     interval(mesh, t)
 
 Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
@@ -141,6 +163,8 @@ end
 
 """
     mesh_selector!(cache::MIRKCache)
+    mesh_selector!(cache::FIRKCacheExpand)
+    mesh_selector!(cache::FIRKCacheNested)
 
 Generate new mesh based on the defect.
 """
@@ -199,6 +223,8 @@ end
 
 """
     redistribute!(cache::MIRKCache, Nsub_star, ŝ, mesh, mesh_dt)
+    redistribute!(cache::FIRKCacheExpand, Nsub_star, ŝ, mesh, mesh_dt)
+    redistribute!(cache::FIRKCacheNested, Nsub_star, ŝ, mesh, mesh_dt)
 
 Generate a new mesh based on the `ŝ`.
 """
@@ -235,6 +261,8 @@ end
 """
     half_mesh!(mesh, mesh_dt)
     half_mesh!(cache::MIRKCache)
+    half_mesh!(cache::FIRKCacheExpand)
+    half_mesh!(cache::FIRKCacheNested)
 
 The input mesh has length of `n + 1`. Divide the original subinterval into two equal length
 subinterval. The `mesh` and `mesh_dt` are modified in place.
@@ -260,6 +288,8 @@ end
 
 """
     defect_estimate!(cache::MIRKCache)
+    defect_estimate!(cache::FIRKCacheExpand)
+    defect_estimate!(cache::FIRKCacheNested)
 
 defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct

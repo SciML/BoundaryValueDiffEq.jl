@@ -192,7 +192,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interp_eval!(z, j, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
+        interp_eval!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt)
         vals[j] = z
     end
 end
@@ -200,7 +200,7 @@ end
 @inline function interpolation(tval::Number, id::FIRKExpandInterpolation, idxs,
         deriv::D, p, continuity::Symbol = :left) where {D}
     z = similar(id.cache.fᵢ₂_cache)
-    interp_eval!(z, 1, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
+    interp_eval!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt)
     return idxs !== nothing ? z[idxs] : z
 end
 
@@ -210,44 +210,3 @@ end
     cache.mesh, u, cache)
 @inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(
     cache.mesh, u, cache)
-
-"""
-    get_ymid(yᵢ, coeffs, K, h)
-
-Gets the interpolated middle value for a RK method, see bvp5c paper.
-"""
-function get_ymid(yᵢ, coeffs, K, h)
-    res = copy(yᵢ)
-    for i in axes(K, 2)
-        res .+= h .* K[:, i] .* coeffs[i]
-    end
-    return res
-end
-
-"""
-    s_constraints(M, h)
-
-Form the quartic interpolation constraint matrix, see bvp5c paper.
-"""
-function s_constraints(M, h)
-    t = vec(repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], 1, M))
-    A = zeros(6 * M, 6 * M)
-    for i in 1:6
-        row_start = (i - 1) * M + 1
-        if i <= 3
-            for k in 0:(M - 1)
-                for j in 1:6
-                    A[row_start + k, j + k * 6] = t[i + k * 6]^(j - 1)
-                end
-            end
-        else
-            for k in 0:(M - 1)
-                for j in 1:6
-                    A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
-                                                  (j - 1) * t[i + k * 6]^(j - 2)
-                end
-            end
-        end
-    end
-    return A
-end

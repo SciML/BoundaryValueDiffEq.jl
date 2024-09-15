@@ -48,7 +48,7 @@ Precompilation can be controlled via `Preferences.jl`
   - `PrecompileMIRK` -- Precompile the MIRK2 - MIRK6 algorithms (default: `true`).
   - `PrecompileShooting` -- Precompile the single shooting algorithms (default: `true`).
   - `PrecompileMultipleShooting` -- Precompile the multiple shooting algorithms (default: `true`).
-  - `PrecompileMIRKNLLS` -- Precompile the MIRK2 - MIRK6 algorithms for under-determined and over-determined BVPs (default: `true`).
+  - `PrecompileMIRKNLLS` -- Precompile the MIRK2 - MIRK6 algorithms for under-determined and over-determined BVPs (default: `false`).
   - `PrecompileShootingNLLS` -- Precompile the single shooting algorithms for under-determined and over-determined BVPs (default: `true`).
   - `PrecompileMultipleShootingNLLS` -- Precompile the multiple shooting algorithms for under-determined and over-determined BVPs (default: `true` ).
 

@@ -75,23 +75,23 @@ end
 
 function __generate_sparse_jacobian_prototype(
         cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
-    (; TU) = cache
-    (; s) = TU
+    (; stage) = cache
+
     # Get number of nonzeros
-    block_size = M * (s + 1) * M * (s + 2)
+    block_size = M * (stage + 1) * M * (stage + 2)
     l = (N - 1) * block_size
     # Initialize Is and Js
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
 
     # Fill Is and Js
-    row_size = M * (s + 1) * (N - 1)
+    row_size = M * (stage + 1) * (N - 1)
 
     idx = 1
     i_start = 0
     j_start = 0
-    i_step = M * (s + 1)
-    j_step = M * (s + 2)
+    i_step = M * (stage + 1)
+    j_step = M * (stage + 2)
     for k in 1:(N - 1)
         for i in 1:i_step
             for j in 1:j_step
@@ -109,11 +109,11 @@ function __generate_sparse_jacobian_prototype(
 
     col_colorvec = Vector{Int}(undef, size(J_c, 2))
     for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
+        col_colorvec[i] = mod1(i, (2 * M * (stage + 1)) + M)
     end
     row_colorvec = Vector{Int}(undef, size(J_c, 1))
     for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, (2 * M * (s + 1)) + M)
+        row_colorvec[i] = mod1(i, (2 * M * (stage + 1)) + M)
     end
 
     return ColoredMatrix(J_c, row_colorvec, col_colorvec)
@@ -121,22 +121,22 @@ end
 
 function __generate_sparse_jacobian_prototype(
         cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
-    (; TU) = cache
-    (; s) = TU
+    (; stage) = cache
+
     # Get number of nonzeros
-    block_size = M * (s + 1) * M * (s + 2)
-    l = (N - 1) * block_size + M * (s + 2) * (length(ya) + length(yb))
+    block_size = M * (stage + 1) * M * (stage + 2)
+    l = (N - 1) * block_size + M * (stage + 2) * (length(ya) + length(yb))
     # Initialize Is and Js
     Is = Vector{Int}(undef, l)
     Js = Vector{Int}(undef, l)
 
     # Fill Is and Js
-    row_size = M * (s + 1) * (N - 1)
+    row_size = M * (stage + 1) * (N - 1)
     idx = 1
     i_start = 0
     j_start = 0
-    i_step = M * (s + 1)
-    j_step = M * (s + 2)
+    i_step = M * (stage + 1)
+    j_step = M * (stage + 2)
 
     # Fill first rows
     for i in 1:length(ya)

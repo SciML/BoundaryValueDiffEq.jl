@@ -4,7 +4,7 @@ using BoundaryValueDiffEq, LinearAlgebra
 
 SOLVERS = [firk(; nlsolve)
            for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4),
-nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion())]
+nlsolve in (LevenbergMarquardt(), GaussNewton())]#, TrustRegion())]
 
 SOLVERS_NAMES = ["$solver with $nlsolve"
                  for solver in ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
