@@ -20,6 +20,16 @@ import BoundaryValueDiffEq: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm, 
     __extract_mesh, __extract_u0, __has_initial_guess, __initial_guess_length, __initial_guess_on_mesh,
     __flatten_initial_guess, __build_solution, __Fix3, __sparse_jacobian_cache, __sparsity_detection_alg, _sparse_like, ColoredMatrix
 
+import ADTypes: AbstractADType
+import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
+import ConcreteStructs: @concrete
+import DiffEqBase: solve
+import FastClosures: @closure
+import ForwardDiff: ForwardDiff, pickchunksize
+import Logging
+import RecursiveArrayTools: ArrayPartition, DiffEqArray
+import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
+    
 include("types.jl")
 include("algorithms.jl")
 include("mirk.jl")

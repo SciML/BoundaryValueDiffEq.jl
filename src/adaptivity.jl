@@ -152,7 +152,6 @@ function interval(mesh, t)
 end
 
 """
-    mesh_selector!(cache::MIRKCache)
     mesh_selector!(cache::FIRKCacheExpand)
     mesh_selector!(cache::FIRKCacheNested)
 
