@@ -400,8 +400,8 @@ function __perform_firk_iteration(
     return sol_nlprob, info, defect_norm
 end
 
-function __perform_mirk_iteration(cache::FIRKCacheNested, abstol,
-        adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
+function __perform_mirk_iteration(
+        cache::FIRKCacheNested, abstol, adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
@@ -450,8 +450,7 @@ function __perform_mirk_iteration(cache::FIRKCacheNested, abstol,
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(
-        cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
+function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
         y::AbstractVector) where {iip}
     pt = cache.problem_type
 
@@ -601,10 +600,9 @@ function __construct_nlproblem(
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
-
 function __construct_nlproblem(
-        cache::FIRKCacheNested{iip}, y, loss_bc::BC,
-        loss_collocation::C, loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
+        cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
+        loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
 
@@ -667,10 +665,9 @@ function __construct_nlproblem(
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
-
 function __construct_nlproblem(
-        cache::FIRKCacheNested{iip}, y, loss_bc::BC,
-        loss_collocation::C, loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
+        cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
+        loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
 
@@ -705,7 +702,6 @@ function __construct_nlproblem(
     nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
-
 
 @views function __mirk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh, cache) where {BC}

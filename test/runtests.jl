@@ -13,16 +13,17 @@ end
     if GROUP == "All" || GROUP == "MIRK"
         @time "MIRK solvers" begin
             activate_mirk()
-            ReTestItems.runtests(joinpath(@__DIR__, "../lib/BoundaryValueDiffEqMIRK/test/mirk/"))
+            ReTestItems.runtests(joinpath(
+                @__DIR__, "../lib/BoundaryValueDiffEqMIRK/test/mirk/"))
         end
     end
-#=
-    if GROUP == "All" || GROUP == "MISC"
-        @time "Miscellaneous" begin
-            ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
+    #=
+        if GROUP == "All" || GROUP == "MISC"
+            @time "Miscellaneous" begin
+                ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
+            end
         end
-    end
-=#
+    =#
     if GROUP == "All" || GROUP == "SHOOTING"
         @time "Shooting solvers" begin
             ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))

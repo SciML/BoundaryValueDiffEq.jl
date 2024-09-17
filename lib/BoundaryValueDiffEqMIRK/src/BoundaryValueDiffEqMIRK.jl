@@ -3,22 +3,31 @@ module BoundaryValueDiffEqMIRK
 import PrecompileTools: @compile_workload, @setup_workload
 
 using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra,
-      NonlinearSolve, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
-      Setfield, SparseDiffTools
+      NonlinearSolve, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+      SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
 # Special Matrix Types
 using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
-import BoundaryValueDiffEq: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm, recursive_flatten, recursive_flatten!, recursive_unflatten!, __concrete_nonlinearsolve_algorithm,
-    __FastShortcutBVPCompatibleNonlinearPolyalg, __FastShortcutBVPCompatibleNLLSPolyalg,
-    concrete_jacobian_algorithm, eval_bc_residual, eval_bc_residual!, get_tmp, __maybe_matmul!,
-    __append_similar!, __extract_problem_details, __initial_guess, __maybe_allocate_diffcache,
-    __get_bcresid_prototype, __similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
-    __unsafe_nonlinearfunction, __internal_nlsolve_problem, __generate_sparse_jacobian_prototype,
-    __extract_mesh, __extract_u0, __has_initial_guess, __initial_guess_length, __initial_guess_on_mesh,
-    __flatten_initial_guess, __build_solution, __Fix3, __sparse_jacobian_cache, __sparsity_detection_alg, _sparse_like, ColoredMatrix
+import BoundaryValueDiffEq: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+                            recursive_flatten, recursive_flatten!, recursive_unflatten!,
+                            __concrete_nonlinearsolve_algorithm,
+                            __FastShortcutBVPCompatibleNonlinearPolyalg,
+                            __FastShortcutBVPCompatibleNLLSPolyalg,
+                            concrete_jacobian_algorithm, eval_bc_residual,
+                            eval_bc_residual!, get_tmp, __maybe_matmul!, __append_similar!,
+                            __extract_problem_details, __initial_guess,
+                            __maybe_allocate_diffcache, __get_bcresid_prototype, __similar,
+                            __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+                            recursive_flatten_twopoint!, __unsafe_nonlinearfunction,
+                            __internal_nlsolve_problem,
+                            __generate_sparse_jacobian_prototype, __extract_mesh,
+                            __extract_u0, __has_initial_guess, __initial_guess_length,
+                            __initial_guess_on_mesh, __flatten_initial_guess,
+                            __build_solution, __Fix3, __sparse_jacobian_cache,
+                            __sparsity_detection_alg, _sparse_like, ColoredMatrix
 
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
@@ -29,7 +38,7 @@ import ForwardDiff: ForwardDiff, pickchunksize
 import Logging
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-    
+
 include("types.jl")
 include("algorithms.jl")
 include("mirk.jl")
@@ -39,7 +48,6 @@ include("collocation.jl")
 include("interpolation.jl")
 include("mirk_tableaus.jl")
 include("sparse_jacobians.jl")
-
 
 @setup_workload begin
     function f1!(du, u, p, t)
@@ -143,7 +151,6 @@ include("sparse_jacobians.jl")
         end
     end
 end
-
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 

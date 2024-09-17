@@ -157,7 +157,8 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
+@views function mesh_selector!(cache::Union{
+        FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -215,8 +216,7 @@ end
 
 Generate a new mesh based on the `ŝ`.
 """
-function redistribute!(
-        cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}},
+function redistribute!(cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}},
         Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
     N = length(mesh)
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
