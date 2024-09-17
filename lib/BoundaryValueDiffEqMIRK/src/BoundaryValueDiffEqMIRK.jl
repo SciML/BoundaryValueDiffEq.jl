@@ -39,8 +39,7 @@ import Logging
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools,
-                SciMLBase
+@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
 
 include("types.jl")
 include("algorithms.jl")
