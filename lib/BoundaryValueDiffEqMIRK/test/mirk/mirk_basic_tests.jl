@@ -1,6 +1,6 @@
 @testsetup module MIRKConvergenceTests
 
-using BoundaryValueDiffEq
+using BoundaryValueDiffEqMIRK
 
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")

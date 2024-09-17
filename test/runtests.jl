@@ -3,10 +3,17 @@ using ReTestItems
 const GROUP = get(ENV, "GROUP", "All")
 const is_APPVEYOR = Sys.iswindows() && haskey(ENV, "APPVEYOR")
 
+function activate_mirk()
+    Pkg.activate("../lib/BoundaryValueDiffEqMIRK")
+    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 @time begin
     if GROUP == "All" || GROUP == "MIRK"
         @time "MIRK solvers" begin
-            ReTestItems.runtests(joinpath(@__DIR__, "mirk/"))
+            activate_mirk()
+            ReTestItems.runtests(joinpath(@__DIR__, "../lib/BoundaryValueDiffEqMIRK/test/mirk/"))
         end
     end
 
