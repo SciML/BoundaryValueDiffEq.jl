@@ -44,15 +44,15 @@ include("interpolation.jl")
 
 include("default_nlsolve.jl")
 
-include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
-using ..BoundaryValueDiffEqMIRK
-
-export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
-
 function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end
+
+include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
+using ..BoundaryValueDiffEqMIRK
+
+export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 
 export Shooting, MultipleShooting
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
