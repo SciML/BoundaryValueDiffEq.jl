@@ -12,9 +12,10 @@ end
 @time begin
     if GROUP == "All" || GROUP == "MIRK"
         @time "MIRK solvers" begin
-            activate_mirk()
-            ReTestItems.runtests(joinpath(
-                @__DIR__, "../lib/BoundaryValueDiffEqMIRK/test/mirk/"))
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/ensemble_tests.jl")
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/mirk_basic_tests.jl")
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/nlls_tests.jl")
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/vectorofvector_initials_tests.jl")
         end
     end
     #=
