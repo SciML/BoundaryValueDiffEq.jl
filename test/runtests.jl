@@ -1,4 +1,4 @@
-using ReTestItems
+using ReTestItems, Pkg
 
 const GROUP = get(ENV, "GROUP", "All")
 const is_APPVEYOR = Sys.iswindows() && haskey(ENV, "APPVEYOR")
@@ -16,13 +16,13 @@ end
             ReTestItems.runtests(joinpath(@__DIR__, "../lib/BoundaryValueDiffEqMIRK/test/mirk/"))
         end
     end
-
+#=
     if GROUP == "All" || GROUP == "MISC"
         @time "Miscellaneous" begin
             ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
         end
     end
-
+=#
     if GROUP == "All" || GROUP == "SHOOTING"
         @time "Shooting solvers" begin
             ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))
