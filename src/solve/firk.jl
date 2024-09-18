@@ -351,8 +351,8 @@ function SciMLBase.solve!(cache::FIRKCacheNested)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_firk_iteration(
-        cache::FIRKCacheExpand, abstol, adaptive; nlsolve_kwargs = (;), kwargs...)
+function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol,
+        adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
@@ -364,7 +364,7 @@ function __perform_firk_iteration(
     # Early terminate if non-adaptive
     adaptive || return sol_nlprob, sol_nlprob.retcode, defect_norm
 
-    info = sol_nlprob.retcode
+    info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
         defect_norm = defect_estimate!(cache)
@@ -400,80 +400,31 @@ function __perform_firk_iteration(
     return sol_nlprob, info, defect_norm
 end
 
-function __perform_mirk_iteration(
-        cache::FIRKCacheNested, abstol, adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀))
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(
-        nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
-    recursive_unflatten!(cache.y₀, sol_nlprob.u)
-
-    defect_norm = 2 * abstol
-
-    # Early terminate if non-adaptive
-    adaptive || return sol_nlprob, sol_nlprob.retcode, defect_norm
-
-    info::ReturnCode.T = sol_nlprob.retcode
-
-    if info == ReturnCode.Success # Nonlinear Solve was successful
-        defect_norm = defect_estimate!(cache)
-        # The defect is greater than 10%, the solution is not acceptable
-        defect_norm > cache.alg.defect_threshold && (info = ReturnCode.Failure)
-    end
-
-    if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
-        if defect_norm > abstol
-            # We construct a new mesh to equidistribute the defect
-            mesh, mesh_dt, _, info = mesh_selector!(cache)
-            if info == ReturnCode.Success
-                __append_similar!(cache.y₀, length(cache.mesh), cache.M)
-                for (i, m) in enumerate(cache.mesh)
-                    interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
-                end
-                __expand_cache!(cache)
-            end
-        end
-    else # Something bad happened
-        # We cannot obtain a solution for the current mesh
-        if 2 * (length(cache.mesh) - 1) > cache.alg.max_num_subintervals
-            # New mesh would be too large
-            info = ReturnCode.Failure
-        else
-            half_mesh!(cache)
-            __expand_cache!(cache)
-            recursivefill!(cache.y₀, 0)
-            info = ReturnCode.Success # Force a restart
-        end
-    end
-
-    return sol_nlprob, info, defect_norm
-end
-
 # Constructing the Nonlinear Problem
 function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
         y::AbstractVector) where {iip}
     pt = cache.problem_type
 
     loss_bc = if iip
-        @closure (du, u, p) -> __mirk_loss_bc!(
+        @closure (du, u, p) -> __firk_loss_bc!(
             du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     else
-        @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
+        @closure (u, p) -> __firk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     end
 
     loss_collocation = if iip
-        @closure (du, u, p) -> __mirk_loss_collocation!(
+        @closure (du, u, p) -> __firk_loss_collocation!(
             du, u, p, cache.y, cache.mesh, cache.residual, cache)
     else
-        @closure (u, p) -> __mirk_loss_collocation(
+        @closure (u, p) -> __firk_loss_collocation(
             u, p, cache.y, cache.mesh, cache.residual, cache)
     end
 
     loss = if iip
-        @closure (du, u, p) -> __mirk_loss!(
+        @closure (du, u, p) -> __firk_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache)
     else
-        @closure (u, p) -> __mirk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
+        @closure (u, p) -> __firk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
@@ -482,7 +433,7 @@ end
 function __construct_nlproblem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
-    (; nlsolve, jac_alg) = cache.alg
+    (; jac_alg) = cache.alg
     (; stage) = cache
     N = length(cache.mesh)
 
@@ -535,11 +486,11 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J, u, p) -> __mirk_mpoint_jacobian!(
+        @closure (J, u, p) -> __firk_mpoint_jacobian!(
             J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc,
             cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc, resid_collocation, L)
     else
-        @closure (u, p) -> __mirk_mpoint_jacobian(
+        @closure (u, p) -> __firk_mpoint_jacobian(
             jac_prototype, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
             cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, L)
     end
@@ -555,7 +506,7 @@ end
 function __construct_nlproblem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
-    (; nlsolve, jac_alg) = cache.alg
+    (; jac_alg) = cache.alg
     (; stage) = cache
     N = length(cache.mesh)
 
@@ -588,10 +539,10 @@ function __construct_nlproblem(
     jac_prototype = zero(init_jacobian(diffcache))
 
     jac = if iip
-        @closure (J, u, p) -> __mirk_2point_jacobian!(
+        @closure (J, u, p) -> __firk_2point_jacobian!(
             J, u, jac_alg.diffmode, diffcache, lossₚ, resid)
     else
-        @closure (u, p) -> __mirk_2point_jacobian(
+        @closure (u, p) -> __firk_2point_jacobian(
             u, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
     end
 
@@ -603,7 +554,7 @@ end
 function __construct_nlproblem(
         cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
-    (; nlsolve, jac_alg) = cache.alg
+    (; jac_alg) = cache.alg
     N = length(cache.mesh)
 
     resid_bc = cache.bcresid_prototype
@@ -650,11 +601,11 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J, u, p) -> __mirk_mpoint_jacobian!(
+        @closure (J, u, p) -> __firk_mpoint_jacobian!(
             J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc,
             cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc, resid_collocation, L)
     else
-        @closure (u, p) -> __mirk_mpoint_jacobian(
+        @closure (u, p) -> __firk_mpoint_jacobian(
             jac_prototype, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
             cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, L)
     end
@@ -691,10 +642,10 @@ function __construct_nlproblem(
     jac_prototype = zero(init_jacobian(diffcache))
 
     jac = if iip
-        @closure (J, u, p) -> __mirk_2point_jacobian!(
+        @closure (J, u, p) -> __firk_2point_jacobian!(
             J, u, jac_alg.diffmode, diffcache, lossₚ, resid)
     else
-        @closure (u, p) -> __mirk_2point_jacobian(
+        @closure (u, p) -> __firk_2point_jacobian(
             u, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
     end
 
@@ -703,7 +654,7 @@ function __construct_nlproblem(
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
-@views function __mirk_loss!(
+@views function __firk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
@@ -714,7 +665,7 @@ end
     return nothing
 end
 
-@views function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
+@views function __firk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
         residual, mesh, cache) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
@@ -727,7 +678,7 @@ end
     return nothing
 end
 
-@views function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
+@views function __firk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     resid_bc = eval_bc_residual(pt, bc, soly_, p, mesh)
@@ -735,7 +686,7 @@ end
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 
-@views function __mirk_loss(
+@views function __firk_loss(
         u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh, cache) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
@@ -744,7 +695,7 @@ end
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-@views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh,
+@views function __firk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh,
         cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
@@ -752,14 +703,14 @@ end
     return nothing
 end
 
-@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh,
+@views function __firk_loss_bc(u, p, pt, bc!::BC, y, mesh,
         cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
 end
 
-@views function __mirk_loss_collocation!(resid, u, p, y, mesh, residual, cache)
+@views function __firk_loss_collocation!(resid, u, p, y, mesh, residual, cache)
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual[2:end]]
     Φ!(resids, cache, y_, u, p)
@@ -767,13 +718,13 @@ end
     return nothing
 end
 
-@views function __mirk_loss_collocation(u, p, y, mesh, residual, cache)
+@views function __firk_loss_collocation(u, p, y, mesh, residual, cache)
     y_ = recursive_unflatten!(y, u)
     resids = Φ(cache, y_, u, p)
     return mapreduce(vec, vcat, resids)
 end
 
-function __mirk_mpoint_jacobian!(
+function __firk_mpoint_jacobian!(
         J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache, nonbc_diffcache, loss_bc::BC,
         loss_collocation::C, resid_bc, resid_collocation, L::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
@@ -782,7 +733,7 @@ function __mirk_mpoint_jacobian!(
     return nothing
 end
 
-function __mirk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+function __firk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
         bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C,
         resid_bc, resid_collocation, L::Int) where {BC, C}
     J_bc = fillpart(J)
@@ -794,7 +745,7 @@ function __mirk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, non
     return nothing
 end
 
-function __mirk_mpoint_jacobian(
+function __firk_mpoint_jacobian(
         J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache, nonbc_diffcache,
         loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
     sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, x)
@@ -803,7 +754,7 @@ function __mirk_mpoint_jacobian(
     return J
 end
 
-function __mirk_mpoint_jacobian(
+function __firk_mpoint_jacobian(
         J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
         nonbc_diffcache, loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
     J_bc = fillpart(J)
@@ -814,12 +765,12 @@ function __mirk_mpoint_jacobian(
     return J
 end
 
-function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
+function __firk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
     return J
 end
 
-function __mirk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
+function __firk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
     return J
 end
