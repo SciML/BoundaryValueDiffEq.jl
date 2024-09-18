@@ -19,13 +19,13 @@ end
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/vectorofvector_initials_tests.jl")
         end
     end
-    #=
-        if GROUP == "All" || GROUP == "MISC"
-            @time "Miscellaneous" begin
-                ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
-            end
+
+    if GROUP == "All" || GROUP == "MISC"
+        @time "Miscellaneous" begin
+            ReTestItems.runtests(joinpath(@__DIR__, "misc/"))
         end
-    =#
+    end
+
     if GROUP == "All" || GROUP == "SHOOTING"
         @time "Shooting solvers" begin
             ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))
