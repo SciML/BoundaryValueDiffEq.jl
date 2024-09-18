@@ -332,12 +332,12 @@ function SciMLBase.solve!(cache::FIRKCacheNested)
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
-    sol_nlprob, info, defect_norm = __perform_mirk_iteration(
+    sol_nlprob, info, defect_norm = __perform_firk_iteration(
         cache, abstol, adaptive; kwargs...)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && defect_norm > abstol
-            sol_nlprob, info, defect_norm = __perform_mirk_iteration(
+            sol_nlprob, info, defect_norm = __perform_firk_iteration(
                 cache, abstol, adaptive; kwargs...)
         end
     end
