@@ -13,7 +13,7 @@ using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
 import BoundaryValueDiffEq: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                             recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                            __concrete_nonlinearsolve_algorithm,
+                            __concrete_nonlinearsolve_algorithm, diff!,
                             __FastShortcutBVPCompatibleNonlinearPolyalg,
                             __FastShortcutBVPCompatibleNLLSPolyalg,
                             concrete_jacobian_algorithm, eval_bc_residual,
