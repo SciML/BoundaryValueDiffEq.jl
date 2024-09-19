@@ -377,17 +377,3 @@ for order in (2, 3, 4, 5, 6)
         end
     end
 end
-
-function sol_eval(cache::MIRKCache{T}, t::T) where {T}
-    (; M, mesh, mesh_dt, alg) = cache
-
-    @assert mesh[1] ≤ t ≤ mesh[end]
-    i = interval(mesh, t)
-    dt = mesh_dt[i]
-    τ = (t - mesh[i]) / dt
-    weights, weights_prime = interp_weights(τ, alg)
-    z = zeros(M)
-    z_prime = zeros(M)
-    sum_stages!(z, z_prime, cache, weights, weights_prime, i, mesh_dt)
-    return z
-end

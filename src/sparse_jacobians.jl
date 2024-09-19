@@ -37,11 +37,12 @@ function __sparsity_detection_alg(M::ColoredMatrix)
 end
 __sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
 
-# For MIRK Methods
+# For FIRK Methods
 """
-    __generate_sparse_jacobian_prototype(::MIRKCache, ya, yb, M, N)
-    __generate_sparse_jacobian_prototype(::MIRKCache, _, ya, yb, M, N)
-    __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheNested, ::StandardBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
 
 Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
 coloring.
