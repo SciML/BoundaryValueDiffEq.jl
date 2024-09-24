@@ -1,5 +1,5 @@
 @testitem "Overconstrained BVP" begin
-    using LinearAlgebra
+    using BoundaryValueDiffEqMIRK, LinearAlgebra
 
     SOLVERS = [mirk(; nlsolve)
                for mirk in (MIRK4, MIRK5, MIRK6),

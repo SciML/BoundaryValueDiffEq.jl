@@ -1,4 +1,6 @@
+
 @testitem "EnsembleProblem" begin
+    using BoundaryValueDiffEqMIRK
     using Random
 
     function ode!(du, u, p, t)

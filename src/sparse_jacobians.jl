@@ -37,11 +37,12 @@ function __sparsity_detection_alg(M::ColoredMatrix)
 end
 __sparsity_detection_alg(::ColoredMatrix{Nothing}) = NoSparsityDetection()
 
-# For MIRK Methods
+# For FIRK Methods
 """
-    __generate_sparse_jacobian_prototype(::MIRKCache, ya, yb, M, N)
-    __generate_sparse_jacobian_prototype(::MIRKCache, _, ya, yb, M, N)
-    __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheNested, ::StandardBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
+    __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
 
 Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
 coloring.
@@ -49,12 +50,8 @@ coloring.
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
 """
-function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
-    return __generate_sparse_jacobian_prototype(cache, cache.problem_type, ya, yb, M, N)
-end
-
 function __generate_sparse_jacobian_prototype(
-        ::Union{MIRKCache, FIRKCacheNested}, ::StandardBVProblem, ya, yb, M, N)
+        ::FIRKCacheNested, ::StandardBVProblem, ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
@@ -62,7 +59,7 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        ::Union{MIRKCache, FIRKCacheNested}, ::TwoPointBVProblem, ya, yb, M, N)
+        ::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N)
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
