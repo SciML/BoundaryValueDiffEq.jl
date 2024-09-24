@@ -2,6 +2,7 @@
 *.jl.*.cov
 *.jl.mem
 Manifest.toml
+*.DS_Store
 .vscode
 .vscode/*
 wip
