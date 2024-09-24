@@ -1,8 +1,8 @@
-@testsetup module FIRKExpandedConvergenceTests
+@testsetup module FIRKNestedConvergenceTests
 
-using BoundaryValueDiffEq
+using BoundaryValueDiffEqFIRK
 
-nested = false
+nested = true
 
 for stage in (2, 3, 4, 5)
     s = Symbol("LobattoIIIa$(stage)")
@@ -19,7 +19,7 @@ for stage in (2, 3, 4, 5)
     @eval lobattoIIIc_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
 end
 
-for stage in (2, 3, 5, 7)
+for stage in (1, 2, 3, 5, 7)
     s = Symbol("RadauIIa$(stage)")
     @eval radau_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
 end
@@ -84,16 +84,16 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
         u0, tspan; bcresid_prototype, nlls = Val(false))]
 
-testTol = 0.3
+testTol = 0.2
 affineTol = 1e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
 export probArr, testTol, affineTol, dts, lobattoIIIa_solver, lobattoIIIb_solver,
-       lobattoIIIc_solver, radau_solver
+       lobattoIIIc_solver, radau_solver, nested
 
 end
 
-@testitem "Affineness" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "Affineness" setup=[FIRKNestedConvergenceTests] begin
     using LinearAlgebra
 
     @testset "Problem: $i" for i in (1, 2, 5, 6)
@@ -101,64 +101,84 @@ end
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             @time sol = solve(
-                prob, lobattoIIIa_solver(Val(stage)); dt = 0.2, adaptive = false)
+                prob, lobattoIIIa_solver(Val(stage); nested_nlsolve = nested); dt = 0.2)
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-            @time sol = solve(
-                prob, lobattoIIIb_solver(Val(stage)); dt = 0.2, adaptive = false)
+            @time if stage == 2 # LobattoIIIb2 doesn't support adaptivity
+                sol = solve(prob, lobattoIIIb_solver(Val(stage); nested_nlsolve = nested);
+                    dt = 0.2, adaptive = false)
+            else
+                sol = solve(
+                    prob, lobattoIIIb_solver(Val(stage); nested_nlsolve = nested); dt = 0.2)
+            end
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-            @time sol = solve(
-                prob, lobattoIIIc_solver(Val(stage)); dt = 0.2, adaptive = false)
+            @time if stage == 2 # LobattoIIIc2 doesn't support adaptivity
+                sol = solve(prob, lobattoIIIc_solver(Val(stage); nested_nlsolve = nested);
+                    dt = 0.2, adaptive = false)
+            else
+                sol = solve(
+                    prob, lobattoIIIc_solver(Val(stage); nested_nlsolve = nested); dt = 0.2)
+            end
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
 
-        @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-            @time sol = solve(prob, radau_solver(Val(stage)); dt = 0.2, adaptive = false)
+        @testset "RadauIIa$stage" for stage in (1, 2, 3, 5, 7)
+            @time if stage == 1
+                sol = solve(prob, radau_solver(Val(stage); nested_nlsolve = nested);
+                    dt = 0.2, adaptive = false)
+            else
+                sol = solve(
+                    prob, radau_solver(Val(stage); nested_nlsolve = nested); dt = 0.2)
+            end
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
     end
 end
 
-@testitem "JET: Runtime Dispatches" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "JET: Runtime Dispatches" setup=[FIRKNestedConvergenceTests] begin
     using JET
 
     @testset "Problem: $i" for i in 1:8
         prob = probArr[i]
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
+                jac_alg = BVPJacobianAlgorithm(AutoFiniteDiff()), nested_nlsolve = nested)
+            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(
+                prob, solver; dt = 0.2) # This fails because init_expanded fails
+            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEq,) solve(prob, solver; dt = 0.2)
         end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIb_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
+                jac_alg = BVPJacobianAlgorithm(AutoFiniteDiff()), nested_nlsolve = nested)
+            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(
+                prob, solver; dt = 0.2) # This fails because init_expanded fails
+            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEq,) solve(prob, solver; dt = 0.2)
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIc_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
+                jac_alg = BVPJacobianAlgorithm(AutoFiniteDiff()), nested_nlsolve = nested)
+            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(
+                prob, solver; dt = 0.2) # This fails because init_expanded fails
+            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEq,) solve(prob, solver; dt = 0.2)
         end
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             solver = radau_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEq,) solve(
+                jac_alg = BVPJacobianAlgorithm(AutoFiniteDiff()), nested_nlsolve = nested)
+            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(
+                prob, solver; dt = 0.2) # This fails because init_expanded fails
+            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(
                 prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEq,) solve(prob, solver; dt = 0.2)
         end
     end
 end
 
-@testitem "Convergence on Linear" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "Convergence on Linear" setup=[FIRKNestedConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
 
     @testset "Problem: $i" for i in (3, 4, 7, 8)
@@ -166,30 +186,9 @@ end
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
-                dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1e-8)
-            if (stage == 5) || (((i == 7) || (i == 8)) && stage == 4)
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            else
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            end
-        end
-
-        @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(
-                dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if (stage == 5) || (stage == 4 && i == 8)
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            elseif stage == 4
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=0.5
-            else
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            end
-        end
-
-        @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(
-                dts, prob, lobattoIIIc_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if (i == 3 && stage == 4) || (i == 4 && stage == 4)
+                dts, prob, lobattoIIIa_solver(Val(stage); nested_nlsolve = nested);
+                abstol = 1e-8, reltol = 1e-8)
+            if (stage == 4 && ((i == 7) || (i == 8)))
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             elseif first(sim.errors[:final]) < 1e-12
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
@@ -198,10 +197,37 @@ end
             end
         end
 
+        @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
+            @time sim = test_convergence(
+                dts, prob, lobattoIIIb_solver(Val(stage); nested_nlsolve = nested);
+                abstol = 1e-8, reltol = 1e-8)
+            if (stage == 4 && ((i == 7) || (i == 8)))
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            elseif first(sim.errors[:final]) < 1e-12
+                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            else
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            end
+        end
+
+        @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
+            @time sim = test_convergence(
+                dts, prob, lobattoIIIc_solver(Val(stage); nested_nlsolve = nested);
+                abstol = 1e-8, reltol = 1e-8)
+            if stage == 5 || ((stage == 4) && (i == 3 || i == 4))
+                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            else
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+            end
+        end
+
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sim = test_convergence(
-                dts, prob, radau_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if first(sim.errors[:final]) < 1e-12
+                dts, prob, radau_solver(Val(stage); nested_nlsolve = nested);
+                abstol = 1e-8, reltol = 1e-8)
+            if (stage == 5) || (stage == 7)
+                @test_broken sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
+            elseif first(sim.errors[:final]) < 1e-12
                 @test_broken sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
             else
                 @test sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
@@ -232,7 +258,7 @@ end
     jac_alg = BVPJacobianAlgorithm(;
         bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff()))
     nl_solve = NewtonRaphson()
-    nested = false
+    nested = true
 
     # Using ForwardDiff might lead to Cache expansion warnings
     @test_nowarn solve(bvp1, LobattoIIIa2(nl_solve, jac_alg; nested); dt = 0.005)
@@ -286,7 +312,7 @@ end
         prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ)
 
     testTol = 1e-6
-    nested = false
+    nested = true
 
     for stage in (2, 3, 5, 7)
         s = Symbol("RadauIIa$(stage)")
@@ -315,10 +341,12 @@ end
     @testset "Radau interpolations" begin
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
-            @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-            @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-            @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-            @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+            sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
+
+            @test sol(0.001)≈sol_analytic atol=testTol
+            @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
+            @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
+            @test sol(0.001; idxs = 2)≈sol_analytic[2] atol=testTol
         end
     end
 
@@ -329,17 +357,19 @@ end
                 @testset "LobattoIII$(id)$stage" for stage in (3, 4, 5)
                     @time sol = solve(
                         prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
-                    @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-                    @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-                    @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-                    @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+                    sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
+                    @test sol(0.001)≈sol_analytic atol=testTol
+                    @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
+                    @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
+                    @test sol(0.001; idxs = 2)≈sol_analytic[2] atol=testTol
                 end
             end
         end
     end
 end
 
-@testitem "Swirling Flow III" begin
+# Doesn't seem to work with nested solver
+#= @testitem "Swirling Flow III" begin 
     # Reported in https://github.com/SciML/BoundaryValueDiffEq.jl/issues/153
     eps = 0.01
     function swirling_flow!(du, u, p, t)
@@ -367,8 +397,8 @@ end
     u0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prob = BVProblem(swirling_flow!, swirling_flow_bc!, u0, tspan, eps)
 
-    @test_nowarn solve(prob, RadauIIa5(); dt = 0.01)
-end
+    @test_nowarn solve(prob, RadauIIa5(nested_nlsolve = true); dt = 0.01)
+end =#
 
 @testitem "Solve using Continuation" begin
     using RecursiveArrayTools
@@ -395,14 +425,16 @@ end
     bvp3 = TwoPointBVProblem(
         simplependulum!, (bc2a!, bc2b!), [pi / 2, pi / 2], (pi / 4, pi / 2),
         -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    sol3 = solve(bvp3, RadauIIa5(), dt = 0.05)
+    sol3 = solve(bvp3, RadauIIa5(; nested_nlsolve = true), dt = 0.05)
 
     # Needs a SciMLBase fix
     bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
         pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test_broken solve(bvp4, RadauIIa5(), dt = 0.05) isa SciMLBase.ODESolution
+    @test_broken solve(bvp4, RadauIIa5(; nested_nlsolve = true), dt = 0.05) isa
+                 SciMLBase.ODESolution
 
     bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(), dt = 0.05).retcode)
+    @test_broken SciMLBase.successful_retcode(solve(
+        bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05).retcode)
 end

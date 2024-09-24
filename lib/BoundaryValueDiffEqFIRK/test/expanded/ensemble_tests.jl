@@ -1,5 +1,5 @@
 @testitem "EnsembleProblem" begin
-    using Random
+    using BoundaryValueDiffEqFIRK, Random
 
     function ode!(du, u, p, t)
         du[1] = u[2]

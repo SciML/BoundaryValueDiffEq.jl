@@ -28,20 +28,9 @@ include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
-
-include("lobatto_tableaus.jl")
-include("radau_tableaus.jl")
-
 include("solve/single_shooting.jl")
 include("solve/multiple_shooting.jl")
-include("solve/firk.jl")
-
-include("collocation.jl")
 include("sparse_jacobians.jl")
-
-include("adaptivity.jl")
-include("interpolation.jl")
-
 include("default_nlsolve.jl")
 
 function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
@@ -51,6 +40,9 @@ end
 
 include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
 using ..BoundaryValueDiffEqMIRK
+
+include("../lib/BoundaryValueDiffEqFIRK/src/BoundaryValueDiffEqFIRK.jl")
+using ..BoundaryValueDiffEqFIRK
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 

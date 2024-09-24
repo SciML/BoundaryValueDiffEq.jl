@@ -1,6 +1,6 @@
 @testsetup module FIRKNestedNLLSTests
 
-using BoundaryValueDiffEq, LinearAlgebra
+using BoundaryValueDiffEqFIRK, LinearAlgebra
 
 SOLVERS = [firk(; nlsolve, nested_nlsolve = true)
            for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4),
@@ -165,7 +165,7 @@ export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS, SOLVERS_NAMES, 
 end
 
 @testitem "Overconstrained BVP" setup=[FIRKNestedNLLSTests] begin
-    using LinearAlgebra
+    using LinearAlgebra, BoundaryValueDiffEqFIRK
 
     @testset "Problem: $i" for i in 1:4
         prob = OverconstrainedProbArr[i]
@@ -179,7 +179,7 @@ end
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
 @testitem "Underconstrained BVP" setup=[FIRKNestedNLLSTests] begin
-    using LinearAlgebra, SciMLBase
+    using LinearAlgebra, BoundaryValueDiffEqFIRK, SciMLBase
 
     @testset "Problem: $i" for i in 1:2
         prob = UnderconstrainedProbArr[i]
