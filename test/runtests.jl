@@ -28,14 +28,14 @@ end
 
     if GROUP == "All" || GROUP == "FIRK(EXPANDED)"
         @time "FIRK Expanded solvers" begin
-            activate_mirk()
+            activate_firk()
             ReTestItems.runtests("../lib/BoundaryValueDiffEqFIRK/test/expanded/")
         end
     end
 
     if GROUP == "All" || GROUP == "FIRK(NESTED)"
         @time "FIRK Nested solvers" begin
-            activate_mirk()
+            activate_firk()
             ReTestItems.runtests("../lib/BoundaryValueDiffEqFIRK/test/nested/")
         end
     end
