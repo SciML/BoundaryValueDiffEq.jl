@@ -9,6 +9,12 @@ function activate_mirk()
     Pkg.instantiate()
 end
 
+function activate_firk()
+    Pkg.activate("../lib/BoundaryValueDiffEqFIRK")
+    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 @time begin
     if GROUP == "All" || GROUP == "MIRK"
         @time "MIRK solvers" begin
@@ -17,6 +23,20 @@ end
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/mirk_basic_tests.jl")
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/nlls_tests.jl")
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/vectorofvector_initials_tests.jl")
+        end
+    end
+
+    if GROUP == "All" || GROUP == "FIRK(EXPANDED)"
+        @time "FIRK Expanded solvers" begin
+            activate_firk()
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqFIRK/test/expanded/")
+        end
+    end
+
+    if GROUP == "All" || GROUP == "FIRK(NESTED)"
+        @time "FIRK Nested solvers" begin
+            activate_firk()
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqFIRK/test/nested/")
         end
     end
 
@@ -29,18 +49,6 @@ end
     if GROUP == "All" || GROUP == "SHOOTING"
         @time "Shooting solvers" begin
             ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))
-        end
-    end
-
-    if GROUP == "All" || GROUP == "FIRK(EXPANDED)"
-        @time "FIRK Expanded solvers" begin
-            ReTestItems.runtests(joinpath(@__DIR__, "firk/expanded/"))
-        end
-    end
-
-    if GROUP == "All" || GROUP == "FIRK(NESTED)"
-        @time "FIRK Nested solvers" begin
-            ReTestItems.runtests(joinpath(@__DIR__, "firk/nested/"))
         end
     end
 

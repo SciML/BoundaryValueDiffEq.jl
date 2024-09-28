@@ -88,7 +88,7 @@ end
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
 @testitem "Underconstrained BVP: Rod BVP" begin
-    using LinearAlgebra
+    using LinearAlgebra, BoundaryValueDiffEqMIRK
 
     # Force normal form for GN
     SOLVERS = [mirk(; nlsolve)

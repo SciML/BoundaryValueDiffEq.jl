@@ -1,4 +1,5 @@
 @testitem "VectorOfVector Initial Condition" begin
+    using BoundaryValueDiffEqFIRK, OrdinaryDiffEq
     #System Constants
     ss = 1 #excitatory parameter
     sj = 0 #inhibitory parameter
@@ -60,12 +61,11 @@
         residual[3] = u[:, 1][3] - u[:, end][3]
     end
 
-    #This is the part of the code that has problems
     bvp1 = BVProblem(TC!, bc_po!, sol.u, tspan)
-    sol5 = solve(bvp1, RadauIIa5(); dt = 0.5)
+    sol5 = solve(bvp1, RadauIIa5(; nested_nlsolve = true); dt = 0.5)
     @test SciMLBase.successful_retcode(sol5.retcode)
 
     bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-    sol5 = solve(bvp1, RadauIIa5(); dt = 0.1, abstol = 1e-14)
+    sol5 = solve(bvp1, RadauIIa5(; nested_nlsolve = true); dt = 0.1, abstol = 1e-14)
     @test SciMLBase.successful_retcode(sol5.retcode)
 end
