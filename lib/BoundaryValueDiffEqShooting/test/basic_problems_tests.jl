@@ -1,5 +1,5 @@
 @testitem "Basic Shooting" begin
-    using LinearAlgebra, LinearSolve, JET
+    using BoundaryValueDiffEqShooting, LinearAlgebra, LinearSolve, JET
 
     SOLVERS = [Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
@@ -38,10 +38,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
+        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEq,) solve(
+        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -68,10 +68,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
+        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEq,) solve(
+        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -92,10 +92,10 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
+        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEq,) solve(
+        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
@@ -115,17 +115,17 @@
         @test norm(sol.resid, Inf) < 1e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEq,) solve(
+        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEq,) solve(
+        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
     end
 end
 
 @testitem "Shooting with Complex Values" begin
-    using LinearAlgebra, LinearSolve
+    using BoundaryValueDiffEqShooting, LinearAlgebra, LinearSolve
 
     SOLVERS = [
         Shooting(Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())), Shooting(Vern7()),
@@ -159,7 +159,7 @@ end
 end
 
 @testitem "Flow in a Channel" begin
-    using LinearAlgebra, LinearSolve
+    using BoundaryValueDiffEqShooting, LinearAlgebra, LinearSolve
 
     function flow_in_a_channel!(du, u, p, t)
         R, P = p
@@ -208,7 +208,7 @@ end
 end
 #FIXME: MultipleShooting fails for large out-of-place BVP systems
 @testitem "Ray Tracing" begin
-    using LinearAlgebra, LinearSolve
+    using BoundaryValueDiffEqShooting, LinearAlgebra, LinearSolve
 
     @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
     @inline ux(x, y, z, p) = -p[1] * sin(p[1] * x)
