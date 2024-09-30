@@ -15,6 +15,12 @@ function activate_firk()
     Pkg.instantiate()
 end
 
+function activate_shooting()
+    Pkg.activate("../lib/BoundaryValueDiffEqShooting")
+    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 @time begin
     if GROUP == "All" || GROUP == "MIRK"
         @time "MIRK solvers" begin
@@ -48,7 +54,10 @@ end
 
     if GROUP == "All" || GROUP == "SHOOTING"
         @time "Shooting solvers" begin
-            ReTestItems.runtests(joinpath(@__DIR__, "shooting/"))
+            activate_shooting()
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqShooting/test/basic_problems_tests.jl")
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqShooting/test/nlls_tests.jl")
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqShooting/test/orbital_tests.jl")
         end
     end
 

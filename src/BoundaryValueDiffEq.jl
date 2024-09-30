@@ -2,9 +2,8 @@ module BoundaryValueDiffEq
 
 import PrecompileTools: @compile_workload, @setup_workload
 
-using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra,
-      NonlinearSolve, OrdinaryDiffEq, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
-      Setfield, SparseDiffTools
+using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra, Preferences,
+      RecursiveArrayTools, Reexport, SciMLBase, Setfield, SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -28,8 +27,6 @@ include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
-include("solve/single_shooting.jl")
-include("solve/multiple_shooting.jl")
 include("sparse_jacobians.jl")
 include("default_nlsolve.jl")
 
@@ -43,6 +40,9 @@ using ..BoundaryValueDiffEqMIRK
 
 include("../lib/BoundaryValueDiffEqFIRK/src/BoundaryValueDiffEqFIRK.jl")
 using ..BoundaryValueDiffEqFIRK
+
+include("../lib/BoundaryValueDiffEqShooting/src/BoundaryValueDiffEqShooting.jl")
+using ..BoundaryValueDiffEqShooting
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 

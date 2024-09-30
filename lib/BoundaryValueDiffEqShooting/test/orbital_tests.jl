@@ -1,5 +1,5 @@
 @testitem "Lambert's Problem" begin
-    using LinearAlgebra
+    using BoundaryValueDiffEqShooting, LinearAlgebra
 
     y0 = [-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06,
         -5528.612564911408, 1216.8442360202787, 4845.114446429901]
@@ -65,7 +65,7 @@
         @test norm(sol.resid, Inf) < 1e-6
 
         jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff,
-            bc_diffmode = BoundaryValueDiffEq.__get_non_sparse_ad(autodiff))
+            bc_diffmode = BoundaryValueDiffEqShooting.__get_non_sparse_ad(autodiff))
         sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
             verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
