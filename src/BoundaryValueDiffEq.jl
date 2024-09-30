@@ -26,6 +26,7 @@ import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwr
 include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
 using ..BoundaryValueDiffEqCore
 
+import ..BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm
 include("algorithms.jl")
 
 include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
