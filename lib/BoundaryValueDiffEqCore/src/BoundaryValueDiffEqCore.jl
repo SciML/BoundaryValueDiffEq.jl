@@ -5,6 +5,9 @@ using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra,
 
 using PreallocationTools: PreallocationTools, DiffCache
 
+# Special Matrix Types
+using SparseArrays
+
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, fast_scalar_indexing
 import ConcreteStructs: @concrete
