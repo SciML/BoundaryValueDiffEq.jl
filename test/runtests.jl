@@ -21,6 +21,12 @@ function activate_shooting()
     Pkg.instantiate()
 end
 
+function activate_ascher()
+    Pkg.activate("../lib/BoundaryValueDiffEqAscher")
+    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 @time begin
     if GROUP == "All" || GROUP == "MIRK"
         @time "MIRK solvers" begin
@@ -43,6 +49,13 @@ end
         @time "FIRK Nested solvers" begin
             activate_firk()
             ReTestItems.runtests("../lib/BoundaryValueDiffEqFIRK/test/nested/")
+        end
+    end
+
+    if GROUP == "All" || GROUP == "ASCHER"
+        @time "Ascher BVDAE solvers" begin
+            activate_ascher()
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqAscher/test/nested/")
         end
     end
 

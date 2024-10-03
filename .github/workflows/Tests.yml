@@ -33,6 +33,7 @@ jobs:
           - "SHOOTING"
           - "FIRK(EXPANDED)"
           - "FIRK(NESTED)"
+          - "ASCHER"
           - "WRAPPERS"
     uses: "SciML/.github/.github/workflows/tests.yml@v1"
     with:
