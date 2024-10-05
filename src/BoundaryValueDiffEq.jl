@@ -25,9 +25,7 @@ import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwr
 
 include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
 using ..BoundaryValueDiffEqCore
-
-import ..BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm
-include("algorithms.jl")
+include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
 
 include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
 using ..BoundaryValueDiffEqMIRK
@@ -37,6 +35,8 @@ using ..BoundaryValueDiffEqFIRK
 
 include("../lib/BoundaryValueDiffEqShooting/src/BoundaryValueDiffEqShooting.jl")
 using ..BoundaryValueDiffEqShooting
+
+include("algorithms.jl")
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 
