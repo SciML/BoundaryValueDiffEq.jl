@@ -18,7 +18,8 @@ function __FastShortcutBVPCompatibleNLLSPolyalg(
                 linsolve, precs, disable_geodesic = Val(true), autodiff, kwargs...),
             TrustRegion(; concrete_jac, linsolve, precs, autodiff, kwargs...),
             GaussNewton(; concrete_jac, linsolve, precs,
-                linesearch = BackTracking(), autodiff, kwargs...),
+                linesearch = LineSearchesJL(; method = BackTracking()),
+                autodiff, kwargs...),
             LevenbergMarquardt(; linsolve, precs, autodiff, kwargs...))
     end
     return NonlinearSolvePolyAlgorithm(algs, Val(:NLLS))
@@ -31,8 +32,8 @@ function __FastShortcutBVPCompatibleNonlinearPolyalg(
         algs = (NewtonRaphson(; concrete_jac, linsolve, precs, autodiff),)
     else
         algs = (NewtonRaphson(; concrete_jac, linsolve, precs, autodiff),
-            NewtonRaphson(;
-                concrete_jac, linsolve, precs, linesearch = BackTracking(), autodiff),
+            NewtonRaphson(; concrete_jac, linsolve, precs,
+                linesearch = LineSearchesJL(; method = BackTracking()), autodiff),
             TrustRegion(; concrete_jac, linsolve, precs, autodiff))
     end
     return NonlinearSolvePolyAlgorithm(algs, Val(:NLS))
