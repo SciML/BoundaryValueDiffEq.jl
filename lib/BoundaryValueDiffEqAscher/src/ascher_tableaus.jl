@@ -1,17 +1,17 @@
 function constructAscher(alg::Ascher1, ::Type{T}) where {T}
     # initialization
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
 
     # collocation points
     rho = [0.5]
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -19,17 +19,16 @@ function constructAscher(alg::Ascher1, ::Type{T}) where {T}
 end
 function constructAscher(alg::Ascher2, ::Type{T}) where {T}
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-    rho = [0.21132486540518713447,
-           0.78867513459481286553]
-        
+    rho = [0.21132486540518713447, 0.78867513459481286553]
+
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -37,18 +36,16 @@ function constructAscher(alg::Ascher2, ::Type{T}) where {T}
 end
 function constructAscher(alg::Ascher3, ::Type{T}) where {T}
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-    rho = [0.11270166537925829786,
-           0.5,
-           0.88729833462074170214]
+    rho = [0.11270166537925829786, 0.5, 0.88729833462074170214]
 
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -56,19 +53,17 @@ function constructAscher(alg::Ascher3, ::Type{T}) where {T}
 end
 function constructAscher(alg::Ascher4, ::Type{T}) where {T}
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-    rho = [0.06943184420297371373,
-           0.33000947820757187134,
-           0.66999052179242812866,
-           0.93056815579702628627]
+    rho = [0.06943184420297371373, 0.33000947820757187134,
+        0.66999052179242812866, 0.93056815579702628627]
 
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -76,20 +71,17 @@ function constructAscher(alg::Ascher4, ::Type{T}) where {T}
 end
 function constructAscher(alg::Ascher5, ::Type{T}) where {T}
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-    rho = [0.04691007703066801815,
-           0.23076534494715844614,
-           0.5,
-           0.76923465505284155386,
-           0.95308992296933198185]
+    rho = [0.04691007703066801815, 0.23076534494715844614, 0.5,
+        0.76923465505284155386, 0.95308992296933198185]
 
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -97,21 +89,17 @@ function constructAscher(alg::Ascher5, ::Type{T}) where {T}
 end
 function constructAscher(alg::Ascher6, ::Type{T}) where {T}
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-    rho = [0.03376524289842397497,
-           0.16939530676686775923,
-           0.38069040695840154764,
-           0.61930959304159845236,
-           0.83060469323313224077,
-           0.96623475710157602503]
+    rho = [0.03376524289842397497, 0.16939530676686775923, 0.38069040695840154764,
+        0.61930959304159845236, 0.83060469323313224077, 0.96623475710157602503]
 
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -119,21 +107,16 @@ function constructAscher(alg::Ascher6, ::Type{T}) where {T}
 end
 function constructAscher(alg::Ascher7, ::Type{T}) where {T}
     k = alg_stage(alg)
-    coef = zeros(k, k)+I
+    coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-    rho = [0.02544600438286209743,
-           0.12923440720030276996,
-           0.29707742431130140792,
-           0.5,
-           0.70292257568869859208,
-           0.87076559279969723004,
-           0.97455399561713790257]
+    rho = [0.02544600438286209743, 0.12923440720030276996, 0.29707742431130140792, 0.5,
+        0.70292257568869859208, 0.87076559279969723004, 0.97455399561713790257]
     # find runge-kutta coefficients b, acol
-    for j=1:k
+    for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
     end
-    for i=1:k
+    for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
     @views rkbas!(1.0, coef, k, b)
@@ -144,21 +127,21 @@ end
 # with v(i,j)=rho(j)**(i-1)/(i-1)!
 function vmonde!(rho, coef, k)
     (k == 1) && return
-    for i=1:k-1
-        for j=1:k-i
-            coef[j] = (coef[j+1] - coef[j]) / (rho[j+i] - rho[j])
+    for i in 1:(k - 1)
+        for j in 1:(k - i)
+            coef[j] = (coef[j + 1] - coef[j]) / (rho[j + i] - rho[j])
         end
     end
     ifac = 1
-    for i=1:k-1
-        kmi = k+1-i
-        for j=2:kmi
-            coef[j] = coef[j] - rho[j+i-1]*coef[j-1]
+    for i in 1:(k - 1)
+        kmi = k + 1 - i
+        for j in 2:kmi
+            coef[j] = coef[j] - rho[j + i - 1] * coef[j - 1]
         end
-        coef[kmi] = ifac*coef[kmi]
+        coef[kmi] = ifac * coef[kmi]
         ifac = ifac * i
     end
-    coef[1] = ifac*coef[1]
+    coef[1] = ifac * coef[1]
 end
 
 function rkbas!(s, coef, k::Integer, rkb, dm)
@@ -168,20 +151,20 @@ function rkbas!(s, coef, k::Integer, rkb, dm)
         dm[1] = 1.0
         return
     end
-    t = s ./(1:k)
-    for i = 1:k
-        p = coef[1,i]
-        for j=2:k
-            p = p*t[k+2-j]+coef[j, i]
+    t = s ./ (1:k)
+    for i in 1:k
+        p = coef[1, i]
+        for j in 2:k
+            p = p * t[k + 2 - j] + coef[j, i]
         end
-        rkb[i]=p
+        rkb[i] = p
     end
-    for i=1:k
-        p=coef[1, i]
-        for j=2:k
-            p = p*t[k+1-j] + coef[j, i]
+    for i in 1:k
+        p = coef[1, i]
+        for j in 2:k
+            p = p * t[k + 1 - j] + coef[j, i]
         end
-        dm[i]=p
+        dm[i] = p
     end
 end
 
@@ -191,12 +174,12 @@ function rkbas!(s, coef, k::Integer, rkb)
         rkb[1] = 1.0
         return
     end
-    t = s ./(1:k)
-    for i = 1:k
+    t = s ./ (1:k)
+    for i in 1:k
         p = coef[1, i]
-        for j=2:k
-            p = p*t[k+2-j] + coef[j, i]
+        for j in 2:k
+            p = p * t[k + 2 - j] + coef[j, i]
         end
-        rkb[i]=p
+        rkb[i] = p
     end
 end
