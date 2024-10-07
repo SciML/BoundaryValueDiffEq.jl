@@ -13,6 +13,9 @@ end
     return BVPJacobianAlgorithm(ad)
 end
 
+@inline __nameof(::T) where {T} = nameof(T)
+@inline __nameof(::Type{T}) where {T} = nameof(T)
+
 function Base.show(io::IO, alg::BVPJacobianAlgorithm)
     print(io, "BVPJacobianAlgorithm(")
     modifiers = String[]
