@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqCore
 
-using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra,
-      RecursiveArrayTools, Reexport, SciMLBase, Setfield, SparseDiffTools
+using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra, LineSearch,
+      LineSearches, RecursiveArrayTools, Reexport, SciMLBase, Setfield, SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
