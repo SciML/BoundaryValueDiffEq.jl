@@ -4,9 +4,9 @@ using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools, Concret
       Setfield
 using PreallocationTools
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
-include("../lib/BoundaryValueDiffEqCore/src/types.jl")
 include("../lib/BoundaryValueDiffEqCore/src/utils.jl")
+include("../lib/BoundaryValueDiffEqCore/src/types.jl")
+include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
 include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
@@ -255,8 +255,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
     end
     Drhs = @closure (t, u, df) -> jac(df, u, prob.p, t)
 
-    bcresid_prototype, _ = BoundaryValueDiffEq.__get_bcresid_prototype(
-        prob.problem_type, prob, u0)
+    bcresid_prototype, _ = __get_bcresid_prototype(prob.problem_type, prob, u0)
 
     if prob.problem_type isa TwoPointBVProblem
         n_bc_a = length(first(bcresid_prototype))
