@@ -1,6 +1,9 @@
 # Algorithms
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 
+@inline __nameof(::T) where {T} = nameof(T)
+@inline __nameof(::Type{T}) where {T} = nameof(T)
+
 ## Disable the ugly verbose printing by default
 @inline __modifier_text!(list, fieldname, field) = push!(list, "$fieldname = $(field)")
 @inline __modifier_text!(list, fieldname, ::Nothing) = list
