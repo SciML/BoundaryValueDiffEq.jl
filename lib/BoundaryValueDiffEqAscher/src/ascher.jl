@@ -71,7 +71,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
 
     # initialize collocation points, constants, mesh
     n = Int(cld(t₁ - t₀, dt))
-    mesh = collect(t₀:dt:t₁)
+    mesh = __extract_mesh(prob.u0, t₀, t₁, n)
     mesh_dt = diff(mesh)
 
     TU = constructAscher(alg, T)
@@ -222,7 +222,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
 
         error_norm = error_estimate!(cache)
         if norm(error_norm) > abstol
-            mesh_selector!(cache, z, dmz, mesh, mesh_dt)
+            mesh_selector!(cache, z, dmz, mesh, mesh_dt, abstol)
             __expand_cache_for_next_iter!(cache)
         end
     else # Something bad happened
@@ -335,8 +335,7 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     jac = if iip
         @closure (J, u, p) -> __ascher_mpoint_jacobian!(J, u, ad, jac_cache, lossₚ, lz)
     else
-        @closure (u, p) -> __ascher_mpoint_jacobian(
-            jac_prototype, u, ad, jac_cache, lossₚ, lz)
+        @closure (u, p) -> __ascher_mpoint_jacobian(jac_prototype, u, ad, jac_cache, lossₚ)
     end
     resid_prototype = zero(lz)
     _nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
@@ -348,8 +347,8 @@ function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid)
     sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
     return nothing
 end
-function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss, resid)
-    sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
+function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss)
+    sparse_jacobian!(J, diffmode, diffcache, loss, x)
     return J
 end
 

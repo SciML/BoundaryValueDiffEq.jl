@@ -164,11 +164,11 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
-    dgz = similar(z, ncomp)
+    dgz = similar(zval)
     df = Matrix{T}(undef, ncy, ncy)
 
-    temp_rhs = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
-    temp_z = [zeros(Tz, ncomp) for _ in 1:(n + 1)]
+    temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
+    temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
     rrhs = similar(zval)
 
@@ -176,6 +176,7 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
     fill!.(w, 0.0)
 
     izeta = 1
+    izsave = 1
     # set up the linear system of equations
     for i in 1:n
         # construct a block of a and a corresponding piece of rhs
@@ -201,25 +202,25 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
             xcol = xii + hrho
             # find rhs values
             @views approx(cache, xcol, zval, yval, dmzo[i][j][1:ncomp])
-            zyval = vcat(zval, yval)
+            uval = vcat(zval, yval)
 
-            residual = f(zyval, p, xcol)
+            residual = f(uval, p, xcol)
             dmzo[i][j][(ncomp + 1):ncy] .= 0.0
             temp_rhs[i][j] .= residual .- dmzo[i][j]
 
             # fill in ncy rows of  w and v
             @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], zyval, df, acol[:, j], dmzo[i])
+                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
         end
 
         @views gblock!(cache, h, g[i], izeta, w[i], v[i])
 
         if i >= n
-            global izsave = izeta
+            izsave = izeta
             # build equation for a side condition.
             # other nonlinear case
             zval = __get_value(cache.z[n + 1])
-            gval = @views bc(zval, p, mesh[i + 1])
+            gval = bc(zval, p, mesh[i + 1])
             while true
                 (izeta > ncomp) && break
                 # find rhs boundary value
@@ -242,9 +243,7 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
     for i in 1:n
         nrow = g.rows[i]
         izeta = nrow + 1 - ncomp
-        if i == n
-            izeta = izsave
-        end
+        (i == n) && (izeta = izsave)
         while true
             (izet == izeta) && break
             delz[i][izet] = rrhs[izet]
@@ -253,7 +252,7 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
         h = mesh_dt[i]
         @views gblock!(cache, h, izeta, w[i], delz[i:(i + 1)], deldmz[i], ipvtw[i])
 
-        if i >= n
+        if i == n
             while true
                 (izet > ncomp) && break
                 delz[i + 1][izet] = rrhs[izet]
@@ -273,9 +272,7 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
     for i in 1:n
         nrow = g.rows[i]
         izeta::Int = nrow + 1 - ncomp
-        if i == n
-            izeta = copy(izsave)
-        end
+        (i == n) && (izeta = izsave)
         while true
             (izet == izeta) && break
             temp_z[i][izet] = dgz[izet]
@@ -284,7 +281,7 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
         h = mesh_dt[i]
         @views gblock!(cache, h, izeta, w[i], temp_z[i:(i + 1)], dmz[i], ipvtw[i])
 
-        if i >= n
+        if i == n
             while true
                 (izet > ncomp) && break
                 temp_z[i + 1][izet] = dgz[izet]
@@ -301,15 +298,21 @@ function Φ(cache::AscherCache{iip, T}, z) where {iip, T}
     temp_z .= temp_z .+ delz
     dmz .= dmz .+ deldmz
 
-    temp_rrhs = zeros(ncy * k * (n + 1))
-    recursive_flatten!(temp_rrhs, temp_rhs)
+    resids = [Vector{T}(undef, ncy) for _ in 1:(n + 1)]
+    for (i, item) in enumerate(temp_rhs)
+        for (j, col) in enumerate(eachrow(reduce(hcat, item)))
+            resids[i][j] = sum(abs2, col)
+        end
+    end
     recursive_flatten!(z, temp_z)
-    rhs = deepcopy(temp_rrhs[1:(ncomp * (n + 1))])
+    residss = [r[1:ncomp] for r in resids]
 
+    # update z in cache for next iteration
     new_z = __get_value(temp_z)
-    cache.z[1:end] = new_z[1:end]
-    cache.dmz[1:end] = dmz[1:end]
-    return rhs
+    copyto!(cache.z, new_z)
+    copyto!(cache.dmz, dmz)
+
+    return reduce(vcat, residss)
 end
 
 function approx(cache::AscherCache{iip, T}, x, zval) where {iip, T}
@@ -474,11 +477,11 @@ function gblock!(cache::AscherCache, h, irow, wi, vrhsz, rhsdmz, ipvtw)
     end
     recursive_unflatten!(vrhsz, rhsz)
 end
+
 function gblock!(cache::AscherCache, h, gi, irow, wi, vi)
     (; TU, k, ncomp, ny) = cache
     (; b) = TU
     ncy = ncomp + ny
-    kdy = k * ncy
 
     # compute local basis
     hb = @. h * b

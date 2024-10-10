@@ -1,6 +1,7 @@
 # mesh_selector refine nd redistribute according to the initial mesh
-function mesh_selector!(cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt) where {iip, T}
-    (; k, ncomp, TU, abstol) = cache
+function mesh_selector!(
+        cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt, abstol) where {iip, T}
+    (; k, ncomp, TU) = cache
     # weights for mesh selection
     cnsts2 = [1.25e-1, 2.604e-3, 8.019e-3, 2.170e-5, 7.453e-5, 5.208e-4, 9.689e-8,
         3.689e-7, 3.100e-6, 2.451e-5, 2.691e-10, 1.120e-9, 1.076e-8, 9.405e-8,
@@ -56,7 +57,8 @@ function mesh_selector!(cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt) where
     # halving the mesh is enough.
     degequ = avrg / max(slphmx, eps(T))
 
-    naccum = accum[n + 1] + T(1)
+    # expected n to achieve 0.1x user requested tolerances
+    naccum = floor(Int, accum[n + 1] + 1)
 
     # decide if mesh selection is worthwhile (otherwise, directly halving mesh is enough)
     if (avrg < eps(T)) || (degequ >= 0.5)
@@ -67,10 +69,10 @@ function mesh_selector!(cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt) where
     end
 end
 
-function redistribute!(cache::AscherCache{iip, T}, nold::Integer, naccum::Integer,
-        slope::Vector{T}, accum::Vector{T}) where {iip, T}
+function redistribute!(cache::AscherCache{iip, T}, nold::I, naccum::I,
+        slope::Vector{T}, accum::Vector{T}) where {iip, T, I <: Integer}
     (; prob, fixpnt, mesh, mesh_dt) = cache
-    n = length(slope)
+    n::Int = length(slope)
     nmax = copy(n)
     mesh_old = copy(cache.original_mesh)
     # nmx assures mesh has at least half as many subintervals as the

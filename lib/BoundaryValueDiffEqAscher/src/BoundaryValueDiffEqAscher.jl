@@ -7,6 +7,7 @@ using SciMLBase
 using NonlinearSolve
 using ForwardDiff
 using FastClosures
+using RecursiveArrayTools
 using Reexport
 using Setfield
 using ConcreteStructs

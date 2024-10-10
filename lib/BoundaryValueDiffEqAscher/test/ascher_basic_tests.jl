@@ -9,10 +9,18 @@
         du[3] = u[4]
         du[4] = (u[1] - sin(t)) * (u[4] - e^t)
     end
+    function f1(u, p, t)
+        e = 2.7
+        return [(1 + u[2] - sin(t)) * u[4] + cos(t), cos(t),
+            u[4], (u[1] - sin(t)) * (u[4] - e^t)]
+    end
     function bc1!(res, u, p, t)
         res[1] = u[1]
         res[2] = u[3] - 1
         res[3] = u[2] - sin(1.0)
+    end
+    function bc1(u, p, t)
+        return [u[1], u[3] - 1, u[2] - sin(1.0)]
     end
     function f1_analytic(u, p, t)
         return [sin(t), sin(t), 1.0, 0.0]
@@ -20,14 +28,20 @@
     u01 = [0.0, 0.0, 0.0, 0.0]
     tspan1 = (0.0, 1.0)
     zeta1 = [0.0, 0.0, 1.0]
-    fun1 = BVPFunction(f1!, bc1!, analytic = f1_analytic,
+    fun_iip = BVPFunction(f1!, bc1!, analytic = f1_analytic,
         mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
-    prob1 = BVProblem(fun1, u01, tspan1)
+    fun_oop = BVPFunction(
+        f1, bc1, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
+    prob_iip = BVProblem(fun_iip, u01, tspan1)
+    prob_oop = BVProblem(fun_oop, u01, tspan1)
+    prob1Arr = [prob_iip, prob_oop]
     SOLVERS = [alg(zeta = zeta1)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
-    for stage in (1, 2, 3, 4, 5, 6, 7)
-        sol = solve(prob1, SOLVERS[stage], dt = 0.01)
-        SciMLBase.successful_retcode(sol)
+    for i in 1:2
+        for stage in (1, 2, 3, 4, 5, 6, 7)
+            sol = solve(prob1Arr[i], SOLVERS[stage], dt = 0.01)
+            SciMLBase.successful_retcode(sol)
+        end
     end
 end
 
@@ -45,22 +59,36 @@ end
         du[5] = u[1] + u[3]
     end
 
+    function f2(u, p, t)
+        return [
+            u[2] + u[3] + u[5] + 1, u[2] + u[4], u[1] + u[5], u[1] + u[2] + 1, u[1] + u[3]]
+    end
+
     function bc2!(res, u, p, t)
         res[1] = u[1] + 1
         res[2] = u[2] + 2
         res[3] = u[3] - 1
     end
+    function bc2(u, p, t)
+        return [u[1] + 1, u[2] + 2, u[3] - 1]
+    end
     u02 = [0.0, 0.0, 0.0, 0.0, 0.0]
     tspan2 = (0.0, 1.0)
     zeta2 = [0.0, 1.0, 1.0]
-    fun2 = BVPFunction(
+    fun2_iip = BVPFunction(
         f2!, bc2!, mass_matrix = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0; 0 0 0 0 0])
-    prob2 = BVProblem(fun2, u02, tspan2)
+    fun2_oop = BVPFunction(
+        f2, bc2, mass_matrix = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0; 0 0 0 0 0])
+    prob2_iip = BVProblem(fun2_iip, u02, tspan2)
+    prob2_oop = BVProblem(fun2_oop, u02, tspan2)
+    prob2Arr = [prob2_iip, prob2_oop]
     SOLVERS = [alg(zeta = zeta2)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
-    for stage in (1, 2, 3, 4, 5, 6, 7)
-        sol = solve(prob2, SOLVERS[stage], dt = 0.01)
-        SciMLBase.successful_retcode(sol)
+    for i in 1:2
+        for stage in (1, 2, 3, 4, 5, 6, 7)
+            sol = solve(prob2Arr[i], SOLVERS[stage], dt = 0.01)
+            SciMLBase.successful_retcode(sol)
+        end
     end
 end
 
