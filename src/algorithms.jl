@@ -104,8 +104,6 @@ function BVPSOL(; bvpclass = 2, sol_method = 0, odesolver = nothing)
     return BVPSOL(bvpclass, sol_method, odesolver)
 end
 
-SciMLBase.allows_arbitrary_number_types(alg::BVPSOL) = true
-
 """
     COLNEW(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
         max_num_subintervals = 3000, bc_func = nothing, dbc_func = nothing,
