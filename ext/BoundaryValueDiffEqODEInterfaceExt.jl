@@ -1,8 +1,13 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
-using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools
-import BoundaryValueDiffEq: __extract_u0, __flatten_initial_guess, __extract_mesh,
-                            __initial_guess_length, __initial_guess, __has_initial_guess
+using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools, ConcreteStructs,
+      Setfield
+using PreallocationTools
+import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
+include("../lib/BoundaryValueDiffEqCore/src/types.jl")
+include("../lib/BoundaryValueDiffEqCore/src/utils.jl")
+include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
+include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
                      OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
@@ -250,8 +255,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
     end
     Drhs = @closure (t, u, df) -> jac(df, u, prob.p, t)
 
-    bcresid_prototype, _ = BoundaryValueDiffEq.__get_bcresid_prototype(
-        prob.problem_type, prob, u0)
+    bcresid_prototype, _ = __get_bcresid_prototype(prob.problem_type, prob, u0)
 
     if prob.problem_type isa TwoPointBVProblem
         n_bc_a = length(first(bcresid_prototype))
@@ -336,5 +340,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
         retcode = retcode > 0 ? ReturnCode.Success : ReturnCode.Failure,
         stats = destats, original = (sol, retcode, stats))
 end
+
+export BVPM2, BVPSOL, COLNEW
 
 end

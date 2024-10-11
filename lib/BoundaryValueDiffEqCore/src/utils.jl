@@ -259,9 +259,6 @@ struct __unsafe_nonlinearfunction{iip} end
         nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
 end
 
-@inline __nameof(::T) where {T} = nameof(T)
-@inline __nameof(::Type{T}) where {T} = nameof(T)
-
 # Construct the internal NonlinearProblem
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
