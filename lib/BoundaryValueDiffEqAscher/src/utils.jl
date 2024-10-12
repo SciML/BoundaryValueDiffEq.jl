@@ -19,6 +19,22 @@ function build_almost_block_diagonals(
     return g
 end
 
+function __get_bcresid_prototype(prob::BVProblem, u)
+    return __get_bcresid_prototype(prob.problem_type, prob, u)
+end
+function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
+    prototype = if prob.f.bcresid_prototype !== nothing
+        prob.f.bcresid_prototype.x
+    else
+        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
+    end
+    return prototype, size.(prototype)
+end
+function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
+    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype : zero(u)
+    return prototype, size(prototype)
+end
+
 # Custom pivot LU factorization and substitution for simple usage and
 # customized array types
 function __factorize!(a::Matrix{T}, ipvt::Vector) where {T}
@@ -121,8 +137,17 @@ end
     return nothing
 end
 
-@views function recursive_unflatten!(
-        y::Vector{Vector{Vector{T}}}, x::AbstractArray) where {T}
+@views function recursive_flatten!(
+        y::Vector, x::Vector{Vector{T}}) where {T <: ForwardDiff.Dual}
+    i = 0
+    for xᵢ in x
+        copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
+        i += length(xᵢ)
+    end
+    return nothing
+end
+
+@views function recursive_unflatten!(y::Vector{Vector{Vector{T}}}, x::Vector) where {T}
     i = 0
     for yᵢ in y
         for yᵢᵢ in yᵢ
@@ -132,7 +157,7 @@ end
     end
     return nothing
 end
-@views function recursive_unflatten!(y::Vector{Vector{T}}, x::AbstractArray) where {T}
+@views function recursive_unflatten!(y::Vector{Vector{T}}, x::Vector) where {T}
     i = 0
     for yᵢ in y
         copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])
@@ -140,7 +165,7 @@ end
     end
     return nothing
 end
-@views function recursive_unflatten!(y::AbstractArray, x::AbstractArray{T}) where {T}
+@views function recursive_unflatten!(y::AbstractArray, x::Vector{T}) where {T}
     i = 0
     for yᵢ in y
         copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])

@@ -14,6 +14,8 @@
     zeta
     fixpnt
     alg
+    pt
+    bcresid_prototype
 
     residual
     zval
@@ -49,7 +51,7 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
     zeta = copy(alg.zeta)
 
     if prob.problem_type isa TwoPointBVProblem
-        return zeta, Vector{eltype{zeta}}(undef, 0)
+        return zeta, Vector{eltype(zeta)}(undef, 0)
     else
         filter!(x -> (x ≉ t₀) && (x ≉ t₁), fixpnt)
         return zeta, fixpnt
@@ -81,7 +83,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     yval = Vector{T}(undef, ny)
     gval = Vector{T}(undef, ncomp)
     lz = [similar(zval) for _ in 1:(n + 1)]
+    fill!.(lz, T(0))
     ly = [similar(yval) for _ in 1:(n + 1)]
+    fill!.(ly, T(0))
     dmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
     dmv = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
@@ -110,6 +114,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
         vecf, vecbc
     end
 
+    bcresid_prototype, _ = __get_bcresid_prototype(prob.problem_type, prob, u0)
+
     if prob.f.jac === nothing
         if iip
             jac = (df, u, p, t) -> begin
@@ -131,21 +137,51 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
         jac = prob.f.jac
     end
 
+    La = length(first(bcresid_prototype))
     if prob.f.bcjac === nothing
         if iip
-            bcjac = (df, u, p, t) -> begin
-                _du = similar(u)
-                prob.f.bc(_du, u, p, t)
-                _f = @closure (du, u) -> prob.f.bc(du, u, p, t)
-                ForwardDiff.jacobian!(df, _f, _du, u)
-                return
+            if prob.problem_type isa StandardBVProblem
+                bcjac = (df, u, p, t) -> begin
+                    _du = similar(u)
+                    prob.f.bc(_du, u, p, t)
+                    _f = @closure (du, u) -> prob.f.bc(du, u, p, t)
+                    ForwardDiff.jacobian!(df, _f, _du, u)
+                    return
+                end
+            else
+                bcjac = (df, u, p) -> begin
+                    _du = similar(u)
+                    @views first(bc)(_du[1:La], u, p)
+                    @views last(bc)(_du[(La + 1):end], u, p)
+                    _f = function (du, u)
+                        @views first(bc)(du[1:La], u, p)
+                        @views last(bc)(du[(La + 1):end], u, p)
+                    end
+                    ForwardDiff.jacobian!(df, _f, _du, u)
+                    return
+                end
             end
         else
-            bcjac = (df, u, p, t) -> begin
-                _du = prob.f.bc(u, p, t)
-                _f = @closure (du, u) -> (du .= prob.f.bc(u, p, t))
-                ForwardDiff.jacobian!(df, _f, _du, u)
-                return
+            if prob.problem_type isa StandardBVProblem
+                bcjac = (df, u, p, t) -> begin
+                    _du = prob.f.bc(u, p, t)
+                    _f = @closure (du, u) -> (du .= prob.f.bc(u, p, t))
+                    ForwardDiff.jacobian!(df, _f, _du, u)
+                    return
+                end
+            else
+                bcjac = (df, u, p) -> begin
+                    La = length(first(bcresid_prototype))
+                    _dua = first(prob.f.bc)(u, p)
+                    _dub = last(prob.f.bc)(u, p)
+                    _f = function (du, u)
+                        dua = first(prob.f.bc)(du[1:La], u, p)
+                        dub = last(prob.f.bc)(du[(La + 1):end], u, p)
+                        du .= vcat(dua, dub)
+                    end
+                    ForwardDiff.jacobian!(df, _f, vcat(_dua, _dub), u)
+                    return
+                end
             end
         end
     else
@@ -154,9 +190,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
 
     g = build_almost_block_diagonals(zeta, ncomp, mesh, T)
     cache = AscherCache{iip, T}(
-        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
-        fixpnt, alg, residual, zval, yval, gval, err, errest, g, w, v, lz, ly, dmz, delz,
-        deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, kwargs...))
+        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
+        zeta, fixpnt, alg, prob.problem_type, bcresid_prototype, residual,
+        zval, yval, gval, err, errest, g, w, v, lz, ly, dmz, delz, deldmz,
+        dqdmz, dmv, pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, kwargs...))
     return cache
 end
 
@@ -319,11 +356,11 @@ function __append_similar(x::AbstractVector{<:AbstractArray{T}}, n) where {T <: 
 end
 
 function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
-    (; alg) = cache
+    (; alg, pt) = cache
     loss = if iip
-        @closure (rhs, z, p) -> @views Φ!(cache, z, rhs)
+        @closure (rhs, z, p) -> @views Φ!(cache, z, rhs, pt)
     else
-        @closure (z, p) -> @views Φ(cache, z)
+        @closure (z, p) -> @views Φ(cache, z, pt)
     end
     lz = reduce(vcat, cache.z)
     sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :

@@ -1,7 +1,6 @@
 # Standard test BVDAE problem from the URI M. ASCHER and RAYMOND J. SPITERI paper
 @testitem "Test Ascher solver on example problem 1" begin
     using BoundaryValueDiffEqAscher, SciMLBase
-
     function f1!(du, u, p, t)
         e = 2.7
         du[1] = (1 + u[2] - sin(t)) * u[4] + cos(t)
@@ -22,25 +21,43 @@
     function bc1(u, p, t)
         return [u[1], u[3] - 1, u[2] - sin(1.0)]
     end
+    function bca1!(res, ua, p)
+        res[1] = ua[1]
+        res[2] = ua[3] - 1
+    end
+    function bcb1!(res, ub, p)
+        res[1] = ub[2] - sin(1.0)
+    end
+    function bca1(ua, p)
+        return [ua[1], ua[3] - 1]
+    end
+    function bcb1(ub, p)
+        return [ub[2] - sin(1.0)]
+    end
     function f1_analytic(u, p, t)
         return [sin(t), sin(t), 1.0, 0.0]
     end
     u01 = [0.0, 0.0, 0.0, 0.0]
     tspan1 = (0.0, 1.0)
     zeta1 = [0.0, 0.0, 1.0]
-    fun_iip = BVPFunction(f1!, bc1!, analytic = f1_analytic,
-        mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
-    fun_oop = BVPFunction(
-        f1, bc1, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
-    prob_iip = BVProblem(fun_iip, u01, tspan1)
-    prob_oop = BVProblem(fun_oop, u01, tspan1)
-    prob1Arr = [prob_iip, prob_oop]
+    fun_iip = ODEFunction(
+        f1!, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
+    fun_oop = ODEFunction(
+        f1, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
+    prob_iip = BVProblem(fun_iip, bc1!, u01, tspan1)
+    prob_oop = BVProblem(fun_oop, bc1, u01, tspan1)
+    tpprob_iip = TwoPointBVProblem(
+        fun_iip, (bca1!, bcb1!), u01, tspan1, bcresid_prototype = (zeros(2), zeros(1)))
+    tpprob_oop = TwoPointBVProblem(
+        fun_oop, (bca1, bcb1), u01, tspan1, bcresid_prototype = (zeros(2), zeros(1)))
+    prob1Arr = [prob_iip, prob_oop, tpprob_iip, tpprob_oop]
     SOLVERS = [alg(zeta = zeta1)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
-    for i in 1:2
-        for stage in (1, 2, 3, 4, 5, 6, 7)
+    for i in 1:4
+        for stage in (2, 3, 4, 5, 6, 7)
             sol = solve(prob1Arr[i], SOLVERS[stage], dt = 0.01)
             SciMLBase.successful_retcode(sol)
+            @test sol.errors[:final] < 1e-4
         end
     end
 end
@@ -88,6 +105,7 @@ end
         for stage in (1, 2, 3, 4, 5, 6, 7)
             sol = solve(prob2Arr[i], SOLVERS[stage], dt = 0.01)
             SciMLBase.successful_retcode(sol)
+            @test sol.errors
         end
     end
 end
