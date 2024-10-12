@@ -23,17 +23,9 @@ import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwr
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
                 SciMLBase
 
-include("types.jl")
-include("utils.jl")
-include("algorithms.jl")
-include("alg_utils.jl")
-include("sparse_jacobians.jl")
-include("default_nlsolve.jl")
-
-function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
-    cache = init(prob, alg, args...; kwargs...)
-    return solve!(cache)
-end
+include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
+using ..BoundaryValueDiffEqCore
+include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
 
 include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
 using ..BoundaryValueDiffEqMIRK
@@ -43,6 +35,8 @@ using ..BoundaryValueDiffEqFIRK
 
 include("../lib/BoundaryValueDiffEqShooting/src/BoundaryValueDiffEqShooting.jl")
 using ..BoundaryValueDiffEqShooting
+
+include("algorithms.jl")
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 

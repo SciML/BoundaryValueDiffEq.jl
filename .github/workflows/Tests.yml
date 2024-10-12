@@ -35,7 +35,9 @@ jobs:
           - "FIRK(NESTED)"
           - "ASCHER"
           - "WRAPPERS"
+        version: ['1.10']
     uses: "SciML/.github/.github/workflows/tests.yml@v1"
     with:
       group: "${{ matrix.group }}"
+      julia-version: ${{ matrix.version }}
     secrets: "inherit"
