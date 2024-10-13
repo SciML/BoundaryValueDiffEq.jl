@@ -1,4 +1,4 @@
-function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {iip, T}
+function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {iip, T}
     (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
@@ -10,7 +10,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rrhs = similar(zval)
+    rhs_bc = similar(zval)
 
     # zero the matrices to be computed
     fill!.(w, T(0))
@@ -30,7 +30,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
         while true
             (izeta > ncomp) && break
             (zeta[izeta] > xii + eps(T)) && break
-            rrhs[izeta] = -gval[izeta]
+            rhs_bc[izeta] = -gval[izeta]
             # build a row of a corresponding to a boundary point
             @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
             izeta = izeta + 1
@@ -64,7 +64,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
             while true
                 (izeta > ncomp) && break
                 # find rhs boundary value
-                rrhs[izeta] = -gval[izeta]
+                rhs_bc[izeta] = -gval[izeta]
                 # build a row of  a  corresponding to a boundary point
                 @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
                 izeta = izeta + 1
@@ -74,8 +74,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
 
     # assembly process completed
     # solve the linear system
-    # matrix decomposition
-
+    # ABD matrix decomposition
     @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
 
     # perform forward and backward substitution.
@@ -87,7 +86,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
         (i == n) && (izeta = izsave)
         while true
             (izet == izeta) && break
-            delz[i][izet] = rrhs[izet]
+            delz[i][izet] = rhs_bc[izet]
             izet = izet + 1
         end
         h = mesh_dt[i]
@@ -96,7 +95,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
         if i == n
             while true
                 (izet > ncomp) && break
-                delz[i + 1][izet] = rrhs[izet]
+                delz[i + 1][izet] = rhs_bc[izet]
                 izet = izet + 1
             end
         end
@@ -147,7 +146,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
     end
     recursive_flatten!(z, temp_z)
     residss = [r[1:ncomp] for r in resids]
-    recursive_flatten!(rhs, residss)
+    recursive_flatten!(res, residss)
 
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
@@ -155,7 +154,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::StandardBVProblem) where {i
     copyto!(cache.dmz, dmz)
 end
 
-function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {iip, T}
+function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {iip, T}
     (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, bcresid_prototype, residual, zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
@@ -168,7 +167,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {i
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rrhs = similar(zval)
+    rhs_bc = similar(zval)
 
     # zero the matrices to be computed
     fill!.(w, T(0))
@@ -189,7 +188,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {i
         while true
             (izeta > ncomp) && break
             (zeta[izeta] > xii + eps(T)) && break
-            rrhs[izeta] = -gval[izeta]
+            rhs_bc[izeta] = -gval[izeta]
             # build a row of a corresponding to a boundary point
             @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
             izeta = izeta + 1
@@ -224,7 +223,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {i
             while true
                 (izeta > ncomp) && break
                 # find rhs boundary value
-                rrhs[izeta] = -gval[izeta]
+                rhs_bc[izeta] = -gval[izeta]
                 # build a row of  a  corresponding to a boundary point
                 @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
                 izeta = izeta + 1
@@ -246,7 +245,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {i
         (i == n) && (izeta = izsave)
         while true
             (izet == izeta) && break
-            delz[i][izet] = rrhs[izet]
+            delz[i][izet] = rhs_bc[izet]
             izet = izet + 1
         end
         h = mesh_dt[i]
@@ -255,7 +254,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {i
         if i == n
             while true
                 (izet > ncomp) && break
-                delz[i + 1][izet] = rrhs[izet]
+                delz[i + 1][izet] = rhs_bc[izet]
                 izet = izet + 1
             end
         end
@@ -306,7 +305,7 @@ function Φ!(cache::AscherCache{iip, T}, z, rhs, pt::TwoPointBVProblem) where {i
     end
     recursive_flatten!(z, temp_z)
     residss = [r[1:ncomp] for r in resids]
-    recursive_flatten!(rhs, residss)
+    recursive_flatten!(res, residss)
 
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
@@ -330,7 +329,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rrhs = similar(zval)
+    rhs_bc = similar(zval)
 
     # zero the matrices to be computed
     fill!.(w, 0.0)
@@ -350,7 +349,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
         while true
             (izeta > ncomp) && break
             (zeta[izeta] > xii + eps(T)) && break
-            rrhs[izeta] = -gval[izeta]
+            rhs_bc[izeta] = -gval[izeta]
             # build a row of a corresponding to a boundary point
             @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
             izeta = izeta + 1
@@ -384,7 +383,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
             while true
                 (izeta > ncomp) && break
                 # find rhs boundary value
-                rrhs[izeta] = -gval[izeta]
+                rhs_bc[izeta] = -gval[izeta]
                 # build a row of  a  corresponding to a boundary point
                 @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
                 izeta = izeta + 1
@@ -406,7 +405,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
         (i == n) && (izeta = izsave)
         while true
             (izet == izeta) && break
-            delz[i][izet] = rrhs[izet]
+            delz[i][izet] = rhs_bc[izet]
             izet = izet + 1
         end
         h = mesh_dt[i]
@@ -415,7 +414,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
         if i == n
             while true
                 (izet > ncomp) && break
-                delz[i + 1][izet] = rrhs[izet]
+                delz[i + 1][izet] = rhs_bc[izet]
                 izet = izet + 1
             end
         end
@@ -487,7 +486,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rrhs = similar(zval)
+    rhs_bc = similar(zval)
 
     # zero the matrices to be computed
     fill!.(w, 0.0)
@@ -510,7 +509,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
         while true
             (izeta > ncomp) && break
             (zeta[izeta] > xii + eps(T)) && break
-            rrhs[izeta] = -gval[izeta]
+            rhs_bc[izeta] = -gval[izeta]
             # build a row of a corresponding to a boundary point
             @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
             izeta = izeta + 1
@@ -546,7 +545,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
             while true
                 (izeta > ncomp) && break
                 # find rhs boundary value
-                rrhs[izeta] = -gval[izeta]
+                rhs_bc[izeta] = -gval[izeta]
                 # build a row of  a  corresponding to a boundary point
                 @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
                 izeta = izeta + 1
@@ -568,7 +567,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
         (i == n) && (izeta = izsave)
         while true
             (izet == izeta) && break
-            delz[i][izet] = rrhs[izet]
+            delz[i][izet] = rhs_bc[izet]
             izet = izet + 1
         end
         h = mesh_dt[i]
@@ -577,7 +576,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
         if i == n
             while true
                 (izet > ncomp) && break
-                delz[i + 1][izet] = rrhs[izet]
+                delz[i + 1][izet] = rhs_bc[izet]
                 izet = izet + 1
             end
         end

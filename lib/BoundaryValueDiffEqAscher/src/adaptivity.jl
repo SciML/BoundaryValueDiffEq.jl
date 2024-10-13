@@ -1,7 +1,7 @@
 # mesh_selector refine nd redistribute according to the initial mesh
 function mesh_selector!(
         cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt, abstol) where {iip, T}
-    (; k, ncomp, TU) = cache
+    (; k, ncomp) = cache
     # weights for mesh selection
     cnsts2 = [1.25e-1, 2.604e-3, 8.019e-3, 2.170e-5, 7.453e-5, 5.208e-4, 9.689e-8,
         3.689e-7, 3.100e-6, 2.451e-5, 2.691e-10, 1.120e-9, 1.076e-8, 9.405e-8,
@@ -97,6 +97,7 @@ function redistribute!(cache::AscherCache{iip, T}, nold::I, naccum::I,
     accl = T(0)
     lold = 2
     lcarry = 0
+    lnew = 0
     resize!(mesh, n + 1)
     mesh[1] = first(prob.tspan)
     mesh[n + 1] = last(prob.tspan)
@@ -138,7 +139,7 @@ function redistribute!(cache::AscherCache{iip, T}, nold::I, naccum::I,
 end
 
 function halve_mesh!(cache::AscherCache)
-    (; mesh, mesh_dt, dmz, valstr) = cache
+    (; mesh, mesh_dt, valstr) = cache
     n = length(mesh) - 1
     old_mesh = copy(mesh)
     for i in 1:n
@@ -167,7 +168,7 @@ end
 # determine the error estimate and test to see if the
 # error tolerances are satisfied
 function error_estimate!(cache::AscherCache)
-    (; k, valstr, TU, mesh, mesh_dt, error, error_norm) = cache
+    (; k, valstr, mesh, mesh_dt, error) = cache
     # weights for extrapolation error estimate
     cnsts1 = [0.25e0, 0.625e-1, 7.2169e-2, 1.8342e-2, 1.9065e-2, 5.8190e-2, 5.4658e-3,
         5.3370e-3, 1.8890e-2, 2.7792e-2, 1.6095e-3, 1.4964e-3, 7.5938e-3, 5.7573e-3,
@@ -198,9 +199,7 @@ function error_estimate!(cache::AscherCache)
                     abs.(valstr[i][2] .-
                          (isodd(i) ? valstr[Int((i + 1) / 2)][1] : valstr[Int(i / 2)][3]))
     end
-    error_norm .= maximum(reduce(hcat, error), dims = 2)
-
-    return error_norm
+    return maximum(reduce(hcat, error), dims = 2)
 end
 
 # determine highest order (piecewise constant) derivatives

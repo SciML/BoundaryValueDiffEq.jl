@@ -183,3 +183,53 @@ Takes the input initial guess and returns the mesh.
 @inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = u₀.t
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = u₀.t
+
+@inline function construct_bc_jac(prob::BVProblem, _, pt::StandardBVProblem)
+    if isinplace(prob)
+        bcjac = (df, u, p, t) -> begin
+            _du = similar(u)
+            prob.f.bc(_du, u, p, t)
+            _f = @closure (du, u) -> prob.f.bc(du, u, p, t)
+            ForwardDiff.jacobian!(df, _f, _du, u)
+            return
+        end
+    else
+        bcjac = (df, u, p, t) -> begin
+            _du = prob.f.bc(u, p, t)
+            _f = @closure (du, u) -> (du .= prob.f.bc(u, p, t))
+            ForwardDiff.jacobian!(df, _f, _du, u)
+            return
+        end
+    end
+    return bcjac
+end
+
+@inline function construct_bc_jac(prob::BVProblem, bcresid_prototype, pt::TwoPointBVProblem)
+    if isinplace(prob)
+        bcjac = (df, u, p) -> begin
+            _du = similar(u)
+            La = length(first(bcresid_prototype))
+            @views first(bc)(_du[1:La], u, p)
+            @views last(bc)(_du[(La + 1):end], u, p)
+            _f = function (du, u)
+                @views first(bc)(du[1:La], u, p)
+                @views last(bc)(du[(La + 1):end], u, p)
+            end
+            ForwardDiff.jacobian!(df, _f, _du, u)
+            return
+        end
+    else
+        bcjac = (df, u, p) -> begin
+            La = length(first(bcresid_prototype))
+            _dua = first(prob.f.bc)(u, p)
+            _dub = last(prob.f.bc)(u, p)
+            _f = function (du, u)
+                dua = first(prob.f.bc)(du[1:La], u, p)
+                dub = last(prob.f.bc)(du[(La + 1):end], u, p)
+                du .= vcat(dua, dub)
+            end
+            ForwardDiff.jacobian!(df, _f, vcat(_dua, _dub), u)
+            return
+        end
+    end
+end

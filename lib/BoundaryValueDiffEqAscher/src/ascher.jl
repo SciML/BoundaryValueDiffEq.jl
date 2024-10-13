@@ -23,7 +23,6 @@
     gval
 
     error
-    error_norm
 
     g
     w
@@ -86,8 +85,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     fill!.(lz, T(0))
     ly = [similar(yval) for _ in 1:(n + 1)]
     fill!.(ly, T(0))
-    dmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
-    dmv = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
+    dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
+    dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
     dqdmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
@@ -98,7 +97,6 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     valst = [[similar(zval) for _ in 1:4] for _ in 1:(2 * n)]
 
     err = [similar(zval) for _ in 1:n]
-    errest = Vector{T}(undef, ncomp)
 
     iip = isinplace(prob)
 
@@ -137,53 +135,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
         jac = prob.f.jac
     end
 
-    La = length(first(bcresid_prototype))
     if prob.f.bcjac === nothing
-        if iip
-            if prob.problem_type isa StandardBVProblem
-                bcjac = (df, u, p, t) -> begin
-                    _du = similar(u)
-                    prob.f.bc(_du, u, p, t)
-                    _f = @closure (du, u) -> prob.f.bc(du, u, p, t)
-                    ForwardDiff.jacobian!(df, _f, _du, u)
-                    return
-                end
-            else
-                bcjac = (df, u, p) -> begin
-                    _du = similar(u)
-                    @views first(bc)(_du[1:La], u, p)
-                    @views last(bc)(_du[(La + 1):end], u, p)
-                    _f = function (du, u)
-                        @views first(bc)(du[1:La], u, p)
-                        @views last(bc)(du[(La + 1):end], u, p)
-                    end
-                    ForwardDiff.jacobian!(df, _f, _du, u)
-                    return
-                end
-            end
-        else
-            if prob.problem_type isa StandardBVProblem
-                bcjac = (df, u, p, t) -> begin
-                    _du = prob.f.bc(u, p, t)
-                    _f = @closure (du, u) -> (du .= prob.f.bc(u, p, t))
-                    ForwardDiff.jacobian!(df, _f, _du, u)
-                    return
-                end
-            else
-                bcjac = (df, u, p) -> begin
-                    La = length(first(bcresid_prototype))
-                    _dua = first(prob.f.bc)(u, p)
-                    _dub = last(prob.f.bc)(u, p)
-                    _f = function (du, u)
-                        dua = first(prob.f.bc)(du[1:La], u, p)
-                        dub = last(prob.f.bc)(du[(La + 1):end], u, p)
-                        du .= vcat(dua, dub)
-                    end
-                    ForwardDiff.jacobian!(df, _f, vcat(_dua, _dub), u)
-                    return
-                end
-            end
-        end
+        bcjac = construct_bc_jac(prob, bcresid_prototype, prob.problem_type)
     else
         bcjac = prob.f.bcjac
     end
@@ -192,8 +145,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     cache = AscherCache{iip, T}(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
         zeta, fixpnt, alg, prob.problem_type, bcresid_prototype, residual,
-        zval, yval, gval, err, errest, g, w, v, lz, ly, dmz, delz, deldmz,
-        dqdmz, dmv, pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, kwargs...))
+        zval, yval, gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz,
+        dmv, pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, kwargs...))
     return cache
 end
 
@@ -226,8 +179,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     info::ReturnCode.T = ReturnCode.Success
     nlprob::NonlinearProblem = __construct_nlproblem(cache)
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    nlsol = __solve(
-        nlprob, nlsolve_alg; abstol, verbose = true, kwargs..., nlsolve_kwargs...)
+    nlsol = __solve(nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
@@ -239,6 +191,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         @views approx(cache, cache.mesh[i], z[i], y[i])
     end
 
+    # Preserve dmz, and mesh for the mesh selection
     dmz = copy(cache.dmz)
     mesh = copy(cache.mesh)
     mesh_dt = copy(cache.mesh_dt)
@@ -254,8 +207,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         __expand_cache_for_error!(cache)
 
         _nlprob = __construct_nlproblem(cache)
-        nlsol = __solve(
-            _nlprob, nlsolve_alg; abstol, verbose = true, kwargs..., nlsolve_kwargs...)
+        nlsol = __solve(_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
 
         error_norm = error_estimate!(cache)
         if norm(error_norm) > abstol
@@ -358,7 +310,7 @@ end
 function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     (; alg, pt) = cache
     loss = if iip
-        @closure (rhs, z, p) -> @views Φ!(cache, z, rhs, pt)
+        @closure (res, z, p) -> @views Φ!(cache, z, res, pt)
     else
         @closure (z, p) -> @views Φ(cache, z, pt)
     end
