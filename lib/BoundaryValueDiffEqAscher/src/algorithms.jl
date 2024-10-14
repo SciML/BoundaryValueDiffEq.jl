@@ -16,6 +16,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+          - `zeta`: side condition points, should always be provided.
 
         !!! note
             For type-stability, the chunksizes for ForwardDiff ADTypes in
