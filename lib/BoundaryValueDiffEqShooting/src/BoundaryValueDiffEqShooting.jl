@@ -51,5 +51,6 @@ include("multiple_shooting.jl")
 include("sparse_jacobians.jl")
 
 export Shooting, MultipleShooting
+export BVPJacobianAlgorithm
 
 end # module BoundaryValueDiffEqShooting
