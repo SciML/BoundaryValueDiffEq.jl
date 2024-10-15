@@ -155,6 +155,5 @@ include("sparse_jacobians.jl")
 end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
-export BVPJacobianAlgorithm
 
 end

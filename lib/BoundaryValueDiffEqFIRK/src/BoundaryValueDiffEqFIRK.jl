@@ -267,6 +267,5 @@ export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
-export BVPJacobianAlgorithm
 
 end
