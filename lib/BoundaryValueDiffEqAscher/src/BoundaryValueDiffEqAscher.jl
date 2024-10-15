@@ -1,23 +1,25 @@
 module BoundaryValueDiffEqAscher
 
 using ADTypes
-using LinearAlgebra
 using AlmostBlockDiagonals
-using SciMLBase
-using NonlinearSolve
-using ForwardDiff
+using BoundaryValueDiffEqCore
+using ConcreteStructs
 using FastClosures
+using ForwardDiff
+using LinearAlgebra
+using NonlinearSolve
+using PreallocationTools
 using RecursiveArrayTools
 using Reexport
+using SciMLBase
 using Setfield
-using ConcreteStructs
-using PreallocationTools
 
-import BoundaryValueDiffEq.BVPJacobianAlgorithm
-import BoundaryValueDiffEq: __extract_problem_details, concrete_jacobian_algorithm, __Fix3,
-                            __concrete_nonlinearsolve_algorithm, __unsafe_nonlinearfunction,
-                            BoundaryValueDiffEqAlgorithm, __sparse_jacobian_cache, __vec,
-                            __vec_f, __vec_f!, __vec_bc, __vec_bc!
+import BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
+                                concrete_jacobian_algorithm, __Fix3,
+                                __concrete_nonlinearsolve_algorithm,
+                                __unsafe_nonlinearfunction, BoundaryValueDiffEqAlgorithm,
+                                __sparse_jacobian_cache, __vec, __vec_f, __vec_f!, __vec_bc,
+                                __vec_bc!
 
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
