@@ -2,7 +2,8 @@ module BoundaryValueDiffEq
 
 import PrecompileTools: @compile_workload, @setup_workload
 
-using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, DiffEqBase, ForwardDiff,
+using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, BoundaryValueDiffEqFIRK,
+      BoundaryValueDiffEqMIRK, BoundaryValueDiffEqShooting, DiffEqBase, ForwardDiff,
       LinearAlgebra, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
       SparseDiffTools
 
@@ -24,15 +25,6 @@ import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwr
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
                 SciMLBase
-
-include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
-using ..BoundaryValueDiffEqMIRK
-
-include("../lib/BoundaryValueDiffEqFIRK/src/BoundaryValueDiffEqFIRK.jl")
-using ..BoundaryValueDiffEqFIRK
-
-include("../lib/BoundaryValueDiffEqShooting/src/BoundaryValueDiffEqShooting.jl")
-using ..BoundaryValueDiffEqShooting
 
 include("algorithms.jl")
 
