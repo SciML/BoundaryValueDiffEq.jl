@@ -2,8 +2,10 @@ module BoundaryValueDiffEq
 
 import PrecompileTools: @compile_workload, @setup_workload
 
-using ADTypes, Adapt, ArrayInterface, DiffEqBase, ForwardDiff, LinearAlgebra, Preferences,
-      RecursiveArrayTools, Reexport, SciMLBase, Setfield, SparseDiffTools
+using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, BoundaryValueDiffEqFIRK,
+      BoundaryValueDiffEqMIRK, BoundaryValueDiffEqShooting, DiffEqBase, ForwardDiff,
+      LinearAlgebra, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+      SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -12,6 +14,7 @@ using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
 
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
+import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
 import FastClosures: @closure
@@ -22,19 +25,6 @@ import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwr
 
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
                 SciMLBase
-
-include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
-using ..BoundaryValueDiffEqCore
-include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
-
-include("../lib/BoundaryValueDiffEqMIRK/src/BoundaryValueDiffEqMIRK.jl")
-using ..BoundaryValueDiffEqMIRK
-
-include("../lib/BoundaryValueDiffEqFIRK/src/BoundaryValueDiffEqFIRK.jl")
-using ..BoundaryValueDiffEqFIRK
-
-include("../lib/BoundaryValueDiffEqShooting/src/BoundaryValueDiffEqShooting.jl")
-using ..BoundaryValueDiffEqShooting
 
 include("algorithms.jl")
 
