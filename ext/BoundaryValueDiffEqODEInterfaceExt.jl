@@ -7,7 +7,7 @@ import BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
                                 __initial_guess_length, __extract_mesh,
                                 __flatten_initial_guess, __get_bcresid_prototype,
-                                __has_initial_guess
+                                __has_initial_guess, __initial_guess
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
@@ -59,12 +59,12 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
             obj, no_odes, no_left_bc, mesh, u0, eltype(u0)[], alg.max_num_subintervals)
     end
 
-    bvp2m_f = if isinplace(prob)
+    bvp2m_f = if SciMLBase.isinplace(prob)
         @closure (t, u, du) -> prob.f(reshape(du, u0_size), reshape(u, u0_size), prob.p, t)
     else
         @closure (t, u, du) -> du .= vec(prob.f(reshape(u, u0_size), prob.p, t))
     end
-    bvp2m_bc = if isinplace(prob)
+    bvp2m_bc = if SciMLBase.isinplace(prob)
         @closure (ya, yb, bca, bcb) -> begin
             prob.f.bc[1](reshape(bca, left_bc_size), reshape(ya, u0_size), prob.p)
             prob.f.bc[2](reshape(bcb, right_bc_size), reshape(yb, u0_size), prob.p)
@@ -137,13 +137,13 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
         OPT_RTOL => reltol, OPT_MAXSTEPS => maxiters, OPT_BVPCLASS => alg.bvpclass,
         OPT_SOLMETHOD => alg.sol_method, OPT_RHS_CALLMODE => RHS_CALL_INSITU)
 
-    bvpsol_f = if isinplace(prob)
+    bvpsol_f = if SciMLBase.isinplace(prob)
         @closure (t, u, du) -> prob.f(reshape(du, u0_size), reshape(u, u0_size), prob.p, t)
     else
         @closure (t, u, du) -> du .= vec(prob.f(reshape(u, u0_size), prob.p, t))
     end
 
-    bvpsol_bc = if isinplace(prob)
+    bvpsol_bc = if SciMLBase.isinplace(prob)
         @closure (ya, yb, r) -> begin
             left_bc = reshape(@view(r[1:no_left_bc]), left_bc_size)
             right_bc = reshape(@view(r[(no_left_bc + 1):end]), right_bc_size)
