@@ -6,7 +6,8 @@ using BoundaryValueDiffEq, BoundaryValueDiffEqCore, SciMLBase, ODEInterface,
 import BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
                                 __initial_guess_length, __extract_mesh,
-                                __flatten_initial_guess, __get_bcresid_prototype
+                                __flatten_initial_guess, __get_bcresid_prototype,
+                                __has_initial_guess
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
