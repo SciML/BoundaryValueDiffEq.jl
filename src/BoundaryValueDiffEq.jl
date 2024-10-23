@@ -26,7 +26,7 @@ import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwr
 @reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
                 SciMLBase
 
-include("algorithms.jl")
+include("extension_algs.jl")
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
 

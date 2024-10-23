@@ -1,13 +1,13 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
-using SciMLBase, BoundaryValueDiffEq, ODEInterface, RecursiveArrayTools, ConcreteStructs,
-      Setfield
-using PreallocationTools
+using BoundaryValueDiffEq, BoundaryValueDiffEqCore, SciMLBase, ODEInterface,
+      RecursiveArrayTools, ConcreteStructs, Setfield, PreallocationTools
+
+import BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
+import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
+                                __initial_guess_length, __extract_mesh,
+                                __flatten_initial_guess, __get_bcresid_prototype
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-include("../lib/BoundaryValueDiffEqCore/src/types.jl")
-include("../lib/BoundaryValueDiffEqCore/src/utils.jl")
-include("../lib/BoundaryValueDiffEqCore/src/algorithms.jl")
-include("../lib/BoundaryValueDiffEqCore/src/BoundaryValueDiffEqCore.jl")
 import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
                      OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
                      OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
