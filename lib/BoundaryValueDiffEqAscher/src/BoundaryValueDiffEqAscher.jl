@@ -19,7 +19,7 @@ import BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
                                 __concrete_nonlinearsolve_algorithm,
                                 __unsafe_nonlinearfunction, BoundaryValueDiffEqAlgorithm,
                                 __sparse_jacobian_cache, __vec, __vec_f, __vec_f!, __vec_bc,
-                                __vec_bc!
+                                __vec_bc!, __extract_mesh
 
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
