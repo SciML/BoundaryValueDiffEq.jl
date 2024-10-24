@@ -2,11 +2,11 @@ function constructAscher(alg::Ascher1, ::Type{T}) where {T}
     # initialization
     k = alg_stage(alg)
     coef = zeros(k, k) + I
+    b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
 
-    # Gauss Legendre collocation points
-    rho = [1//2]
-
+    # collocation points
+    rho = [0.5]
     # find runge-kutta coefficients b, acol
     for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
@@ -14,16 +14,15 @@ function constructAscher(alg::Ascher1, ::Type{T}) where {T}
     for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
-    b = [1]
+    @views rkbas!(1.0, coef, k, b)
     return AscherTableau(rho, coef, b, acol)
 end
 function constructAscher(alg::Ascher2, ::Type{T}) where {T}
     k = alg_stage(alg)
     coef = zeros(k, k) + I
+    b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-
-    # Gauss Legendre collocation points
-    rho = [1//2 - sqrt(3)/6, 1//2 + sqrt(3)/6]
+    rho = [0.21132486540518713447, 0.78867513459481286553]
 
     # find runge-kutta coefficients b, acol
     for j in 1:k
@@ -32,16 +31,15 @@ function constructAscher(alg::Ascher2, ::Type{T}) where {T}
     for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
-    b = [1//2, 1//2]
+    @views rkbas!(1.0, coef, k, b)
     return AscherTableau(rho, coef, b, acol)
 end
 function constructAscher(alg::Ascher3, ::Type{T}) where {T}
     k = alg_stage(alg)
     coef = zeros(k, k) + I
+    b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-
-    # Gauss Legendre collocation points
-    rho = [1//2 - sqrt(15)/10, 1//2, 1//2 + sqrt(15)/10]
+    rho = [0.11270166537925829786, 0.5, 0.88729833462074170214]
 
     # find runge-kutta coefficients b, acol
     for j in 1:k
@@ -50,7 +48,7 @@ function constructAscher(alg::Ascher3, ::Type{T}) where {T}
     for i in 1:k
         @views rkbas!(rho[i], coef, k, acol[:, i])
     end
-    b = [5//18, 4//9, 5//18]
+    @views rkbas!(1.0, coef, k, b)
     return AscherTableau(rho, coef, b, acol)
 end
 function constructAscher(alg::Ascher4, ::Type{T}) where {T}
@@ -58,8 +56,6 @@ function constructAscher(alg::Ascher4, ::Type{T}) where {T}
     coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-
-    # Gauss Legendre collocation points
     rho = [0.06943184420297371373, 0.33000947820757187134,
         0.66999052179242812866, 0.93056815579702628627]
 
@@ -78,8 +74,6 @@ function constructAscher(alg::Ascher5, ::Type{T}) where {T}
     coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-
-    # Gauss Legendre collocation points
     rho = [0.04691007703066801815, 0.23076534494715844614, 0.5,
         0.76923465505284155386, 0.95308992296933198185]
 
@@ -98,8 +92,6 @@ function constructAscher(alg::Ascher6, ::Type{T}) where {T}
     coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-
-    # Gauss Legendre collocation points
     rho = [0.03376524289842397497, 0.16939530676686775923, 0.38069040695840154764,
         0.61930959304159845236, 0.83060469323313224077, 0.96623475710157602503]
 
@@ -118,8 +110,6 @@ function constructAscher(alg::Ascher7, ::Type{T}) where {T}
     coef = zeros(k, k) + I
     b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
-
-    # Gauss Legendre collocation points
     rho = [0.02544600438286209743, 0.12923440720030276996, 0.29707742431130140792, 0.5,
         0.70292257568869859208, 0.87076559279969723004, 0.97455399561713790257]
     # find runge-kutta coefficients b, acol

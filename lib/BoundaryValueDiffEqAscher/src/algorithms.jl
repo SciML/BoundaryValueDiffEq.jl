@@ -7,7 +7,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
         """
             $($alg)(; nlsolve = NewtonRaphson(), max_num_subintervals = 3000)
 
-        $($stage)th stage Gauss Legendre collocation methods for boundary value differential-algebraic equations.
+        $($stage)th stage Selective Projected Implicit Runge Kutta method.
 
         ## Keyword Arguments
 
