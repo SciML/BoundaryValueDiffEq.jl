@@ -82,15 +82,15 @@
         AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
         AutoSparse(AutoForwardDiff(; chunksize = 6)))
         nlsolve = TrustRegion(; autodiff)
+        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
 
-        sol = solve(
-            bvp, Shooting(DP5(); nlsolve); force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
-            verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
+        sol = solve(bvp, Shooting(DP5(); nlsolve, jac_alg); force_dtmin = true,
+            abstol = 1e-6, reltol = 1e-6, verbose = false,
+            odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1e-6
 
-        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
         sol = solve(bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1e-6, reltol = 1e-6,
             verbose = false, odesolve_kwargs = (abstol = 1e-6, reltol = 1e-3))
