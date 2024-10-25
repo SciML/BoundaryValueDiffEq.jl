@@ -38,7 +38,6 @@ end
 function constructAscher(alg::Ascher3, ::Type{T}) where {T}
     k = alg_stage(alg)
     coef = zeros(k, k) + I
-    b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
 
     # Gauss Legendre collocation points
