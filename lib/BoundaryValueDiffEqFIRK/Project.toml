@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqFIRK"
 uuid = "85d9eb09-370e-4000-bb32-543851f73618"
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -42,7 +42,7 @@ DiffEqDevTools = "2.44"
 FastAlmostBandedMatrices = "0.1.1"
 FastClosures = "0.3"
 ForwardDiff = "0.10.36"
-JET = "0.8"
+JET = "0.9.12"
 LineSearch = "0.1.3"
 LineSearches = "7.3.0"
 LinearAlgebra = "1.10"
