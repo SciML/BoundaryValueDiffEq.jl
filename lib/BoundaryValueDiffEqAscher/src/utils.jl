@@ -114,7 +114,7 @@ function __substitute!(
 end
 
 @inline function __muladd!(a, x, y)
-    y .= muladd(a, x, y)
+    y .= muladd.(a, x, y)
 end
 
 @views function recursive_flatten!(y::Vector, x::Vector{Vector{Vector{T}}}) where {T}

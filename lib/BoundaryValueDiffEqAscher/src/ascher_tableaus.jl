@@ -2,7 +2,6 @@ function constructAscher(alg::Ascher1, ::Type{T}) where {T}
     # initialization
     k = alg_stage(alg)
     coef = zeros(k, k) + I
-    b = Vector{T}(undef, k)
     acol = Matrix{T}(undef, k, k)
 
     # collocation points
