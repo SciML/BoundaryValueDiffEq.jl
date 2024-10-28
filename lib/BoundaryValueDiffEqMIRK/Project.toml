@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqMIRK"
 uuid = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
-version = "1.0.0"
+version = "1.0.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -48,7 +48,7 @@ LineSearches = "7.3.0"
 LinearAlgebra = "1.10"
 LinearSolve = "2.21"
 Logging = "1.10"
-NonlinearSolve = "3.8.1"
+NonlinearSolve = "3.15.1"
 OrdinaryDiffEq = "6.89.0"
 PreallocationTools = "0.4.24"
 PrecompileTools = "1.2"

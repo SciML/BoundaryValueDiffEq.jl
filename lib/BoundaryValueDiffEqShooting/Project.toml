@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqShooting"
 uuid = "ed55bfe0-3725-4db6-871e-a1dc9f42a757"
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -49,7 +49,7 @@ LineSearches = "7.3.0"
 LinearAlgebra = "1.10"
 LinearSolve = "2.21"
 Logging = "1.10"
-NonlinearSolve = "3.8.1"
+NonlinearSolve = "3.15.1"
 ODEInterface = "0.5"
 OrdinaryDiffEq = "6.89.0"
 Pkg = "1.10.0"
