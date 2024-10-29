@@ -82,7 +82,6 @@
         AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
         AutoSparse(AutoForwardDiff(; chunksize = 6)))
         nlsolve = TrustRegion(; autodiff)
-
         jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
 
         sol = solve(bvp, Shooting(DP5(); nlsolve, jac_alg); force_dtmin = true,
