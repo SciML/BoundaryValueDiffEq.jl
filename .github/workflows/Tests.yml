@@ -33,6 +33,7 @@ jobs:
           - "pre"
         group:
           - "MIRK"
+          - "MIRKN"
           - "MISC"
           - "SHOOTING"
           - "FIRK(EXPANDED)"
