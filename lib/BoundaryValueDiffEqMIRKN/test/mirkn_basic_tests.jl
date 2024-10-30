@@ -1,11 +1,11 @@
-using BoundaryValueDiffEq
+@testitem "Example problem from paper" begin
+    using BoundaryValueDiffEqMIRKN
 
-for order in (4, 6)
-    s = Symbol("MIRKN$(order)")
-    @eval mirkn_solver(::Val{$order}, args...; kwargs...) = $(s)(args...; kwargs...)
-end
+    for order in (4, 6)
+        s = Symbol("MIRKN$(order)")
+        @eval mirkn_solver(::Val{$order}, args...; kwargs...) = $(s)(args...; kwargs...)
+    end
 
-@testitem "Exampe problem from paper" begin
     function test!(ddu, du, u, p, t)
         ϵ = 0.1
         ddu[1] = u[2]
