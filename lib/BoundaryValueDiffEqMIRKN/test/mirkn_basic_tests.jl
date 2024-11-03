@@ -127,6 +127,7 @@ end
         TwoPointSecondOrderBVProblem(bvpf4, u0, tspan)]
     dts = 1 .// 2 .^ (3:-1:1)
     @testset "Problem: $i" for i in (1, 2, 3, 4)
+        prob = probArr[i]
         @testset "MIRKN$order" for order in (4, 6)
             sim = test_convergence(
                 dts, prob, mirkn_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
