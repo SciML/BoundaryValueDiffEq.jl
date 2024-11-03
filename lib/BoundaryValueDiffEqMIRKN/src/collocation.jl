@@ -63,7 +63,7 @@ end
             __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], dtᵢ^2, T(1))
             __maybe_matmul!(tmpd, K[:, 1:(r - 1)], xp[r, 1:(r - 1)], dtᵢ, T(1))
 
-            K[:, r] = f(tmpd, tmp, p, mesh[i] + c[r] * dtᵢ)
+            K[:, r] .= f(tmpd, tmp, p, mesh[i] + c[r] * dtᵢ)
         end
         @. residual[i] = yᵢ₊₁ - yᵢ - dtᵢ * yₗ₊ᵢ
         __maybe_matmul!(residual[i], K[:, 1:stage], b[1:stage], -dtᵢ^2, T(1))

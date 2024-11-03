@@ -64,7 +64,7 @@
         end
     end
 end
-#=
+
 @testitem "Convergence on Linear" begin
     using LinearAlgebra, DiffEqDevTools
 
@@ -79,8 +79,7 @@ end
         res[2] = u[end][1]
     end
     function bc(du, u, p, t)
-        return [u[1][1] - 1,
-            u[end][1]]
+        return [u[1][1] - 1, u[end][1]]
     end
     function bc_a!(res, du, u, p)
         res[1] = u[1] - 1
@@ -96,21 +95,37 @@ end
     end
     u0 = [1.0]
     tspan = (0.0, 1.0)
-    odef1 = ODEFunction(f!,
-    analytic = (du, u0, p, t) -> [(exp(-t) - exp(t - 2)) / (1 - exp(-2)),
-        (-exp(-t) - exp(t - 2)) / (1 - exp(-2))])
-    odef2 = ODEFunction(f,
-    analytic = (u0, p, t) -> [(exp(-t) - exp(t - 2)) / (1 - exp(-2)),
-        (-exp(-t) - exp(t - 2)) / (1 - exp(-2))])
-    probArr = [SecondOrderBVProblem(odef1, bc!, u0, tspan),
-        SecondOrderBVProblem(odef2, bc, u0, tspan),
-        TwoPointSecondOrderBVProblem(odef1, (bc_a!, bc_b!), u0, tspan),
-        TwoPointSecondOrderBVProblem(odef2, (bc_a, bc_b), u0, tspan)]
+    testTol = 0.2
+    bvpf1 = DynamicalBVPFunction(f!,
+        bc!,
+        analytic = (u0, p, t) -> [
+            (exp(-t) - exp(t - 2)) / (1 - exp(-2)), (-exp(-t) - exp(t - 2)) / (1 - exp(-2))])
+    bvpf2 = DynamicalBVPFunction(f,
+        bc,
+        analytic = (u0, p, t) -> [
+            (exp(-t) - exp(t - 2)) / (1 - exp(-2)), (-exp(-t) - exp(t - 2)) / (1 - exp(-2))])
+    bvpf3 = DynamicalBVPFunction(f!,
+        (bc_a!, bc_b!),
+        analytic = (u0, p, t) -> [
+            (exp(-t) - exp(t - 2)) / (1 - exp(-2)), (-exp(-t) - exp(t - 2)) / (1 - exp(-2))],
+        bcresid_prototype = (zeros(1), zeros(1)),
+        twopoint = Val(true))
+    bvpf4 = DynamicalBVPFunction(f,
+        (bc_a, bc_b),
+        analytic = (u0, p, t) -> [
+            (exp(-t) - exp(t - 2)) / (1 - exp(-2)), (-exp(-t) - exp(t - 2)) / (1 - exp(-2))],
+        bcresid_prototype = (zeros(1), zeros(1)),
+        twopoint = Val(true))
+    probArr = [
+        SecondOrderBVProblem(bvpf1, u0, tspan), SecondOrderBVProblem(bvpf2, u0, tspan),
+        TwoPointSecondOrderBVProblem(bvpf3, u0, tspan),
+        TwoPointSecondOrderBVProblem(bvpf4, u0, tspan)]
     dts = 1 .// 2 .^ (3:-1:1)
-    @testset "MIRKN$order" for order in (4, 6)
-        sim = test_convergence(
-                    dts, prob, mirkn_solver; abstol = 1e-8, reltol = 1e-8)
-        @test sim.errors[:final]≈order atol=testTol
+    @testset "Problem: $i" for i in (1, 2, 3, 4)
+        @testset "MIRKN$order" for order in (4, 6)
+            sim = test_convergence(
+                dts, prob, mirkn_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
     end
 end
-=#
