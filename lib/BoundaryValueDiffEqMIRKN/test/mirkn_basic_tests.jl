@@ -68,6 +68,11 @@ end
 @testitem "Convergence on Linear" begin
     using LinearAlgebra, DiffEqDevTools
 
+    for order in (4, 6)
+        s = Symbol("MIRKN$(order)")
+        @eval mirkn_solver(::Val{$order}, args...; kwargs...) = $(s)(args...; kwargs...)
+    end
+
     function f!(ddu, du, u, p, t)
         ddu[1] = u[1]
     end
