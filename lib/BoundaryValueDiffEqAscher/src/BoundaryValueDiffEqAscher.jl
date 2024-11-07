@@ -7,7 +7,6 @@ using ConcreteStructs
 using FastClosures
 using ForwardDiff
 using LinearAlgebra
-using NonlinearSolveFirstOrder
 using PreallocationTools
 using RecursiveArrayTools
 using Reexport
