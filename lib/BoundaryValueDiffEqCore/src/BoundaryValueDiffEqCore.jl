@@ -12,7 +12,7 @@ using SparseArrays
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, fast_scalar_indexing
 import ConcreteStructs: @concrete
-using DiffEqBase: solve
+import DiffEqBase: solve
 import ForwardDiff: ForwardDiff, pickchunksize
 import Logging
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
