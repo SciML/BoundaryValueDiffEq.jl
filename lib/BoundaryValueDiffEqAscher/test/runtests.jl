@@ -1,4 +1,4 @@
-using ReTestItems, BoundaryValueDiffEqAscher, Hwloc, InteractiveUtils, Pkg
+using ReTestItems, BoundaryValueDiffEqAscher, Hwloc, InteractiveUtils
 
 @info sprint(InteractiveUtils.versioninfo)
 

@@ -87,6 +87,7 @@ Hwloc = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+NonlinearSolveFirstOrder = "5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
 ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -97,4 +98,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "JET", "LinearSolve", "ODEInterface", "OrdinaryDiffEq", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
+test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "JET", "LinearSolve", "NonlinearSolveFirstOrder", "ODEInterface", "OrdinaryDiffEq", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
