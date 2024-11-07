@@ -4,8 +4,8 @@ import PrecompileTools: @compile_workload, @setup_workload
 
 using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, BoundaryValueDiffEqFIRK,
       BoundaryValueDiffEqMIRK, BoundaryValueDiffEqShooting, DiffEqBase, ForwardDiff,
-      LinearAlgebra, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
-      SparseDiffTools
+      LinearAlgebra, Preferences, NonlinearSolveFirstOrder, RecursiveArrayTools, Reexport,
+      SciMLBase, Setfield, SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -23,8 +23,7 @@ import Logging
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
-                SciMLBase
+@reexport using ADTypes, DiffEqBase, OrdinaryDiffEq, SparseDiffTools, SciMLBase
 
 include("extension_algs.jl")
 

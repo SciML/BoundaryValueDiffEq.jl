@@ -7,7 +7,7 @@ using ConcreteStructs
 using FastClosures
 using ForwardDiff
 using LinearAlgebra
-using NonlinearSolve
+using NonlinearSolveFirstOrder
 using PreallocationTools
 using RecursiveArrayTools
 using Reexport
@@ -23,7 +23,7 @@ import BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
 
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
+@reexport using ADTypes, DiffEqBase, BoundaryValueDiffEqCore, SparseDiffTools, SciMLBase
 
 include("types.jl")
 include("utils.jl")

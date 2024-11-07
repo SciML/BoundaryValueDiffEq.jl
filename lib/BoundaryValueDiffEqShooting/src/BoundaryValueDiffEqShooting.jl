@@ -3,8 +3,8 @@ module BoundaryValueDiffEqShooting
 import PrecompileTools: @compile_workload, @setup_workload
 
 using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, DiffEqBase, ForwardDiff,
-      LinearAlgebra, NonlinearSolve, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
-      Setfield, SparseDiffTools
+      LinearAlgebra, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+      SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -35,15 +35,14 @@ import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorit
 import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 import ConcreteStructs: @concrete
-import DiffEqBase: solve
+using DiffEqBase: solve
 import FastClosures: @closure
 import ForwardDiff: ForwardDiff, pickchunksize
 import Logging
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, OrdinaryDiffEq, SparseDiffTools,
-                SciMLBase
+@reexport using ADTypes, BoundaryValueDiffEqCore, OrdinaryDiffEq, SparseDiffTools, SciMLBase
 
 include("algorithms.jl")
 include("single_shooting.jl")
