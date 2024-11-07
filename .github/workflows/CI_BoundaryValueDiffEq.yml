@@ -77,7 +77,7 @@ jobs:
           verbose: true
           fail_ci_if_error: true
 
-downgrade:
+  downgrade:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
