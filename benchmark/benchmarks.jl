@@ -1,5 +1,5 @@
 using BenchmarkTools
-using BoundaryValueDiffEq, OrdinaryDiffEq
+using BoundaryValueDiffEq, OrdinaryDiffEq, NonlinearSolveFirstOrder
 
 include("simple_pendulum.jl")
 
