@@ -9,6 +9,12 @@ function activate_mirk()
     Pkg.instantiate()
 end
 
+function activate_mirkn()
+    Pkg.activate("../lib/BoundaryValueDiffEqMIRKN")
+    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 function activate_firk()
     Pkg.activate("../lib/BoundaryValueDiffEqFIRK")
     Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
@@ -35,6 +41,13 @@ end
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/mirk_basic_tests.jl")
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/nlls_tests.jl")
             ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRK/test/vectorofvector_initials_tests.jl")
+        end
+    end
+
+    if GROUP == "All" || GROUP == "MIRKN"
+        @time "MIRKN solvers" begin
+            activate_mirkn()
+            ReTestItems.runtests("../lib/BoundaryValueDiffEqMIRKN/test/mirkn_basic_tests.jl")
         end
     end
 
