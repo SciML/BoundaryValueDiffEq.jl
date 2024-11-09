@@ -500,7 +500,6 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
         h = mesh_dt[i]
         @views approx(cache, xii, zval)
         # find rhs boundary value
-        gval = bc(zval, p, xii)
         gvalₐ = first(bc)(zval, p)
         gvalᵦ = last(bc)(zval, p)
         gval = vcat(gvalₐ, gvalᵦ)

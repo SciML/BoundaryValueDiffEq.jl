@@ -254,9 +254,10 @@ struct __unsafe_nonlinearfunction{iip} end
         resid_prototype::RP = nothing) where {iip, F, J, JP, CV, RP}
     return NonlinearFunction{
         iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing, J, Nothing,
-        Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing, RP}(
+        Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing, RP,
+        Nothing}(
         f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
-        nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype)
+        nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype, nothing)
 end
 
 # Construct the internal NonlinearProblem
