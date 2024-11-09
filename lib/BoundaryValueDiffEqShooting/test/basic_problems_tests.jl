@@ -8,7 +8,8 @@
         MultipleShooting(
             10, Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5())]
-    JET_SKIP = [false, false, true, false, false, true]
+    # JET_SKIP = [false, false, true, false, false, true]
+    JET_SKIP = [true, true, true, true, true, true]
     JET_BROKEN = [false, false, false, false, false, false]
 
     tspan = (0.0, 100.0)

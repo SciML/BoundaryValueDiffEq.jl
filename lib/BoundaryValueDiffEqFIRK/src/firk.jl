@@ -498,7 +498,8 @@ function __construct_nlproblem(
     resid_prototype = vcat(resid_bc, resid_collocation)
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    nlf = NonlinearFunction{iip}(
+        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
 
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
@@ -547,7 +548,8 @@ function __construct_nlproblem(
     end
 
     resid_prototype = copy(resid)
-    nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    nlf = NonlinearFunction{iip}(
+        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
@@ -611,7 +613,8 @@ function __construct_nlproblem(
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    nlf = NonlinearFunction{iip}(
+        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
 
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
@@ -650,7 +653,8 @@ function __construct_nlproblem(
     end
 
     resid_prototype = copy(resid)
-    nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    nlf = NonlinearFunction{iip}(
+        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
