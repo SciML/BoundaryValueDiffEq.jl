@@ -1,5 +1,7 @@
 using ReTestItems, BoundaryValueDiffEq, Hwloc, InteractiveUtils, Pkg
 
+@info sprint(InteractiveUtils.versioninfo)
+
 const GROUP = lowercase(get(ENV, "GROUP", "All"))
 
 const RETESTITEMS_NWORKERS = parse(Int,
