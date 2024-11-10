@@ -33,7 +33,8 @@ jobs:
           - "lts"
           - "pre"
         group:
-          - core
+          - EXPANDED
+          - NESTED
         os:
           - ubuntu-latest
     steps:

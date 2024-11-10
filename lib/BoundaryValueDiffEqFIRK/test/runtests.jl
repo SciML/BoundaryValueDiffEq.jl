@@ -1,21 +1,17 @@
-using ReTestItems, BoundaryValueDiffEqFIRK, Hwloc, InteractiveUtils
-#=
+using ReTestItems, BoundaryValueDiffEqFIRK, InteractiveUtils
+
 @info sprint(InteractiveUtils.versioninfo)
 
-const GROUP = lowercase(get(ENV, "GROUP", "All"))
+const GROUP = (get(ENV, "GROUP", "All"))
 
-const RETESTITEMS_NWORKERS = parse(Int,
-    get(ENV, "RETESTITEMS_NWORKERS",
-        string(min(ifelse(Sys.iswindows(), 0, Hwloc.num_physical_cores()), 4))))
-const RETESTITEMS_NWORKER_THREADS = parse(Int,
-    get(ENV, "RETESTITEMS_NWORKER_THREADS",
-        string(max(Hwloc.num_virtual_cores() ÷ max(RETESTITEMS_NWORKERS, 1), 1))))
+if GROUP == "All" || GROUP == "EXPANDED"
+    @time "FIRK Expanded solvers" begin
+        ReTestItems.runtests("/expanded/")
+    end
+end
 
-@info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
-
-ReTestItems.runtests(
-    BoundaryValueDiffEqFIRK; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS,
-    nworker_threads = RETESTITEMS_NWORKER_THREADS, testitem_timeout = 300 * 60)
-=#
-ReTestItems.runtests("/expanded/")
+if GROUP == "All" || GROUP == "NESTED"
+    @time "FIRK Nested solvers" begin
+        ReTestItems.runtests("/nested/")
+    end
+end
