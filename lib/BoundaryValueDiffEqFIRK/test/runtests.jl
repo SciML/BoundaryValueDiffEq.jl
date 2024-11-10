@@ -1,5 +1,5 @@
 using ReTestItems, BoundaryValueDiffEqFIRK, Hwloc, InteractiveUtils
-
+#=
 @info sprint(InteractiveUtils.versioninfo)
 
 const GROUP = lowercase(get(ENV, "GROUP", "All"))
@@ -17,3 +17,5 @@ ReTestItems.runtests(
     BoundaryValueDiffEqFIRK; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
     nworkers = RETESTITEMS_NWORKERS,
     nworker_threads = RETESTITEMS_NWORKER_THREADS, testitem_timeout = 300 * 60)
+=#
+ReTestItems.runtests("/expanded/")
