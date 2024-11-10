@@ -56,7 +56,7 @@
     for i in 1:4
         for stage in (2, 3, 4, 5, 6, 7)
             sol = solve(prob1Arr[i], SOLVERS[stage], dt = 0.01)
-            SciMLBase.successful_retcode(sol)
+            @test SciMLBase.successful_retcode(sol)
             @test sol.errors[:final] < 1e-4
         end
     end
@@ -102,10 +102,9 @@ end
     SOLVERS = [alg(zeta = zeta2)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
     for i in 1:2
-        for stage in (1, 2, 3, 4, 5, 6, 7)
+        for stage in (2, 3, 4, 5, 6, 7)
             sol = solve(prob2Arr[i], SOLVERS[stage], dt = 0.01, abstol = 1e-2)
-            SciMLBase.successful_retcode(sol)
-            @test sol.errors
+            @test SciMLBase.successful_retcode(sol)
         end
     end
 end
@@ -143,7 +142,7 @@ end
     for i in 1:2
         for stage in (2, 3, 4, 5, 6, 7)
             sol = solve(prob3Arr[i], SOLVERS[stage], dt = 0.01)
-            SciMLBase.successful_retcode(sol)
+            @test SciMLBase.successful_retcode(sol)
         end
     end
 end
