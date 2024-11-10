@@ -254,6 +254,7 @@ function __expand_cache_for_next_iter!(cache::AscherCache)
     Nₙ = length(mesh)
     resize!(cache.original_mesh, Nₙ)
     copyto!(cache.original_mesh, mesh)
+    __append_similar!(cache.valstr, 2 * Nₙ)
     return cache
 end
 
