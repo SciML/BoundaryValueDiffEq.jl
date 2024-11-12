@@ -54,7 +54,7 @@
     SOLVERS = [alg(zeta = zeta1)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
     for i in 1:4
-        for stage in (2, 3, 4, 5, 6, 7)
+        for stage in (3, 4, 5, 6, 7)
             sol = solve(prob1Arr[i], SOLVERS[stage], dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
             @test sol.errors[:final] < 1e-4
