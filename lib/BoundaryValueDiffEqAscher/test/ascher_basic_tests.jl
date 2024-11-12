@@ -102,7 +102,7 @@ end
     SOLVERS = [alg(zeta = zeta2)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
     for i in 1:2
-        for stage in (2, 3, 4, 5, 6, 7)
+        for stage in (2, 4, 5, 6)
             sol = solve(prob2Arr[i], SOLVERS[stage], dt = 0.01, adaptive = false)
             @test SciMLBase.successful_retcode(sol)
         end

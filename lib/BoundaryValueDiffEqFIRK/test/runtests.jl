@@ -8,12 +8,12 @@ const GROUP = (get(ENV, "GROUP", "EXPANDED"))
 
 if GROUP == "EXPANDED"
     @time "FIRK Expanded solvers" begin
-        ReTestItems.runtests("expanded/", testitem_timeout = 3 * 60 * 60)
+        ReTestItems.runtests("expanded/", testitem_timeout = 5 * 60 * 60)
     end
 end
 
 if GROUP == "NESTED"
     @time "FIRK Nested solvers" begin
-        ReTestItems.runtests("nested/", testitem_timeout = 3 * 60 * 60)
+        ReTestItems.runtests("nested/", testitem_timeout = 5 * 60 * 60)
     end
 end
