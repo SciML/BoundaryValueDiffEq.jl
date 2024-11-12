@@ -15,4 +15,5 @@ const RETESTITEMS_NWORKER_THREADS = parse(Int,
 
 ReTestItems.runtests(
     BoundaryValueDiffEqAscher; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS)
+    nworkers = RETESTITEMS_NWORKERS,
+    nworker_threads = RETESTITEMS_NWORKER_THREADS, testitem_timeout = 3 * 60 * 60)
