@@ -82,6 +82,9 @@ jobs:
       matrix:
         version:
           - "1.10"
+        group:
+          - EXPANDED
+          - NESTED
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
