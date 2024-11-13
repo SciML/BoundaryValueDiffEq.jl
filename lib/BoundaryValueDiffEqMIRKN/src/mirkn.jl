@@ -5,8 +5,8 @@
     in_size
     f
     bc
-    prob                       # BVProblem
-    problem_type               # StandardBVProblem
+    prob                       # SecondOrderBVProblem
+    problem_type               # StandardSecondOrderBVProblem
     p                          # Parameters
     alg                        # MIRKN methods
     TU                         # MIRKN Tableau
