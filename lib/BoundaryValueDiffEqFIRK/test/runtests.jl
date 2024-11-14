@@ -2,7 +2,7 @@ using ReTestItems, BoundaryValueDiffEqFIRK, InteractiveUtils
 
 @info sprint(InteractiveUtils.versioninfo)
 
-const GROUP = (get(ENV, "GROUP", "EXPANDED"))
+const GROUP = (get(ENV, "GROUP", "All"))
 
 @info GROUP
 
