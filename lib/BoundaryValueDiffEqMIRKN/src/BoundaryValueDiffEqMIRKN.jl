@@ -3,8 +3,8 @@ module BoundaryValueDiffEqMIRKN
 import PrecompileTools: @compile_workload, @setup_workload
 
 using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, DiffEqBase, ForwardDiff,
-      LinearAlgebra, NonlinearSolve, Preferences, RecursiveArrayTools, Reexport, SciMLBase,
-      Setfield, SparseDiffTools
+      LinearAlgebra, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
+      SparseDiffTools
 
 using PreallocationTools: PreallocationTools, DiffCache
 
@@ -39,7 +39,7 @@ import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, AbstractBVProblem,
                   StandardSecondOrderBVProblem, StandardBVProblem, __solve, _unwrap_val
 
-@reexport using ADTypes, DiffEqBase, NonlinearSolve, SparseDiffTools, SciMLBase
+@reexport using ADTypes, BoundaryValueDiffEqCore, SparseDiffTools, SciMLBase
 
 include("utils.jl")
 include("types.jl")
