@@ -88,9 +88,7 @@ include("sparse_jacobians.jl")
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
 
     if Preferences.@load_preference("PrecompileRadauIIa", true)
-        append!(algs,
-            [RadauIIa2(; jac_alg), RadauIIa3(; jac_alg),
-                RadauIIa5(; jac_alg), RadauIIa7(; jac_alg)])
+        append!(algs, [RadauIIa5(; jac_alg)])
     end
 
     @compile_workload begin
@@ -102,8 +100,7 @@ include("sparse_jacobians.jl")
     algs = []
 
     if Preferences.@load_preference("PrecompileLobattoIIIa", true)
-        append!(algs,
-            [LobattoIIIa3(; jac_alg), LobattoIIIa4(; jac_alg), LobattoIIIa5(; jac_alg)])
+        append!(algs, [LobattoIIIa5(; jac_alg)])
     end
 
     @compile_workload begin
@@ -115,8 +112,7 @@ include("sparse_jacobians.jl")
     algs = []
 
     if Preferences.@load_preference("PrecompileLobattoIIIb", true)
-        append!(algs,
-            [LobattoIIIb3(; jac_alg), LobattoIIIb4(; jac_alg), LobattoIIIb5(; jac_alg)])
+        append!(algs, [LobattoIIIb5(; jac_alg)])
     end
 
     @compile_workload begin
@@ -128,8 +124,7 @@ include("sparse_jacobians.jl")
     algs = []
 
     if Preferences.@load_preference("PrecompileLobattoIIIc", true)
-        append!(algs,
-            [LobattoIIIc3(; jac_alg), LobattoIIIc4(; jac_alg), LobattoIIIc5(; jac_alg)])
+        append!(algs, [LobattoIIIc5(; jac_alg)])
     end
 
     @compile_workload begin

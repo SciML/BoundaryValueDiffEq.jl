@@ -4,8 +4,6 @@ using ReTestItems, BoundaryValueDiffEqFIRK, InteractiveUtils
 
 const GROUP = (get(ENV, "GROUP", "All"))
 
-@info GROUP
-
 if GROUP == "EXPANDED"
     @time "FIRK Expanded solvers" begin
         ReTestItems.runtests("expanded/", testitem_timeout = 5 * 60 * 60)
