@@ -4,11 +4,11 @@ using BoundaryValueDiffEqFIRK, LinearAlgebra
 
 SOLVERS = [firk(; nlsolve)
            for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4),
-nlsolve in (LevenbergMarquardt(), TrustRegion())]#, TrustRegion())]
+nlsolve in (NewtonRaphson(), TrustRegion())]#, TrustRegion())]
 
 SOLVERS_NAMES = ["$solver with $nlsolve"
                  for solver in ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
-nlsolve in ["LevenbergMarquardt", "TrustRegion"]]
+nlsolve in ["NewtonRaphson", "TrustRegion"]]
 
 ### Overconstrained BVP ###
 
