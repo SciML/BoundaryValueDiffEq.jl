@@ -5,8 +5,8 @@
     in_size
     f
     bc
-    prob                       # BVProblem
-    problem_type               # StandardBVProblem
+    prob                       # SecondOrderBVProblem
+    problem_type               # StandardSecondOrderBVProblem
     p                          # Parameters
     alg                        # MIRKN methods
     TU                         # MIRKN Tableau
@@ -124,7 +124,8 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
         @closure (u, p) -> __mirkn_mpoint_jacobian(jac_prototype, u, ad, jac_cache, lossₚ)
     end
     resid_prototype = zero(lz)
-    _nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    _nlf = NonlinearFunction{iip}(
+        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
     return nlprob
 end

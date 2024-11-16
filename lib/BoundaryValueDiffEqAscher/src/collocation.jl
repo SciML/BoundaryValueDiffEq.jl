@@ -500,7 +500,6 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
         h = mesh_dt[i]
         @views approx(cache, xii, zval)
         # find rhs boundary value
-        gval = bc(zval, p, xii)
         gvalₐ = first(bc)(zval, p)
         gvalᵦ = last(bc)(zval, p)
         gval = vcat(gvalₐ, gvalᵦ)
@@ -642,13 +641,13 @@ function approx(cache::AscherCache{iip, T}, x, zval) where {iip, T}
     n = length(mesh) - 1
     a = Vector{T}(undef, 7)
     i = interval(mesh, x)
+    s = (x - mesh[i]) / mesh_dt[i]
+    @views rkbas!(s, coef, k, a)
+    bm = x - mesh[i]
     if i == n + 1
         zval .= z[n + 1]
         return
     end
-    s = (x - mesh[i]) / mesh_dt[i]
-    @views rkbas!(s, coef, k, a)
-    bm = x - mesh[i]
     # evaluate z(u(x))
     for jcomp in 1:ncomp
         zsum = sum(a[j] * dmz[i][j][jcomp] for j in 1:k)
@@ -665,14 +664,17 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
     dm = Vector{T}(undef, 7)
     a = Vector{T}(undef, 7)
     i = interval(mesh, x)
-    if i == n + 1
-        zval .= z[n + 1]
-        yval .= 0.0
-        return
-    end
     s = (x - mesh[i]) / mesh_dt[i]
     @views rkbas!(s, coef, k, a, dm)
     bm = x - mesh[i]
+    if i == n + 1
+        zval .= z[n + 1]
+        yval .= 0.0
+        for j in 1:k
+            yval .= yval .+ dm[j] * dmz[i - 1][j][(ncomp + 1):end]
+        end
+        return
+    end
     # evaluate z(u(x))
     for jcomp in 1:ncomp
         zsum = sum(a[j] * dmz[i][j][jcomp] for j in 1:k)
@@ -695,14 +697,21 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
     dm = Vector{T}(undef, 7)
     a = Vector{T}(undef, 7)
     i = interval(mesh, x)
-    if i == n + 1
-        zval .= z[n + 1]
-        yval .= 0.0
-        return
-    end
     s = (x - mesh[i]) / mesh_dt[i]
     @views rkbas!(s, coef, k, a, dm)
     bm = x - mesh[i]
+    if i == n + 1
+        zval .= z[n + 1]
+        yval .= 0.0
+        for j in 1:k
+            yval .= yval .+ dm[j] * dmz[i - 1][j][(ncomp + 1):end]
+        end
+        dmval .= 0.0
+        for j in 1:k
+            @. dmval = dmval + dm[j] * dmz[i - 1][j][1:ncomp]
+        end
+        return
+    end
     # evaluate z(u(x))
     for jcomp in 1:ncomp
         zsum = sum(a[j] * dmz[i][j][jcomp] for j in 1:k)
@@ -921,6 +930,8 @@ end
 
 function interval(mesh, t)
     a = findfirst(x -> x ≈ t, mesh)
+    # CODLAE actually evaluate the value at final mesh point at mesh[n]
+    (a == length(mesh)) && (return length(mesh) - 1)
     n = length(mesh)
     a === nothing ? (return clamp(searchsortedfirst(mesh, t) - 1, 1, n)) : a
 end

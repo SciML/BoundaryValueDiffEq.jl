@@ -246,20 +246,6 @@ function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)
 end
 
-# Override the checks for NonlinearFunction
-struct __unsafe_nonlinearfunction{iip} end
-
-@inline function __unsafe_nonlinearfunction{iip}(
-        f::F; jac::J = nothing, jac_prototype::JP = nothing, colorvec::CV = nothing,
-        resid_prototype::RP = nothing) where {iip, F, J, JP, CV, RP}
-    return NonlinearFunction{
-        iip, SciMLBase.FullSpecialize, F, Nothing, Nothing, Nothing, J, Nothing,
-        Nothing, JP, Nothing, Nothing, Nothing, Nothing, Nothing, CV, Nothing, RP,
-        Nothing}(
-        f, nothing, nothing, nothing, jac, nothing, nothing, jac_prototype, nothing,
-        nothing, nothing, nothing, nothing, colorvec, nothing, resid_prototype, nothing)
-end
-
 # Construct the internal NonlinearProblem
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, nlls}, resid_prototype,

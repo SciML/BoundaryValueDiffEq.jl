@@ -254,6 +254,7 @@ function __expand_cache_for_next_iter!(cache::AscherCache)
     Nₙ = length(mesh)
     resize!(cache.original_mesh, Nₙ)
     copyto!(cache.original_mesh, mesh)
+    __append_similar!(cache.valstr, 2 * Nₙ)
     return cache
 end
 
@@ -327,7 +328,8 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
         @closure (u, p) -> __ascher_mpoint_jacobian(jac_prototype, u, ad, jac_cache, lossₚ)
     end
     resid_prototype = zero(lz)
-    _nlf = __unsafe_nonlinearfunction{iip}(loss; resid_prototype, jac, jac_prototype)
+    _nlf = NonlinearFunction{iip}(
+        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
     return nlprob
 end

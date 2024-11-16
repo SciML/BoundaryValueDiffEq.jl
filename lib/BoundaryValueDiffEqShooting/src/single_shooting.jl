@@ -1,4 +1,4 @@
-function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
+function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), verbose = true, kwargs...)
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
@@ -70,11 +70,12 @@ function __solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
             jac_prototype, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ)
     end
 
-    nlf = __unsafe_nonlinearfunction{iip}(
-        loss_fn; jac_prototype, resid_prototype, jac = jac_fn)
+    nlf = NonlinearFunction{iip}(loss_fn; jac_prototype = jac_prototype,
+        resid_prototype = resid_prototype, jac = jac_fn)
     nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
-    nlsol = __solve(nlprob, nlsolve_alg; nlsolve_kwargs..., verbose, kwargs...)
+    nlsol::SciMLBase.NonlinearSolution = __solve(
+        nlprob, nlsolve_alg; nlsolve_kwargs..., verbose, kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache

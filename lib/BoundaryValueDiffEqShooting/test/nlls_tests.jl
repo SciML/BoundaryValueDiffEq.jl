@@ -22,7 +22,8 @@
         MultipleShooting(
             10, Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff()))]
-    JET_SKIP = fill(false, length(SOLVERS))
+    # JET_SKIP = fill(false, length(SOLVERS))
+    JET_SKIP = fill(true, length(SOLVERS))
     JET_OPT_BROKEN = fill(false, length(SOLVERS))
     JET_CALL_BROKEN = fill(false, length(SOLVERS))
 

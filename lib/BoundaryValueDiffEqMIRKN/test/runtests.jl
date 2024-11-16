@@ -1,4 +1,4 @@
-using ReTestItems, BoundaryValueDiffEqMIRK, Hwloc, InteractiveUtils
+using ReTestItems, BoundaryValueDiffEqMIRKN, Hwloc, InteractiveUtils
 
 @info sprint(InteractiveUtils.versioninfo)
 
@@ -14,5 +14,5 @@ const RETESTITEMS_NWORKER_THREADS = parse(Int,
 @info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
 
 ReTestItems.runtests(
-    BoundaryValueDiffEqMIRK; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
+    BoundaryValueDiffEqMIRKN; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
     nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS)

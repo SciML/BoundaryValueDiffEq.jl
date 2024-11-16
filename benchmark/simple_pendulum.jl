@@ -1,6 +1,6 @@
 module SimplePendulumBenchmark
 
-using BoundaryValueDiffEq, OrdinaryDiffEq
+using BoundaryValueDiffEq, OrdinaryDiffEq, NonlinearSolveFirstOrder
 
 const tspan = (0.0, π / 2)
 

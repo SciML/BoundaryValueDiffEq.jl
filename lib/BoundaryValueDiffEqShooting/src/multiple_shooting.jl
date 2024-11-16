@@ -1,4 +1,4 @@
-function __solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
+function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
         nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     (; f, tspan) = prob
 
@@ -123,8 +123,9 @@ function __solve_nlproblem!(
     jac_fn = @closure (J, u, p) -> __multiple_shooting_2point_jacobian!(
         J, u, p, jac_cache, loss_fnₚ, resid_prototype_cached, alg)
 
-    loss_function! = __unsafe_nonlinearfunction{true}(
-        loss_fn; resid_prototype, jac = jac_fn, jac_prototype)
+    loss_function! = NonlinearFunction{true}(
+        loss_fn; jac = jac_fn, resid_prototype = resid_prototype,
+        jac_prototype = jac_prototype)
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
@@ -183,8 +184,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         J, u, p, similar(bcresid_prototype), resid_nodes,
         ode_jac_cache, bc_jac_cache, ode_fn, bc_fn, alg, N, M)
 
-    loss_function! = __unsafe_nonlinearfunction{true}(
-        loss_fn; resid_prototype, jac_prototype, jac = jac_fn)
+    loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype = resid_prototype,
+        jac_prototype = jac_prototype, jac = jac_fn)
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)

@@ -1,9 +1,9 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
-using BoundaryValueDiffEq, BoundaryValueDiffEqCore, SciMLBase, ODEInterface,
-      RecursiveArrayTools, ConcreteStructs, Setfield, PreallocationTools
+using BoundaryValueDiffEqCore, SciMLBase, ODEInterface, RecursiveArrayTools,
+      ConcreteStructs, Setfield, PreallocationTools
 
-import BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
+using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
                                 __initial_guess_length, __extract_mesh,
                                 __flatten_initial_guess, __get_bcresid_prototype,
@@ -336,7 +336,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
     destats = SciMLBase.DEStats(
         stats["no_rhs_calls"], 0, 0, 0, stats["no_jac_calls"], 0, 0, 0, 0, 0, 0, 0, 0)
 
-    return DiffEqBase.build_solution(
+    return SciMLBase.build_solution(
         prob, alg, mesh, collect(Vector{eltype(evalsol)}, eachrow(evalsol));
         retcode = retcode > 0 ? ReturnCode.Success : ReturnCode.Failure,
         stats = destats, original = (sol, retcode, stats))

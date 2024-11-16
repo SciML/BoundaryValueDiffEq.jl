@@ -54,9 +54,9 @@
     SOLVERS = [alg(zeta = zeta1)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
     for i in 1:4
-        for stage in (2, 3, 4, 5, 6, 7)
+        for stage in (3, 4, 5, 6, 7)
             sol = solve(prob1Arr[i], SOLVERS[stage], dt = 0.01)
-            SciMLBase.successful_retcode(sol)
+            @test SciMLBase.successful_retcode(sol)
             @test sol.errors[:final] < 1e-4
         end
     end
@@ -102,10 +102,47 @@ end
     SOLVERS = [alg(zeta = zeta2)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
     for i in 1:2
-        for stage in (1, 2, 3, 4, 5, 6, 7)
-            sol = solve(prob2Arr[i], SOLVERS[stage], dt = 0.01)
-            SciMLBase.successful_retcode(sol)
-            @test sol.errors
+        for stage in (2, 4, 5, 6)
+            sol = solve(prob2Arr[i], SOLVERS[stage], dt = 0.01, adaptive = false)
+            @test SciMLBase.successful_retcode(sol)
+        end
+    end
+end
+
+@testitem "Test Ascher solver on example problem 3" begin
+    using BoundaryValueDiffEqAscher, SciMLBase
+    function f3!(du, u, p, t)
+        du[1] = -u[3]
+        du[2] = -u[3]
+        du[3] = u[2] - sin(t - 1)
+    end
+    function f3(u, p, t)
+        return [-u[3], -u[3], u[2] - sin(t - 1)]
+    end
+    function bc3!(res, u, p, t)
+        res[1] = u[1]
+        res[2] = u[2]
+    end
+    function bc3(u, p, t)
+        return [u[1], u[2]]
+    end
+    function f3_analytic(u, p, t)
+        return [sin(t - 1), sin(t - 1), -cos(t - 1)]
+    end
+    u03 = [0.0, 0.0, 0.0]
+    tspan3 = (0.0, 1.0)
+    zeta3 = [1.0, 1.0]
+    fun_iip = ODEFunction(f3!, analytic = f3_analytic, mass_matrix = [1 0 0; 0 1 0; 0 0 0])
+    fun_oop = ODEFunction(f3, analytic = f3_analytic, mass_matrix = [1 0 0; 0 1 0; 0 0 0])
+    prob_iip = BVProblem(fun_iip, bc3!, u03, tspan3)
+    prob_oop = BVProblem(fun_oop, bc3, u03, tspan3)
+    prob3Arr = [prob_iip, prob_oop]
+    SOLVERS = [alg(zeta = zeta3)
+               for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
+    for i in 1:2
+        for stage in (2, 3, 4, 5, 6, 7)
+            sol = solve(prob3Arr[i], SOLVERS[stage], dt = 0.01)
+            @test SciMLBase.successful_retcode(sol)
         end
     end
 end

@@ -199,11 +199,11 @@ end
         bcjac = (df, u, p) -> begin
             _du = similar(u)
             La = length(first(bcresid_prototype))
-            @views first(bc)(_du[1:La], u, p)
-            @views last(bc)(_du[(La + 1):end], u, p)
+            @views first(prob.f.bc)(_du[1:La], u, p)
+            @views last(prob.f.bc)(_du[(La + 1):end], u, p)
             _f = function (du, u)
-                @views first(bc)(du[1:La], u, p)
-                @views last(bc)(du[(La + 1):end], u, p)
+                @views first(prob.f.bc)(du[1:La], u, p)
+                @views last(prob.f.bc)(du[(La + 1):end], u, p)
             end
             ForwardDiff.jacobian!(df, _f, _du, u)
             return
@@ -214,8 +214,8 @@ end
             _dua = first(prob.f.bc)(u, p)
             _dub = last(prob.f.bc)(u, p)
             _f = function (du, u)
-                dua = first(prob.f.bc)(du[1:La], u, p)
-                dub = last(prob.f.bc)(du[(La + 1):end], u, p)
+                dua = first(prob.f.bc)(u, p)
+                dub = last(prob.f.bc)(u, p)
                 du .= vcat(dua, dub)
             end
             ForwardDiff.jacobian!(df, _f, vcat(_dua, _dub), u)
