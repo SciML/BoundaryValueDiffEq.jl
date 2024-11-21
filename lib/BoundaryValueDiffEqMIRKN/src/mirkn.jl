@@ -104,6 +104,7 @@ end
 function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where {iip}
     (; alg) = cache
     pt = cache.problem_type
+
     loss = if iip
         @closure (du, u, p) -> __mirkn_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache)
@@ -111,32 +112,51 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
         @closure (u, p) -> __mirkn_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
     end
 
-    lossₚ = (iip ? __Fix3 : Base.Fix2)(loss, cache.p)
-    sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
-         NoSparsityDetection()
-    ad = alg.jac_alg.diffmode
-    lz = reduce(vcat, cache.y₀)
-    jac_cache = __sparse_jacobian_cache(Val(iip), ad, sd, lossₚ, lz, lz)
-    jac_prototype = init_jacobian(jac_cache)
-    jac = if iip
-        @closure (J, u, p) -> __mirkn_mpoint_jacobian!(J, u, ad, jac_cache, lossₚ, lz)
+    diffmode = if alg.jac_alg.diffmode isa AutoSparse
+        AutoSparse(alg.jac_alg.diffmode;
+            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
-        @closure (u, p) -> __mirkn_mpoint_jacobian(jac_prototype, u, ad, jac_cache, lossₚ)
+        alg.jac_alg.diffmode
     end
+
+    lz = reduce(vcat, cache.y₀)
     resid_prototype = zero(lz)
+
+    jac_cache = if iip
+        DI.prepare_jacobian(
+            loss, resid_prototype, get_dense_ad(diffmode), lz, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, get_dense_ad(diffmode), lz, Constant(cache.p))
+    end
+
+    jac_prototype = if iip
+        DI.jacobian(
+            loss, resid_prototype, jac_cache, get_dense_ad(diffmode), lz, Constant(cache.p))
+    else
+        DI.jacobian(loss, get_dense_ad(diffmode), lz, Constant(cache.p))
+    end
+
+    jac = if iip
+        @closure (J, u, p) -> __mirkn_mpoint_jacobian!(
+            J, u, get_dense_ad(diffmode), jac_cache, loss, resid_prototype, cache.p)
+    else
+        @closure (u, p) -> __mirkn_mpoint_jacobian(
+            jac_prototype, u, get_dense_ad(diffmode), jac_cache, loss, cache.p)
+    end
+
     _nlf = NonlinearFunction{iip}(
         loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
     return nlprob
 end
 
-function __mirkn_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
-    sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
+function __mirkn_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}
+    DI.jacobian!(loss_fn, resid, J, diffcache, diffmode, x, Constant(p))
     return J
 end
 
-function __mirkn_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
-    sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
+function __mirkn_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L, p) where {L}
+    DI.jacobian!(loss_fn, J, diffcache, diffmode, x, Constant(p))
     return J
 end
 
@@ -146,13 +166,15 @@ end
     return NonlinearProblem(args...; kwargs...)
 end
 
-function __mirkn_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid)
-    sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
+function __mirkn_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
+    DI.jacobian!(loss, resid, J, diffcache, diffmode, x, Constant(p))
+    #sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
     return nothing
 end
 
-function __mirkn_mpoint_jacobian(J, x, diffmode, diffcache, loss)
-    sparse_jacobian!(J, diffmode, diffcache, loss, x)
+function __mirkn_mpoint_jacobian(J, x, diffmode, diffcache, loss, p)
+    DI.jacobian!(loss, J, diffcache, diffmode, x, Constant(p))
+    #sparse_jacobian!(J, diffmode, diffcache, loss, x)
     return J
 end
 

@@ -315,31 +315,50 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     else
         @closure (z, p) -> @views Φ(cache, z, pt)
     end
+
     lz = reduce(vcat, cache.z)
-    sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
-         NoSparsityDetection()
-    ad = alg.jac_alg.diffmode
-    lossₚ = (iip ? __Fix3 : Base.Fix2)(loss, cache.p)
-    jac_cache = __sparse_jacobian_cache(Val(iip), ad, sd, lossₚ, lz, lz)
-    jac_prototype = init_jacobian(jac_cache)
-    jac = if iip
-        @closure (J, u, p) -> __ascher_mpoint_jacobian!(J, u, ad, jac_cache, lossₚ, lz)
-    else
-        @closure (u, p) -> __ascher_mpoint_jacobian(jac_prototype, u, ad, jac_cache, lossₚ)
-    end
     resid_prototype = zero(lz)
+    diffmode = if alg.jac_alg.diffmode isa AutoSparse
+        AutoSparse(alg.jac_alg.diffmode;
+            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+    else
+        alg.jac_alg.diffmode
+    end
+
+    jac_cache = if iip
+        DI.prepare_jacobian(
+            loss, resid_prototype, get_dense_ad(diffmode), lz, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, get_dense_ad(diffmode), lz, Constant(cache.p))
+    end
+
+    jac_prototype = if iip
+        DI.jacobian(
+            loss, resid_prototype, jac_cache, get_dense_ad(diffmode), lz, Constant(cache.p))
+    else
+        DI.jacobian(loss, get_dense_ad(diffmode), lz, Constant(cache.p))
+    end
+
+    jac = if iip
+        @closure (J, u, p) -> __ascher_mpoint_jacobian!(
+            J, u, get_dense_ad(diffmode), jac_cache, loss, lz, cache.p)
+    else
+        @closure (u, p) -> __ascher_mpoint_jacobian(
+            jac_prototype, u, get_dense_ad(diffmode), jac_cache, loss, cache.p)
+    end
+
     _nlf = NonlinearFunction{iip}(
         loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
     return nlprob
 end
 
-function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid)
-    sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
+function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
+    DI.jacobian!(loss, resid, J, diffcache, diffmode, x, Constant(p))
     return nothing
 end
-function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss)
-    sparse_jacobian!(J, diffmode, diffcache, loss, x)
+function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss, p)
+    DI.jacobian!(loss, J, diffcache, diffmode, x, Constant(p))
     return J
 end
 

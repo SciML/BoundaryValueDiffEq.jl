@@ -16,14 +16,14 @@ import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 import ConcreteStructs: @concrete
-import DiffEqBase: solve
-import FastClosures: @closure
+using DiffEqBase: DiffEqBase, solve
+using FastClosures: @closure
 import ForwardDiff: ForwardDiff, pickchunksize
 import Logging
 import RecursiveArrayTools: ArrayPartition, DiffEqArray
 import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
 
-@reexport using ADTypes, DiffEqBase, OrdinaryDiffEq, SparseDiffTools, SciMLBase
+@reexport using ADTypes, OrdinaryDiffEq, SparseDiffTools, SciMLBase
 
 include("extension_algs.jl")
 

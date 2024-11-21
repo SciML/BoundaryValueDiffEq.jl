@@ -441,43 +441,67 @@ function __construct_nlproblem(
     L = length(resid_bc)
     resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
 
-    loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
-    loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
+    bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
+        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
+            sparsity_detector = ADTypes.TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+    else
+        jac_alg.bc_diffmode
+    end
 
-    sd_bc = jac_alg.bc_diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
-            NoSparsityDetection()
-    cache_bc = __sparse_jacobian_cache(
-        Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bcₚ, resid_bc, y)
+    cache_bc = if iip
+        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+    end
 
-    sd_collocation = if jac_alg.nonbc_diffmode isa AutoSparse
+    nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
-            colored_matrix = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N)
             J_full_band = nothing
-            __sparsity_detection_alg(ColoredMatrix(
-                sparse(colored_matrix.M), colored_matrix.row_colorvec,
-                colored_matrix.col_colorvec))
+            colored_matrix = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M,
+                N, get_dense_ad(jac_alg.nonbc_diffmode))
         else
             block_size = cache.M * (stage + 2)
             J_full_band = BandedMatrix(
                 Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1),
                     cache.M * (stage + 1) * (N - 1) + cache.M),
                 (block_size, block_size))
-            __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N))
+            colored_matrix = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M,
+                N, get_dense_ad(jac_alg.nonbc_diffmode))
         end
+        AutoSparse(jac_alg.nonbc_diffmode;
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(J_full_band),
+            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
+                ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+                :row, :column)}(J_full_band,
+                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+                    row_colors, column_colors)(colored_matrix)))
     else
         J_full_band = nothing
-        NoSparsityDetection()
+        jac_alg.nonbc_diffmode
     end
 
-    cache_collocation = __sparse_jacobian_cache(
-        Val(iip), jac_alg.nonbc_diffmode, sd_collocation,
-        loss_collocationₚ, resid_collocation, y)
+    cache_collocation = if iip
+        DI.prepare_jacobian(loss_collocation, resid_collocation,
+            jac_alg.nonbc_diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss_collocation, jac_alg.nonbc_diffmode, y, Constant(cache.p))
+    end
 
-    J_bc = zero(init_jacobian(cache_bc))
-    J_c = zero(init_jacobian(cache_collocation))
+    J_bc = if iip
+        DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
+    else
+        DI.jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+    end
+    J_c = if iip
+        DI.jacobian(loss_collocation, resid_collocation, cache_collocation,
+            get_dense_ad(nonbc_diffmode), y, Constant(cache.p))
+    else
+        DI.jacobian(loss_collocation, get_dense_ad(nonbc_diffmode), y, Constant(cache.p))
+    end
 
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
@@ -487,15 +511,14 @@ function __construct_nlproblem(
 
     jac = if iip
         @closure (J, u, p) -> __firk_mpoint_jacobian!(
-            J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc,
-            cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc, resid_collocation, L)
+            J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
+            cache_bc, cache_collocation, loss_bc, loss_collocation,
+            resid_bc, resid_collocation, L, cache.p)
     else
         @closure (u, p) -> __firk_mpoint_jacobian(
             jac_prototype, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, L)
+            cache_bc, cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
-
-    resid_prototype = vcat(resid_bc, resid_collocation)
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     nlf = NonlinearFunction{iip}(
@@ -511,8 +534,6 @@ function __construct_nlproblem(
     (; stage) = cache
     N = length(cache.mesh)
 
-    lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
-
     resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
 
     resid = vcat(
@@ -520,31 +541,45 @@ function __construct_nlproblem(
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
-    sd = if jac_alg.nonbc_diffmode isa AutoSparse
+    diffmode = if jac_alg.diffmode isa AutoSparse
         block_size = cache.M * (stage + 2)
         J_full_band = BandedMatrix(
             Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1),
                 cache.M * (stage + 1) * (N - 1) + cache.M),
             (block_size, block_size))
-        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
-            cache, cache.problem_type,
+        colored_result = __generate_sparse_jacobian_prototype(cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-            cache.M, N))
+            cache.M, N, get_dense_ad(jac_alg.diffmode))
+        AutoSparse(jac_alg.diffmode;
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
+            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
+                ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)}(
+                colored_result.A,
+                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+                    row_colors, column_colors)(colored_result)))
     else
-        J_full_band = nothing
-        NoSparsityDetection()
+        jac_alg.diffmode
     end
 
-    diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-    jac_prototype = zero(init_jacobian(diffcache))
+    diffcache = if iip
+        DI.prepare_jacobian(loss, resid, get_dense_ad(diffmode), y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, get_dense_ad(diffmode), y, Constant(cache.p))
+    end
+
+    jac_prototype = if iip
+        DI.jacobian(loss, resid, diffcache, get_dense_ad(diffmode), y, Constant(cache.p)) #zero(init_jacobian(diffcache))
+    else
+        DI.jacobian(loss, get_dense_ad(diffmode), y, Constant(cache.p))
+    end
 
     jac = if iip
         @closure (J, u, p) -> __firk_2point_jacobian!(
-            J, u, jac_alg.diffmode, diffcache, lossₚ, resid)
+            J, u, jac_alg.diffmode, diffcache, loss, resid, cache.p)
     else
         @closure (u, p) -> __firk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
+            u, jac_prototype, jac_alg.diffmode, diffcache, loss, cache.p)
     end
 
     resid_prototype = copy(resid)
@@ -563,39 +598,65 @@ function __construct_nlproblem(
     L = length(resid_bc)
     resid_collocation = __similar(y, cache.M * (N - 1))
 
-    loss_bcₚ = (iip ? __Fix3 : Base.Fix2)(loss_bc, cache.p)
-    loss_collocationₚ = (iip ? __Fix3 : Base.Fix2)(loss_collocation, cache.p)
+    bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
+        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
+            sparsity_detector = ADTypes.TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+    else
+        jac_alg.bc_diffmode
+    end
 
-    sd_bc = jac_alg.bc_diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
-            NoSparsityDetection()
-    cache_bc = __sparse_jacobian_cache(
-        Val(iip), jac_alg.bc_diffmode, sd_bc, loss_bcₚ, resid_bc, y)
+    cache_bc = if iip
+        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+    end
 
-    sd_collocation = if jac_alg.nonbc_diffmode isa AutoSparse
+    nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
-            colored_matrix = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N)
             J_full_band = nothing
-            __sparsity_detection_alg(ColoredMatrix(
-                sparse(colored_matrix.M), colored_matrix.row_colorvec,
-                colored_matrix.col_colorvec))
+            colored_matrix = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M,
+                N, get_dense_ad(jac_alg.nonbc_diffmode))
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
                 (L + 1, cache.M + max(cache.M - L, 0)))
-            __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N))
+            colored_matrix = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M,
+                N, get_dense_ad(jac_alg.nonbc_diffmode))
         end
+        AutoSparse(jac_alg.nonbc_diffmode;
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(J_full_band),
+            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
+                ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+                :row, :column)}(J_full_band,
+                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+                    row_colors, column_colors)(colored_matrix)))
     else
         J_full_band = nothing
-        NoSparsityDetection()
+        jac_alg.nonbc_diffmode
     end
-    cache_collocation = __sparse_jacobian_cache(
-        Val(iip), jac_alg.nonbc_diffmode, sd_collocation,
-        loss_collocationₚ, resid_collocation, y)
 
-    J_bc = zero(init_jacobian(cache_bc))
-    J_c = zero(init_jacobian(cache_collocation))
+    cache_collocation = if iip
+        DI.prepare_jacobian(loss_collocation, resid_collocation,
+            jac_alg.nonbc_diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss_collocation, jac_alg.nonbc_diffmode, y, Constant(cache.p))
+    end
+
+    J_bc = if iip
+        DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
+    else
+        DI.jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+    end
+    J_c = if iip
+        DI.jacobian(loss_collocation, resid_collocation, cache_collocation,
+            get_dense_ad(nonbc_diffmode), y, Constant(cache.p))
+    else
+        DI.jacobian(loss_collocation, get_dense_ad(nonbc_diffmode), y, Constant(cache.p))
+    end
+
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
     else
@@ -604,12 +665,13 @@ function __construct_nlproblem(
 
     jac = if iip
         @closure (J, u, p) -> __firk_mpoint_jacobian!(
-            J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode, cache_bc,
-            cache_collocation, loss_bcₚ, loss_collocationₚ, resid_bc, resid_collocation, L)
+            J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
+            cache_bc, cache_collocation, loss_bc, loss_collocation,
+            resid_bc, resid_collocation, L, cache.p)
     else
         @closure (u, p) -> __firk_mpoint_jacobian(
             jac_prototype, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bcₚ, loss_collocationₚ, L)
+            cache_bc, cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -625,31 +687,45 @@ function __construct_nlproblem(
     (; jac_alg) = cache.alg
     N = length(cache.mesh)
 
-    lossₚ = iip ? ((du, u) -> loss(du, u, cache.p)) : (u -> loss(u, cache.p))
-
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
         __similar(y, cache.M * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
-    sd = if jac_alg.diffmode isa AutoSparse
-        __sparsity_detection_alg(__generate_sparse_jacobian_prototype(
-            cache, cache.problem_type,
+    diffmode = if jac_alg.diffmode isa AutoSparse
+        colored_result = __generate_sparse_jacobian_prototype(cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-            cache.M, N))
+            cache.M, N, get_dense_ad(jac_alg.diffmode))
+        AutoSparse(jac_alg.diffmode;
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
+            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
+                ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)}(
+                colored_result.A,
+                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+                    row_colors, column_colors)(colored_result)))
     else
-        NoSparsityDetection()
+        jac_alg.diffmode
     end
-    diffcache = __sparse_jacobian_cache(Val(iip), jac_alg.diffmode, sd, lossₚ, resid, y)
-    jac_prototype = zero(init_jacobian(diffcache))
+
+    diffcache = if iip
+        DI.prepare_jacobian(loss, resid, get_dense_ad(diffmode), y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, get_dense_ad(diffmode), y, Constant(cache.p))
+    end
+
+    jac_prototype = if iip
+        DI.jacobian(loss, resid, diffcache, get_dense_ad(diffmode), y, Constant(cache.p)) #zero(init_jacobian(diffcache))
+    else
+        DI.jacobian(loss, get_dense_ad(diffmode), y, Constant(cache.p))
+    end
 
     jac = if iip
         @closure (J, u, p) -> __firk_2point_jacobian!(
-            J, u, jac_alg.diffmode, diffcache, lossₚ, resid)
+            J, u, jac_alg.diffmode, diffcache, loss, resid, cache.p)
     else
         @closure (u, p) -> __firk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, lossₚ)
+            u, jac_prototype, jac_alg.diffmode, diffcache, loss, cache.p)
     end
 
     resid_prototype = copy(resid)
@@ -730,20 +806,21 @@ end
 
 function __firk_mpoint_jacobian!(
         J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache, nonbc_diffcache, loss_bc::BC,
-        loss_collocation::C, resid_bc, resid_collocation, L::Int) where {BC, C}
-    sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
-    sparse_jacobian!(@view(J[(L + 1):end, :]), nonbc_diffmode,
-        nonbc_diffcache, loss_collocation, resid_collocation, x)
+        loss_collocation::C, resid_bc, resid_collocation, L::Int, p) where {BC, C}
+    DI.jacobian!(
+        loss_bc, resid_bc, @view(J[1:L, :]), bc_diffcache, bc_diffmode, x, Constant(p))
+    DI.jacobian!(loss_collocation, resid_collocation, @view(J[(L + 1):end, :]),
+        nonbc_diffcache, nonbc_diffmode, x, Constant(p))
     return nothing
 end
 
 function __firk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
         bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C,
-        resid_bc, resid_collocation, L::Int) where {BC, C}
+        resid_bc, resid_collocation, L::Int, p) where {BC, C}
     J_bc = fillpart(J)
-    sparse_jacobian!(J_bc, bc_diffmode, bc_diffcache, loss_bc, resid_bc, x)
-    sparse_jacobian!(
-        J_c, nonbc_diffmode, nonbc_diffcache, loss_collocation, resid_collocation, x)
+    DI.jacobian!(loss_bc, resid_bc, J_bc, bc_diffcache, bc_diffmode, x, Constant(p))
+    DI.jacobian!(loss_collocation, resid_collocation, J_c,
+        nonbc_diffcache, nonbc_diffmode, x, Constant(p))
     exclusive_bandpart(J) .= J_c
     finish_part_setindex!(J)
     return nothing
@@ -751,30 +828,30 @@ end
 
 function __firk_mpoint_jacobian(
         J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache, nonbc_diffcache,
-        loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
-    sparse_jacobian!(@view(J[1:L, :]), bc_diffmode, bc_diffcache, loss_bc, x)
-    sparse_jacobian!(
-        @view(J[(L + 1):end, :]), nonbc_diffmode, nonbc_diffcache, loss_collocation, x)
+        loss_bc::BC, loss_collocation::C, L::Int, p) where {BC, C}
+    DI.jacobian!(loss_bc, @view(J[1:L, :]), bc_diffcache, bc_diffmode, x, Constant(p))
+    DI.jacobian!(loss_collocation, @view(J[(L + 1):end, :]),
+        nonbc_diffcache, nonbc_diffmode, x, Constant(p))
     return J
 end
 
 function __firk_mpoint_jacobian(
         J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode, bc_diffcache,
-        nonbc_diffcache, loss_bc::BC, loss_collocation::C, L::Int) where {BC, C}
+        nonbc_diffcache, loss_bc::BC, loss_collocation::C, L::Int, p) where {BC, C}
     J_bc = fillpart(J)
-    sparse_jacobian!(J_bc, bc_diffmode, bc_diffcache, loss_bc, x)
-    sparse_jacobian!(J_c, nonbc_diffmode, nonbc_diffcache, loss_collocation, x)
+    DI.jacobian!(loss_bc, J_bc, bc_diffcache, bc_diffmode, x, Constant(p))
+    DI.jacobian!(loss_collocation, J_c, nonbc_diffcache, nonbc_diffmode, x, Constant(p))
     exclusive_bandpart(J) .= J_c
     finish_part_setindex!(J)
     return J
 end
 
-function __firk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid) where {L}
-    sparse_jacobian!(J, diffmode, diffcache, loss_fn, resid, x)
+function __firk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}
+    DI.jacobian!(loss_fn, resid, J, diffcache, diffmode, x, Constant(p))
     return J
 end
 
-function __firk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
-    sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
+function __firk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L, p) where {L}
+    DI.jacobian!(loss_fn, J, diffcache, diffmode, x, Constant(p))
     return J
 end
