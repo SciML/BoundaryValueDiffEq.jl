@@ -313,7 +313,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     resid_collocation = __similar(y, cache.M * (N - 1))
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
+        AutoSparse(jac_alg.bc_diffmode;
             sparsity_detector = ADTypes.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
@@ -332,13 +332,13 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             J_full_band = nothing
             colored_result = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M,
-                N, get_dense_ad(jac_alg.nonbc_diffmode))
+                N, jac_alg.nonbc_diffmode)
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
                 (L + 1, cache.M + max(cache.M - L, 0)))
             colored_result = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M,
-                N, get_dense_ad(jac_alg.nonbc_diffmode))
+                N, jac_alg.nonbc_diffmode)
         end
         AutoSparse(jac_alg.nonbc_diffmode;
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(J_full_band),
@@ -379,12 +379,12 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     jac = if iip
         @closure (J, u, p) -> __mirk_mpoint_jacobian!(
-            J, J_c, u, bc_diffmode, get_dense_ad(nonbc_diffmode),
+            J, J_c, u, bc_diffmode, nonbc_diffmode,
             cache_bc, cache_collocation, loss_bc, loss_collocation,
             resid_bc, resid_collocation, L, cache.p)
     else
         @closure (u, p) -> __mirk_mpoint_jacobian(
-            jac_prototype, J_c, u, bc_diffmode, get_dense_ad(nonbc_diffmode),
+            jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode,
             cache_bc, cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
@@ -451,7 +451,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         colored_result = __generate_sparse_jacobian_prototype(cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-            cache.M, N, get_dense_ad(jac_alg.diffmode))
+            cache.M, N, jac_alg.diffmode)
         AutoSparse(jac_alg.diffmode;
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
             coloring_algorithm = ConstantColoringAlgorithm{ifelse(
@@ -464,15 +464,15 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, get_dense_ad(diffmode), y, Constant(cache.p))
+        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
     else
-        DI.prepare_jacobian(loss, get_dense_ad(diffmode), y, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
     end
 
     jac_prototype = if iip
-        DI.jacobian(loss, resid, diffcache, get_dense_ad(diffmode), y, Constant(cache.p)) #zero(init_jacobian(diffcache))
+        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p)) #zero(init_jacobian(diffcache))
     else
-        DI.jacobian(loss, get_dense_ad(diffmode), y, Constant(cache.p))
+        DI.jacobian(loss, diffmode, y, Constant(cache.p))
     end
 
     jac = if iip

@@ -39,7 +39,7 @@ using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
 using Logging
-using RecursiveArrayTools: VectorOfArray, recursivecopy
+using RecursiveArrayTools: VectorOfArray, recursivecopy, recursivefill!
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
 using Setfield: @set!

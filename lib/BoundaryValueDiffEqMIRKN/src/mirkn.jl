@@ -124,24 +124,24 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
 
     jac_cache = if iip
         DI.prepare_jacobian(
-            loss, resid_prototype, get_dense_ad(diffmode), lz, Constant(cache.p))
+            loss, resid_prototype, diffmode, lz, Constant(cache.p))
     else
-        DI.prepare_jacobian(loss, get_dense_ad(diffmode), lz, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, lz, Constant(cache.p))
     end
 
     jac_prototype = if iip
         DI.jacobian(
-            loss, resid_prototype, jac_cache, get_dense_ad(diffmode), lz, Constant(cache.p))
+            loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
     else
-        DI.jacobian(loss, get_dense_ad(diffmode), lz, Constant(cache.p))
+        DI.jacobian(loss, diffmode, lz, Constant(cache.p))
     end
 
     jac = if iip
         @closure (J, u, p) -> __mirkn_mpoint_jacobian!(
-            J, u, get_dense_ad(diffmode), jac_cache, loss, resid_prototype, cache.p)
+            J, u, diffmode, jac_cache, loss, resid_prototype, cache.p)
     else
         @closure (u, p) -> __mirkn_mpoint_jacobian(
-            jac_prototype, u, get_dense_ad(diffmode), jac_cache, loss, cache.p)
+            jac_prototype, u, diffmode, jac_cache, loss, cache.p)
     end
 
     _nlf = NonlinearFunction{iip}(
