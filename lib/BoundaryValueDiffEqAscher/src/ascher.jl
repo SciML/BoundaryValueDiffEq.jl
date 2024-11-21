@@ -320,6 +320,7 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     resid_prototype = zero(lz)
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
         AutoSparse(alg.jac_alg.diffmode;
+            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
         alg.jac_alg.diffmode

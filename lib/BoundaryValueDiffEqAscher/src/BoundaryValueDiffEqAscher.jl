@@ -14,6 +14,7 @@ using Reexport: @reexport
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
 using Setfield: @set!
+using SparseConnectivityTracer: SparseConnectivityTracer
 using SparseMatrixColorings: SparseMatrixColorings, GreedyColoringAlgorithm, LargestFirst
 
 const DI = DifferentiationInterface

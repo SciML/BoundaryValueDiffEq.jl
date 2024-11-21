@@ -443,7 +443,7 @@ function __construct_nlproblem(
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(jac_alg.bc_diffmode;
-            sparsity_detector = ADTypes.TracerSparsityDetector(),
+            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
         jac_alg.bc_diffmode
@@ -600,7 +600,7 @@ function __construct_nlproblem(
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(jac_alg.bc_diffmode;
-            sparsity_detector = ADTypes.TracerSparsityDetector(),
+            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
         jac_alg.bc_diffmode

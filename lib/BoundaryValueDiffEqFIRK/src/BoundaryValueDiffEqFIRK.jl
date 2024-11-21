@@ -46,6 +46,7 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __so
 using Preferences: Preferences
 using Reexport: @reexport
 using Setfield: @set!
+using SparseConnectivityTracer: SparseConnectivityTracer
 const DI = DifferentiationInterface
 
 @reexport using BoundaryValueDiffEqCore, SciMLBase
