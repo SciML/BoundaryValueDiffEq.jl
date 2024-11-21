@@ -43,6 +43,7 @@ using RecursiveArrayTools: VectorOfArray, recursivecopy, recursivefill!
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
 using Setfield: @set!
+using SparseConnectivityTracer: SparseConnectivityTracer
 using Reexport: @reexport
 using Preferences: Preferences
 
