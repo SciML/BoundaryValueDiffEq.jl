@@ -331,20 +331,18 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
             colored_result = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M,
-                N, jac_alg.nonbc_diffmode)
+                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
                 (L + 1, cache.M + max(cache.M - L, 0)))
             colored_result = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M,
-                N, jac_alg.nonbc_diffmode)
+                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         end
-        AutoSparse(jac_alg.nonbc_diffmode;
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(J_full_band),
+        AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
             coloring_algorithm = ConstantColoringAlgorithm{ifelse(
                 ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                :row, :column)}(J_full_band,
+                :row, :column)}(colored_result.A,
                 ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
                     row_colors, column_colors)(colored_result)))
     else
@@ -353,10 +351,10 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     cache_collocation = if iip
-        DI.prepare_jacobian(loss_collocation, resid_collocation,
-            jac_alg.nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p))
     else
-        DI.prepare_jacobian(loss_collocation, jac_alg.nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
     end
 
     J_bc = if iip
@@ -366,9 +364,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
     J_c = if iip
         DI.jacobian(loss_collocation, resid_collocation, cache_collocation,
-            get_dense_ad(nonbc_diffmode), y, Constant(cache.p))
+            nonbc_diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss_collocation, get_dense_ad(nonbc_diffmode), y, Constant(cache.p))
+        DI.jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
     end
 
     if J_full_band === nothing
@@ -379,13 +377,12 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     jac = if iip
         @closure (J, u, p) -> __mirk_mpoint_jacobian!(
-            J, J_c, u, bc_diffmode, nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bc, loss_collocation,
-            resid_bc, resid_collocation, L, cache.p)
+            J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
+            loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p)
     else
         @closure (u, p) -> __mirk_mpoint_jacobian(
-            jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bc, loss_collocation, L, cache.p)
+            jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc,
+            cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)

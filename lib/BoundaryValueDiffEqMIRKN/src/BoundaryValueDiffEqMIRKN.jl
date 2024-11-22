@@ -42,6 +42,7 @@ using RecursiveArrayTools: VectorOfArray, recursivecopy, ArrayPartition
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, AbstractBVProblem,
                  StandardSecondOrderBVProblem, StandardBVProblem, __solve, _unwrap_val
 using Setfield: @set!
+using SparseConnectivityTracer: SparseConnectivityTracer
 using Reexport: @reexport
 using Preferences: Preferences
 

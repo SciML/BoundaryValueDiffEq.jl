@@ -35,7 +35,7 @@ using ADTypes: ADTypes
 using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
-using DifferentiationInterface: DifferentiationInterface, Constant
+using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
 using Logging

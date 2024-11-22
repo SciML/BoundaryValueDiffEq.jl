@@ -113,7 +113,8 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
     end
 
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
-        AutoSparse(alg.jac_alg.diffmode;
+        AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
+            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
         alg.jac_alg.diffmode
@@ -123,15 +124,13 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
     resid_prototype = zero(lz)
 
     jac_cache = if iip
-        DI.prepare_jacobian(
-            loss, resid_prototype, diffmode, lz, Constant(cache.p))
+        DI.prepare_jacobian(loss, resid_prototype, diffmode, lz, Constant(cache.p))
     else
         DI.prepare_jacobian(loss, diffmode, lz, Constant(cache.p))
     end
 
     jac_prototype = if iip
-        DI.jacobian(
-            loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
+        DI.jacobian(loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
     else
         DI.jacobian(loss, diffmode, lz, Constant(cache.p))
     end
@@ -168,13 +167,11 @@ end
 
 function __mirkn_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
     DI.jacobian!(loss, resid, J, diffcache, diffmode, x, Constant(p))
-    #sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
     return nothing
 end
 
 function __mirkn_mpoint_jacobian(J, x, diffmode, diffcache, loss, p)
     DI.jacobian!(loss, J, diffcache, diffmode, x, Constant(p))
-    #sparse_jacobian!(J, diffmode, diffcache, loss, x)
     return J
 end
 

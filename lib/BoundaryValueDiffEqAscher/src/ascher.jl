@@ -319,7 +319,7 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     lz = reduce(vcat, cache.z)
     resid_prototype = zero(lz)
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
-        AutoSparse(alg.jac_alg.diffmode;
+        AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
             sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
@@ -327,15 +327,13 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     end
 
     jac_cache = if iip
-        DI.prepare_jacobian(
-            loss, resid_prototype, diffmode, lz, Constant(cache.p))
+        DI.prepare_jacobian(loss, resid_prototype, diffmode, lz, Constant(cache.p))
     else
         DI.prepare_jacobian(loss, diffmode, lz, Constant(cache.p))
     end
 
     jac_prototype = if iip
-        DI.jacobian(
-            loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
+        DI.jacobian(loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
     else
         DI.jacobian(loss, diffmode, lz, Constant(cache.p))
     end

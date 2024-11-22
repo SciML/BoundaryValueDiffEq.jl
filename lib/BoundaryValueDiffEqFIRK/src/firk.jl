@@ -459,18 +459,16 @@ function __construct_nlproblem(
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
-            colored_matrix = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M,
-                N, jac_alg.nonbc_diffmode)
+            colored_result = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         else
             block_size = cache.M * (stage + 2)
             J_full_band = BandedMatrix(
                 Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1),
                     cache.M * (stage + 1) * (N - 1) + cache.M),
                 (block_size, block_size))
-            colored_matrix = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M,
-                N, jac_alg.nonbc_diffmode)
+            colored_result = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         end
         AutoSparse(jac_alg.nonbc_diffmode;
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(J_full_band),
@@ -478,7 +476,7 @@ function __construct_nlproblem(
                 ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
                 :row, :column)}(J_full_band,
                 ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_matrix)))
+                    row_colors, column_colors)(colored_result)))
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -551,7 +549,7 @@ function __construct_nlproblem(
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
             cache.M, N, jac_alg.diffmode)
-        AutoSparse(jac_alg.diffmode;
+        AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
             coloring_algorithm = ConstantColoringAlgorithm{ifelse(
                 ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)}(
@@ -616,23 +614,21 @@ function __construct_nlproblem(
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
-            colored_matrix = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M,
-                N, jac_alg.nonbc_diffmode)
+            colored_result = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
                 (L + 1, cache.M + max(cache.M - L, 0)))
-            colored_matrix = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M,
-                N, jac_alg.nonbc_diffmode)
+            colored_result = __generate_sparse_jacobian_prototype(
+                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         end
-        AutoSparse(jac_alg.nonbc_diffmode;
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(J_full_band),
+        AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
             coloring_algorithm = ConstantColoringAlgorithm{ifelse(
                 ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                :row, :column)}(J_full_band,
+                :row, :column)}(colored_result.A,
                 ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_matrix)))
+                    row_colors, column_colors)(colored_result)))
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
