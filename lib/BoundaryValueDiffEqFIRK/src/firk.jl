@@ -693,7 +693,7 @@ function __construct_nlproblem(
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
             cache.M, N, jac_alg.diffmode)
-        AutoSparse(jac_alg.diffmode;
+        AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
             coloring_algorithm = ConstantColoringAlgorithm{ifelse(
                 ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)}(
