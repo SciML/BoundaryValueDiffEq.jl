@@ -9,17 +9,17 @@ using PreallocationTools: PreallocationTools, DiffCache
 # Special Matrix Types
 using SparseArrays
 
-import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors, parameterless_type, fast_scalar_indexing
-import ConcreteStructs: @concrete
-import DiffEqBase: solve
-import ForwardDiff: ForwardDiff, pickchunksize
-import Logging
+using ADTypes: AbstractADType
+using ArrayInterface: matrix_colors, parameterless_type, fast_scalar_indexing
+using ConcreteStructs: @concrete
+using DiffEqBase: DiffEqBase, solve
+using ForwardDiff: ForwardDiff, pickchunksize
+using Logging
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
-import LineSearch: BackTracking
-import RecursiveArrayTools: VectorOfArray, DiffEqArray
-import SciMLBase: AbstractBVProblem, AbstractDiffEqInterpolation, StandardBVProblem,
-                  __solve, _unwrap_val
+using LineSearch: BackTracking
+using RecursiveArrayTools: VectorOfArray, DiffEqArray
+using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
+                 StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
 
 @reexport using NonlinearSolveFirstOrder, SparseDiffTools, SciMLBase
 
@@ -30,7 +30,7 @@ include("alg_utils.jl")
 include("default_nlsolve.jl")
 include("sparse_jacobians.jl")
 
-function __solve(
+function SciMLBase.__solve(
         prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)

@@ -39,9 +39,9 @@ function SciMLBase.__init(
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob, prob.u0, Nig, prob.p, false)
     chunksize = pickchunksize(M * (2 * Nig - 2))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
-    y = __alloc.(copy.(y₀))
+    y = __alloc.(copy.(y₀.u))
     fᵢ_cache = __alloc(similar(X))
     fᵢ₂_cache = __alloc(similar(X))
     stage = alg_stage(alg)
@@ -50,7 +50,7 @@ function SciMLBase.__init(
                   for _ in 1:Nig]
 
     residual = if iip
-        __alloc.(copy.(@view(y₀[1:end])))
+        __alloc.(copy.(@view(y₀.u[1:end])))
     else
         nothing
     end
@@ -96,12 +96,13 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
-    solu = ArrayPartition.(cache.y₀[1:length(mesh)], cache.y₀[(length(mesh) + 1):end])
+    L = length(mesh)
+    solu = ArrayPartition.(cache.y₀.u[1:L], cache.y₀.u[(L + 1):end])
     return SciMLBase.build_solution(
         prob, cache.alg, mesh, solu; retcode = sol_nlprob.retcode)
 end
 
-function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where {iip}
+function __construct_nlproblem(cache::MIRKNCache{iip}, y) where {iip}
     (; alg) = cache
     pt = cache.problem_type
 
@@ -114,25 +115,24 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
 
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
-            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+            # Local because iszero require primal values
+            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(), coloring_algorithm = GreedyColoringAlgorithm())
     else
         alg.jac_alg.diffmode
     end
 
-    lz = reduce(vcat, cache.y₀)
-    resid_prototype = zero(lz)
+    resid_prototype = similar(y)
 
     jac_cache = if iip
-        DI.prepare_jacobian(loss, resid_prototype, diffmode, lz, Constant(cache.p))
+        DI.prepare_jacobian(loss, resid_prototype, diffmode, y, Constant(cache.p))
     else
-        DI.prepare_jacobian(loss, diffmode, lz, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
     end
 
     jac_prototype = if iip
-        DI.jacobian(loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
+        DI.jacobian(loss, resid_prototype, jac_cache, diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss, diffmode, lz, Constant(cache.p))
+        DI.jacobian(loss, jac_cache, diffmode, y, Constant(cache.p))
     end
 
     jac = if iip
@@ -143,10 +143,9 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
             jac_prototype, u, diffmode, jac_cache, loss, cache.p)
     end
 
-    _nlf = NonlinearFunction{iip}(
+    nlf = NonlinearFunction{iip}(
         loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
-    return nlprob
+    __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
 function __mirkn_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}
@@ -157,12 +156,6 @@ end
 function __mirkn_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L, p) where {L}
     DI.jacobian!(loss_fn, J, diffcache, diffmode, x, Constant(p))
     return J
-end
-
-@inline function __internal_nlsolve_problem(
-        ::SecondOrderBVProblem{uType, tType, iip, nlls}, resid_prototype,
-        u0, args...; kwargs...) where {uType, tType, iip, nlls}
-    return NonlinearProblem(args...; kwargs...)
 end
 
 function __mirkn_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
@@ -179,7 +172,8 @@ end
         bc::BC, residual, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    eval_bc_residual!(resids[1:2], pt, bc, y_, p, mesh)
+    soly_ = VectorOfArray(y_)
+    eval_bc_residual!(resids[1:2], pt, bc, soly_, p, mesh)
     Φ!(resids[3:end], cache, y_, u, p)
     recursive_flatten!(resid, resids)
     return nothing
@@ -188,7 +182,8 @@ end
 @views function __mirkn_loss(u, p, y, pt::StandardSecondOrderBVProblem,
         bc::BC, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resid_bc = eval_bc_residual(pt, bc, y_, p, mesh)
+    soly_ = VectorOfArray(y_)
+    resid_bc = eval_bc_residual(pt, bc, soly_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
@@ -197,8 +192,9 @@ end
         bc!::BC, residual, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
+    soly_ = VectorOfArray(y_)
     Φ!(resids[3:end], cache, y_, u, p)
-    eval_bc_residual!(resids, pt, bc!, y_, p, mesh)
+    eval_bc_residual!(resids[1:2], pt, bc!, soly_, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -206,7 +202,8 @@ end
 @views function __mirkn_loss(u, p, y, pt::TwoPointSecondOrderBVProblem,
         bc!::BC, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
+    soly_ = VectorOfArray(y_)
     resid_co = Φ(cache, y_, u, p)
-    resid_bc = eval_bc_residual(pt, bc!, y_, p, mesh)
+    resid_bc = eval_bc_residual(pt, bc!, soly_, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
