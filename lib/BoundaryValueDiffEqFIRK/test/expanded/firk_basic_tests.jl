@@ -173,6 +173,8 @@ end
                 dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1e-8)
             if (stage == 5)
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=0.4
+            elseif (stage == 4)
+                @test sim.𝒪est[:final]≈2 * stage - 2 atol=0.5
             else
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             end

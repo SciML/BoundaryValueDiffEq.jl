@@ -709,7 +709,7 @@ function __construct_nlproblem(
     end
 
     jac_prototype = if iip
-        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p)) #zero(init_jacobian(diffcache))
+        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p))
     else
         DI.jacobian(loss, diffmode, y, Constant(cache.p))
     end
