@@ -189,8 +189,7 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(
-        prob, u0::RecursiveArrayTools.AbstractVectorOfArray; kwargs...)
+function __extract_problem_details(prob, u0::AbstractVectorOfArray; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0.u)
     return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
@@ -470,3 +469,10 @@ end
 get_dense_ad(::Nothing) = nothing
 get_dense_ad(ad) = ad
 get_dense_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
+
+function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
+    I′ = adapt(parameterless_type(x), I)
+    J′ = adapt(parameterless_type(x), J)
+    V = __ones_like(x, length(I))
+    return sparse(I′, J′, V, m, n)
+end

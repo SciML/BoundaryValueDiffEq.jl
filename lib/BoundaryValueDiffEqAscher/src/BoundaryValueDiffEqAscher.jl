@@ -1,7 +1,12 @@
 module BoundaryValueDiffEqAscher
 
-using ADTypes: ADTypes
-using AlmostBlockDiagonals
+using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using AlmostBlockDiagonals: AlmostBlockDiagonals
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
+                               concrete_jacobian_algorithm, __Fix3,
+                               __concrete_nonlinearsolve_algorithm,
+                               BoundaryValueDiffEqAlgorithm, __vec, __vec_f, __vec_f!,
+                               __vec_bc, __vec_bc!, __extract_mesh, get_dense_ad
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -18,13 +23,6 @@ using SparseConnectivityTracer: SparseConnectivityTracer
 using SparseMatrixColorings: SparseMatrixColorings, GreedyColoringAlgorithm, LargestFirst
 
 const DI = DifferentiationInterface
-
-using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
-                               concrete_jacobian_algorithm, __Fix3,
-                               __concrete_nonlinearsolve_algorithm,
-                               BoundaryValueDiffEqAlgorithm, __sparse_jacobian_cache, __vec,
-                               __vec_f, __vec_f!, __vec_bc, __vec_bc!, __extract_mesh,
-                               get_dense_ad
 
 @reexport using BoundaryValueDiffEqCore, SciMLBase
 

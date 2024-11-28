@@ -34,25 +34,25 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
             u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type)
     end
 
-    sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
-         NoSparsityDetection()
     y_ = similar(resid_prototype)
 
-    # Construct the jacobian function
-    # NOTE: We pass in a separate Jacobian Function because that allows us to cache the
-    #       the internal ode solve cache. This cache needs to be distinct from the regular
-    #       residual function cache
-    jac_cache = if iip
-        sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, y_, vec(u0))
+    diffmode = if alg.jac_alg.diffmode isa AutoSparse
+        AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
+            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
-        sparse_jacobian_cache(alg.jac_alg.diffmode, sd, nothing, vec(u0); fx = y_)
+        alg.jac_alg.diffmode
+    end
+
+    jac_cache = if iip
+        DI.prepare_jacobian(nothing, resid_prototype, diffmode, y_)
+    else
+        DI.prepare_jacobian(nothing, diffmode, y_)
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
         internal_prob, jac_cache, __cache_trait(alg.jac_alg.diffmode),
         u0, alg.ode_alg; ode_kwargs...)
-
-    jac_prototype = init_jacobian(jac_cache)
 
     loss_fnₚ = if iip
         @closure (du, u) -> __single_shooting_loss!(
@@ -62,12 +62,18 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
             u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type)
     end
 
+    jac_prototype = if iip
+        DI.jacobian(loss_fnₚ, resid_prototype, jac_cache, diffmode, y_)
+    else
+        DI.jacobian(loss_fnₚ, diffmode, y_)
+    end
+
     jac_fn = if iip
         @closure (J, u, p) -> __single_shooting_jacobian!(
-            J, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ, y_)
+            J, u, jac_cache, diffmode, loss_fnₚ, y_)
     else
         @closure (u, p) -> __single_shooting_jacobian(
-            jac_prototype, u, jac_cache, alg.jac_alg.diffmode, loss_fnₚ)
+            jac_prototype, u, jac_cache, diffmode, loss_fnₚ)
     end
 
     nlf = NonlinearFunction{iip}(loss_fn; jac_prototype = jac_prototype,
@@ -119,12 +125,12 @@ function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}
-    sparse_jacobian!(J, diffmode, jac_cache, loss_fn, fu, vec(u))
+    DI.jacobian!(loss_fn, fu, J, jac_cache, diffmode, vec(u))
     return J
 end
 
 function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where {L}
-    sparse_jacobian!(J, diffmode, jac_cache, loss_fn, vec(u))
+    DI.jacobian!(loss_fn, J, jac_cache, diffmode, vec(u))
     return J
 end
 
@@ -135,7 +141,7 @@ end
 
 function __single_shooting_jacobian_ode_cache(
         prob, jac_cache, ::DiffCacheNeeded, u0, ode_alg; kwargs...)
-    cache = jac_cache.cache
+    cache = jac_cache.config
     if cache isa ForwardDiff.JacobianConfig
         xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
     else

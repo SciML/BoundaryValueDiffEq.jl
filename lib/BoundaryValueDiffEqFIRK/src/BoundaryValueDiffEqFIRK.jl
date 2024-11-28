@@ -1,18 +1,8 @@
 module BoundaryValueDiffEqFIRK
 
-using PrecompileTools: @compile_workload, @setup_workload
-using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm,
-                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
-                             LargestFirst
-using PreallocationTools: PreallocationTools, DiffCache
-
-# Special Matrix Types
+using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using SparseArrays: sparse
-using LinearAlgebra
-using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
-                                finish_part_setindex!
-
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!,
@@ -27,26 +17,31 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __internal_nlsolve_problem, MaybeDiffCache, __extract_mesh,
                                __extract_u0, __has_initial_guess, __initial_guess_length,
                                __initial_guess_on_mesh, __flatten_initial_guess,
-                               __build_solution, __Fix3, __sparse_jacobian_cache,
-                               __sparsity_detection_alg, _sparse_like, ColoredMatrix,
-                               get_dense_ad
+                               __build_solution, __Fix3, _sparse_like, get_dense_ad
 
-using Adapt
-using ADTypes: ADTypes
-using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant
+using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
+                                finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
-using Logging: Logging
-using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy
+using LinearAlgebra
+using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
+                           recursivefill!
+using Reexport: @reexport
+using PreallocationTools: PreallocationTools, DiffCache
+using PrecompileTools: @compile_workload, @setup_workload
+using Preferences: Preferences
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
-using Preferences: Preferences
-using Reexport: @reexport
-using Setfield: @set!
+using Setfield: @set!, @set
+using SparseArrays: sparse
 using SparseConnectivityTracer: SparseConnectivityTracer
+using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm,
+                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
+                             LargestFirst
+
 const DI = DifferentiationInterface
 
 @reexport using BoundaryValueDiffEqCore, SciMLBase
