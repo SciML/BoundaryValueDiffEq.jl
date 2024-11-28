@@ -135,5 +135,4 @@ function __generate_sparse_jacobian_prototype(
         partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
     algo = GreedyColoringAlgorithm()
     return coloring(J, problem, algo)
-    #return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
 end

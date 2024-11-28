@@ -596,7 +596,7 @@ function __construct_nlproblem(
     resid_collocation = __similar(y, cache.M * (N - 1))
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
-        AutoSparse(jac_alg.bc_diffmode;
+        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
             sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
@@ -634,10 +634,10 @@ function __construct_nlproblem(
     end
 
     cache_collocation = if iip
-        DI.prepare_jacobian(loss_collocation, resid_collocation,
-            jac_alg.nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p))
     else
-        DI.prepare_jacobian(loss_collocation, jac_alg.nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
     end
 
     J_bc = if iip
@@ -660,13 +660,12 @@ function __construct_nlproblem(
 
     jac = if iip
         @closure (J, u, p) -> __firk_mpoint_jacobian!(
-            J, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bc, loss_collocation,
-            resid_bc, resid_collocation, L, cache.p)
+            J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
+            loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p)
     else
         @closure (u, p) -> __firk_mpoint_jacobian(
-            jac_prototype, J_c, u, jac_alg.bc_diffmode, jac_alg.nonbc_diffmode,
-            cache_bc, cache_collocation, loss_bc, loss_collocation, L, cache.p)
+            jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc,
+            cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
