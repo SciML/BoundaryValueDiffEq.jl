@@ -24,7 +24,7 @@ using SparseMatrixColorings: SparseMatrixColorings, GreedyColoringAlgorithm, Lar
 
 const DI = DifferentiationInterface
 
-@reexport using BoundaryValueDiffEqCore, SciMLBase
+@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("utils.jl")

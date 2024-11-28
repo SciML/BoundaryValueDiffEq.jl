@@ -14,7 +14,7 @@ using ForwardDiff: ForwardDiff, pickchunksize
 using Reexport: @reexport
 using SciMLBase
 
-@reexport using ADTypes, OrdinaryDiffEq, SciMLBase
+@reexport using ADTypes, SciMLBase
 
 include("extension_algs.jl")
 

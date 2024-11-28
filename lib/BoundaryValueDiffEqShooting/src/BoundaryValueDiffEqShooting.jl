@@ -1,6 +1,6 @@
 module BoundaryValueDiffEqShooting
 
-using ADTypes: ADTypes, AbstractADType, AutoSparse, AutoForwardDiff
+using ADTypes
 using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
@@ -45,7 +45,7 @@ using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm,
 
 const DI = DifferentiationInterface
 
-@reexport using BoundaryValueDiffEqCore, SciMLBase
+@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("algorithms.jl")
 include("single_shooting.jl")
