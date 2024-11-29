@@ -45,14 +45,13 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     end
 
     jac_cache = if iip
-        DI.prepare_jacobian(nothing, resid_prototype, diffmode, y_)
+        DI.prepare_jacobian(nothing, y_, diffmode, vec(u0))
     else
-        DI.prepare_jacobian(nothing, diffmode, y_)
+        DI.prepare_jacobian(nothing, diffmode, vec(u0))
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
-        internal_prob, jac_cache, __cache_trait(alg.jac_alg.diffmode),
-        u0, alg.ode_alg; ode_kwargs...)
+        internal_prob, jac_cache, __cache_trait(diffmode), u0, alg.ode_alg; ode_kwargs...)
 
     loss_fnₚ = if iip
         @closure (du, u) -> __single_shooting_loss!(
@@ -63,9 +62,9 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     end
 
     jac_prototype = if iip
-        DI.jacobian(loss_fnₚ, resid_prototype, jac_cache, diffmode, y_)
+        DI.jacobian(loss_fnₚ, y_, jac_cache, diffmode, vec(u0))
     else
-        DI.jacobian(loss_fnₚ, diffmode, y_)
+        DI.jacobian(loss_fnₚ, jac_cache, diffmode, vec(u0))
     end
 
     jac_fn = if iip
