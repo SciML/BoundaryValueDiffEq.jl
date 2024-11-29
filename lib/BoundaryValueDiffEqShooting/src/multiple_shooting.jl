@@ -23,6 +23,7 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
     else
         __alg
     end
+
     nshoots = alg.nshoots
 
     if prob.problem_type isa TwoPointBVProblem
@@ -118,8 +119,8 @@ function __solve_nlproblem!(
     jac_cache = DI.prepare_jacobian(nothing, resid_prototype_cached, diffmode, u_at_nodes)
 
     ode_cache_jac_fn = __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, jac_cache, __cache_trait(diffmode),
-        alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
+        ensemblealg, prob, jac_cache, diffmode, alg.ode_alg,
+        cur_nshoot, u0; internal_ode_kwargs...)
 
     loss_fnₚ = @closure (du, u) -> __multiple_shooting_2point_loss!(
         du, u, prob.p, cur_nshoot, nodes, prob, solve_internal_odes!,
@@ -173,13 +174,13 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     ode_jac_cache = DI.prepare_jacobian(
         nothing, similar(u_at_nodes, cur_nshoot * N), nonbc_diffmode, u_at_nodes)
     ode_cache_ode_jac_fn = __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, ode_jac_cache, __cache_trait(nonbc_diffmode),
+        ensemblealg, prob, ode_jac_cache, nonbc_diffmode,
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     # BC Part
     bc_diffmode = if alg.jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(alg.jac_alg.bc_diffmode),
-            sparsity_detector = SparseConnectivityDetection(),
+            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
     else
         alg.jac_alg.bc_diffmode
@@ -187,7 +188,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     bc_jac_cache = DI.prepare_jacobian(
         nothing, similar(bcresid_prototype), bc_diffmode, u_at_nodes)
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, bc_jac_cache, __cache_trait(bc_diffmode),
+        ensemblealg, prob, bc_jac_cache, bc_diffmode,
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     # Define the functions now
@@ -232,15 +233,25 @@ function __multiple_shooting_init_odecache(
 end
 
 function __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, jac_cache, ::NoDiffCacheNeeded, alg, nshoots, u; kwargs...)
+        ensemblealg, prob, jac_cache, diffmode, alg, nshoots, u; kwargs...)
+    __multiple_shooting_init_jacobian_odecache(
+        ensemblealg, prob, jac_cache, __cache_trait(diffmode),
+        diffmode, alg, nshoots, u; kwargs...)
+end
+
+function __multiple_shooting_init_jacobian_odecache(
+        ensemblealg, prob, jac_cache, ::NoDiffCacheNeeded,
+        diffmode, alg, nshoots, u; kwargs...)
     return __multiple_shooting_init_odecache(ensemblealg, prob, alg, u, nshoots; kwargs...)
 end
 
 function __multiple_shooting_init_jacobian_odecache(
-        ensemblealg, prob, jac_cache, ::DiffCacheNeeded, alg, nshoots, u; kwargs...)
-    cache = jac_cache.config
-    if cache isa ForwardDiff.JacobianConfig
-        xduals = reshape(cache.duals[2][1:length(u)], size(u))
+        ensemblealg, prob, jac_cache, ::DiffCacheNeeded,
+        diffmode, alg, nshoots, u; kwargs...)
+    if diffmode isa AutoSparse
+        xduals = reshape(jac_cache.pushforward_prep.xdual_tmp[1:length(u)], size(u))
+    elseif diffmode isa AutoForwardDiff
+        xduals = reshape(jac_cache.config.duals[2][1:length(u)], size(u))
     else
         xduals = reshape(cache.t[1:length(u)], size(u))
     end
@@ -311,9 +322,8 @@ function __multiple_shooting_mpoint_jacobian!(
     J_bc = @view(J[1:M, :])
     J_c = @view(J[(M + 1):end, :])
 
-    DI.jacobian!(
-        ode_fn, resid_nodes.du, J_c, ode_jac_cache, nonbc_diffmode, us, Constant(p))
-    DI.jacobian!(bc_fn, resid_bc, J_bc, bc_jac_cache, bc_diffmode, us, Constant(p))
+    DI.jacobian!(ode_fn, resid_nodes.du, J_c, ode_jac_cache, nonbc_diffmode, us)
+    DI.jacobian!(bc_fn, resid_bc, J_bc, bc_jac_cache, bc_diffmode, us)
 
     return nothing
 end
