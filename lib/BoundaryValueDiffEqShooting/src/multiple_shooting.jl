@@ -312,7 +312,7 @@ end
 
 function __multiple_shooting_2point_jacobian!(
         J, us, p, jac_cache, loss_fn::F, resid, alg::MultipleShooting) where {F}
-    DI.jacobian!(loss_fn, resid, J, jac_cache, alg.jac_alg.diffmode, us, Constant(p))
+    DI.jacobian!(loss_fn, resid, J, jac_cache, alg.jac_alg.diffmode, us)
     return nothing
 end
 
