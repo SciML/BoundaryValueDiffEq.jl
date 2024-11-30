@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqAscher
 
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
-using AlmostBlockDiagonals: AlmostBlockDiagonals
+using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
 using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
                                concrete_jacobian_algorithm, __Fix3,
                                __concrete_nonlinearsolve_algorithm,
