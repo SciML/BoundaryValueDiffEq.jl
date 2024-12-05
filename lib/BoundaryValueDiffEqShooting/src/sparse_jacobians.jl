@@ -13,18 +13,22 @@ Returns a 3-Tuple:
     Two-Point Problem) else `nothing`.
 """
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
-        bcresid_prototype, u0, N::Int, nshoots::Int)
+        bcresid_prototype, u0, N::Int, nshoots::Int, ad)
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = nshoots * N
     J₂ = (nshoots + 1) * N
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (N - 1, N + 1))
 
-    return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
+    problem = ColoringProblem(;
+        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
+    algo = GreedyColoringAlgorithm()
+    result = coloring(sparse(J), problem, algo)
+    return result
 end
 
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
-        bcresid_prototype, u0, N::Int, nshoots::Int)
+        bcresid_prototype, u0, N::Int, nshoots::Int, ad)
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
 
@@ -39,6 +43,10 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVPr
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (max(L₁, L₂) + N - 1, N + 1))
 
     # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
-    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
+    problem = ColoringProblem(;
+        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
+    algo = GreedyColoringAlgorithm()
+    # for underdetermined systems we don't have banded qr implemented. use sparse
+    J₁ < J₂ && return coloring(sparse(J), problem, algo)
+    return coloring(J, problem, algo)
 end

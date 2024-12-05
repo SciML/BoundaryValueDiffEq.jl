@@ -18,16 +18,17 @@
     end
 
     function bc!(res, du, u, p, t)
-        res[1] = u[1][1]
-        res[2] = u[end][1]
-        res[3] = u[1][3] + 1
-        res[4] = u[end][3] - 1
-        res[5] = du[1][1]
-        res[6] = du[end][1]
+        res[1] = u[:, 1][1]
+        res[2] = u[:, end][1]
+        res[3] = u[:, 1][3] + 1
+        res[4] = u[:, end][3] - 1
+        res[5] = du[:, 1][1]
+        res[6] = du[:, end][1]
     end
 
     function bc(du, u, p, t)
-        return [u[1][1], u[end][1], u[1][3] + 1, u[end][3] - 1, du[1][1], du[end][1]]
+        return [u[:, 1][1], u[:, end][1], u[:, 1][3] + 1,
+            u[:, end][3] - 1, du[:, 1][1], du[:, end][1]]
     end
     function bca!(resa, du, u, p)
         resa[1] = u[1]
