@@ -33,7 +33,7 @@ using LinearAlgebra
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 using Reexport: @reexport
-using RecursiveArrayTools: ArrayPartition, DiffEqArray
+using RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
 using Setfield: @set!, @set

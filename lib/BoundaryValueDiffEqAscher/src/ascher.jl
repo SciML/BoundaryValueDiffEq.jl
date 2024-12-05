@@ -335,7 +335,7 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     jac_prototype = if iip
         DI.jacobian(loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
     else
-        DI.jacobian(loss, diffmode, lz, Constant(cache.p))
+        DI.jacobian(loss, jac_cache, diffmode, lz, Constant(cache.p))
     end
 
     jac = if iip
@@ -346,10 +346,9 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
             jac_prototype, u, diffmode, jac_cache, loss, cache.p)
     end
 
-    _nlf = NonlinearFunction{iip}(
+    nlf = NonlinearFunction{iip}(
         loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
-    return nlprob
+    return __internal_nlsolve_problem(cache.prob, similar(lz), lz, nlf, lz, cache.p)
 end
 
 function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)

@@ -374,7 +374,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
 
         @views gblock!(cache, h, g[i], izeta, w[i], v[i])
 
-        if i >= n
+        if i == n
             izsave = izeta
             # build equation for a side condition.
             # other nonlinear case
@@ -848,6 +848,7 @@ function dmzsol!(cache::AscherCache, v, z, dmz)
     for i in 1:n
         for j in 1:ncomp
             fact = __get_value(z[i][j])
+            println("fact: ", fact)
             for l in 1:kdy
                 kk, jj = __locate_stage(l, ncy)
                 dmz[i][kk][jj] = dmz[i][kk][jj] + fact * v[i][l, j]
