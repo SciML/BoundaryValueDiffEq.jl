@@ -368,5 +368,3 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
-
-# convert every vector of vector to AbstractVectorOfArray, especially if them come from get_tmp of PreallocationTools.jl
