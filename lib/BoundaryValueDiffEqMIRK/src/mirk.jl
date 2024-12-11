@@ -207,7 +207,7 @@ end
 
 # Constructing the Nonlinear Problem
 function __construct_nlproblem(
-        cache::MIRKCache{iip}, y::AbstractVector, y₀::VectorOfArray) where {iip}
+        cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
 
     eval_sol = EvalSol(y₀.u, cache.mesh, cache.alg, cache.k_discrete)

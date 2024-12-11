@@ -145,8 +145,8 @@ end
     end
 
     function bc!(residual, sol, p, t)
-        y1 = first(sol)
-        y2 = last(sol)
+        y1 = sol(0.0)
+        y2 = sol(0.5)
         R0_u = reshape(@view(y1[4:12]), 3, 3)
         RL_u = reshape(@view(y2[4:12]), 3, 3)
 
