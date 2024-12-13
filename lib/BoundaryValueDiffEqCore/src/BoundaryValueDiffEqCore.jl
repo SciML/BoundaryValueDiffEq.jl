@@ -13,7 +13,7 @@ import ADTypes: AbstractADType
 import ArrayInterface: matrix_colors, parameterless_type, fast_scalar_indexing
 import ConcreteStructs: @concrete
 import DiffEqBase: solve
-import ForwardDiff: ForwardDiff, pickchunksize
+import ForwardDiff: ForwardDiff, pickchunksize, Dual
 import Logging
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
 import LineSearch: BackTracking
@@ -28,6 +28,7 @@ include("algorithms.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
 include("sparse_jacobians.jl")
+include("misc_utils.jl")
 
 function __solve(prob::BVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
