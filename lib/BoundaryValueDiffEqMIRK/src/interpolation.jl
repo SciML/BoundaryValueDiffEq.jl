@@ -117,16 +117,18 @@ end
 
 # Intermidiate solution for evaluating boundry conditions
 # basically simplified version of the interpolation for MIRK
-function (s::EvalSol{A})(tval::Number) where {A <: AbstractMIRK}
-    (; u, t, alg, k_discrete) = s
+function (s::EvalSol)(tval::Number)
+    (; t, u, alg, k_discrete) = s
     stage = alg_stage(alg)
-    z = similar(u[1])
-    i = interval(t, tval)
-    dt = t[i + 1] - t[i]
-    τ = (tval - t[i]) / dt
+    # Quick handle for the case where tval is at the boundary
+    (tval == t[1]) && return first(u)
+    (tval == t[end]) && return last(u)
+    z = zero(last(u))
+    ii = interval(t, tval)
+    dt = t[ii + 1] - t[ii]
+    τ = (tval - t[ii]) / dt
     w, _ = interp_weights(τ, alg)
-    z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    z .= z .* dt .+ u[i]
+    __maybe_matmul!(z, k_discrete[ii].du[:, 1:stage], w[1:stage])
+    z .= z .* dt .+ u[ii]
     return z
 end

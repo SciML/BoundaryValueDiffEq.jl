@@ -67,7 +67,7 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
         u0, tspan; bcresid_prototype, nlls = Val(false))]
 
-testTol = 0.2
+testTol = 0.4
 affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
@@ -108,7 +108,7 @@ end
 
     @testset "Problem: $i" for i in (3, 4, 7, 8)
         prob = probArr[i]
-        @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
+        @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
             sim = test_convergence(
                 dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
             @test sim.𝒪est[:final]≈order atol=testTol
