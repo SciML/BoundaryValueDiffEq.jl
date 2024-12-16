@@ -16,7 +16,7 @@ import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorit
                                 __concrete_nonlinearsolve_algorithm, diff!,
                                 __FastShortcutBVPCompatibleNonlinearPolyalg,
                                 __FastShortcutBVPCompatibleNLLSPolyalg, eval_bc_residual,
-                                eval_bc_residual!, get_tmp, __maybe_matmul!,
+                                eval_bc_residual!, get_tmp, __maybe_matmul!, EvalSol,
                                 __append_similar!, __extract_problem_details,
                                 __initial_guess, __maybe_allocate_diffcache,
                                 __get_bcresid_prototype, __similar, __vec, __vec_f,
@@ -48,6 +48,7 @@ include("mirkn.jl")
 include("alg_utils.jl")
 include("collocation.jl")
 include("mirkn_tableaus.jl")
+include("interpolation.jl")
 
 function __solve(
         prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)

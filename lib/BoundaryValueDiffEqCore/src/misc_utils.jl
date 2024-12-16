@@ -1,7 +1,6 @@
 # Intermidiate solution evaluation
-@concrete struct EvalSol{iip}
+@concrete struct EvalSol{C}
     u
     t
-    alg
-    k_discrete
+    cache::C
 end

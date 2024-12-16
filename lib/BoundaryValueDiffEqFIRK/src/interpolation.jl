@@ -127,3 +127,97 @@ end
     cache.mesh, u, cache)
 @inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(
     cache.mesh, u, cache)
+
+# Intermidiate solution for evaluating boundry conditions
+# basically simplified version of the interpolation for MIRK
+# Expanded FIRK
+function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
+    (; t, u, cache) = s
+    (; f, alg, ITU, p) = cache
+    (; q_coeff) = ITU
+    stage = alg_stage(alg)
+    # Quick handle for the case where tval is at the boundary
+    (tval == t[1]) && return first(u)
+    (tval == t[end]) && return last(u)
+    K = __similar(first(u), length(first(u)), stage)
+    j = interval(t, tval)
+    ctr_y = (j - 1) * (stage + 1) + 1
+
+    yᵢ = u[ctr_y]
+    yᵢ₊₁ = u[ctr_y + stage + 1]
+
+    if SciMLBase.isinplace(cache.prob)
+        dyᵢ = similar(yᵢ)
+        dyᵢ₊₁ = similar(yᵢ₊₁)
+
+        f(dyᵢ, yᵢ, p, t[j])
+        f(dyᵢ₊₁, yᵢ₊₁, p, t[j + 1])
+    else
+        dyᵢ = f(yᵢ, p, t[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, p, t[j + 1])
+    end
+
+    # Load interpolation residual
+    for jj in 1:stage
+        K[:, jj] = u[ctr_y + jj]
+    end
+    h = t[j + 1] - t[j]
+    τ = tval - t[j]
+
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+
+    z = similar(yᵢ)
+
+    S_interpolate!(z, τ, S_coeffs)
+    return z
+end
+
+nodual_value(x) = x
+nodual_value(x::Dual) = ForwardDiff.value(x)
+nodual_value(x::AbstractArray{<:Dual}) = map(ForwardDiff.value, x)
+
+# Nested FIRK
+function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
+    (; t, u, cache) = s
+    (; f, nest_prob, nest_tol, alg, mesh_dt, p, ITU) = cache
+    (; q_coeff) = ITU
+    stage = alg_stage(alg)
+    # Quick handle for the case where tval is at the boundary
+    (tval == t[1]) && return first(u)
+    (tval == t[end]) && return last(u)
+    j = interval(t, tval)
+    h = t[j + 1] - t[j]
+    τ = tval - t[j]
+
+    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nestprob_p = zeros(cache.M + 2)
+
+    yᵢ = u[j]
+    yᵢ₊₁ = u[j + 1]
+
+    if SciMLBase.isinplace(cache.prob)
+        dyᵢ = similar(yᵢ)
+        dyᵢ₊₁ = similar(yᵢ₊₁)
+
+        f(dyᵢ, yᵢ, p, t[j])
+        f(dyᵢ₊₁, yᵢ₊₁, p, t[j + 1])
+    else
+        dyᵢ = f(yᵢ, p, t[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, p, t[j + 1])
+    end
+
+    nestprob_p[1] = t[j]
+    nestprob_p[2] = mesh_dt[j]
+    nestprob_p[3:end] .= nodual_value(yᵢ)
+
+    _nestprob = remake(nest_prob, p = nestprob_p)
+    nestsol = __solve(_nestprob, nest_nlsolve_alg; abstol = nest_tol)
+    K = nestsol.u
+
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+    z = similar(yᵢ)
+    S_interpolate!(z, τ, S_coeffs)
+    return z
+end
