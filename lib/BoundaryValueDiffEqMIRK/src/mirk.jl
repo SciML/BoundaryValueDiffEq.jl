@@ -274,7 +274,7 @@ end
 end
 
 @views function __mirk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2},
-        mesh, cache, EvalSol) where {BC1, BC2}
+        mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, p)
     soly_ = VectorOfArray(y_)

@@ -129,7 +129,7 @@ end
     cache.mesh, u, cache)
 
 # Intermidiate solution for evaluating boundry conditions
-# basically simplified version of the interpolation for MIRK
+# basically simplified version of the interpolation for FIRK
 # Expanded FIRK
 function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
     (; t, u, cache) = s

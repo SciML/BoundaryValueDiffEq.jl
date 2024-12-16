@@ -409,10 +409,9 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
 
     loss_bc = if iip
         @closure (du, u, p) -> __firk_loss_bc!(
-            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache, eval_sol)
+            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     else
-        @closure (u, p) -> __firk_loss_bc(
-            u, p, pt, cache.bc, cache.y, cache.mesh, cache, eval_sol)
+        @closure (u, p) -> __firk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     end
 
     loss_collocation = if iip
@@ -705,7 +704,7 @@ end
 end
 
 @views function __firk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh,
-        cache::Union{FIRKCacheNested, FIRKCacheExpand}, eval_sol) where {BC}
+        cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     eval_bc_residual!(resid, pt, bc!, eval_sol, p, mesh)
@@ -713,7 +712,7 @@ end
 end
 
 @views function __firk_loss_bc(u, p, pt, bc!::BC, y, mesh,
-        cache::Union{FIRKCacheNested, FIRKCacheExpand}, eval_sol) where {BC}
+        cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
     eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     return eval_bc_residual(pt, bc!, eval_sol, p, mesh)

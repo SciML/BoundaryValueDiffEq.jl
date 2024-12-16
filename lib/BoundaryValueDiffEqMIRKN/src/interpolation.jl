@@ -1,5 +1,5 @@
 # Intermidiate solution for evaluating boundry conditions
-# basically simplified version of the interpolation for MIRK
+# basically simplified version of the linear interpolation for MIRKN
 function (s::EvalSol{C})(tval::Number) where {C <: MIRKNCache}
     (; t, u, cache) = s
 
