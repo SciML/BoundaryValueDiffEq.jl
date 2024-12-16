@@ -240,9 +240,11 @@ __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
 # Restructure Solution
 function __restructure_sol(sol::AbstractVectorOfArray, u_size)
+    (size(first(sol)) == u_size) && return sol
     return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
 end
 function __restructure_sol(sol::AbstractArray{<:AbstractArray}, u_size)
+    (size(first(sol)) == u_size) && return sol
     return map(Base.Fix2(reshape, u_size), sol)
 end
 
