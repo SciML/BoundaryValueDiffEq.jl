@@ -67,7 +67,7 @@
             if alg isa Shooting || alg isa MultipleShooting
                 sol = solve(bvp, alg)
             else
-                sol = solve(bvp, alg; dt)
+                sol = solve(bvp, alg; dt, abstol = 1e-8)
             end
             @test SciMLBase.successful_retcode(sol)
             resid = zeros(4)

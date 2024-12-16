@@ -210,7 +210,7 @@ function __construct_nlproblem(
         cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
 
-    eval_sol = EvalSol(y₀.u, cache.mesh, cache)
+    eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
         @closure (du, u, p) -> __mirk_loss_bc!(
@@ -243,7 +243,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, p)
-    EvalSol.u[1:end] .= y_
+    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
     recursive_flatten!(resid, resids)
@@ -267,7 +267,7 @@ end
         u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, EvalSol) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, p)
-    EvalSol.u[1:end] .= y_
+    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
     resid_bc = eval_bc_residual(pt, bc, EvalSol, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
@@ -285,14 +285,14 @@ end
 @views function __mirk_loss_bc!(
         resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = EvalSol(y_, mesh, cache)
+    soly_ = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
     return nothing
 end
 
 @views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = EvalSol(y_, mesh, cache)
+    soly_ = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
 end
 

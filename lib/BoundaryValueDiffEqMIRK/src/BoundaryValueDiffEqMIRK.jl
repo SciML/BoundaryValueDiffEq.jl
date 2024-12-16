@@ -15,7 +15,7 @@ import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorit
                                 recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                 __concrete_nonlinearsolve_algorithm, diff!,
                                 __FastShortcutBVPCompatibleNonlinearPolyalg,
-                                __FastShortcutBVPCompatibleNLLSPolyalg,
+                                __FastShortcutBVPCompatibleNLLSPolyalg, __restructure_sol,
                                 concrete_jacobian_algorithm, eval_bc_residual,
                                 eval_bc_residual!, get_tmp, __maybe_matmul!,
                                 __append_similar!, __extract_problem_details,
