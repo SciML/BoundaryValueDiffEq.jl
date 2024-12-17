@@ -184,13 +184,9 @@ end
     @testset "Problem: $i" for i in 1:2
         prob = UnderconstrainedProbArr[i]
         @testset "Solver: $name" for (name, solver) in zip(SOLVERS_NAMES, SOLVERS)
-            if name == "RadauIIa5 with GaussNewton"
-                continue
-            else
-                sol = solve(
-                    prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
-                @test SciMLBase.successful_retcode(sol.retcode)
-            end
+            sol = solve(
+                prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
+            @test SciMLBase.successful_retcode(sol.retcode)
         end
     end
 end
