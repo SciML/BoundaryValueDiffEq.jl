@@ -353,7 +353,7 @@ end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol,
         adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀))
+    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
         nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
@@ -402,8 +402,10 @@ end
 
 # Constructing the Nonlinear Problem
 function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
-        y::AbstractVector) where {iip}
+        y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
+
+    eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
         @closure (du, u, p) -> __firk_loss_bc!(
@@ -422,9 +424,10 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
 
     loss = if iip
         @closure (du, u, p) -> __firk_loss!(
-            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache)
+            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, eval_sol)
     else
-        @closure (u, p) -> __firk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
+        @closure (u, p) -> __firk_loss(
+            u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol)
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
@@ -658,19 +661,19 @@ function __construct_nlproblem(
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
-@views function __firk_loss!(
-        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh, cache) where {BC}
+@views function __firk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC,
+        residual, mesh, cache, eval_sol) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    soly_ = VectorOfArray(y_)
-    eval_bc_residual!(resids[1], pt, bc!, soly_, p, mesh)
     Φ!(resids[2:end], cache, y_, u, p)
+    eval_sol.u[1:end] .= y_
+    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
 
 @views function __firk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache) where {BC1, BC2}
+        residual, mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     resids = [get_tmp(r, u) for r in residual]
@@ -682,16 +685,17 @@ end
     return nothing
 end
 
-@views function __firk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
+@views function __firk_loss(
+        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    resid_bc = eval_bc_residual(pt, bc, soly_, p, mesh)
+    eval_sol.u[1:end] .= y_
+    resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 
-@views function __firk_loss(
-        u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh, cache) where {BC1, BC2}
+@views function __firk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2},
+        mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
@@ -702,16 +706,16 @@ end
 @views function __firk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh,
         cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
+    eval_bc_residual!(resid, pt, bc!, eval_sol, p, mesh)
     return nothing
 end
 
 @views function __firk_loss_bc(u, p, pt, bc!::BC, y, mesh,
         cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    return eval_bc_residual(pt, bc!, soly_, p, mesh)
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
+    return eval_bc_residual(pt, bc!, eval_sol, p, mesh)
 end
 
 @views function __firk_loss_collocation!(resid, u, p, y, mesh, residual, cache)

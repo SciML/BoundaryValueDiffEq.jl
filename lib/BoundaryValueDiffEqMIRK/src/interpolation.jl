@@ -117,8 +117,9 @@ end
 
 # Intermidiate solution for evaluating boundry conditions
 # basically simplified version of the interpolation for MIRK
-function (s::EvalSol)(tval::Number)
-    (; t, u, alg, k_discrete) = s
+function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
+    (; t, u, cache) = s
+    (; alg, k_discrete) = cache
     stage = alg_stage(alg)
     # Quick handle for the case where tval is at the boundary
     (tval == t[1]) && return first(u)

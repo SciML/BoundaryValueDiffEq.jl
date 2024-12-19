@@ -390,10 +390,10 @@ function apply_q_prime(τ, h, coeffs)
     return sum(i * coeffs[i] * (τ * h)^(i - 1) for i in axes(coeffs, 1))
 end
 
-function eval_q(y_i, τ, h, A, K)
+function eval_q(y_i::AbstractArray{T}, τ, h, A, K) where {T}
     M = size(K, 1)
-    q = zeros(M)
-    q′ = zeros(M)
+    q = zeros(T, M)
+    q′ = zeros(T, M)
     for i in 1:M
         ki = @view K[i, :]
         coeffs = get_q_coeffs(A, ki, h)
