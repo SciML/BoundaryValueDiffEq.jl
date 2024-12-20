@@ -44,6 +44,12 @@ function boundary!(residual, u, p, t)
 end
 boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
 
+function boundary_indexing!(residual, u, p, t)
+    residual[1] = u[:, 1][1] - 5
+    residual[2] = u[:, end][1]
+end
+boundary_indexing(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
+
 function boundary_two_point_a!(resida, ua, p)
     resida[1] = ua[1] - 5
 end
@@ -75,6 +81,8 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2!, boundary_indexing!, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2, boundary_indexing, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
         u0, tspan; bcresid_prototype, nlls = Val(false)),
     TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b),
@@ -96,7 +104,7 @@ end
 @testitem "Affineness" setup=[FIRKNestedConvergenceTests] begin
     using LinearAlgebra
 
-    @testset "Problem: $i" for i in (1, 2, 5, 6)
+    @testset "Problem: $i" for i in (1, 2, 7, 8)
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
@@ -141,7 +149,7 @@ end
 @testitem "JET: Runtime Dispatches" setup=[FIRKNestedConvergenceTests] begin
     using JET
 
-    @testset "Problem: $i" for i in 1:8
+    @testset "Problem: $i" for i in 1:10
         prob = probArr[i]
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
@@ -181,7 +189,7 @@ end
 @testitem "Convergence on Linear" setup=[FIRKNestedConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
 
-    @testset "Problem: $i" for i in (3, 4, 7, 8)
+    @testset "Problem: $i" for i in (3, 4, 9, 10)
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
