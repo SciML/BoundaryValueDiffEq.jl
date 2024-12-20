@@ -196,7 +196,7 @@ end
             @time sim = test_convergence(
                 dts, prob, lobattoIIIa_solver(Val(stage); nested_nlsolve = nested);
                 abstol = 1e-8, reltol = 1e-8)
-            if (stage == 4 && ((i == 7) || (i == 8)))
+            if (stage == 4 && ((i == 9) || (i == 10)))
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             elseif first(sim.errors[:final]) < 1e-12
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
@@ -209,7 +209,7 @@ end
             @time sim = test_convergence(
                 dts, prob, lobattoIIIb_solver(Val(stage); nested_nlsolve = nested);
                 abstol = 1e-8, reltol = 1e-8)
-            if (stage == 4 && ((i == 7) || (i == 8)))
+            if (stage == 4 && ((i == 9) || (i == 10)))
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             elseif first(sim.errors[:final]) < 1e-12
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
