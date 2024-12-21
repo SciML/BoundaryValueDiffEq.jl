@@ -223,7 +223,7 @@ end
 __vec_f(u, p, t, f, u_size) = vec(f(reshape(u, u_size), p, t))
 
 function __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
-    bc!(reshape(resid, resid_size), __restructure_sol(sol, u_size), p, t)
+    bc!(reshape(resid, resid_size), sol, p, t)
     return nothing
 end
 
@@ -232,7 +232,7 @@ function __vec_bc!(resid, sol, p, bc!, resid_size, u_size)
     return nothing
 end
 
-__vec_bc(sol, p, t, bc, u_size) = vec(bc(__restructure_sol(sol, u_size), p, t))
+__vec_bc(sol, p, t, bc, u_size) = vec(bc(sol, p, t))
 __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
 @inline __get_non_sparse_ad(ad::AbstractADType) = ad
@@ -240,9 +240,11 @@ __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
 # Restructure Solution
 function __restructure_sol(sol::AbstractVectorOfArray, u_size)
+    (size(first(sol)) == u_size) && return sol
     return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
 end
-function __restructure_sol(sol::Vector{<:AbstractArray}, u_size)
+function __restructure_sol(sol::AbstractArray{<:AbstractArray}, u_size)
+    (size(first(sol)) == u_size) && return sol
     return map(Base.Fix2(reshape, u_size), sol)
 end
 

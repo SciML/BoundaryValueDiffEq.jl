@@ -25,8 +25,8 @@ end
 
 Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 
-function SciMLBase.__init(
-        prob::SecondOrderBVProblem, alg::AbstractMIRKN; dt = 0.0, kwargs...)
+function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
+        dt = 0.0, adaptive = false, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     t₀, t₁ = prob.tspan
@@ -160,8 +160,12 @@ end
         bc::BC, residual, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    eval_bc_residual!(resids[1:2], pt, bc, y_, p, mesh)
     Φ!(resids[3:end], cache, y_, u, p)
+    soly_ = EvalSol(
+        __restructure_sol(y_[1:length(cache.mesh)], cache.in_size), cache.mesh, cache)
+    dsoly_ = EvalSol(__restructure_sol(y_[(length(cache.mesh) + 1):end], cache.in_size),
+        cache.mesh, cache)
+    eval_bc_residual!(resids[1:2], pt, bc, soly_, dsoly_, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -169,8 +173,12 @@ end
 @views function __mirkn_loss(u, p, y, pt::StandardSecondOrderBVProblem,
         bc::BC, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resid_bc = eval_bc_residual(pt, bc, y_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
+    soly_ = EvalSol(
+        __restructure_sol(y_[1:length(cache.mesh)], cache.in_size), cache.mesh, cache)
+    dsoly_ = EvalSol(__restructure_sol(y_[(length(cache.mesh) + 1):end], cache.in_size),
+        cache.mesh, cache)
+    resid_bc = eval_bc_residual(pt, bc, soly_, dsoly_, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 
