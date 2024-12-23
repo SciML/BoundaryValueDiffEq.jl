@@ -7,17 +7,18 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!,
                                __FastShortcutBVPCompatibleNonlinearPolyalg,
-                               __FastShortcutBVPCompatibleNLLSPolyalg,
+                               __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual,
                                eval_bc_residual!, get_tmp, __maybe_matmul!,
                                __append_similar!, __extract_problem_details,
                                __initial_guess, __maybe_allocate_diffcache,
-                               __get_bcresid_prototype, __similar, __vec, __vec_f, __vec_f!,
-                               __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
-                               __internal_nlsolve_problem, __extract_mesh, __extract_u0,
-                               __has_initial_guess, __initial_guess_length,
-                               __initial_guess_on_mesh, __flatten_initial_guess,
-                               __build_solution, __Fix3, _sparse_like, get_dense_ad
+                               __restructure_sol, __get_bcresid_prototype, __similar, __vec,
+                               __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+                               recursive_flatten_twopoint!, __internal_nlsolve_problem,
+                               __extract_mesh, __extract_u0, __has_initial_guess,
+                               __initial_guess_length, __initial_guess_on_mesh,
+                               __flatten_initial_guess, __build_solution, __Fix3,
+                               _sparse_like, get_dense_ad
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
@@ -25,9 +26,10 @@ using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jaco
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
                                 finish_part_setindex!
 using FastClosures: @closure
-using ForwardDiff: ForwardDiff, pickchunksize
+using ForwardDiff: ForwardDiff, pickchunksize, Dual
 using LinearAlgebra
-using RecursiveArrayTools: DiffEqArray, VectorOfArray, recursivecopy, recursivefill!
+using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
+                           recursivefill!
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
 using Setfield: @set!
@@ -63,11 +65,11 @@ include("sparse_jacobians.jl")
     f1 = (u, p, t) -> [u[2], 0]
 
     function bc1!(residual, u, p, t)
-        residual[1] = u[:, 1][1] - 5
-        residual[2] = u[:, end][1]
+        residual[1] = u(0.0)[1] - 5
+        residual[2] = u(5.0)[1]
     end
 
-    bc1 = (u, p, t) -> [u[:, 1][1] - 5, u[:, end][1]]
+    bc1 = (u, p, t) -> [u(0.0)[1] - 5, u(5.0)[1]]
 
     bc1_a! = (residual, ua, p) -> (residual[1] = ua[1] - 5)
     bc1_b! = (residual, ub, p) -> (residual[1] = ub[1])
@@ -108,14 +110,14 @@ include("sparse_jacobians.jl")
     f1_nlls = (u, p, t) -> [u[2], -u[1]]
 
     bc1_nlls! = (resid, sol, p, t) -> begin
-        solₜ₁ = sol[:, 1]
-        solₜ₂ = sol[:, end]
+        solₜ₁ = sol(0.0)
+        solₜ₂ = sol(100.0)
         resid[1] = solₜ₁[1]
         resid[2] = solₜ₂[1] - 1
         resid[3] = solₜ₂[2] + 1.729109
         return nothing
     end
-    bc1_nlls = (sol, p, t) -> [sol[:, 1][1], sol[:, end][1] - 1, sol[:, end][2] + 1.729109]
+    bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
     bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;

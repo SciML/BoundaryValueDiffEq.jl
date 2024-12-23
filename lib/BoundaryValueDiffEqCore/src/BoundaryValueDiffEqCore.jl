@@ -26,6 +26,7 @@ include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
+include("misc_utils.jl")
 
 function SciMLBase.__solve(
         prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)

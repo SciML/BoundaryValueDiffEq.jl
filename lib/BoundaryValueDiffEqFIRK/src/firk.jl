@@ -353,7 +353,7 @@ end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol,
         adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀))
+    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
         nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
@@ -402,8 +402,10 @@ end
 
 # Constructing the Nonlinear Problem
 function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
-        y::AbstractVector) where {iip}
+        y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
+
+    eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
         @closure (du, u, p) -> __firk_loss_bc!(
@@ -422,9 +424,10 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
 
     loss = if iip
         @closure (du, u, p) -> __firk_loss!(
-            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache)
+            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, eval_sol)
     else
-        @closure (u, p) -> __firk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
+        @closure (u, p) -> __firk_loss(
+            u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol)
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
@@ -444,7 +447,7 @@ function __construct_nlproblem(
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(jac_alg.bc_diffmode;
             sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         jac_alg.bc_diffmode
     end
@@ -470,13 +473,13 @@ function __construct_nlproblem(
             colored_result = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         end
+        is_diffmode_reverse = ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode
+        partition = ifelse(is_diffmode_reverse, :row, :column)
+        constant_matrix_coloring = ifelse(is_diffmode_reverse, row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
-            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
-                ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                :row, :column)}(colored_result.A,
-                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_result)))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
+            coloring_algorithm = ConstantColoringAlgorithm{partition}(
+                sparsity_pattern(colored_result), constant_matrix_coloring))
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -492,13 +495,14 @@ function __construct_nlproblem(
     J_bc = if iip
         DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
     end
     J_c = if iip
         DI.jacobian(loss_collocation, resid_collocation, cache_collocation,
             nonbc_diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.jacobian(
+            loss_collocation, cache_collocation, nonbc_diffmode, y, Constant(cache.p))
     end
 
     if J_full_band === nothing
@@ -548,13 +552,15 @@ function __construct_nlproblem(
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
             cache.M, N, jac_alg.diffmode)
+        partition = ifelse(
+            ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)
+        constant_matrix_coloring = ifelse(
+            ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+            row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
-            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
-                ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)}(
-                colored_result.A,
-                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_result)))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
+            coloring_algorithm = ConstantColoringAlgorithm{partition}(
+                sparsity_pattern(colored_result), constant_matrix_coloring))
     else
         jac_alg.diffmode
     end
@@ -568,7 +574,7 @@ function __construct_nlproblem(
     jac_prototype = if iip
         DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p)) #zero(init_jacobian(diffcache))
     else
-        DI.jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.jacobian(loss, diffcache, diffmode, y, Constant(cache.p))
     end
 
     jac = if iip
@@ -598,7 +604,7 @@ function __construct_nlproblem(
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
             sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         jac_alg.bc_diffmode
     end
@@ -621,13 +627,15 @@ function __construct_nlproblem(
             colored_result = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         end
+        partition = ifelse(
+            ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode, :row, :column)
+        constant_matrix_coloring = ifelse(
+            ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+            row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
-            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
-                ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                :row, :column)}(colored_result.A,
-                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_result)))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
+            coloring_algorithm = ConstantColoringAlgorithm{partition}(
+                sparsity_pattern(colored_result), constant_matrix_coloring))
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -643,13 +651,14 @@ function __construct_nlproblem(
     J_bc = if iip
         DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
     end
     J_c = if iip
         DI.jacobian(loss_collocation, resid_collocation, cache_collocation,
             nonbc_diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.jacobian(
+            loss_collocation, cache_collocation, nonbc_diffmode, y, Constant(cache.p))
     end
 
     if J_full_band === nothing
@@ -691,13 +700,15 @@ function __construct_nlproblem(
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
             cache.M, N, jac_alg.diffmode)
+        partition = ifelse(
+            ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)
+        constant_matrix_coloring = ifelse(
+            ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+            row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
-            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
-                ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)}(
-                colored_result.A,
-                ifelse(ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_result)))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
+            coloring_algorithm = ConstantColoringAlgorithm{partition}(
+                sparsity_pattern(colored_result), constant_matrix_coloring))
     else
         jac_alg.diffmode
     end
@@ -711,7 +722,7 @@ function __construct_nlproblem(
     jac_prototype = if iip
         DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p))
     else
-        DI.jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.jacobian(loss, diffcache, diffmode, y, Constant(cache.p))
     end
 
     jac = if iip
@@ -728,19 +739,19 @@ function __construct_nlproblem(
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
 end
 
-@views function __firk_loss!(
-        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh, cache) where {BC}
+@views function __firk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC,
+        residual, mesh, cache, eval_sol) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    soly_ = VectorOfArray(y_)
-    eval_bc_residual!(resids[1], pt, bc!, soly_, p, mesh)
     Φ!(resids[2:end], cache, y_, u, p)
+    eval_sol.u[1:end] .= y_
+    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
 
 @views function __firk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache) where {BC1, BC2}
+        residual, mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     resids = [get_tmp(r, u) for r in residual]
@@ -752,16 +763,17 @@ end
     return nothing
 end
 
-@views function __firk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache) where {BC}
+@views function __firk_loss(
+        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    resid_bc = eval_bc_residual(pt, bc, soly_, p, mesh)
+    eval_sol.u[1:end] .= y_
+    resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 
-@views function __firk_loss(
-        u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh, cache) where {BC1, BC2}
+@views function __firk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2},
+        mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
@@ -772,16 +784,16 @@ end
 @views function __firk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh,
         cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
+    eval_bc_residual!(resid, pt, bc!, eval_sol, p, mesh)
     return nothing
 end
 
 @views function __firk_loss_bc(u, p, pt, bc!::BC, y, mesh,
         cache::Union{FIRKCacheNested, FIRKCacheExpand}) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    return eval_bc_residual(pt, bc!, soly_, p, mesh)
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
+    return eval_bc_residual(pt, bc!, eval_sol, p, mesh)
 end
 
 @views function __firk_loss_collocation!(resid, u, p, y, mesh, residual, cache)

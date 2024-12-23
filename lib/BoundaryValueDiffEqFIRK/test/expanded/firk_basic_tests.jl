@@ -39,10 +39,17 @@ end
 f2(u, p, t) = [u[2], -u[1]]
 
 function boundary!(residual, u, p, t)
+    residual[1] = u(0.0)[1] - 5
+    residual[2] = u(5.0)[1]
+end
+boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
+
+# Array indexing for boudnary conditions
+function boundary_indexing!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
     residual[2] = u[:, end][1]
 end
-boundary(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
+boundary_indexing(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
 
 function boundary_two_point_a!(resida, ua, p)
     resida[1] = ua[1] - 5
@@ -75,6 +82,8 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2!, boundary_indexing!, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2, boundary_indexing, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
         u0, tspan; bcresid_prototype, nlls = Val(false)),
     TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b),
@@ -96,7 +105,7 @@ end
 @testitem "Affineness" setup=[FIRKExpandedConvergenceTests] begin
     using LinearAlgebra
 
-    @testset "Problem: $i" for i in (1, 2, 5, 6)
+    @testset "Problem: $i" for i in (1, 2, 7, 8)
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
@@ -125,7 +134,7 @@ end
 @testitem "JET: Runtime Dispatches" setup=[FIRKExpandedConvergenceTests] begin
     using JET
 
-    @testset "Problem: $i" for i in 1:8
+    @testset "Problem: $i" for i in 1:10
         prob = probArr[i]
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
             solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
@@ -165,7 +174,7 @@ end
 @testitem "Convergence on Linear" setup=[FIRKExpandedConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
 
-    @testset "Problem: $i" for i in (3, 4, 7, 8)
+    @testset "Problem: $i" for i in (3, 4, 9, 10)
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
@@ -183,7 +192,7 @@ end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
                 dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if (stage == 5) || (stage == 4 && i == 8)
+            if (stage == 5) || (stage == 4 && i == 10)
                 @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
             elseif stage == 4
                 @test sim.𝒪est[:final]≈2 * stage - 2 atol=0.7
@@ -228,8 +237,8 @@ end
     end
 
     function bc_pendulum!(residual, u, p, t)
-        residual[1] = u[:, end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-        residual[2] = u[:, end][1] - π / 2 # the solution at the end of the time span should be pi/2
+        residual[1] = u(pi / 4)[1] + π / 2 # the solution at the middle of the time span should be -pi/2
+        residual[2] = u(pi / 2)[1] - π / 2 # the solution at the end of the time span should be pi/2
     end
 
     u0 = MVector{2}([pi / 2, pi / 2])
@@ -281,8 +290,8 @@ end
         du[2] = 1 / p * u[1]
     end
     function prob_bvp_linear_bc!(res, u, p, t)
-        res[1] = u[:, 1][1] - 1
-        res[2] = u[:, end][1]
+        res[1] = u(0.0)[1] - 1
+        res[2] = u(1.0)[1]
     end
 
     prob_bvp_linear_function = ODEFunction(
@@ -360,12 +369,12 @@ end
     end
 
     function swirling_flow_bc!(res, u, p, t)
-        res[1] = u[:, 1][1] + 1.0
-        res[2] = u[:, 1][3]
-        res[3] = u[:, 1][4]
-        res[4] = u[:, end][1] - 1.0
-        res[5] = u[:, end][3]
-        res[6] = u[:, end][4]
+        res[1] = u(0.0)[1] + 1.0
+        res[2] = u(0.0)[3]
+        res[3] = u(0.0)[4]
+        res[4] = u(1.0)[1] - 1.0
+        res[5] = u(1.0)[3]
+        res[6] = u(1.0)[4]
         return
     end
 

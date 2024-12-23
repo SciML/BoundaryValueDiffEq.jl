@@ -9,8 +9,8 @@
     f1(u, p, t) = [u[2], -u[1]]
 
     function bc1(sol, p, t)
-        solₜ₁ = sol[:, 1]
-        solₜ₂ = sol[:, end]
+        solₜ₁ = sol(0.0)
+        solₜ₂ = sol(100.0)
         return [solₜ₁[1], solₜ₂[1] - 1, solₜ₂[2] + 1.729109]
     end
 
@@ -32,8 +32,8 @@
     end
 
     function bc1!(resid, sol, p, t)
-        solₜ₁ = sol[:, 1]
-        solₜ₂ = sol[:, end]
+        solₜ₁ = sol(0.0)
+        solₜ₂ = sol(100.0)
         # We know that this overconstrained system has a solution
         resid[1] = solₜ₁[1]
         resid[2] = solₜ₂[1] - 1
@@ -145,8 +145,8 @@ end
     end
 
     function bc!(residual, sol, p, t)
-        y1 = first(sol)
-        y2 = last(sol)
+        y1 = sol(0.0)
+        y2 = sol(0.5)
         R0_u = reshape(@view(y1[4:12]), 3, 3)
         RL_u = reshape(@view(y2[4:12]), 3, 3)
 

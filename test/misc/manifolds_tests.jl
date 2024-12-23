@@ -27,9 +27,9 @@
 
     function bc1!(residual, u, params, t)
         M, i, a1, a2 = params
-        mid = div(length(u[:, 1]), 2)
-        residual[1:mid] = u[:, 1][1:mid] - a1
-        residual[(mid + 1):end] = u[:, end][1:mid] - a2
+        mid = div(length(u(0.0)), 2)
+        residual[1:mid] = u(0.0)[1:mid] - a1
+        residual[(mid + 1):end] = u(1.0)[1:mid] - a2
         return
     end
 
@@ -67,7 +67,7 @@
             if alg isa Shooting || alg isa MultipleShooting
                 sol = solve(bvp, alg)
             else
-                sol = solve(bvp, alg; dt)
+                sol = solve(bvp, alg; dt, abstol = 1e-8)
             end
             @test SciMLBase.successful_retcode(sol)
             resid = zeros(4)

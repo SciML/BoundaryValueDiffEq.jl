@@ -104,13 +104,15 @@ function __solve_nlproblem!(
         colored_result = __generate_sparse_jacobian_prototype(
             alg, prob.problem_type, bcresid_prototype,
             u0, N, cur_nshoot, alg.jac_alg.diffmode)
+        partition = ifelse(
+            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode, :row, :column)
+        constant_matrix_coloring = ifelse(
+            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+            row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
-            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
-                ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                :row, :column)}(colored_result.A,
-                ifelse(ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_result)))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
+            coloring_algorithm = ConstantColoringAlgorithm{partition}(
+                sparsity_pattern(colored_result), constant_matrix_coloring))
     else
         alg.jac_alg.diffmode
     end
@@ -161,13 +163,15 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         colored_result = __generate_sparse_jacobian_prototype(
             alg, prob.problem_type, bcresid_prototype, u0,
             N, cur_nshoot, alg.jac_alg.nonbc_diffmode)
+        partition = ifelse(
+            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode, :row, :column)
+        constant_matrix_coloring = ifelse(
+            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
+            row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(colored_result.A),
-            coloring_algorithm = ConstantColoringAlgorithm{ifelse(
-                ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                :row, :column)}(colored_result.A,
-                ifelse(ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-                    row_colors, column_colors)(colored_result)))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
+            coloring_algorithm = ConstantColoringAlgorithm{partition}(
+                sparsity_pattern(colored_result), constant_matrix_coloring))
     else
         alg.jac_alg.nonbc_diffmode
     end

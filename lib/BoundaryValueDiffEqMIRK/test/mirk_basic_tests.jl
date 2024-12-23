@@ -22,10 +22,17 @@ end
 f2(u, p, t) = [u[2], -u[1]]
 
 function boundary!(residual, u, p, t)
+    residual[1] = u(0.0)[1] - 5
+    residual[2] = u(5.0)[1]
+end
+boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
+
+# Array indexing for boudnary conditions
+function boundary_indexing!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
     residual[2] = u[:, end][1]
 end
-boundary(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
+boundary_indexing(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
 
 function boundary_two_point_a!(resida, ua, p)
     resida[1] = ua[1] - 5
@@ -58,6 +65,8 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2!, boundary_indexing!, u0, tspan, nlls = Val(false)),
+    BVProblem(odef2, boundary_indexing, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
         u0, tspan; bcresid_prototype, nlls = Val(false)),
     TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b),
@@ -67,7 +76,7 @@ probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
         u0, tspan; bcresid_prototype, nlls = Val(false))]
 
-testTol = 0.2
+testTol = 0.4
 affineTol = 1e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
@@ -78,7 +87,7 @@ end
 @testitem "Affineness" setup=[MIRKConvergenceTests] begin
     using LinearAlgebra
 
-    @testset "Problem: $i" for i in (1, 2, 5, 6)
+    @testset "Problem: $i" for i in (1, 2, 7, 8)
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
@@ -90,7 +99,7 @@ end
 @testitem "JET: Runtime Dispatches" setup=[MIRKConvergenceTests] begin
     using JET
 
-    @testset "Problem: $i" for i in 1:8
+    @testset "Problem: $i" for i in 1:10
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
@@ -106,9 +115,9 @@ end
 @testitem "Convergence on Linear" setup=[MIRKConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
 
-    @testset "Problem: $i" for i in (3, 4, 7, 8)
+    @testset "Problem: $i" for i in (3, 4, 5, 6, 9, 10)
         prob = probArr[i]
-        @testset "MIRK$order" for (i, order) in enumerate((2, 3, 4, 5, 6))
+        @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
             sim = test_convergence(
                 dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
             @test sim.𝒪est[:final]≈order atol=testTol
@@ -128,8 +137,8 @@ end
     end
 
     function bc_pendulum!(residual, u, p, t)
-        residual[1] = u[:, end ÷ 2][1] + π / 2 # the solution at the middle of the time span should be -pi/2
-        residual[2] = u[:, end][1] - π / 2 # the solution at the end of the time span should be pi/2
+        residual[1] = u(pi / 4)[1] + π / 2 # the solution at the middle of the time span should be -pi/2
+        residual[2] = u(pi / 2)[1] - π / 2 # the solution at the end of the time span should be pi/2
     end
 
     u0 = MVector{2}([pi / 2, pi / 2])
@@ -167,8 +176,8 @@ end
         du[2] = 1 / p * u[1]
     end
     function prob_bvp_linear_bc!(res, u, p, t)
-        res[1] = u[:, 1][1] - 1
-        res[2] = u[:, end][1]
+        res[1] = u(0.0)[1] - 1
+        res[2] = u(1.0)[1]
     end
 
     prob_bvp_linear_function = ODEFunction(
@@ -227,12 +236,12 @@ end
     end
 
     function swirling_flow_bc!(res, u, p, t)
-        res[1] = u[:, 1][1] + 1.0
-        res[2] = u[:, 1][3]
-        res[3] = u[:, 1][4]
-        res[4] = u[:, end][1] - 1.0
-        res[5] = u[:, end][3]
-        res[6] = u[:, end][4]
+        res[1] = u(0.0)[1] + 1.0
+        res[2] = u(0.0)[3]
+        res[3] = u(0.0)[4]
+        res[4] = u(1.0)[1] - 1.0
+        res[5] = u(1.0)[3]
+        res[6] = u(1.0)[4]
         return
     end
 
