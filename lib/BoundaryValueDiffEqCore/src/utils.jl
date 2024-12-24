@@ -104,9 +104,9 @@ end
     return resid
 end
 
-function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, p, mesh) where {BC}
+function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, mesh) where {BC}
     L = length(mesh)
-    res_bc = bc(y[(L + 1):end], y[1:L], p, mesh)
+    res_bc = bc(dy, y, p, mesh)
     return res_bc
 end
 function eval_bc_residual(
@@ -123,17 +123,12 @@ end
 function eval_bc_residual!(resid, ::StandardBVProblem, bc!::BC, sol, p, t) where {BC}
     bc!(resid, sol, p, t)
 end
-function eval_bc_residual!(
-        resid, ::StandardSecondOrderBVProblem, bc!::BC, dsol, sol, p, t) where {BC}
-    bc!(resid, dsol, sol, p, t)
-end
 
 function eval_bc_residual!(
-        resid, ::StandardSecondOrderBVProblem, bc!::BC, y, p, mesh) where {BC}
-    M = length(y[1])
-    L = length(mesh)
+        resid, ::StandardSecondOrderBVProblem, bc!::BC, soly, dsol, p, mesh) where {BC}
+    M = length(sol[1])
     res_bc = vcat(resid[1], resid[2])
-    bc!(res_bc, y[(L + 1):end], y[1:L], p, mesh)
+    bc!(res_bc, dsol, sol, p, mesh)
     copyto!(resid[1], res_bc[1:M])
     copyto!(resid[2], res_bc[(M + 1):end])
 end
