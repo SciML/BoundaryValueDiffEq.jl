@@ -125,7 +125,7 @@ function eval_bc_residual!(resid, ::StandardBVProblem, bc!::BC, sol, p, t) where
 end
 
 function eval_bc_residual!(
-        resid, ::StandardSecondOrderBVProblem, bc!::BC, soly, dsol, p, mesh) where {BC}
+        resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, mesh) where {BC}
     M = length(sol[1])
     res_bc = vcat(resid[1], resid[2])
     bc!(res_bc, dsol, sol, p, mesh)
