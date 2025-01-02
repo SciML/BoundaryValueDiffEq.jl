@@ -12,7 +12,7 @@ using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
-using ForwardDiff: ForwardDiff
+using ForwardDiff: ForwardDiff, Dual
 using LinearAlgebra
 using PreallocationTools: PreallocationTools, DiffCache
 using RecursiveArrayTools: VectorOfArray, recursivecopy

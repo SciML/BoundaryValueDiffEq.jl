@@ -136,7 +136,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     end
 
     if prob.f.bcjac === nothing
-        bcjac = construct_bc_jac(prob, bcresid_prototype, prob.problem_type)
+        bcjac = construct_bcjac(prob, bcresid_prototype)
     else
         bcjac = prob.f.bcjac
     end

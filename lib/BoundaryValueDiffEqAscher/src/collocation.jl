@@ -313,9 +313,10 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     copyto!(cache.dmz, dmz)
 end
 
-@inline __get_value(z::Vector{<:AbstractArray}) = eltype(first(z)) <: ForwardDiff.Dual ?
-                                                  [map(x -> x.value, a) for a in z] : z
-@inline __get_value(z) = isa(z, ForwardDiff.Dual) ? z.value : z
+@inline __get_value(x) = x
+@inline __get_value(x::Dual) = ForwardDiff.value(x)
+@inline __get_value(x::AbstractArray{<:Dual}) = map(ForwardDiff.value, x)
+@inline __get_value(x::AbstractArray{<:AbstractArray{<:Dual}}) = map(__get_value, x)
 
 function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
     (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
@@ -739,7 +740,6 @@ end
 function vwblok(cache::AscherCache, xcol, hrho, jj, wi, vi, ipvtw, zyval, df, acol, dmzo)
     (; jac, k, p, ncomp, ny) = cache
     ncy = ncomp + ny
-    kdy = k * ncy
     # initialize wi
     i0 = (jj - 1) * ncy
     for id in (i0 + 1):(i0 + ncomp)
@@ -848,7 +848,6 @@ function dmzsol!(cache::AscherCache, v, z, dmz)
     for i in 1:n
         for j in 1:ncomp
             fact = __get_value(z[i][j])
-            println("fact: ", fact)
             for l in 1:kdy
                 kk, jj = __locate_stage(l, ncy)
                 dmz[i][kk][jj] = dmz[i][kk][jj] + fact * v[i][l, j]
