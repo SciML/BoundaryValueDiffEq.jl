@@ -1,10 +1,8 @@
 # BoundaryValueDiffEq.jl: High-Performance Bounday Value Problem Solvers
 
-BoundaryValueDiffEq.jl is a component package in the DifferentialEquations ecosystem.
-The package includes its own high-performance BVP solvers which include the ability to swap out to fast direct and iterative linear solvers, along with the ability to use sparse
+BoundaryValueDiffEq.jl is a component package in the DifferentialEquations.jl ecosystem.
+The package includes its own high-performance BVP solvers which covers wide range of different kinds boundary value problems, includes the ability to swap out to fast direct and iterative nonlinear solvers, along with the ability to use sparse
 automatic differentiation for Jacobian construction and Jacobian-vector products.
-NonlinearSolve.jl interfaces with other packages of the Julia ecosystem to make it easy to
-test alternative solver packages and pass small types to control algorithm swapping.
 
 ## Installation
 
