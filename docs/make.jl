@@ -7,6 +7,7 @@ using BoundaryValueDiffEqShooting
 using BoundaryValueDiffEqAscher
 using SciMLBase, DiffEqBase
 using BoundaryValueDiffEq
+using SimpleBoundaryValueDiffEq
 
 cp(joinpath(@__DIR__, "Manifest.toml"),
     joinpath(@__DIR__, "src/assets/Manifest.toml"); force = true)
