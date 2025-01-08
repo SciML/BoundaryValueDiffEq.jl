@@ -1,4 +1,9 @@
 # Algorithms
+"""
+    BoundaryValueDiffEqAlgorithm
+
+Abstract type for all boundary value problem algorithms.
+"""
 abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 
 @inline __nameof(::T) where {T} = nameof(T)
