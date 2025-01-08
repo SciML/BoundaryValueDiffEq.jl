@@ -1,4 +1,4 @@
-# # Automatic Differentiation Backends
+# Automatic Differentiation Backends
 
 !!! note
     

@@ -1,4 +1,4 @@
-# [BoundaryValueDiffEqFIRK.jl](@id firk)
+# [BoundaryValueDiffEqFIRK](@id firk)
 
 Fully Implicit Runge Kutta(FIRK) Methods. To be able to access the solvers in BoundaryValueDiffEqFIRK, you must first install them use the Julia package manager:
 

@@ -2,10 +2,10 @@
 
 When ordinary differential equations has constraints over the time span, we should model the ordinary differential equations as a boundary value problem which has the form of:
 
-$$
+```math
 \frac{du}{dt}=f(u, p, t)\\
 g(u(a),u(b))=0
-$$
+```
 
 BoundaryValueDiffEq.jl address three types of BVProblem.
 
@@ -13,7 +13,7 @@ BoundaryValueDiffEq.jl address three types of BVProblem.
  2. General second order boundary value problems, i.e., differential equations with constraints for both solution and derivative of solution applied over time span. This is a system where you would like to obtain the solution of the differential equations and make sure the solution satisfy the boundary conditions simutanously.
  3. Boundary value differential algebraic equations, i.e., apart from constraints applied over the time span, BVDAE has additional algebraic equations which state the algebraic relationship of different states in BVDAE.
 
-## Linear two-point boundary value problem
+## Solving Linear two-point boundary value problem
 
 Consider the linear two-point boundary value problem from [standard BVP test problem](https://archimede.uniba.it/%7Ebvpsolvers/testsetbvpsolvers/?page_id=29).
 
@@ -58,20 +58,20 @@ sol = solve(prob, MIRK4(), dt = 0.01)
 
 Consirder the test problem from example problems in MIRKN paper.
 
-$$
+```math
 \begin{cases}
 y_1'(x)= y_2(x),\\
 \epsilon y_2'(x)=-y_1(x)y_2'(x)- y_3(x)y_3'(x),\\
 \epsilon y_3'(x)=y_1'(x) y_3(x)- y_1(x) y_3 '(x)
 \end{cases}
-$$
+```
 
 with initial conditions:
 
-$$
+```math
 y_1(0) = y_1'(0)= y_1(1)=y_1'(1)=0,y_3(0)=
 -1, y_3(1)=1
-$$
+```
 
 ```julia
 function f!(ddu, du, u, p, t)
@@ -98,20 +98,20 @@ sol = solve(prob, MIRKN4(), dt = 0.01)
 
 Consider the nonlinear semi-explicit DAE of index at most 2
 
-$$
+```math
 \begin{cases}
 x_1'=(\epsilon+x_2-p_2(t))y+p_1'(t) \\
 x_2'=p_2'(t) \\
 x_3'=y \\
 0=(x_1-p_1(t))(y-e^t)
 \end{cases}
-$$
+```
 
 with boundary conditions
 
-$$
+```math
 x_1(0)=0,x_3(0)=1,x_2(1)=\sin(1)
-$$
+```
 
 ```julia
 function f!(du, u, p, t)
@@ -121,7 +121,7 @@ function f!(du, u, p, t)
     du[3] = u[4]
     du[4] = (u[1] - sin(t)) * (u[4] - e^t)
 end
-function bc1!(res, u, p, t)
+function bc!(res, u, p, t)
     res[1] = u[1]
     res[2] = u[3] - 1
     res[3] = u[2] - sin(1.0)

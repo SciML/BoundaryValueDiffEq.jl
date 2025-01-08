@@ -6,7 +6,5 @@ The SciML ecosystem provides an extensive interface for declaring extra function
 
 ```@docs
 SciMLBase.BVPFunction
-SciMLBase.TwoPointBVPFunction
-SciMLBase.SecondOrderBVPFunction
-SciMLBase.TwoPointSecondOrderBVPFunction
+SciMLBase.DynamicalBVPFunction
 ```

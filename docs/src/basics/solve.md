@@ -1,9 +1,5 @@
 # [Common Solver Options (Solve Keyword Arguments)](@id solver_options)
 
-```@docs
-solve(::AbstractBVProblem, args...; kwargs...)
-```
-
 ## Iteration Controls
 
   - `maxiters::Int`: The maximum number of iterations to perform. Defaults to `1000`.

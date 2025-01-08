@@ -1,8 +1,8 @@
-# [SimpleBoundaryValueDiffEq.jl](@id simpleboundaryvaluediffeq)
+# [SimpleBoundaryValueDiffEq](@id simpleboundaryvaluediffeq)
 
 ## Full List of Methods
 
-```@docs
+```julia
 SimpleBoundaryValueDiffEq.SimpleMIRK4
 SimpleBoundaryValueDiffEq.SimpleMIRK5
 SimpleBoundaryValueDiffEq.SimpleMIRK6

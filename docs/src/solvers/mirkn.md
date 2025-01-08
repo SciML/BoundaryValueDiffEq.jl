@@ -1,4 +1,4 @@
-# [BoundaryValueDiffEqMIRKN.jl](@id mirkn)
+# [BoundaryValueDiffEqMIRKN](@id mirkn)
 
 Monotonic Implicit Runge Kutta Nyström(MIRKN) Methods. To only use the MIRKN methods form BoundaryVaueDiffEq.jl, you need to install them use the Julia package manager:
 
@@ -12,8 +12,9 @@ solve(prob::SecondOrderBVProblem, alg; kwargs...)
 solve(prob::TwoPointSecondOrderBVProblem, alg; kwargs...)
 ```
 
-!!! note "MIRKN don't have defect control adaptivity"
+!!! note "Defect control adaptivity"
     
+    MIRKN don't have defect control adaptivity
 
 ## Full List of Methods
 

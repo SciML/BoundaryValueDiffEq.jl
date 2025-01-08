@@ -16,6 +16,11 @@ cp(joinpath(@__DIR__, "Project.toml"),
 
 include("pages.jl")
 
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
+
+interlinks = InterLinks("ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/",
+    "LineSearch" => "https://sciml.github.io/LineSearch.jl/dev/")
+
 makedocs(; sitename = "BoundaryValueDiffEq.jl",
     authors = "SciML",
     modules = [BoundaryValueDiffEqCore, BoundaryValueDiffEqMIRK, BoundaryValueDiffEqFIRK,
@@ -25,6 +30,7 @@ makedocs(; sitename = "BoundaryValueDiffEq.jl",
     doctest = false,
     checkdocs = :exports,
     warnonly = [:missing_docs],
+    plugins = [bib, interlinks],
     format = Documenter.HTML(assets = ["assets/favicon.ico"],
         canonical = "https://docs.sciml.ai/BoundaryValueDiffEq/stable/"),
     pages)
