@@ -1,5 +1,5 @@
 @testitem "Manifolds.jl Integration" begin
-    using LinearAlgebra
+    using LinearAlgebra, OrdinaryDiffEq
 
     struct EmbeddedTorus
         R::Float64

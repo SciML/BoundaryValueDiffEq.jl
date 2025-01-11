@@ -174,7 +174,9 @@ end
     return nothing
 end
 
-@inline function construct_bc_jac(prob::BVProblem, _, pt::StandardBVProblem)
+@inline construct_bcjac(prob, bcresid_prototype) = construct_bcjac(
+    prob, bcresid_prototype, prob.problem_type)
+@inline function construct_bcjac(prob::BVProblem, _, pt::StandardBVProblem)
     if isinplace(prob)
         bcjac = (df, u, p, t) -> begin
             _du = similar(u)
@@ -184,17 +186,15 @@ end
             return
         end
     else
-        bcjac = (df, u, p, t) -> begin
-            _du = prob.f.bc(u, p, t)
+        bcjac = (u, p, t) -> begin
             _f = @closure (du, u) -> (du .= prob.f.bc(u, p, t))
-            ForwardDiff.jacobian!(df, _f, _du, u)
-            return
+            return ForwardDiff.jacobian(_f, u)
         end
     end
     return bcjac
 end
 
-@inline function construct_bc_jac(prob::BVProblem, bcresid_prototype, pt::TwoPointBVProblem)
+@inline function construct_bcjac(prob::BVProblem, bcresid_prototype, pt::TwoPointBVProblem)
     if isinplace(prob)
         bcjac = (df, u, p) -> begin
             _du = similar(u)

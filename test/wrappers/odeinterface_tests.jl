@@ -45,7 +45,7 @@ end
 
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
 @testitem "BVPSOL" setup=[ODEInterfaceWrapperTestSetup] begin
-    using ODEInterface, RecursiveArrayTools, NonlinearSolveFirstOrder
+    using ODEInterface, RecursiveArrayTools, NonlinearSolveFirstOrder, OrdinaryDiffEq
 
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
         p; bcresid_prototype = (zeros(1), zeros(1)))
