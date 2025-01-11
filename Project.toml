@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEq"
 uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
-version = "5.12.0"
+version = "5.13.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
