@@ -17,7 +17,7 @@ BoundaryValueDiffEq.jl address three types of BVProblem.
 
 Consider the linear two-point boundary value problem from [standard BVP test problem](https://archimede.uniba.it/%7Ebvpsolvers/testsetbvpsolvers/?page_id=29).
 
-```julia
+```@example getting_started
 using BoundaryValueDiffEq
 function f!(du, u, p, t)
     du[1] = u[2]
@@ -35,16 +35,15 @@ sol = solve(prob, MIRK4(), dt = 0.01)
 
 Since this proble only has constraints at the start and end of the time span, we can directly use `TwoPointBVProblem`:
 
-```julia
-using BoundaryValueDiffEq
+```@example getting_started
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = u[1]
 end
-function bca!(res, u, p)
+function bca!(res, ua, p)
     res[1] = ua[1] - 1
 end
-function bcb!(res, u, p)
+function bcb!(res, ub, p)
     res[1] = ub[1]
 end
 tspan = (0.0, 1.0)
@@ -73,7 +72,8 @@ y_1(0) = y_1'(0)= y_1(1)=y_1'(1)=0,y_3(0)=
 -1, y_3(1)=1
 ```
 
-```julia
+```@example getting_started
+using BoundaryValueDiffEqMIRKN
 function f!(ddu, du, u, p, t)
     ϵ = 0.1
     ddu[1] = u[2]
@@ -81,12 +81,12 @@ function f!(ddu, du, u, p, t)
     ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ϵ
 end
 function bc!(res, du, u, p, t)
-    res[1] = u[1][1]
-    res[2] = u[end][1]
-    res[3] = u[1][3] + 1
-    res[4] = u[end][3] - 1
-    res[5] = du[1][1]
-    res[6] = du[end][1]
+    res[1] = u(0.0)[1]
+    res[2] = u(1.0)[1]
+    res[3] = u(0.0)[3] + 1
+    res[4] = u(1.0)[3] - 1
+    res[5] = du(0.0)[1]
+    res[6] = du(1.0)[1]
 end
 u0 = [1.0, 1.0, 1.0]
 tspan = (0.0, 1.0)
@@ -113,7 +113,8 @@ with boundary conditions
 x_1(0)=0,x_3(0)=1,x_2(1)=\sin(1)
 ```
 
-```julia
+```@example getting_started
+using BoundaryValueDiffEqAscher
 function f!(du, u, p, t)
     e = 2.7
     du[1] = (1 + u[2] - sin(t)) * u[4] + cos(t)
@@ -129,6 +130,6 @@ end
 u0 = [0.0, 0.0, 0.0, 0.0]
 tspan = (0.0, 1.0)
 fun = BVPFunction(f!, bc!, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
-prob = BVProblem(f!, bc!, u0, tspan)
+prob = BVProblem(fun, u0, tspan)
 sol = solve(prob, Ascher4(zeta = [0.0, 0.0, 1.0]), dt = 0.01)
 ```
