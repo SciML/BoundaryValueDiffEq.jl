@@ -1,6 +1,6 @@
 # [Boundary Value Problems](@id problems)
 
-## The Five Types of Nonlinear Problems
+## The Five Types of Boundary Value Problems
 
 BoundaryValueDiffEq.jl tackles five related types of boundary value problems:
 

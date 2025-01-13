@@ -6,6 +6,7 @@ pages = ["index.md",
         "basics/solve.md", "basics/autodiff.md"],
     "Solver Summaries and Recommendations" => Any[
         "solvers/mirk.md", "solvers/firk.md", "solvers/shooting.md", "solvers/mirkn.md",
-        "solvers/ascher.md", "solvers/wrappers.md", "solvers/simple_solvers.md"],
+        "solvers/ascher.md", "solvers/simple_solvers.md", "solvers/wrappers.md"],
     "Wrapped Solver APIs" => Any["api/odeinterface.md"],
-    "Development Documentation" => Any["devdocs/internal_interfaces.md"]]
+    "Development Documentation" => Any["devdocs/internal_interfaces.md"],
+    "References" => "references.md"]

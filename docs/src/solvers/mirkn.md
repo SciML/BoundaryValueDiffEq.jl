@@ -8,8 +8,8 @@ Pkg.add("BoundaryValueDiffEqMIRKN")
 ```
 
 ```julia
-solve(prob::SecondOrderBVProblem, alg; kwargs...)
-solve(prob::TwoPointSecondOrderBVProblem, alg; kwargs...)
+solve(prob::SecondOrderBVProblem, alg, dt; kwargs...)
+solve(prob::TwoPointSecondOrderBVProblem, alg, dt; kwargs...)
 ```
 
 !!! note "Defect control adaptivity"
@@ -18,8 +18,8 @@ solve(prob::TwoPointSecondOrderBVProblem, alg; kwargs...)
 
 ## Full List of Methods
 
-  - `MIRKN4`: Monotonic Implicit Runge-Kutta-Nyström methods with stage order of 4, without error control adaptivity.
-  - `MIRKN6`: Monotonic Implicit Runge-Kutta-Nyström methods with stage order of 6, without error control adaptivity.
+  - `MIRKN4`: 4 stage Monotonic Implicit Runge-Kutta-Nyström method, with no error control adaptivity.
+  - `MIRKN6`: 4 stage Monotonic Implicit Runge-Kutta-Nyström method, with no error control adaptivity.
 
 ## Detailed Solvers Explanation
 

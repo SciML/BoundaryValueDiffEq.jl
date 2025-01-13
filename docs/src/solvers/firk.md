@@ -8,8 +8,8 @@ Pkg.add("BoundaryValueDiffEqFIRK")
 ```
 
 ```julia
-solve(prob::BVProblem, alg, dt = dt; kwargs...)
-solve(prob::TwoPointBVProblem, alg, dt = dt; kwargs...)
+solve(prob::BVProblem, alg, dt; kwargs...)
+solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
 ```
 
 !!! note "Nested nonlinear solving in FIRK methods"

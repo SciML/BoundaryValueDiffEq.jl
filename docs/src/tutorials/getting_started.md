@@ -1,17 +1,17 @@
 # Get Started with Efficient BVP solving in Julia
 
-When ordinary differential equations has constraints over the time span, we should model the ordinary differential equations as a boundary value problem which has the form of:
+When ordinary differential equations has constraints over the time span, we should model the differential equations as a boundary value problem which has the form of:
 
 ```math
 \frac{du}{dt}=f(u, p, t)\\
 g(u(a),u(b))=0
 ```
 
-BoundaryValueDiffEq.jl address three types of BVProblem.
+BoundaryValueDiffEq.jl addresses three types of BVProblem.
 
  1. General boundary value problems:, i.e., differential equations with constraints applied over the time span. This is a system where you would like to obtain the solution of the differential equations and make sure the solution satisfy the boundary conditions simutanously.
  2. General second order boundary value problems, i.e., differential equations with constraints for both solution and derivative of solution applied over time span. This is a system where you would like to obtain the solution of the differential equations and make sure the solution satisfy the boundary conditions simutanously.
- 3. Boundary value differential algebraic equations, i.e., apart from constraints applied over the time span, BVDAE has additional algebraic equations which state the algebraic relationship of different states in BVDAE.
+ 3. Boundary value differential-algebraic equations, i.e., apart from constraints applied over the time span, BVDAE has additional algebraic equations which state the algebraic relationship of different states in BVDAE.
 
 ## Solving Linear two-point boundary value problem
 
@@ -55,7 +55,7 @@ sol = solve(prob, MIRK4(), dt = 0.01)
 
 ## Solving second order boundary value problem
 
-Consirder the test problem from example problems in MIRKN paper.
+Consirder the test problem from example problems in MIRKN paper [Muir2001MonoImplicitRM](@Citet).
 
 ```math
 \begin{cases}
@@ -96,7 +96,7 @@ sol = solve(prob, MIRKN4(), dt = 0.01)
 
 ## Solving semi-expicit boundary value differential-algebraic equations
 
-Consider the nonlinear semi-explicit DAE of index at most 2
+Consider the nonlinear semi-explicit DAE of index at most 2 in COLDAE paper [ascher1994collocation](@Citet)
 
 ```math
 \begin{cases}

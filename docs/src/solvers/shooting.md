@@ -7,7 +7,7 @@ using Pkg
 Pkg.add("BoundaryValueDiffEqShooting")
 ```
 
-!!! note "Require OrdinaryDifEq"
+!!! note "Require OrdinaryDiffEq"
     
     Shooting methods require OrdinaryDiffEq.jl loaded to use the ODE solvers
 
@@ -25,8 +25,8 @@ BoundaryValueDiffEqShooting.MultipleShooting
 
 ## Full List of Methods
 
-  - `Shooting`: Single shooting methods, reduces BVP to an initial value problem and solves the IVP
-  - `MultipleShooting`: Reduces BVP to an initial value problem and solves the IVP. Significantly more stable than Single Shooting
+  - `Shooting`: Single shooting methods, reduces BVP to an initial value problem and solves the IVP.
+  - `MultipleShooting`: Reduces BVP to an initial value problem and solves the IVP. Significantly more stable than Single Shooting.
 
 ## Detailed Solvers Explanation
 

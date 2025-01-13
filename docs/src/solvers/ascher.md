@@ -8,8 +8,8 @@ Pkg.add("BoundaryValueDiffEqAscher")
 ```
 
 ```julia
-solve(prob::BVProblem, alg; kwargs...)
-solve(prob::TwoPointBVProblem, alg; kwargs...)
+solve(prob::BVProblem, alg, dt; kwargs...)
+solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
 ```
 
 ## Full List of Methods

@@ -8,17 +8,17 @@ Pkg.add("BoundaryValueDiffEqFIRK")
 ```
 
 ```julia
-solve(prob::BVProblem, alg; kwargs...)
-solve(prob::TwoPointBVProblem, alg; kwargs...)
+solve(prob::BVProblem, alg, dt; kwargs...)
+solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
 ```
 
 ## Full List of Methods
 
-  - `MIRK2`: Monotonic Implicit Runge-Kutta methods with stage order of 2, with defect control adaptivity.
-  - `MIRK3`: Monotonic Implicit Runge-Kutta methods with stage order of 3, with defect control adaptivity.
-  - `MIRK4`: Monotonic Implicit Runge-Kutta methods with stage order of 4, with defect control adaptivity.
-  - `MIRK5`: Monotonic Implicit Runge-Kutta methods with stage order of 5, with defect control adaptivity.
-  - `MIRK6`: Monotonic Implicit Runge-Kutta methods with stage order of 6, with defect control adaptivity.
+  - `MIRK2`: 2 stage Monotonic Implicit Runge-Kutta method, with defect control adaptivity.
+  - `MIRK3`: 3 stage Monotonic Implicit Runge-Kutta method, with defect control adaptivity.
+  - `MIRK4`: 4 stage Monotonic Implicit Runge-Kutta method, with defect control adaptivity.
+  - `MIRK5`: 5 stage Monotonic Implicit Runge-Kutta method, with defect control adaptivity.
+  - `MIRK6`: 6 stage Monotonic Implicit Runge-Kutta method, with defect control adaptivity.
 
 ## Detailed Solvers Explanation
 
