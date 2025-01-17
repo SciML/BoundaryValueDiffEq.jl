@@ -179,9 +179,10 @@ end
 @views function __mirkn_loss!(resid, u, p, y, pt::TwoPointSecondOrderBVProblem,
         bc!::BC, residual, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
+    soly_ = VectorOfArray(y_)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[3:end], cache, y_, u, p)
-    eval_bc_residual!(resids, pt, bc!, y_, p, mesh)
+    eval_bc_residual!(resids, pt, bc!, soly_, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -189,7 +190,8 @@ end
 @views function __mirkn_loss(u, p, y, pt::TwoPointSecondOrderBVProblem,
         bc!::BC, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
+    soly_ = VectorOfArray(y_)
     resid_co = Φ(cache, y_, u, p)
-    resid_bc = eval_bc_residual(pt, bc!, y_, p, mesh)
+    resid_bc = eval_bc_residual(pt, bc!, soly_, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end

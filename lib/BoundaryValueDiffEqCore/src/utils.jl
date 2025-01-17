@@ -104,15 +104,14 @@ end
     return resid
 end
 
-function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, mesh) where {BC}
-    L = length(mesh)
-    res_bc = bc(dy, y, p, mesh)
+function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, t) where {BC}
+    res_bc = bc(dy, y, p, t)
     return res_bc
 end
 function eval_bc_residual(
-        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol, p, mesh) where {BC}
+        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
     M = length(sol[1])
-    L = length(mesh)
+    L = length(t)
     ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))[1:M]
     ub = sol isa VectorOfArray ? sol[:, L] : sol(last(t))[1:M]
     dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(t))[(M + 1):end]
@@ -125,22 +124,22 @@ function eval_bc_residual!(resid, ::StandardBVProblem, bc!::BC, sol, p, t) where
 end
 
 function eval_bc_residual!(
-        resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, mesh) where {BC}
+        resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t) where {BC}
     M = length(sol[1])
     res_bc = vcat(resid[1], resid[2])
-    bc!(res_bc, dsol, sol, p, mesh)
+    bc!(res_bc, dsol, sol, p, t)
     copyto!(resid[1], res_bc[1:M])
     copyto!(resid[2], res_bc[(M + 1):end])
 end
 
 function eval_bc_residual!(
-        resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC, sol, p, mesh) where {BC}
+        resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
     M = length(sol[1])
-    L = length(mesh)
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(mesh))[1:M]
-    ub = sol isa VectorOfArray ? sol[:, L] : sol(last(mesh))[1:M]
-    dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(mesh))[(M + 1):end]
-    dub = sol isa VectorOfArray ? sol[:, end] : sol(last(mesh))[(M + 1):end]
+    L = length(t)
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))[1:M]
+    ub = sol isa VectorOfArray ? sol[:, L] : sol(last(t))[1:M]
+    dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(t))[(M + 1):end]
+    dub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))[(M + 1):end]
     bca!(resid[1], dua, ua, p)
     bcb!(resid[2], dub, ub, p)
 end
