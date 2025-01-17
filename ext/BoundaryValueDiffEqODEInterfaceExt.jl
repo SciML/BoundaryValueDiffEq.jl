@@ -1,24 +1,21 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
-using BoundaryValueDiffEqCore, SciMLBase, ODEInterface, ConcreteStructs, Setfield,
-      PreallocationTools
-
 using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
-import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
-                                __initial_guess_length, __extract_mesh,
-                                __flatten_initial_guess, __get_bcresid_prototype,
-                                __has_initial_guess, __initial_guess
-import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-import ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
-                     OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
-                     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
-                     OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
-import ODEInterface: Bvpm2, bvpm2_init, bvpm2_solve, bvpm2_destroy, bvpm2_get_x
-import ODEInterface: bvpsol
-import ODEInterface: colnew
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
+                               __initial_guess_length, __extract_mesh,
+                               __flatten_initial_guess, __get_bcresid_prototype,
+                               __has_initial_guess, __initial_guess
+using SciMLBase: SciMLBase, BVProblem, TwoPointBVProblem
+using ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
+                    OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
+                    OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
+                    OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
+using ODEInterface: Bvpm2, bvpm2_init, bvpm2_solve, bvpm2_destroy, bvpm2_get_x
+using ODEInterface: bvpsol
+using ODEInterface: colnew
 
-import FastClosures: @closure
-import ForwardDiff
+using FastClosures: @closure
+using ForwardDiff: ForwardDiff
 
 #------
 # BVPM2
