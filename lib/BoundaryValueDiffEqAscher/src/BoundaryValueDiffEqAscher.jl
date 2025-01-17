@@ -20,7 +20,7 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __so
                  _unwrap_val
 using Setfield: @set!
 using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection
+                       sparse_jacobian!, SymbolicsSparsityDetection, NoSparsityDetection
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 

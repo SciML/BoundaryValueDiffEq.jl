@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
-using BoundaryValueDiffEqCore, SciMLBase, ODEInterface, RecursiveArrayTools,
-      ConcreteStructs, Setfield, PreallocationTools
+using BoundaryValueDiffEqCore, SciMLBase, ODEInterface, ConcreteStructs, Setfield,
+      PreallocationTools
 
 using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
