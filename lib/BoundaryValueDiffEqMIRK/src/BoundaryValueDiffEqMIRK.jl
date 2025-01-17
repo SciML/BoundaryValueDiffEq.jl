@@ -1,44 +1,48 @@
 module BoundaryValueDiffEqMIRK
 
-import PrecompileTools: @compile_workload, @setup_workload
+using ADTypes
+using ArrayInterface: parameterless_type, undefmatrix, fast_scalar_indexing
+using BandedMatrices: BandedMatrix, Ones
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+                               recursive_flatten, recursive_flatten!, recursive_unflatten!,
+                               __concrete_nonlinearsolve_algorithm, diff!,
+                               __sparse_jacobian_cache, __sparsity_detection_alg,
+                               __FastShortcutBVPCompatibleNonlinearPolyalg,
+                               __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
+                               concrete_jacobian_algorithm, eval_bc_residual,
+                               eval_bc_residual!, get_tmp, __maybe_matmul!,
+                               __append_similar!, __extract_problem_details,
+                               __initial_guess, __maybe_allocate_diffcache,
+                               __restructure_sol, __get_bcresid_prototype, __similar, __vec,
+                               __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+                               recursive_flatten_twopoint!, __internal_nlsolve_problem,
+                               __extract_mesh, __extract_u0, __has_initial_guess,
+                               __initial_guess_length, __initial_guess_on_mesh,
+                               __flatten_initial_guess, __build_solution, __Fix3,
+                               _sparse_like, get_dense_ad, _sparse_like, ColoredMatrix
 
-using ADTypes, Adapt, ArrayInterface, BoundaryValueDiffEqCore, DiffEqBase, ForwardDiff,
-      LinearAlgebra, Preferences, RecursiveArrayTools, Reexport, SciMLBase, Setfield,
-      SparseDiffTools
-
+using ConcreteStructs: @concrete
+using DiffEqBase: DiffEqBase
+using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
+                                finish_part_setindex!
+using FastClosures: @closure
+using ForwardDiff: ForwardDiff, pickchunksize, Dual
+using LinearAlgebra
+using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
+                           recursivefill!
+using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
+                 _unwrap_val
+using Setfield: @set!
+using Reexport: @reexport
 using PreallocationTools: PreallocationTools, DiffCache
+using PrecompileTools: @compile_workload, @setup_workload
+using Preferences: Preferences
+using SparseArrays: sparse
+using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
+                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection,
+                       NoSparsityDetection
 
-# Special Matrix Types
-using BandedMatrices, FastAlmostBandedMatrices, SparseArrays
-
-import BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
-                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                                __concrete_nonlinearsolve_algorithm, diff!,
-                                __FastShortcutBVPCompatibleNonlinearPolyalg,
-                                __FastShortcutBVPCompatibleNLLSPolyalg, __restructure_sol,
-                                concrete_jacobian_algorithm, eval_bc_residual,
-                                eval_bc_residual!, get_tmp, __maybe_matmul!,
-                                __append_similar!, __extract_problem_details,
-                                __initial_guess, __maybe_allocate_diffcache,
-                                __get_bcresid_prototype, __similar, __vec, __vec_f,
-                                __vec_f!, __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
-                                __internal_nlsolve_problem, __extract_mesh, __extract_u0,
-                                __has_initial_guess, __initial_guess_length, EvalSol,
-                                __initial_guess_on_mesh, __flatten_initial_guess,
-                                __build_solution, __Fix3, __sparse_jacobian_cache,
-                                __sparsity_detection_alg, _sparse_like, ColoredMatrix
-
-import ADTypes: AbstractADType
-import ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
-import ConcreteStructs: @concrete
-import DiffEqBase: solve
-import FastClosures: @closure
-import ForwardDiff: ForwardDiff, pickchunksize, Dual
-import Logging
-import RecursiveArrayTools: ArrayPartition, DiffEqArray
-import SciMLBase: AbstractDiffEqInterpolation, StandardBVProblem, __solve, _unwrap_val
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SparseDiffTools, SciMLBase
+@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("algorithms.jl")

@@ -39,18 +39,18 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob, prob.u0, Nig, prob.p, false)
     chunksize = pickchunksize(M * (2 * Nig - 2))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
-    y = __alloc.(copy.(y₀))
-    fᵢ_cache = __alloc(similar(X))
-    fᵢ₂_cache = __alloc(similar(X))
+    y = __alloc.(copy.(y₀.u))
+    fᵢ_cache = __alloc(zero(X))
+    fᵢ₂_cache = __alloc(zero(X))
     stage = alg_stage(alg)
     bcresid_prototype = zero(vcat(X, X))
     k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
                   for _ in 1:Nig]
 
     residual = if iip
-        __alloc.(copy.(@view(y₀[1:end])))
+        __alloc.(copy.(@view(y₀.u[1:end])))
     else
         nothing
     end
@@ -96,7 +96,7 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
-    solu = ArrayPartition.(cache.y₀[1:length(mesh)], cache.y₀[(length(mesh) + 1):end])
+    solu = ArrayPartition.(cache.y₀.u[1:length(mesh)], cache.y₀.u[(length(mesh) + 1):end])
     return SciMLBase.build_solution(
         prob, cache.alg, mesh, solu; retcode = sol_nlprob.retcode)
 end
@@ -138,12 +138,6 @@ end
 function __mirkn_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L) where {L}
     sparse_jacobian!(J, diffmode, diffcache, loss_fn, x)
     return J
-end
-
-@inline function __internal_nlsolve_problem(
-        ::SecondOrderBVProblem{uType, tType, iip, nlls}, resid_prototype,
-        u0, args...; kwargs...) where {uType, tType, iip, nlls}
-    return NonlinearProblem(args...; kwargs...)
 end
 
 function __mirkn_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid)

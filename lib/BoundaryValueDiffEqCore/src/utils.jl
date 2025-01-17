@@ -104,6 +104,47 @@ end
     return resid
 end
 
+function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, mesh) where {BC}
+    L = length(mesh)
+    res_bc = bc(dy, y, p, mesh)
+    return res_bc
+end
+function eval_bc_residual(
+        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol, p, mesh) where {BC}
+    M = length(sol[1])
+    L = length(mesh)
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))[1:M]
+    ub = sol isa VectorOfArray ? sol[:, L] : sol(last(t))[1:M]
+    dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(t))[(M + 1):end]
+    dub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))[(M + 1):end]
+    return vcat(bca(dua, ua, p), bcb(dub, ub, p))
+end
+
+function eval_bc_residual!(resid, ::StandardBVProblem, bc!::BC, sol, p, t) where {BC}
+    bc!(resid, sol, p, t)
+end
+
+function eval_bc_residual!(
+        resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, mesh) where {BC}
+    M = length(sol[1])
+    res_bc = vcat(resid[1], resid[2])
+    bc!(res_bc, dsol, sol, p, mesh)
+    copyto!(resid[1], res_bc[1:M])
+    copyto!(resid[2], res_bc[(M + 1):end])
+end
+
+function eval_bc_residual!(
+        resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC, sol, p, mesh) where {BC}
+    M = length(sol[1])
+    L = length(mesh)
+    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(mesh))[1:M]
+    ub = sol isa VectorOfArray ? sol[:, L] : sol(last(mesh))[1:M]
+    dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(mesh))[(M + 1):end]
+    dub = sol isa VectorOfArray ? sol[:, end] : sol(last(mesh))[(M + 1):end]
+    bca!(resid[1], dua, ua, p)
+    bcb!(resid[2], dub, ub, p)
+end
+
 __append_similar!(::Nothing, n, _) = nothing
 
 # NOTE: We use `last` since the `first` might not conform to the same structure. For eg,
@@ -143,8 +184,7 @@ function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kw
     _u0 = first(u0)
     return Val(true), eltype(_u0), length(_u0), (length(u0) - 1), _u0
 end
-function __extract_problem_details(
-        prob, u0::RecursiveArrayTools.AbstractVectorOfArray; kwargs...)
+function __extract_problem_details(prob, u0::AbstractVectorOfArray; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0.u)
     return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
@@ -195,6 +235,20 @@ function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
     return prototype, size(prototype)
 end
 
+function __get_bcresid_prototype(::TwoPointSecondOrderBVProblem, prob::BVProblem, u)
+    prototype = if prob.f.bcresid_prototype !== nothing
+        prob.f.bcresid_prototype.x
+    else
+        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
+    end
+    return prototype, size.(prototype)
+end
+function __get_bcresid_prototype(::StandardSecondOrderBVProblem, prob::BVProblem, u)
+    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
+                __zeros_like(u)
+    return prototype, size(prototype)
+end
+
 @inline function __similar(x, args...)
     y = similar(x, args...)
     return zero(y)
@@ -235,6 +289,32 @@ end
 __vec_bc(sol, p, t, bc, u_size) = vec(bc(sol, p, t))
 __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
+# Restructure Non-Vector Inputs
+function __vec_f!(ddu, du, u, p, t, f!, u_size)
+    f!(reshape(ddu, u_size), reshape(du, u_size), reshape(u, u_size), p, t)
+    return nothing
+end
+
+__vec_f(du, u, p, t, f, u_size) = vec(f(reshape(du, u_size), reshape(u, u_size), p, t))
+
+function __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), __restructure_sol(dsol, u_size),
+        __restructure_sol(sol, u_size), p, t)
+    return nothing
+end
+
+function __vec_so_bc!(resid, dsol, sol, p, bc!, resid_size, u_size)
+    bc!(reshape(resid, resid_size), reshape(dsol, u_size), reshape(sol, u_size), p)
+    return nothing
+end
+
+function __vec_so_bc(dsol, sol, p, t, bc, u_size)
+    vec(bc(__restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t))
+end
+function __vec_so_bc(dsol, sol, p, bc, u_size)
+    vec(bc(reshape(dsol, u_size), reshape(sol, u_size), p))
+end
+
 @inline __get_non_sparse_ad(ad::AbstractADType) = ad
 @inline __get_non_sparse_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
@@ -274,6 +354,12 @@ end
     else
         return NonlinearProblem(args...; kwargs...)
     end
+end
+
+@inline function __internal_nlsolve_problem(
+        ::SecondOrderBVProblem{uType, tType, iip, nlls}, resid_prototype,
+        u0, args...; kwargs...) where {uType, tType, iip, nlls}
+    return NonlinearProblem(args...; kwargs...)
 end
 
 # Handling Initial Guesses
@@ -356,6 +442,10 @@ end
 @inline function __initial_guess_on_mesh(u₀::F, mesh, p) where {F}
     return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
 end
+@inline function __initial_guess_on_mesh(
+        prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p, alias_u0::Bool)
+    return VectorOfArray([copy(vec(u₀)) for _ in 1:(2 * (Nig + 1))])
+end
 
 # Construct BVP Solution
 function __build_solution(prob::BVProblem, odesol, nlsol)
@@ -370,3 +460,7 @@ end
 end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
+
+get_dense_ad(::Nothing) = nothing
+get_dense_ad(ad) = ad
+get_dense_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
