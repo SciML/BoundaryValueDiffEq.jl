@@ -1,4 +1,5 @@
-function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTableau{false})
+function BoundaryValueDiffEqCore.__append_similar!(
+        x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTableau{false})
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
@@ -7,7 +8,7 @@ function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTab
     return x
 end
 
-function __append_similar!(
+function BoundaryValueDiffEqCore.__append_similar!(
         x::AbstractVector{<:MaybeDiffCache}, n, M, TU::FIRKTableau{false})
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
@@ -19,7 +20,8 @@ function __append_similar!(
     return x
 end
 
-function __append_similar!(x::AbstractVectorOfArray, n, M, TU::FIRKTableau{false})
+function BoundaryValueDiffEqCore.__append_similar!(
+        x::AbstractVectorOfArray, n, M, TU::FIRKTableau{false})
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
@@ -28,7 +30,8 @@ function __append_similar!(x::AbstractVectorOfArray, n, M, TU::FIRKTableau{false
     return x
 end
 
-function __append_similar!(x::AbstractVectorOfArray, n, M, TU::FIRKTableau{true})
+function BoundaryValueDiffEqCore.__append_similar!(
+        x::AbstractVectorOfArray, n, M, TU::FIRKTableau{true})
     (; s) = TU
     N = n - length(x)
     N == 0 && return x

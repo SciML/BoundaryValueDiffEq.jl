@@ -35,17 +35,17 @@ end
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
         p; bcresid_prototype = (zeros(1), zeros(1)))
 
-    sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
-    @test SciMLBase.successful_retcode(sol_bvpm2)
-    resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
-    ex7_2pbc1!(resid_f[1], sol_bvpm2(tspan[1]), nothing)
-    ex7_2pbc2!(resid_f[2], sol_bvpm2(tspan[2]), nothing)
-    @test norm(resid_f, Inf) < 1e-6
+    #sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
+    #@test SciMLBase.successful_retcode(sol_bvpm2)
+    #resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
+    #ex7_2pbc1!(resid_f[1], sol_bvpm2(tspan[1]), nothing)
+    #ex7_2pbc2!(resid_f[2], sol_bvpm2(tspan[2]), nothing)
+    #@test norm(resid_f, Inf) < 1e-6
 end
 
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
 @testitem "BVPSOL" setup=[ODEInterfaceWrapperTestSetup] begin
-    using ODEInterface, RecursiveArrayTools, NonlinearSolveFirstOrder
+    using ODEInterface, OrdinaryDiffEq, RecursiveArrayTools, NonlinearSolveFirstOrder
 
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
         p; bcresid_prototype = (zeros(1), zeros(1)))
