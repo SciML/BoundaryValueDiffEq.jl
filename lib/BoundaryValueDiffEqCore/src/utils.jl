@@ -447,7 +447,7 @@ end
 end
 
 # Construct BVP Solution
-function __build_solution(prob::BVProblem, odesol, nlsol)
+function __build_solution(prob::AbstractBVProblem, odesol, nlsol)
     retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
     return SciMLBase.solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
 end
