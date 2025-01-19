@@ -38,7 +38,8 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, AbstractBVProblem,
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection
+                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection,
+                       NoSparsityDetection
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
