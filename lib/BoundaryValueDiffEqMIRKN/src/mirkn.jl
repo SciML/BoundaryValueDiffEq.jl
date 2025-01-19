@@ -130,7 +130,7 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector) where 
     sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
          NoSparsityDetection()
     ad = alg.jac_alg.diffmode
-    lz = similar(y)
+    lz = __similar(y)
     jac_cache = __sparse_jacobian_cache(Val(iip), ad, sd, lossₚ, lz, y)
     jac_prototype = init_jacobian(jac_cache)
     jac = if iip

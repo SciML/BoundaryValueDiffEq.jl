@@ -58,6 +58,8 @@ probArr = [SecondOrderBVProblem(bvpf1, u0, tspan), SecondOrderBVProblem(bvpf2, u
     TwoPointSecondOrderBVProblem(bvpf6, u0, tspan)]
 dts = 1 .// 2 .^ (3:-1:1)
 
+export probArr, dts, testTol, mirkn_solver
+
 end
 
 @testitem "Convergence on Linear" setup=[MIRKNConvergenceTests] begin
