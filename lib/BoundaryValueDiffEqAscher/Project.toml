@@ -28,7 +28,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseDiffTools = "47a9eef4-7e08-11e9-0b38-333d64bd3804"
 
 [compat]
-ADTypes = "1.9"
+ADTypes = "1.11"
 Adapt = "4.1.1"
 AlmostBlockDiagonals = "0.1.10"
 ArrayInterface = "7.18"
