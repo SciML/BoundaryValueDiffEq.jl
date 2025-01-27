@@ -21,4 +21,24 @@
 
     sol3 = solve(prob, LobattoIIIa4(nested_nlsolve = true), dt = 0.05)
     @test SciMLBase.successful_retcode(sol3.retcode)
+
+    function second_f!(ddu, du, u, p, t)
+        ϵ = 0.1
+        ddu[1] = u[2]
+        ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ϵ
+        ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ϵ
+    end
+    function second_bc!(res, du, u, p, t)
+        res[1] = u(0.0)[1]
+        res[2] = u(1.0)[1]
+        res[3] = u(0.0)[3] + 1
+        res[4] = u(1.0)[3] - 1
+        res[5] = du(0.0)[1]
+        res[6] = du(1.0)[1]
+    end
+    u0 = BigFloat.([1.0, 1.0, 1.0])
+    tspan = (0.0, 1.0)
+    prob = SecondOrderBVProblem(second_f!, second_bc!, u0, tspan)
+    sol4 = solve(prob, MIRKN4(), dt = 0.01)
+    @test SciMLBase.successful_retcode(sol4.retcode)
 end
