@@ -35,3 +35,4 @@ makedocs(; sitename = "BoundaryValueDiffEq.jl",
         canonical = "https://docs.sciml.ai/BoundaryValueDiffEq/stable/"),
     pages)
 
+deploydocs(repo = "github.com/SciML/BoundaryValueDiffEq.jl.git"; push_preview = true)
