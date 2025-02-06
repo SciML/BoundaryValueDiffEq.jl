@@ -2,6 +2,7 @@
 
 pages = ["index.md",
     "Getting Started with BVP solving in Julia" => "tutorials/getting_started.md",
+    "Tutorials" => "tutorials/continuation.md",
     "Basics" => Any["basics/bvp_problem.md", "basics/bvp_functions.md",
         "basics/solve.md", "basics/autodiff.md"],
     "Solver Summaries and Recommendations" => Any[

@@ -204,6 +204,15 @@ function __extract_problem_details(
     return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end
 
+function __extract_problem_details(
+        prob, u0::SciMLBase.ODESolution; dt = 0.0, check_positive_dt::Bool = false)
+    # Problem passes in a initial guess function
+    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    _u0 = first(u0.u)
+    _t = u0.t
+    return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
+end
+
 function __initial_guess(f::F, p::P, t::T) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
         return f(p, t)
@@ -372,6 +381,7 @@ Takes the input initial guess and returns the value at the starting mesh point.
 @inline __extract_u0(u₀::DiffEqArray, p, t₀) = u₀.u[1]
 @inline __extract_u0(u₀::F, p, t₀) where {F <: Function} = __initial_guess(u₀, p, t₀)
 @inline __extract_u0(u₀::AbstractArray, p, t₀) = u₀
+@inline __extract_u0(u₀::SciMLBase.ODESolution, p, t₀) = u₀.u[1]
 @inline __extract_u0(u₀::T, p, t₀) where {T} = error("`prob.u0::$(T)` is not supported.")
 
 """
@@ -383,6 +393,8 @@ Takes the input initial guess and returns the mesh.
 @inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = u₀.t
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = u₀.t
+@inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Int) = u₀.t
+@inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Number) = u₀.t
 
 """
     __has_initial_guess(u₀) -> Bool
@@ -392,6 +404,7 @@ Returns `true` if the input has an initial guess.
 @inline __has_initial_guess(u₀::AbstractVector{<:AbstractArray}) = true
 @inline __has_initial_guess(u₀::VectorOfArray) = true
 @inline __has_initial_guess(u₀::DiffEqArray) = true
+@inline __has_initial_guess(u₀::SciMLBase.ODESolution) = true
 @inline __has_initial_guess(u₀::F) where {F} = true
 @inline __has_initial_guess(u₀::AbstractArray) = false
 
@@ -404,6 +417,7 @@ guess is supplied, it returns `-1`.
 @inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
 @inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
 @inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
+@inline __initial_guess_length(u₀::SciMLBase.ODESolution) = length(u₀.t)
 @inline __initial_guess_length(u₀::F) where {F} = -1
 @inline __initial_guess_length(u₀::AbstractArray) = -1
 
@@ -417,6 +431,7 @@ initial guess, it returns `vec(u₀)`.
     vec, hcat, u₀)
 @inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
+@inline __flatten_initial_guess(u₀::SciMLBase.ODESolution) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::AbstractArray) = vec(u₀)
 @inline __flatten_initial_guess(u₀::F) where {F} = nothing
 
@@ -434,6 +449,9 @@ end
 end
 @inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p)
     return copy(u₀)
+end
+@inline function __initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p)
+    return copy(VectorOfArray(u₀.u))
 end
 @inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p)
     return VectorOfArray([copy(vec(u₀)) for _ in mesh])
