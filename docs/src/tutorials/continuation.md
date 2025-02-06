@@ -18,7 +18,7 @@ y_2'= -\frac{x}{e}y_2 - \pi^2\cos(\pi x) - \frac{\pi x}{e}\sin(\pi x)
 Since this BVP would become difficult to solve when $0<\epsilon\ll 1$, we start the continuation with relatively bigger $\epsilon$ to first obtain a good initial guess for cases when $\epsilon$ are becoming extremely small. We can just use the previous solution from BVP solving as the initial guess `u0` when constructing a new `BVProblem`.
 
 ```@example continuation
-using BoundaryValueDiffEq
+using BoundaryValueDiffEq, Plots
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -t / p * u[2] - pi^2 * cos(pi * t) - pi * t / p * sin(pi * t)
@@ -31,9 +31,9 @@ tspan = (-1.0, 1.0)
 sol = [1.0, 0.0]
 e = 0.1
 for i in 2:4
-    e = e / 10
+    global e = e / 10
     prob = BVProblem(f!, bc!, sol, tspan, e)
-    sol = solve(prob, MIRK4(), dt = 0.01)
+    global sol = solve(prob, MIRK4(), dt = 0.01)
 end
 plot(sol, idxs = [1])
 ```
