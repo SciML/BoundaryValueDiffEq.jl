@@ -279,14 +279,13 @@ end
         -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     sol3 = solve(bvp3, MIRK4(), dt = 0.05)
 
-    # Needs a SciMLBase fix
     bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
         pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test_broken solve(bvp4, MIRK4(), dt = 0.05) isa SciMLBase.ODESolution
+    @test SciMLBase.successful_retcode(solve(bvp4, MIRK4(), dt = 0.05))
 
     bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05).retcode)
+    @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05))
 end
 
 @testitem "Compatibility with StaticArrays" begin
