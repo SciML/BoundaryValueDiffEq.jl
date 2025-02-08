@@ -41,7 +41,7 @@ plot(sol)
 
 Since this BVP only has constaints on its start and end two points, we can also use `TwoPointBVProlem` for problems of this kind.
 
-```@example
+```@example nlls_overdetermined
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
