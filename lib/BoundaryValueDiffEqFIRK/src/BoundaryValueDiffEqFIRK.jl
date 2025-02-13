@@ -1,12 +1,11 @@
 module BoundaryValueDiffEqFIRK
 
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
-using ArrayInterface: parameterless_type, undefmatrix, fast_scalar_indexing
+using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!,
-                               __sparse_jacobian_cache, __sparsity_detection_alg,
                                __FastShortcutBVPCompatibleNonlinearPolyalg,
                                __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual,
@@ -14,7 +13,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __append_similar!, __extract_problem_details,
                                __initial_guess, __maybe_allocate_diffcache,
                                __restructure_sol, __get_bcresid_prototype, __similar, __vec,
-                               __vec_f, __vec_f!, __vec_bc, __vec_bc!, ColoredMatrix,
+                               __vec_f, __vec_f!, __vec_bc, __vec_bc!,
                                recursive_flatten_twopoint!, __internal_nlsolve_problem,
                                MaybeDiffCache, __extract_mesh, __extract_u0,
                                __has_initial_guess, __initial_guess_length,
@@ -23,13 +22,14 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
+using DifferentiationInterface: DifferentiationInterface, Constant
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
                                 finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize, Dual
 using LinearAlgebra
-using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
-                           recursivefill!
+using RecursiveArrayTools: AbstractVectorOfArray, AbstractVectorOfArray, DiffEqArray,
+                           VectorOfArray, recursivecopy, recursivefill!
 using Reexport: @reexport
 using PreallocationTools: PreallocationTools, DiffCache
 using PrecompileTools: @compile_workload, @setup_workload
@@ -38,9 +38,12 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __so
                  _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
-using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection,
-                       NoSparsityDetection
+using SparseConnectivityTracer: SparseConnectivityTracer
+using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm, sparsity_pattern,
+                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
+                             LargestFirst
+
+const DI = DifferentiationInterface
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 

@@ -19,22 +19,6 @@ function build_almost_block_diagonals(
     return g
 end
 
-function __get_bcresid_prototype(prob::BVProblem, u)
-    return __get_bcresid_prototype(prob.problem_type, prob, u)
-end
-function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
-    prototype = if prob.f.bcresid_prototype !== nothing
-        prob.f.bcresid_prototype.x
-    else
-        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
-    end
-    return prototype, size.(prototype)
-end
-function __get_bcresid_prototype(::StandardBVProblem, prob::BVProblem, u)
-    prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype : zero(u)
-    return prototype, size(prototype)
-end
-
 # Custom pivot LU factorization and substitution for simple usage and
 # customized array types
 function __factorize!(a::Matrix{T}, ipvt::Vector) where {T}
@@ -174,6 +158,9 @@ end
     return nothing
 end
 
+@inline function construct_bc_jac(prob::BVProblem)
+    return construct_bc_jac(prob, __get_bcresid_prototype(prob, prob.u0), prob.problem_type)
+end
 @inline function construct_bc_jac(prob::BVProblem, _, pt::StandardBVProblem)
     if isinplace(prob)
         bcjac = (df, u, p, t) -> begin

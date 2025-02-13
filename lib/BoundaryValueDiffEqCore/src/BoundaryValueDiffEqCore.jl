@@ -18,8 +18,6 @@ using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
                  StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
-using SparseDiffTools: sparse_jacobian, sparse_jacobian_cache, sparse_jacobian!,
-                       matrix_colors, PrecomputedJacobianColorvec
 
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 
@@ -28,7 +26,6 @@ include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
-include("sparse_jacobians.jl")
 include("misc_utils.jl")
 
 function SciMLBase.__solve(

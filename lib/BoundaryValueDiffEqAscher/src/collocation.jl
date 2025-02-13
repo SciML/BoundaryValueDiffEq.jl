@@ -1,11 +1,12 @@
 function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
+    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval, gval, delz, dmz, deldmz, g, w, v, ipvtg, ipvtw, TU) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = similar(zval)
     df = zeros(T, ncy, ncy)
+    dmzo = copy(deldmz)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -24,7 +25,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
         h = mesh_dt[i]
         @views approx(cache, xii, zval)
         # find rhs boundary value
-        bc(gval, zval, p, xii)
+        @views bc(gval, zval, p, xii)
         # go thru the ncomp collocation equations and side conditions
         # in the i-th subinterval
         while true
@@ -332,7 +333,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
     rhs_bc = similar(zval)
 
     # zero the matrices to be computed
-    fill!.(w, 0.0)
+    fill!.(w, T(0))
 
     izeta = 1
     izsave = 1
@@ -364,7 +365,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
             uval = vcat(zval, yval)
 
             residual = f(uval, p, xcol)
-            dmzo[i][j][(ncomp + 1):ncy] .= 0.0
+            dmzo[i][j][(ncomp + 1):ncy] .= T(0)
             temp_rhs[i][j] .= residual .- dmzo[i][j]
 
             # fill in ncy rows of  w and v
@@ -489,7 +490,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
     rhs_bc = similar(zval)
 
     # zero the matrices to be computed
-    fill!.(w, 0.0)
+    fill!.(w, T(0))
 
     izeta = 1
     izsave = 1
@@ -523,7 +524,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
             uval = vcat(zval, yval)
 
             residual = f(uval, p, xcol)
-            dmzo[i][j][(ncomp + 1):ncy] .= 0.0
+            dmzo[i][j][(ncomp + 1):ncy] .= T(0)
             temp_rhs[i][j] .= residual .- dmzo[i][j]
 
             # fill in ncy rows of  w and v
@@ -649,12 +650,10 @@ function approx(cache::AscherCache{iip, T}, x, zval) where {iip, T}
         return
     end
     # evaluate z(u(x))
-    for jcomp in 1:ncomp
-        zsum = sum(a[j] * dmz[i][j][jcomp] for j in 1:k)
-        zᵢ = __get_value(z[i][jcomp])
-        zsum = zsum * bm + zᵢ
-        zval[jcomp] = zsum
-    end
+    zsum = [sum(a[j] * dmz[i][j][jj] for j in 1:k) for jj in 1:ncomp]
+    zᵢ = __get_value.(z[i])
+    zsum .= zsum .* bm .+ zᵢ
+    zval .= zsum
 end
 
 function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
@@ -669,22 +668,20 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
     bm = x - mesh[i]
     if i == n + 1
         zval .= z[n + 1]
-        yval .= 0.0
+        yval .= T(0)
         for j in 1:k
             yval .= yval .+ dm[j] * dmz[i - 1][j][(ncomp + 1):end]
         end
         return
     end
     # evaluate z(u(x))
-    for jcomp in 1:ncomp
-        zsum = sum(a[j] * dmz[i][j][jcomp] for j in 1:k)
-        zᵢ = __get_value(z[i][jcomp])
-        zsum = zsum * bm + zᵢ
-        zval[jcomp] = zsum
-    end
+    zsum = [sum(a[j] * dmz[i][j][jj] for j in 1:k) for jj in 1:ncomp]
+    zᵢ = __get_value.(z[i])
+    zsum .= zsum .* bm .+ zᵢ
+    zval .= zsum
 
     # evaluate  y(j) = j-th component of y.
-    yval .= 0.0
+    yval .= T(0)
     for j in 1:k
         yval .= yval .+ dm[j] * dmz[i][j][(ncomp + 1):end]
     end
@@ -702,32 +699,30 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
     bm = x - mesh[i]
     if i == n + 1
         zval .= z[n + 1]
-        yval .= 0.0
+        yval .= T(0)
         for j in 1:k
             yval .= yval .+ dm[j] * dmz[i - 1][j][(ncomp + 1):end]
         end
-        dmval .= 0.0
+        dmval .= T(0)
         for j in 1:k
             @. dmval = dmval + dm[j] * dmz[i - 1][j][1:ncomp]
         end
         return
     end
     # evaluate z(u(x))
-    for jcomp in 1:ncomp
-        zsum = sum(a[j] * dmz[i][j][jcomp] for j in 1:k)
-        zᵢ = __get_value(z[i][jcomp])
-        zsum = zsum * bm + zᵢ
-        zval[jcomp] = zsum
-    end
+    zsum = [sum(a[j] * dmz[i][j][jj] for j in 1:k) for jj in 1:ncomp]
+    zᵢ = __get_value.(z[i])
+    zsum .= zsum .* bm .+ zᵢ
+    zval .= zsum
 
     # evaluate  y(j) = j-th component of y.
-    yval .= 0.0
+    yval .= T(0)
     for j in 1:k
         @. yval = yval + dm[j] * dmz[i][j][(ncomp + 1):end]
     end
 
     #  evaluate  dmval(j) = mj-th derivative of uj.
-    dmval .= 0.0
+    dmval .= T(0)
     for j in 1:k
         @. dmval = dmval + dm[j] * dmz[i][j][1:ncomp]
     end
@@ -736,14 +731,15 @@ end
 # construct a group of ncomp rows of the matrices wi and
 # corrsponding to an interior collocation point
 # jj=1...k
-function vwblok(cache::AscherCache, xcol, hrho, jj, wi, vi, ipvtw, zyval, df, acol, dmzo)
+function vwblok(cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
+        vi, ipvtw, zyval, df, acol, dmzo) where {iip, T}
     (; jac, k, p, ncomp, ny) = cache
     ncy = ncomp + ny
     kdy = k * ncy
     # initialize wi
     i0 = (jj - 1) * ncy
     for id in (i0 + 1):(i0 + ncomp)
-        wi[id, id] = 1.0
+        wi[id, id] = T(1)
     end
 
     # calculuate local basis
@@ -807,7 +803,7 @@ function gblock!(cache::AscherCache, h, irow, wi, vrhsz, rhsdmz, ipvtw)
     recursive_unflatten!(vrhsz, rhsz)
 end
 
-function gblock!(cache::AscherCache, h, gi, irow, wi, vi)
+function gblock!(cache::AscherCache{iip, T}, h, gi, irow, wi, vi) where {iip, T}
     (; TU, k, ncomp, ny) = cache
     (; b) = TU
     ncy = ncomp + ny
@@ -817,10 +813,10 @@ function gblock!(cache::AscherCache, h, gi, irow, wi, vi)
 
     # branch according to mode
     # set right gi-block identity
-    gi[irow:(irow + ncomp - 1), 1:ncomp] .= 0.0
-    gi[irow:(irow + ncomp - 1), (ncomp + 1):end] .= 0.0
+    gi[irow:(irow + ncomp - 1), 1:ncomp] .= T(0)
+    gi[irow:(irow + ncomp - 1), (ncomp + 1):end] .= T(0)
     for j in 1:ncomp
-        gi[irow - 1 + j, ncomp + j] = 1.0
+        gi[irow - 1 + j, ncomp + j] = T(1)
     end
 
     # compute the block gi
@@ -829,18 +825,18 @@ function gblock!(cache::AscherCache, h, gi, irow, wi, vi)
         id = ir - 1
         for jcol in 1:ncomp
             ind = icomp
-            rsum = 0.0
+            rsum = T(0)
             for j in 1:k
                 rsum = rsum - hb[j] * vi[ind, jcol]
                 ind = ind + ncy
             end
             gi[id, jcol] = rsum
         end
-        gi[id, icomp] = gi[id, icomp] - 1.0
+        gi[id, icomp] = gi[id, icomp] - T(1)
     end
 end
 
-function dmzsol!(cache::AscherCache, v, z, dmz)
+function dmzsol!(cache::AscherCache{iip, T}, v, z, dmz) where {iip, T}
     (; k, ncomp, ny) = cache
     n = length(dmz)
     ncy = ncomp + ny
@@ -856,6 +852,7 @@ function dmzsol!(cache::AscherCache, v, z, dmz)
     end
     return nothing
 end
+
 @inline function __locate_stage(l, ncy)
     (1 ≤ l ≤ ncy) && (return 1, l)
     (ncy + 1 ≤ l ≤ 2 * ncy) && (return 2, l - ncy)
@@ -889,10 +886,10 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
 
         # handle an initial condition
         gi[irow, 1:ncomp] .= dg
-        gi[irow, (ncomp + 1):end] .= 0.0
+        gi[irow, (ncomp + 1):end] .= T(0)
     else
         # handle a final condition
-        gi[irow, 1:ncomp] .= 0.0
+        gi[irow, 1:ncomp] .= T(0)
         gi[irow, (ncomp + 1):end] .= dg
     end
 end
@@ -920,10 +917,10 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
 
         # handle an initial condition
         gi[irow, 1:ncomp] .= dg
-        gi[irow, (ncomp + 1):end] .= 0.0
+        gi[irow, (ncomp + 1):end] .= T(0)
     else
         # handle a final condition
-        gi[irow, 1:ncomp] .= 0.0
+        gi[irow, 1:ncomp] .= T(0)
         gi[irow, (ncomp + 1):end] .= dg
     end
 end

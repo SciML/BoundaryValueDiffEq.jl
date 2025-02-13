@@ -18,10 +18,11 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __has_initial_guess, __initial_guess_length,
                                __initial_guess_on_mesh, __flatten_initial_guess,
                                __build_solution, __Fix3, _sparse_like, __default_sparse_ad,
-                               __default_nonsparse_ad, get_dense_ad, __sparse_jacobian_cache
+                               __default_nonsparse_ad, get_dense_ad
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
+using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
                                 finish_part_setindex!
 using FastClosures: @closure
@@ -37,9 +38,12 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, AbstractBVProblem,
                  StandardSecondOrderBVProblem, StandardBVProblem, __solve, _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
-using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection,
-                       NoSparsityDetection
+using SparseConnectivityTracer: SparseConnectivityTracer
+using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm, sparsity_pattern,
+                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
+                             LargestFirst
+
+const DI = DifferentiationInterface
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 

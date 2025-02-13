@@ -7,9 +7,10 @@ using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
                                __concrete_nonlinearsolve_algorithm,
                                __internal_nlsolve_problem, BoundaryValueDiffEqAlgorithm,
                                __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
-                               __extract_mesh, get_dense_ad, __sparse_jacobian_cache
+                               __extract_mesh, get_dense_ad, __get_bcresid_prototype
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
+using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, Dual
 using LinearAlgebra
@@ -19,8 +20,12 @@ using Reexport: @reexport
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
                  _unwrap_val
 using Setfield: @set!
-using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, SymbolicsSparsityDetection, NoSparsityDetection
+using SparseConnectivityTracer: SparseConnectivityTracer
+using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm, sparsity_pattern,
+                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
+                             LargestFirst
+
+const DI = DifferentiationInterface
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
