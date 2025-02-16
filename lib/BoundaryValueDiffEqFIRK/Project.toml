@@ -76,9 +76,8 @@ OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
-Sparspak = "e56a9233-b9d6-4f03-8d0f-1825330902ac"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "JET", "LinearSolve", "OrdinaryDiffEq", "Random", "ReTestItems", "RecursiveArrayTools", "Sparspak", "StaticArrays", "Test"]
+test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "JET", "LinearSolve", "OrdinaryDiffEq", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
