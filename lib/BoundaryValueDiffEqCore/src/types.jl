@@ -43,7 +43,7 @@ function BVPJacobianAlgorithm(
     if diffmode !== missing
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
-        return BVPJacobianAlgorithm(diffmode, diffmode, diffmode)
+        return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
     else
         diffmode = nothing
         bc_diffmode = bc_diffmode === missing ? nothing : bc_diffmode
@@ -76,7 +76,6 @@ function concrete_jacobian_algorithm(
                    __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
-
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 

@@ -445,8 +445,8 @@ function __construct_nlproblem(
     resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
-        AutoSparse(jac_alg.bc_diffmode;
-            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
+        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
+            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm())
     else
         jac_alg.bc_diffmode
@@ -603,7 +603,7 @@ function __construct_nlproblem(
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
-            sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
+            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm())
     else
         jac_alg.bc_diffmode

@@ -39,7 +39,7 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
+        cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N, ad)
     (; stage) = cache
 
     # Get number of nonzeros
@@ -79,7 +79,7 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
+        cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N, ad)
     (; stage) = cache
 
     # Get number of nonzeros
