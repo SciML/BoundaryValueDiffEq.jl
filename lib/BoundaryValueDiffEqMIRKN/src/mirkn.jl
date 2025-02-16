@@ -42,12 +42,12 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
     y = __alloc.(copy.(y₀.u))
-    fᵢ_cache = __alloc(similar(X))
-    fᵢ₂_cache = __alloc(similar(X))
+    fᵢ_cache = __alloc(zero(X))
+    fᵢ₂_cache = __alloc(zero(X))
     stage = alg_stage(alg)
     bcresid_prototype = zero(vcat(X, X))
-    k_discrete = [__maybe_allocate_diffcache(similar(X, M, stage), chunksize, alg.jac_alg)
-                  for _ in 1:Nig]
+    k_discrete = [__maybe_allocate_diffcache(
+                      __similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
 
     residual = if iip
         __alloc.(copy.(@view(y₀.u[1:end])))
@@ -128,13 +128,13 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y) where {iip}
 
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
-            # Local because iszero require primal values
-            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(), coloring_algorithm = GreedyColoringAlgorithm())
+            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         alg.jac_alg.diffmode
     end
 
-    resid_prototype = similar(y)
+    resid_prototype = __similar(y)
 
     jac_cache = if iip
         DI.prepare_jacobian(loss, resid_prototype, diffmode, y, Constant(cache.p))

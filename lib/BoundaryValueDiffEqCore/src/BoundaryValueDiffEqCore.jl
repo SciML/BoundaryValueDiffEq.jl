@@ -8,9 +8,9 @@ using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using ForwardDiff: ForwardDiff, pickchunksize
 using Logging
-using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
 using LinearAlgebra
 using LineSearch: BackTracking
+using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
 using PreallocationTools: PreallocationTools, DiffCache
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
 using Reexport: @reexport
