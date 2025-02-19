@@ -51,7 +51,8 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
-        internal_prob, jac_cache, __cache_trait(diffmode), u0, alg.ode_alg; ode_kwargs...)
+        internal_prob, jac_cache, __cache_trait(diffmode),
+        diffmode, u0, alg.ode_alg; ode_kwargs...)
 
     loss_fnₚ = if iip
         @closure (du, u) -> __single_shooting_loss!(
@@ -134,17 +135,19 @@ function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where
 end
 
 function __single_shooting_jacobian_ode_cache(
-        prob, jac_cache, ::NoDiffCacheNeeded, u0, ode_alg; kwargs...)
+        prob, jac_cache, ::NoDiffCacheNeeded, diffmode, u0, ode_alg; kwargs...)
     return SciMLBase.__init(remake(prob; u0), ode_alg; kwargs...)
 end
 
 function __single_shooting_jacobian_ode_cache(
-        prob, jac_cache, ::DiffCacheNeeded, u0, ode_alg; kwargs...)
-    cache = jac_cache.config
-    if cache isa ForwardDiff.JacobianConfig
-        xduals = cache.duals isa Tuple ? cache.duals[2] : cache.duals
+        prob, jac_cache, ::DiffCacheNeeded, diffmode, u0, ode_alg; kwargs...)
+    if diffmode isa AutoSparse
+        T_dual = eltype(overloaded_input_type(jac_cache))
+        xduals = zeros(T_dual, size(u0))
+    elseif diffmode isa AutoForwardDiff
+        xduals = reshape(jac_cache.config.duals[2][1:length(u0)], size(u0))
     else
-        xduals = cache.t
+        xduals = reshape(cache.t[1:length(u0)], size(u0))
     end
     fill!(xduals, 0)
     prob_ = remake(

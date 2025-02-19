@@ -337,21 +337,17 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
-            colored_result = __generate_sparse_jacobian_prototype(
+            sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
                 (L + 1, cache.M + max(cache.M - L, 0)))
-            colored_result = __generate_sparse_jacobian_prototype(
+            sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         end
-        is_diffmode_reverse = ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode
-        partition = ifelse(is_diffmode_reverse, :row, :column)
-        constant_matrix_coloring = ifelse(is_diffmode_reverse, row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
-            coloring_algorithm = ConstantColoringAlgorithm{partition}(
-                sparsity_pattern(colored_result), constant_matrix_coloring))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -453,19 +449,14 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     L = length(cache.bcresid_prototype)
 
     diffmode = if jac_alg.diffmode isa AutoSparse
-        colored_result = __generate_sparse_jacobian_prototype(cache, cache.problem_type,
+        sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
+            cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
             cache.M, N, jac_alg.diffmode)
-        partition = ifelse(
-            ADTypes.mode(jac_alg.bc_diffmode) isa ADTypes.ReverseMode, :row, :column)
-        constant_matrix_coloring = ifelse(
-            ADTypes.mode(jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-            row_colors, column_colors)(colored_result)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
-            coloring_algorithm = ConstantColoringAlgorithm{partition}(
-                sparsity_pattern(colored_result), constant_matrix_coloring))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         jac_alg.diffmode
     end

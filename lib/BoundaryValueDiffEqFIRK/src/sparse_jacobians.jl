@@ -16,11 +16,7 @@ function __generate_sparse_jacobian_prototype(
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
-    problem = ColoringProblem(;
-        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
-    algo = GreedyColoringAlgorithm()
-    result = coloring(J_c, problem, algo)
-    return result
+    return J_c
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -30,12 +26,9 @@ function __generate_sparse_jacobian_prototype(
     J₁ = length(ya) + length(yb) + M * (N - 1)
     J₂ = M * N
     J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
-    problem = ColoringProblem(;
-        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
-    algo = GreedyColoringAlgorithm()
     # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return coloring(sparse(J), problem, algo)
-    return coloring(J, problem, algo)
+    J₁ < J₂ && return sparse(J)
+    return J
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -71,11 +64,7 @@ function __generate_sparse_jacobian_prototype(
 
     # Create sparse matrix from Is and Js
     J_c = _sparse_like(Is, Js, ya, row_size, row_size + M)
-
-    problem = ColoringProblem(;
-        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
-    algo = GreedyColoringAlgorithm()
-    return coloring(J_c, problem, algo)
+    return J_c
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -131,8 +120,5 @@ function __generate_sparse_jacobian_prototype(
     # Create sparse matrix from Is and Js
     J = _sparse_like(Is, Js, ya, row_size + length(ya) + length(yb), row_size + M)
 
-    problem = ColoringProblem(;
-        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
-    algo = GreedyColoringAlgorithm()
-    return coloring(J, problem, algo)
+    return J
 end
