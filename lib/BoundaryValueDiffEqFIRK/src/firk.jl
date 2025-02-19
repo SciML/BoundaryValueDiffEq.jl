@@ -610,7 +610,7 @@ function __construct_nlproblem(
         if L < cache.M
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
-            colored_result = __generate_sparse_jacobian_prototype(
+            sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
                 cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
