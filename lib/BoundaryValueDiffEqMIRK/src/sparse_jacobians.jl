@@ -4,8 +4,7 @@
     __generate_sparse_jacobian_prototype(::MIRKCache, _, ya, yb, M, N)
     __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
 
-Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
-coloring.
+Generate a prototype of the sparse Jacobian matrix for the BVP problem.
 
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
