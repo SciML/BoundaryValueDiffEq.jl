@@ -20,11 +20,7 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVPr
     J₂ = (nshoots + 1) * N
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (N - 1, N + 1))
 
-    problem = ColoringProblem(;
-        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
-    algo = GreedyColoringAlgorithm()
-    result = coloring(sparse(J), problem, algo)
-    return result
+    return J
 end
 
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
@@ -43,10 +39,6 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVPr
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (max(L₁, L₂) + N - 1, N + 1))
 
     # for underdetermined systems we don't have banded qr implemented. use sparse
-    problem = ColoringProblem(;
-        partition = ifelse((ADTypes.mode(ad) isa ADTypes.ReverseMode), :row, :column))
-    algo = GreedyColoringAlgorithm()
-    # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return coloring(sparse(J), problem, algo)
-    return coloring(J, problem, algo)
+    J₁ < J₂ && return sparse(J)
+    return J
 end
