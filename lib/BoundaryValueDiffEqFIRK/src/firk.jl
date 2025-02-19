@@ -463,7 +463,7 @@ function __construct_nlproblem(
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
             sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
+                cache, cache.problem_type, y, y, cache.M, N)
         else
             block_size = cache.M * (stage + 2)
             J_full_band = BandedMatrix(
@@ -471,7 +471,7 @@ function __construct_nlproblem(
                     cache.M * (stage + 1) * (N - 1) + cache.M),
                 (block_size, block_size))
             sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
+                cache, cache.problem_type, y, y, cache.M, N)
         end
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
@@ -548,7 +548,7 @@ function __construct_nlproblem(
             cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-            cache.M, N, jac_alg.diffmode)
+            cache.M, N)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = GreedyColoringAlgorithm())
@@ -611,12 +611,12 @@ function __construct_nlproblem(
             # For underdetermined problems we use sparse since we don't have banded qr
             J_full_band = nothing
             sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
+                cache, cache.problem_type, y, y, cache.M, N)
         else
             J_full_band = BandedMatrix(Ones{eltype(y)}(L + cache.M * (N - 1), cache.M * N),
                 (L + 1, cache.M + max(cache.M - L, 0)))
             sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
-                cache, cache.problem_type, y, y, cache.M, N, jac_alg.nonbc_diffmode)
+                cache, cache.problem_type, y, y, cache.M, N)
         end
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
@@ -684,7 +684,7 @@ function __construct_nlproblem(
             cache, cache.problem_type,
             @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
             @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-            cache.M, N, jac_alg.diffmode)
+            cache.M, N)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = GreedyColoringAlgorithm())

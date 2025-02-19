@@ -101,18 +101,11 @@ function __solve_nlproblem!(
         resida_len, residb_len, N, bca, bcb, ode_cache_loss_fn)
 
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
-        colored_result = __generate_sparse_jacobian_prototype(
-            alg, prob.problem_type, bcresid_prototype,
-            u0, N, cur_nshoot, alg.jac_alg.diffmode)
-        partition = ifelse(
-            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode, :row, :column)
-        constant_matrix_coloring = ifelse(
-            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-            row_colors, column_colors)(colored_result)
+        sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
+            alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
-            coloring_algorithm = ConstantColoringAlgorithm{partition}(
-                sparsity_pattern(colored_result), constant_matrix_coloring))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         alg.jac_alg.diffmode
     end
@@ -160,18 +153,11 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     # ODE Part
     nonbc_diffmode = if alg.jac_alg.nonbc_diffmode isa AutoSparse
-        colored_result = __generate_sparse_jacobian_prototype(
-            alg, prob.problem_type, bcresid_prototype, u0,
-            N, cur_nshoot, alg.jac_alg.nonbc_diffmode)
-        partition = ifelse(
-            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode, :row, :column)
-        constant_matrix_coloring = ifelse(
-            ADTypes.mode(alg.jac_alg.nonbc_diffmode) isa ADTypes.ReverseMode,
-            row_colors, column_colors)(colored_result)
+        sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
+            alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
-            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparsity_pattern(colored_result)),
-            coloring_algorithm = ConstantColoringAlgorithm{partition}(
-                sparsity_pattern(colored_result), constant_matrix_coloring))
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
+            coloring_algorithm = GreedyColoringAlgorithm())
     else
         alg.jac_alg.nonbc_diffmode
     end
@@ -256,7 +242,6 @@ function __multiple_shooting_init_jacobian_odecache(
         T_dual = eltype(overloaded_input_type(jac_cache))
         xduals = zeros(T_dual, size(u))
     elseif diffmode isa AutoForwardDiff
-        #xduals = reshape(jac_cache.config.duals[2][1:length(u)], size(u))
         T_dual = eltype(overloaded_input_type(jac_cache))
         xduals = zeros(T_dual, size(u))
     else
