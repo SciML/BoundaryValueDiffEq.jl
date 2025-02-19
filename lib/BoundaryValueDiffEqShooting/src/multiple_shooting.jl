@@ -256,7 +256,9 @@ function __multiple_shooting_init_jacobian_odecache(
         T_dual = eltype(overloaded_input_type(jac_cache))
         xduals = zeros(T_dual, size(u))
     elseif diffmode isa AutoForwardDiff
-        xduals = reshape(jac_cache.config.duals[2][1:length(u)], size(u))
+        #xduals = reshape(jac_cache.config.duals[2][1:length(u)], size(u))
+        T_dual = eltype(overloaded_input_type(jac_cache))
+        xduals = zeros(T_dual, size(u))
     else
         xduals = reshape(cache.t[1:length(u)], size(u))
     end
