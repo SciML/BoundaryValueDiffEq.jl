@@ -447,7 +447,7 @@ function __construct_nlproblem(
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
             sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.bc_diffmode.coloring_algorithm)
     else
         jac_alg.bc_diffmode
     end
@@ -475,7 +475,7 @@ function __construct_nlproblem(
         end
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.nonbc_diffmode.coloring_algorithm)
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -551,7 +551,7 @@ function __construct_nlproblem(
             cache.M, N)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.diffmode.coloring_algorithm)
     else
         jac_alg.diffmode
     end
@@ -595,7 +595,7 @@ function __construct_nlproblem(
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
             sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.bc_diffmode.coloring_algorithm)
     else
         jac_alg.bc_diffmode
     end
@@ -620,7 +620,7 @@ function __construct_nlproblem(
         end
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.nonbc_diffmode.coloring_algorithm)
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -687,7 +687,7 @@ function __construct_nlproblem(
             cache.M, N)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.diffmode.coloring_algorithm)
     else
         jac_alg.diffmode
     end

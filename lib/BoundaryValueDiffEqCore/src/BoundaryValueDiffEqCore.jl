@@ -18,6 +18,7 @@ using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
                  StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
+using SparseMatrixColorings: GreedyColoringAlgorithm
 
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 

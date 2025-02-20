@@ -39,7 +39,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     diffmode = if alg.jac_alg.diffmode isa AutoSparse
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
             sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = alg.jac_alg.diffmode.coloring_algorithm)
     else
         alg.jac_alg.diffmode
     end

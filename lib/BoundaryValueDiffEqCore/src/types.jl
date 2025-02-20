@@ -83,9 +83,11 @@ end
     return isbitstype(T) ? __default_sparse_ad(T) : __default_sparse_ad(first(x))
 end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
-@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparse(AutoFiniteDiff())
+@inline __default_sparse_ad(::Type{<:Complex}) = AutoSparse(
+    AutoFiniteDiff(), coloring_algorithm = GreedyColoringAlgorithm())
 @inline function __default_sparse_ad(::Type{T}) where {T}
-    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()))
+    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
+        coloring_algorithm = GreedyColoringAlgorithm())
 end
 
 @inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}

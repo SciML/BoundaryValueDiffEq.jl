@@ -116,7 +116,7 @@ function __perform_mirkn_iteration(cache::MIRKNCache; nlsolve_kwargs = (;), kwar
 end
 
 function __construct_nlproblem(cache::MIRKNCache{iip}, y) where {iip}
-    (; alg) = cache
+    (; jac_alg) = cache.alg
     pt = cache.problem_type
 
     loss = if iip
@@ -126,12 +126,12 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y) where {iip}
         @closure (u, p) -> __mirkn_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
     end
 
-    diffmode = if alg.jac_alg.diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
+    diffmode = if jac_alg.diffmode isa AutoSparse
+        AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm())
+            coloring_algorithm = jac_alg.diffmode.coloring_algorithm)
     else
-        alg.jac_alg.diffmode
+        jac_alg.diffmode
     end
 
     resid_prototype = __similar(y)
