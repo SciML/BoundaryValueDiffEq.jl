@@ -117,6 +117,7 @@ end
 
 function __construct_nlproblem(cache::MIRKNCache{iip}, y) where {iip}
     (; jac_alg) = cache.alg
+    (; diffmode) = jac_alg
     pt = cache.problem_type
 
     loss = if iip
@@ -124,14 +125,6 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y) where {iip}
             du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache)
     else
         @closure (u, p) -> __mirkn_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache)
-    end
-
-    diffmode = if jac_alg.diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(jac_alg.diffmode);
-            sparsity_detector = jac_alg.diffmode.sparsity_detector,
-            coloring_algorithm = jac_alg.diffmode.coloring_algorithm)
-    else
-        jac_alg.diffmode
     end
 
     resid_prototype = __similar(y)

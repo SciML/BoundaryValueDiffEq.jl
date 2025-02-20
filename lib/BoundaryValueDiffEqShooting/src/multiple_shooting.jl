@@ -168,13 +168,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     # BC Part
-    bc_diffmode = if alg.jac_alg.bc_diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(alg.jac_alg.bc_diffmode),
-            sparsity_detector = jac_alg.bc_diffmode.sparsity_detector,
-            coloring_algorithm = alg.jac_alg.bc_diffmode.coloring_algorithm)
-    else
-        alg.jac_alg.bc_diffmode
-    end
+    (; bc_diffmode) = alg.jac_alg
     bc_jac_cache = DI.prepare_jacobian(
         nothing, similar(bcresid_prototype), bc_diffmode, u_at_nodes)
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(

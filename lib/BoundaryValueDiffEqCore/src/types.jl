@@ -84,9 +84,11 @@ end
 end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
 @inline __default_sparse_ad(::Type{<:Complex}) = AutoSparse(
-    AutoFiniteDiff(), coloring_algorithm = GreedyColoringAlgorithm())
+    AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector(),
+    coloring_algorithm = GreedyColoringAlgorithm())
 @inline function __default_sparse_ad(::Type{T}) where {T}
     return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
+        sparsity_detector = TracerLocalSparsityDetector(),
         coloring_algorithm = GreedyColoringAlgorithm())
 end
 

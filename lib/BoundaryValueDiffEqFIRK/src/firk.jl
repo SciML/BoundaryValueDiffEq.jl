@@ -436,21 +436,13 @@ end
 function __construct_nlproblem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
-    (; jac_alg) = cache.alg
-    (; stage) = cache
+    (; alg, stage) = cache
+    (; bc_diffmode) = alg.jac_alg
     N = length(cache.mesh)
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
     resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
-
-    bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
-            sparsity_detector = jac_alg.bc_diffmode.sparsity_detector,
-            coloring_algorithm = jac_alg.bc_diffmode.coloring_algorithm)
-    else
-        jac_alg.bc_diffmode
-    end
 
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
@@ -586,19 +578,11 @@ function __construct_nlproblem(
         cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
+    (; bc_diffmode) = jac_alg
     N = length(cache.mesh)
-
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
     resid_collocation = __similar(y, cache.M * (N - 1))
-
-    bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
-            sparsity_detector = jac_alg.bc_diffmode.sparsity_detector,
-            coloring_algorithm = jac_alg.bc_diffmode.coloring_algorithm)
-    else
-        jac_alg.bc_diffmode
-    end
 
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))

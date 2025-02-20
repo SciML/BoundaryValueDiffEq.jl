@@ -7,6 +7,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     end
+    (; diffmode) = jac_alg
     T, N = eltype(u0), length(u0)
 
     alg = concretize_jacobian_algorithm(alg_, prob)
@@ -35,14 +36,6 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     end
 
     y_ = similar(resid_prototype)
-
-    diffmode = if alg.jac_alg.diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
-            sparsity_detector = jac_alg.bc_diffmode.sparsity_detector,
-            coloring_algorithm = alg.jac_alg.diffmode.coloring_algorithm)
-    else
-        alg.jac_alg.diffmode
-    end
 
     jac_cache = if iip
         DI.prepare_jacobian(nothing, y_, diffmode, vec(u0))
