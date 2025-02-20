@@ -72,7 +72,7 @@ function concrete_jacobian_algorithm(
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
-                  (prob_type isa TwoPointBVProblem ? __default_sparse_ad :
+                  (prob_type isa TwoPointBVProblem ? __default_bc_sparse_ad :
                    __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
@@ -87,6 +87,19 @@ end
     AutoFiniteDiff(), coloring_algorithm = GreedyColoringAlgorithm())
 @inline function __default_sparse_ad(::Type{T}) where {T}
     return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
+        coloring_algorithm = GreedyColoringAlgorithm())
+end
+
+@inline function __default_bc_sparse_ad(x::AbstractArray{T}) where {T}
+    return isbitstype(T) ? __default_bc_sparse_ad(T) : __default_bc_sparse_ad(first(x))
+end
+@inline __default_bc_sparse_ad(x::T) where {T} = __default_bc_sparse_ad(T)
+@inline __default_bc_sparse_ad(::Type{<:Complex}) = AutoSparse(
+    AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector(),
+    coloring_algorithm = GreedyColoringAlgorithm())
+@inline function __default_bc_sparse_ad(::Type{T}) where {T}
+    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
+        sparsity_detector = TracerLocalSparsityDetector(),
         coloring_algorithm = GreedyColoringAlgorithm())
 end
 

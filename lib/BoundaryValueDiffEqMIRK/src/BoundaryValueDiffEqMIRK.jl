@@ -38,10 +38,6 @@ using PreallocationTools: PreallocationTools, DiffCache
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 using SparseArrays: sparse
-using SparseConnectivityTracer: SparseConnectivityTracer
-using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm, sparsity_pattern,
-                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
-                             LargestFirst
 
 const DI = DifferentiationInterface
 

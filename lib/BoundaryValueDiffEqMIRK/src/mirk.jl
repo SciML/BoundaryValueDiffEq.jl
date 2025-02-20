@@ -321,7 +321,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
-            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
+            sparsity_detector = jac_alg.bc_diffmode.sparsity_detector,
             coloring_algorithm = jac_alg.bc_diffmode.coloring_algorithm)
     else
         jac_alg.bc_diffmode

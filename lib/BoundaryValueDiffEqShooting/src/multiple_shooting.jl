@@ -170,7 +170,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     # BC Part
     bc_diffmode = if alg.jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(alg.jac_alg.bc_diffmode),
-            sparsity_detector = SparseConnectivityTracer.TracerLocalSparsityDetector(),
+            sparsity_detector = jac_alg.bc_diffmode.sparsity_detector,
             coloring_algorithm = alg.jac_alg.bc_diffmode.coloring_algorithm)
     else
         alg.jac_alg.bc_diffmode

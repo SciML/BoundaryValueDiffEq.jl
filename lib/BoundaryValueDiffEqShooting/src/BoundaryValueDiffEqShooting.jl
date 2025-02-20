@@ -39,10 +39,6 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __so
                  _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
-using SparseConnectivityTracer: SparseConnectivityTracer
-using SparseMatrixColorings: ColoringProblem, GreedyColoringAlgorithm, sparsity_pattern,
-                             ConstantColoringAlgorithm, row_colors, column_colors, coloring,
-                             LargestFirst
 
 const DI = DifferentiationInterface
 
