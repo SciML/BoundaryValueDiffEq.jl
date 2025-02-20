@@ -7,10 +7,9 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     end
-    (; diffmode) = jac_alg
-    T, N = eltype(u0), length(u0)
 
     alg = concretize_jacobian_algorithm(alg_, prob)
+    (; diffmode) = alg.jac_alg
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)

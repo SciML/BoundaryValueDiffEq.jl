@@ -437,7 +437,8 @@ function __construct_nlproblem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; alg, stage) = cache
-    (; bc_diffmode) = alg.jac_alg
+    (; jac_alg) = alg
+    (; bc_diffmode) = jac_alg
     N = length(cache.mesh)
 
     resid_bc = cache.bcresid_prototype
