@@ -3,11 +3,11 @@ module BoundaryValueDiffEqCore
 using Adapt: adapt
 using ADTypes: ADTypes, AbstractADType, AutoSparse, AutoForwardDiff, AutoFiniteDiff,
                NoSparsityDetector, KnownJacobianSparsityDetector
-using ArrayInterface: matrix_colors, parameterless_type, fast_scalar_indexing
+using ArrayInterface: parameterless_type, fast_scalar_indexing
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using ForwardDiff: ForwardDiff, pickchunksize
-using Logging
+using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm

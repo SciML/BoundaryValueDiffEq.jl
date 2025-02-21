@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqMIRK
 
 using ADTypes
-using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
+using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
@@ -18,7 +18,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __extract_mesh, __extract_u0, __has_initial_guess,
                                __initial_guess_length, __initial_guess_on_mesh,
                                __flatten_initial_guess, __build_solution, __Fix3,
-                               _sparse_like, get_dense_ad, _sparse_like
+                               get_dense_ad
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
@@ -157,6 +157,5 @@ include("sparse_jacobians.jl")
 end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
-export BVPJacobianAlgorithm
 
 end

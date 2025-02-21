@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqShooting
 
 using ADTypes
-using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
+using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
@@ -19,8 +19,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                NoDiffCacheNeeded, DiffCacheNeeded, __extract_mesh,
                                __extract_u0, __has_initial_guess, __initial_guess_length,
                                __initial_guess_on_mesh, __flatten_initial_guess,
-                               __get_non_sparse_ad, __build_solution, __Fix3, _sparse_like,
-                               get_dense_ad
+                               __get_non_sparse_ad, __build_solution, __Fix3, get_dense_ad
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
@@ -50,6 +49,5 @@ include("multiple_shooting.jl")
 include("sparse_jacobians.jl")
 
 export Shooting, MultipleShooting
-export BVPJacobianAlgorithm
 
 end # module BoundaryValueDiffEqShooting
