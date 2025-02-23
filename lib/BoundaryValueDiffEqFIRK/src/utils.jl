@@ -39,3 +39,20 @@ function BoundaryValueDiffEqCore.__append_similar!(
     append!(x, VectorOfArray([similar(last(x)) for _ in 1:N]))
     return x
 end
+
+@inline __K0_on_u0(u0::AbstractArray, stage) = repeat(u0, 1, stage)
+@inline function __K0_on_u0(u0::AbstractVector{<:AbstractArray}, stage)
+    u0_mat = hcat(u0...)
+    avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
+    return repeat(avg_u0, 1, stage)
+end
+@inline function __K0_on_u0(u0::AbstractVectorOfArray, stage)
+    u0_mat = hcat(u0.u...)
+    avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
+    return repeat(avg_u0, 1, stage)
+end
+@inline function __K0_on_u0(u0::SciMLBase.ODESolution, stage)
+    u0_mat = hcat(u0.u...)
+    avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
+    return repeat(avg_u0, 1, stage)
+end
