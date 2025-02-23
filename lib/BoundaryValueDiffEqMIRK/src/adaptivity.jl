@@ -27,7 +27,7 @@ end
 Generate new mesh based on the defect.
 """
 @views function mesh_selector!(cache::MIRKCache{iip, T}) where {iip, T}
-    (; order, defect, mesh, mesh_dt) = cache
+    (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(mesh)
 
@@ -39,7 +39,7 @@ Generate new mesh based on the defect.
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in defect]  # Broadcasting breaks GPU Compilation
+    ŝ = [maximum(abs, d) for d in errors]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -139,14 +139,85 @@ function half_mesh!(cache::MIRKCache)
 end
 
 """
-    defect_estimate!(cache::MIRKCache)
+    half_sol(sol)
+
+The input sol has length of `n + 1`. Divide the original solution into two equal length
+solution.
+"""
+function half_sol(sol::AbstractVectorOfArray{T}) where {T}
+    new_sol = copy(sol)
+    n = length(sol) - 1
+    resize!(new_sol, 2 * n + 1)
+    new_sol[2n + 1] = sol[n + 1]
+    for i in (2n - 1):-2:1
+        new_sol[i] = new_sol[(i + 1) ÷ 2]
+    end
+    @simd for i in (2n):-2:2
+        new_sol[i] = (new_sol[i + 1] + new_sol[i - 1]) ./ T(2)
+    end
+    return new_sol
+end
+@views function error_estimate!(
+        cache::MIRKCache{iip, T}, error_control::GlobalErrorControl, sol,
+        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    return error_estimate!(cache::MIRKCache{iip, T}, error_control, error_control.method,
+        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+end
+
+@views function error_estimate!(cache::MIRKCache{iip, T}, error_control::GlobalErrorControl,
+        global_error_control::REErrorControl, sol, nlsolve_alg,
+        abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    (; prob, alg, errors) = cache
+
+    # Use the previous solution as the initial guess
+    new_prob = remake(prob, u0 = half_sol(cache.y₀))
+    high_cache = SciMLBase.__init(new_prob, alg, dt = dt / 2, adaptive = false)
+
+    high_nlprob = __construct_nlproblem(high_cache, sol, copy(sol))
+    high_sol_original = __solve(
+        high_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+    high_sol = high_sol_original.u[1:2:end]
+    error_norm = global_error(VectorOfArray(high_sol), copy(cache.y₀), errors)
+    return error_norm
+end
+
+@views function error_estimate!(cache::MIRKCache{iip, T}, error_control::GlobalErrorControl,
+        global_error_control::HOErrorControl, sol, nlsolve_alg,
+        abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    (; prob, alg, errors) = cache
+
+    # Use the previous solution as the initial guess
+    new_prob = remake(prob, u0 = copy(cache.y₀))
+    high_cache = SciMLBase.__init(
+        new_prob, __high_order_method(alg), dt = dt, adaptive = false)
+
+    high_nlprob = __construct_nlproblem(high_cache, sol, copy(sol))
+    high_sol = __solve(
+        high_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+    error_norm = global_error(VectorOfArray(high_sol.u), copy(cache.y₀), errors)
+    return error_norm
+end
+
+@inline function __high_order_mirk(alg::AbstractMIRK)
+    new_alg = Symbol("MIRK$(alg_order(alg) + 2)")
+    return @eval $(new_alg)()
+end
+
+@views function global_error(high_sol, low_sol, errors)
+    errors .= (high_sol .- low_sol) ./ (1 .+ low_sol)
+    return maximum(Base.Fix1(maximum, abs), errors.u)
+end
+
+"""
+    error_estimate!(cache::MIRKCache)
 
 defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::MIRKCache{iip, T}) where {iip, T}
-    (; f, alg, mesh, mesh_dt, defect) = cache
+@views function error_estimate!(cache::MIRKCache{iip, T}, error_control::DefectControl, sol,
+        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    (; f, alg, mesh, mesh_dt, errors) = cache
     (; τ_star) = cache.ITU
 
     # Evaluate at the first sample point
@@ -179,10 +250,10 @@ an interpolant
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
-        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        errors.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
     end
 
-    return maximum(Base.Fix1(maximum, abs), defect.u)
+    return maximum(Base.Fix1(maximum, abs), errors.u)
 end
 
 """

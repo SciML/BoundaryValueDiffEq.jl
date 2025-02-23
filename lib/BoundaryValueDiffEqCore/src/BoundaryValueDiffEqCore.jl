@@ -30,6 +30,7 @@ include("alg_utils.jl")
 include("default_nlsolve.jl")
 include("sparse_jacobians.jl")
 include("misc_utils.jl")
+include("calc_errors.jl")
 
 function SciMLBase.__solve(
         prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
@@ -38,5 +39,7 @@ function SciMLBase.__solve(
 end
 
 export BVPJacobianAlgorithm
+export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl
+export HOErrorControl, REErrorControl
 
 end

@@ -23,7 +23,8 @@
     # The following 2 caches are never resized
     fᵢ_cache
     fᵢ₂_cache
-    defect
+    error_control
+    errors
     new_stages
     resid_size
     kwargs
@@ -31,8 +32,8 @@ end
 
 Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, error_control = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
 
@@ -104,9 +105,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     return MIRKCache{iip, T}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
-        k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect,
-        new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
+        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, error_control,
+        defect, new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -127,23 +128,24 @@ function __expand_cache!(cache::MIRKCache)
     return cache
 end
 
-function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
+function __split_mirk_kwargs(;
+        abstol, dt, adaptive = true, error_control = DefectControl(), kwargs...)
+    return ((abstol, adaptive, error_control, dt), (; abstol, adaptive, kwargs...))
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
-    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, error_control, dt), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
-    sol_nlprob, info, defect_norm = __perform_mirk_iteration(
-        cache, abstol, adaptive; kwargs...)
+    sol_nlprob, info, error_norm = __perform_mirk_iteration(
+        cache, abstol, adaptive, error_control, dt; kwargs...)
 
     if adaptive
-        while SciMLBase.successful_retcode(info) && defect_norm > abstol
-            sol_nlprob, info, defect_norm = __perform_mirk_iteration(
-                cache, abstol, adaptive; kwargs...)
+        while SciMLBase.successful_retcode(info) && error_norm > abstol
+            sol_nlprob, info, error_norm = __perform_mirk_iteration(
+                cache, abstol, adaptive, error_control, dt; kwargs...)
         end
     end
 
@@ -156,29 +158,30 @@ function SciMLBase.solve!(cache::MIRKCache)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
+function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
+        error_control, dt; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
         nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
-    defect_norm = 2 * abstol
+    error_norm = 2 * abstol
 
     # Early terminate if non-adaptive
-    adaptive || return sol_nlprob, sol_nlprob.retcode, defect_norm
+    adaptive || return sol_nlprob, sol_nlprob.retcode, error_norm
 
     info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
-        defect_norm = defect_estimate!(cache)
+        error_norm = error_estimate!(cache, error_control, sol_nlprob, nlsolve_alg,
+            abstol, dt, kwargs, nlsolve_kwargs)
         # The defect is greater than 10%, the solution is not acceptable
-        defect_norm > cache.alg.defect_threshold && (info = ReturnCode.Failure)
+        error_norm > cache.alg.defect_threshold && (info = ReturnCode.Failure)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
-        if defect_norm > abstol
+        if error_norm > abstol
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache)
             if info == ReturnCode.Success
@@ -202,7 +205,7 @@ function __perform_mirk_iteration(
         end
     end
 
-    return sol_nlprob, info, defect_norm
+    return sol_nlprob, info, error_norm
 end
 
 # Constructing the Nonlinear Problem
