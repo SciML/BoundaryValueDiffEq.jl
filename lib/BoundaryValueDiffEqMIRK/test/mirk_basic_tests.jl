@@ -93,6 +93,11 @@ end
             sol = solve(prob, mirk_solver(Val(order)); dt = 0.2)
             @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
         end
+
+        @testset "MIRK$(order)I" for order in (6,)
+            sol = solve(prob, MIRK6I(); dt = 0.2)
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
+        end
     end
 end
 
@@ -103,6 +108,15 @@ end
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
+            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(
+                prob, solver; dt = 0.2)
+            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(
+                prob, solver; dt = 0.2)
+        end
+
+        @testset "MIRK$(order)I" for order in (6,)
+            solver = MIRK6I(; nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
             @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(
                 prob, solver; dt = 0.2)
@@ -120,6 +134,11 @@ end
         @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
             sim = test_convergence(
                 dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
+
+        @testset "MIRK$(order)I" for (_, order) in enumerate((6,))
+            sim = test_convergence(dts, prob, MIRK6I(); abstol = 1e-8, reltol = 1e-8)
             @test sim.𝒪est[:final]≈order atol=testTol
         end
     end
@@ -153,6 +172,7 @@ end
     @test_nowarn solve(bvp1, MIRK4(; jac_alg); dt = 0.05)
     @test_nowarn solve(bvp1, MIRK5(; jac_alg); dt = 0.05)
     @test_nowarn solve(bvp1, MIRK6(; jac_alg); dt = 0.05)
+    @test_nowarn solve(bvp1, MIRK6I(; jac_alg); dt = 0.05)
 end
 
 @testitem "Interpolation" begin
@@ -213,6 +233,34 @@ end
 
     @testset "Interpolation for solution derivative" for order in (2, 3, 4, 5, 6)
         sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
+        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
+        dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
+
+        @test sol(0.04, Val{0})≈sol_analytic atol=testTol
+        @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+    end
+
+    @testset "Interpolation for adaptive MIRK$(order)I" for order in (6,)
+        sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001)
+        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
+
+        @test sol(0.001)≈sol_analytic atol=testTol
+        @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
+        @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
+        @test sol(0.001; idxs = 2)≈sol_analytic[2] atol=testTol
+    end
+
+    @testset "Interpolation for non-adaptive MIRK$(order)I" for order in (6,)
+        sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001, adaptive = false)
+
+        @test_nowarn sol(0.01)
+        @test_nowarn sol(0.01; idxs = [1, 2])
+        @test_nowarn sol(0.01; idxs = 1)
+        @test_nowarn sol(0.01; idxs = 2)
+    end
+
+    @testset "Interpolation for solution derivative" for order in (6,)
+        sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001)
         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
         dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
 
