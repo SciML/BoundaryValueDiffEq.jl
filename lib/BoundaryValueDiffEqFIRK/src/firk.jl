@@ -162,14 +162,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    if isa(prob.u0, AbstractArray) && eltype(prob.u0) <: AbstractVector
-        u0_mat = hcat(prob.u0...)
-        avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
-    else
-        avg_u0 = prob.u0
-    end
-
-    K0 = repeat(avg_u0, 1, stage) # Somewhat arbitrary initialization of K
+    K0 = __K0_on_u0(prob.u0, stage) # Somewhat arbitrary initialization of K
 
     nestprob_p = zeros(T, M + 2)
     nest_tol = alg.nest_tol
