@@ -139,8 +139,6 @@ function __single_shooting_jacobian_ode_cache(
     elseif diffmode isa AutoForwardDiff
         T_dual = eltype(overloaded_input_type(jac_cache))
         xduals = zeros(T_dual, size(u0))
-    else
-        xduals = zeros(eltype(u0), size(u0))
     end
     prob_ = remake(
         prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))
