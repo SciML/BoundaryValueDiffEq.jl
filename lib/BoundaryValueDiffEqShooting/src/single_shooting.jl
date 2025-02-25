@@ -140,9 +140,8 @@ function __single_shooting_jacobian_ode_cache(
         T_dual = eltype(overloaded_input_type(jac_cache))
         xduals = zeros(T_dual, size(u0))
     else
-        xduals = reshape(cache.t[1:length(u0)], size(u0))
+        xduals = zeros(eltype(u0), size(u0))
     end
-    fill!(xduals, 0)
     prob_ = remake(
         prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)
