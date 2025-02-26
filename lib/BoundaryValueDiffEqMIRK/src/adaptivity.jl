@@ -31,8 +31,8 @@ Generate new mesh based on the defect.
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(mesh)
 
-    safety_factor = T(1.3)
-    ρ = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
+    safety_factor = abs.(T(1.3))
+    ρ = abs.(T(1.0)) # Set rho=1 means mesh distribution will take place everytime.
     Nsub_star = 0
     Nsub_star_ub = 4 * (N - 1)
     Nsub_star_lb = N ÷ 2
@@ -47,7 +47,7 @@ Generate new mesh based on the defect.
 
     n_predict = round(Int, (safety_factor * r₂) + 1)
     n = N - 1
-    n_ = T(0.1) * n
+    n_ = abs.(T(0.1)) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
     if r₁ ≤ ρ * r₂
