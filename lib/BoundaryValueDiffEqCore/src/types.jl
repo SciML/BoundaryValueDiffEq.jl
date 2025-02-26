@@ -139,6 +139,7 @@ Base.@deprecate MIRKJacobianComputationAlgorithm(
     diffmode; nonbc_diffmode = collocation_diffmode, bc_diffmode)
 
 @inline __needs_diffcache(::AutoForwardDiff) = true
+@inline __needs_diffcache(::AutoPolyesterForwardDiff) = true
 @inline __needs_diffcache(ad::AutoSparse) = __needs_diffcache(ADTypes.dense_ad(ad))
 @inline __needs_diffcache(_) = false
 @inline function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)

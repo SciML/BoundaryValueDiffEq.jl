@@ -2,7 +2,7 @@ module BoundaryValueDiffEqCore
 
 using Adapt: adapt
 using ADTypes: ADTypes, AbstractADType, AutoSparse, AutoForwardDiff, AutoFiniteDiff,
-               NoSparsityDetector, KnownJacobianSparsityDetector
+               NoSparsityDetector, KnownJacobianSparsityDetector, AutoPolyesterForwardDiff
 using ArrayInterface: parameterless_type, fast_scalar_indexing
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
