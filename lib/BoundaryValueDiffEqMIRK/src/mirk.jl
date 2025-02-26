@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T}
+@concrete struct MIRKCache{iip, T, use_both}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -30,7 +30,7 @@
     kwargs
 end
 
-Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
+Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
         adaptive = true, error_control = DefectControl(), kwargs...)
@@ -71,7 +71,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
         nothing
     end
 
-    defect = VectorOfArray([similar(X, ifelse(adaptive, N, 0)) for _ in 1:Nig])
+    use_both = __use_both_error_control(error_control)
+    errors = VectorOfArray([similar(X, ifelse(adaptive, N, 0))
+                            for _ in 1:ifelse(use_both, 2Nig, Nig)])
     new_stages = VectorOfArray([similar(X, N) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
@@ -103,11 +105,11 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    return MIRKCache{iip, T}(
+    return MIRKCache{iip, T, use_both}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, error_control,
-        defect, new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        errors, new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 """
@@ -116,14 +118,14 @@ end
 After redistributing or halving the mesh, this function expands the required vectors to
 match the length of the new mesh.
 """
-function __expand_cache!(cache::MIRKCache)
+function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_both}
     Nₙ = length(cache.mesh)
     __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
     __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
     __append_similar!(cache.y, Nₙ, cache.M)
     __append_similar!(cache.y₀, Nₙ, cache.M)
     __append_similar!(cache.residual, Nₙ, cache.M)
-    __append_similar!(cache.defect, Nₙ - 1, cache.M)
+    __append_similar!(cache.errors, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __append_similar!(cache.new_stages, Nₙ - 1, cache.M)
     return cache
 end
@@ -183,7 +185,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
         if error_norm > abstol
             # We construct a new mesh to equidistribute the defect
-            mesh, mesh_dt, _, info = mesh_selector!(cache)
+            mesh, mesh_dt, _, info = mesh_selector!(cache, error_control)
             if info == ReturnCode.Success
                 __append_similar!(cache.y₀, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)

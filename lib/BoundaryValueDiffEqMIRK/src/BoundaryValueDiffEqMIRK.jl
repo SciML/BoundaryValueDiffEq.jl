@@ -21,7 +21,8 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __flatten_initial_guess, __build_solution, __Fix3,
                                _sparse_like, get_dense_ad, _sparse_like, ColoredMatrix,
                                AbstractErrorControl, DefectControl, GlobalErrorControl,
-                               SequentialErrorControl, HybridErrorControl, HOErrorControl
+                               SequentialErrorControl, HybridErrorControl, HOErrorControl,
+                               __use_both_error_control
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

@@ -336,6 +336,11 @@ function __restructure_sol(sol::AbstractArray{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)
 end
 
+# If error control use both defect and global error or not
+@inline __use_both_error_control(::SequentialErrorControl) = true
+@inline __use_both_error_control(::HybridErrorControl) = true
+@inline __use_both_error_control(_) = false
+
 # Construct the internal NonlinearProblem
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
