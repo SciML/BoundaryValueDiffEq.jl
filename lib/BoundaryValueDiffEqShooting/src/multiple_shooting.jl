@@ -233,7 +233,7 @@ function __multiple_shooting_init_jacobian_odecache(
         ensemblealg, prob, jac_cache, ::DiffCacheNeeded,
         diffmode, alg, nshoots, u; kwargs...)
     T_dual = eltype(overloaded_input_type(jac_cache))
-    xduals = zeros(T_dual, size(u0))
+    xduals = zeros(T_dual, size(u))
     return __multiple_shooting_init_odecache(
         ensemblealg, prob, alg, xduals, nshoots; kwargs...)
 end
