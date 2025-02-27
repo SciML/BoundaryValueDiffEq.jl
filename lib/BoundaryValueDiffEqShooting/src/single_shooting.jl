@@ -133,13 +133,8 @@ end
 
 function __single_shooting_jacobian_ode_cache(
         prob, jac_cache, ::DiffCacheNeeded, diffmode, u0, ode_alg; kwargs...)
-    if diffmode isa AutoSparse
-        T_dual = eltype(overloaded_input_type(jac_cache))
-        xduals = zeros(T_dual, size(u0))
-    elseif diffmode isa AutoForwardDiff
-        T_dual = eltype(overloaded_input_type(jac_cache))
-        xduals = zeros(T_dual, size(u0))
-    end
+    T_dual = eltype(overloaded_input_type(jac_cache))
+    xduals = zeros(T_dual, size(u0))
     prob_ = remake(
         prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)

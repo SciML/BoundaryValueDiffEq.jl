@@ -232,13 +232,8 @@ end
 function __multiple_shooting_init_jacobian_odecache(
         ensemblealg, prob, jac_cache, ::DiffCacheNeeded,
         diffmode, alg, nshoots, u; kwargs...)
-    if diffmode isa AutoSparse
-        T_dual = eltype(overloaded_input_type(jac_cache))
-        xduals = zeros(T_dual, size(u))
-    elseif diffmode isa AutoForwardDiff
-        T_dual = eltype(overloaded_input_type(jac_cache))
-        xduals = zeros(T_dual, size(u))
-    end
+    T_dual = eltype(overloaded_input_type(jac_cache))
+    xduals = zeros(T_dual, size(u0))
     return __multiple_shooting_init_odecache(
         ensemblealg, prob, alg, xduals, nshoots; kwargs...)
 end
