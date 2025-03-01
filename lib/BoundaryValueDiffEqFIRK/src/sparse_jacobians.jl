@@ -5,8 +5,7 @@
     __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
     __generate_sparse_jacobian_prototype(::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
 
-Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
-coloring.
+Generate a prototype of the sparse Jacobian matrix for the BVP problem.
 
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
@@ -16,7 +15,7 @@ function __generate_sparse_jacobian_prototype(
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
-    return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
+    return J_c
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -27,8 +26,8 @@ function __generate_sparse_jacobian_prototype(
     J₂ = M * N
     J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
     # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
-    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
+    J₁ < J₂ && return sparse(J)
+    return J
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -64,17 +63,7 @@ function __generate_sparse_jacobian_prototype(
 
     # Create sparse matrix from Is and Js
     J_c = _sparse_like(Is, Js, ya, row_size, row_size + M)
-
-    col_colorvec = Vector{Int}(undef, size(J_c, 2))
-    for i in eachindex(col_colorvec)
-        col_colorvec[i] = mod1(i, (2 * M * (stage + 1)) + M)
-    end
-    row_colorvec = Vector{Int}(undef, size(J_c, 1))
-    for i in eachindex(row_colorvec)
-        row_colorvec[i] = mod1(i, (2 * M * (stage + 1)) + M)
-    end
-
-    return ColoredMatrix(J_c, row_colorvec, col_colorvec)
+    return J_c
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -129,5 +118,6 @@ function __generate_sparse_jacobian_prototype(
 
     # Create sparse matrix from Is and Js
     J = _sparse_like(Is, Js, ya, row_size + length(ya) + length(yb), row_size + M)
-    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
+
+    return J
 end

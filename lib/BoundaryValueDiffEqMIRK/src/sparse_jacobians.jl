@@ -4,8 +4,7 @@
     __generate_sparse_jacobian_prototype(::MIRKCache, _, ya, yb, M, N)
     __generate_sparse_jacobian_prototype(::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
 
-Generate a prototype of the sparse Jacobian matrix for the BVP problem with row and column
-coloring.
+Generate a prototype of the sparse Jacobian matrix for the BVP problem.
 
 If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else it only
 computes the sparse part excluding the contributions from the boundary conditions.
@@ -19,7 +18,7 @@ function __generate_sparse_jacobian_prototype(
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
-    return ColoredMatrix(J_c, matrix_colors(J_c'), matrix_colors(J_c))
+    return J_c
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -30,6 +29,6 @@ function __generate_sparse_jacobian_prototype(
     J₂ = M * N
     J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
     # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
-    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
+    J₁ < J₂ && return sparse(J)
+    return J
 end
