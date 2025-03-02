@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqMIRKN
 
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
-using ArrayInterface: parameterless_type, undefmatrix, fast_scalar_indexing
+using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
@@ -17,11 +17,13 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __internal_nlsolve_problem, __extract_mesh, __extract_u0,
                                __has_initial_guess, __initial_guess_length,
                                __initial_guess_on_mesh, __flatten_initial_guess,
-                               __build_solution, __Fix3, _sparse_like, __default_sparse_ad,
-                               __default_nonsparse_ad, get_dense_ad, __sparse_jacobian_cache
+                               __build_solution, __Fix3, __default_sparse_ad,
+                               __default_nonsparse_ad, get_dense_ad,
+                               concrete_jacobian_algorithm
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
+using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
                                 finish_part_setindex!
 using FastClosures: @closure
@@ -37,13 +39,11 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, AbstractBVProblem,
                  StandardSecondOrderBVProblem, StandardBVProblem, __solve, _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
-using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection,
-                       NoSparsityDetection
+
+const DI = DifferentiationInterface
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
-include("utils.jl")
 include("types.jl")
 include("algorithms.jl")
 include("mirkn.jl")
@@ -53,6 +53,5 @@ include("mirkn_tableaus.jl")
 include("interpolation.jl")
 
 export MIRKN4, MIRKN6
-export BVPJacobianAlgorithm
 
 end

@@ -119,8 +119,7 @@ end
 # basically simplified version of the interpolation for MIRK
 function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (; t, u, cache) = s
-    (; alg, k_discrete) = cache
-    stage = alg_stage(alg)
+    (; alg, stage, k_discrete) = cache
     # Quick handle for the case where tval is at the boundary
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)

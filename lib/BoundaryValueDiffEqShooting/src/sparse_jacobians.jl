@@ -5,12 +5,7 @@
     __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
         bcresid_prototype, u0, N::Int, nshoots::Int)
 
-Returns a 3-Tuple:
-
-  - Entire Jacobian Prototype (if Two-Point Problem) else `nothing`.
-  - Sparse Non-BC Part Jacobian Prototype along with the column and row color vectors.
-  - Sparse BC Part Jacobian Prototype along with the column and row color vectors (if
-    Two-Point Problem) else `nothing`.
+Generate a prototype of the sparse Jacobian matrix for the BVP problem.
 """
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
         bcresid_prototype, u0, N::Int, nshoots::Int)
@@ -20,7 +15,7 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVPr
     J₂ = (nshoots + 1) * N
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (N - 1, N + 1))
 
-    return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
+    return J
 end
 
 function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
@@ -39,6 +34,6 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVPr
     J = BandedMatrix(Ones{eltype(u0)}(J₁, J₂), (max(L₁, L₂) + N - 1, N + 1))
 
     # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return ColoredMatrix(sparse(J), matrix_colors(J'), matrix_colors(J))
-    return ColoredMatrix(J, matrix_colors(J'), matrix_colors(J))
+    J₁ < J₂ && return sparse(J)
+    return J
 end

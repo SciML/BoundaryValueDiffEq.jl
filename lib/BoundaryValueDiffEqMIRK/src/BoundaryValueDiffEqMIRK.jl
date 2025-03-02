@@ -1,12 +1,11 @@
 module BoundaryValueDiffEqMIRK
 
 using ADTypes
-using ArrayInterface: parameterless_type, undefmatrix, fast_scalar_indexing
+using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!,
-                               __sparse_jacobian_cache, __sparsity_detection_alg,
                                __FastShortcutBVPCompatibleNonlinearPolyalg,
                                __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual,
@@ -19,13 +18,13 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __extract_mesh, __extract_u0, __has_initial_guess,
                                __initial_guess_length, __initial_guess_on_mesh,
                                __flatten_initial_guess, __build_solution, __Fix3,
-                               _sparse_like, get_dense_ad, _sparse_like, ColoredMatrix,
-                               AbstractErrorControl, DefectControl, GlobalErrorControl,
-                               SequentialErrorControl, HybridErrorControl, HOErrorControl,
-                               __use_both_error_control
+                               get_dense_ad, _sparse_like, AbstractErrorControl,
+                               DefectControl, GlobalErrorControl, SequentialErrorControl,
+                               HybridErrorControl, HOErrorControl, __use_both_error_control
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
+using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
                                 finish_part_setindex!
 using FastClosures: @closure
@@ -41,9 +40,8 @@ using PreallocationTools: PreallocationTools, DiffCache
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 using SparseArrays: sparse
-using SparseDiffTools: init_jacobian, sparse_jacobian, sparse_jacobian_cache,
-                       sparse_jacobian!, matrix_colors, SymbolicsSparsityDetection,
-                       NoSparsityDetection
+
+const DI = DifferentiationInterface
 
 @reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
@@ -160,7 +158,7 @@ include("sparse_jacobians.jl")
     end
 end
 
-export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
+export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I
 export BVPJacobianAlgorithm
 
 end

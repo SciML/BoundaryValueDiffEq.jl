@@ -437,11 +437,9 @@ end =#
 
     bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
         pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test_broken SciMLBase.successful_retcode(solve(
-        bvp4, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
+    SciMLBase.successful_retcode(solve(bvp4, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
 
     bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
-    @test_broken SciMLBase.successful_retcode(solve(
-        bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
+    SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
 end

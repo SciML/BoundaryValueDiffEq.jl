@@ -207,7 +207,6 @@ end
 function __extract_problem_details(
         prob, u0::SciMLBase.ODESolution; dt = 0.0, check_positive_dt::Bool = false)
     # Problem passes in a initial guess function
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     _u0 = first(u0.u)
     _t = u0.t
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
@@ -481,3 +480,12 @@ end
 get_dense_ad(::Nothing) = nothing
 get_dense_ad(ad) = ad
 get_dense_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
+
+# traits for forward or reverse mode AutoForwardDiff
+
+function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
+    I′ = adapt(parameterless_type(x), I)
+    J′ = adapt(parameterless_type(x), J)
+    V = __ones_like(x, length(I))
+    return sparse(I′, J′, V, m, n)
+end

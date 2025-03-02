@@ -136,7 +136,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     end
 
     if prob.f.bcjac === nothing
-        bcjac = construct_bc_jac(prob, bcresid_prototype, prob.problem_type)
+        bcjac = construct_bc_jac(prob)
     else
         bcjac = prob.f.bcjac
     end
@@ -177,7 +177,7 @@ end
 function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool;
         nlsolve_kwargs = (;), kwargs...) where {iip, T}
     info::ReturnCode.T = ReturnCode.Success
-    nlprob::NonlinearProblem = __construct_nlproblem(cache)
+    nlprob = __construct_nlproblem(cache)
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     nlsol = __solve(nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
     error_norm = 2 * abstol
@@ -315,31 +315,50 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     else
         @closure (z, p) -> @views Φ(cache, z, pt)
     end
+
     lz = reduce(vcat, cache.z)
-    sd = alg.jac_alg.diffmode isa AutoSparse ? SymbolicsSparsityDetection() :
-         NoSparsityDetection()
-    ad = alg.jac_alg.diffmode
-    lossₚ = (iip ? __Fix3 : Base.Fix2)(loss, cache.p)
-    jac_cache = __sparse_jacobian_cache(Val(iip), ad, sd, lossₚ, lz, lz)
-    jac_prototype = init_jacobian(jac_cache)
-    jac = if iip
-        @closure (J, u, p) -> __ascher_mpoint_jacobian!(J, u, ad, jac_cache, lossₚ, lz)
-    else
-        @closure (u, p) -> __ascher_mpoint_jacobian(jac_prototype, u, ad, jac_cache, lossₚ)
-    end
     resid_prototype = zero(lz)
-    _nlf = NonlinearFunction{iip}(
+    diffmode = if alg.jac_alg.diffmode isa AutoSparse
+        #AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
+        #    sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
+        #    coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+        # Ascher collocation need more generalized collocation to support AutoSparse
+        get_dense_ad(alg.jac_alg.diffmode)
+    else
+        alg.jac_alg.diffmode
+    end
+
+    jac_cache = if iip
+        DI.prepare_jacobian(loss, resid_prototype, diffmode, lz, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, diffmode, lz, Constant(cache.p))
+    end
+
+    jac_prototype = if iip
+        DI.jacobian(loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
+    else
+        DI.jacobian(loss, jac_cache, diffmode, lz, Constant(cache.p))
+    end
+
+    jac = if iip
+        @closure (J, u, p) -> __ascher_mpoint_jacobian!(
+            J, u, diffmode, jac_cache, loss, lz, cache.p)
+    else
+        @closure (u, p) -> __ascher_mpoint_jacobian(
+            jac_prototype, u, diffmode, jac_cache, loss, cache.p)
+    end
+
+    nlf = NonlinearFunction{iip}(
         loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    nlprob::NonlinearProblem = NonlinearProblem(_nlf, lz, cache.p)
-    return nlprob
+    return __internal_nlsolve_problem(cache.prob, similar(lz), lz, nlf, lz, cache.p)
 end
 
-function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid)
-    sparse_jacobian!(J, diffmode, diffcache, loss, resid, x)
+function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
+    DI.jacobian!(loss, resid, J, diffcache, diffmode, x, Constant(p))
     return nothing
 end
-function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss)
-    sparse_jacobian!(J, diffmode, diffcache, loss, x)
+function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss, p)
+    DI.jacobian!(loss, J, diffcache, diffmode, x, Constant(p))
     return J
 end
 
