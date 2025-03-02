@@ -27,7 +27,7 @@ end
 Generate new mesh based on the defect.
 """
 @views function mesh_selector!(
-        cache::MIRKCache{iip, T}, error_control::DefectControl) where {iip, T}
+        cache::MIRKCache{iip, T}, controller::DefectControl) where {iip, T}
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -80,7 +80,7 @@ Generate new mesh based on the defect.
 end
 
 @views function mesh_selector!(
-        cache::MIRKCache{iip, T}, error_control::GlobalErrorControl) where {iip, T}
+        cache::MIRKCache{iip, T}, controller::GlobalErrorControl) where {iip, T}
     (; order, errors, TU, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     (; p_star) = TU
@@ -134,7 +134,7 @@ end
 end
 
 @views function mesh_selector!(cache::MIRKCache{iip, T},
-        error_control::Union{SequentialErrorControl, HybridErrorControl}) where {iip, T}
+        controller::Union{SequentialErrorControl, HybridErrorControl}) where {iip, T}
     (; order, errors, TU, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     (; p_star) = TU
@@ -277,14 +277,14 @@ an interpolant
 """
 # Defect control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T}, error_control::GlobalErrorControl, sol,
+        cache::MIRKCache{iip, T}, controller::GlobalErrorControl, sol,
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    return error_estimate!(cache::MIRKCache{iip, T}, error_control, error_control.method,
+    return error_estimate!(cache::MIRKCache{iip, T}, controller, controller.method,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
 end
 
 # Global error control
-@views function error_estimate!(cache::MIRKCache{iip, T}, error_control::DefectControl, sol,
+@views function error_estimate!(cache::MIRKCache{iip, T}, controller::DefectControl, sol,
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     (; f, alg, mesh, mesh_dt, errors) = cache
     (; τ_star) = cache.ITU
@@ -327,8 +327,8 @@ end
 
 # Sequential error control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T}, error_control::SequentialErrorControl,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        cache::MIRKCache{iip, T}, controller::SequentialErrorControl, sol,
+        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     defect_norm = error_estimate!(cache::MIRKCache{iip, T}, DefectControl(), sol,
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     error_norm = defect_norm
@@ -343,7 +343,7 @@ end
 
 # Hybrid error control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T}, error_control::HybridErrorControl, sol,
+        cache::MIRKCache{iip, T}, controller::HybridErrorControl, sol,
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     defect_norm = error_estimate!(cache::MIRKCache{iip, T}, DefectControl(), sol,
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
@@ -355,7 +355,7 @@ end
     return error_norm
 end
 
-@views function error_estimate!(cache::MIRKCache{iip, T}, error_control::GlobalErrorControl,
+@views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
         global_error_control::REErrorControl, sol, nlsolve_alg,
         abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     (; prob, alg, errors) = cache
@@ -372,7 +372,7 @@ end
     return error_norm
 end
 
-@views function error_estimate!(cache::MIRKCache{iip, T}, error_control::GlobalErrorControl,
+@views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
         global_error_control::HOErrorControl, sol, nlsolve_alg,
         abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     (; prob, alg, errors) = cache

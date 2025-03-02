@@ -13,6 +13,10 @@ struct GlobalErrorControl <: AbstractErrorControl
     method::GlobalErrorControlMethod
 end
 
+function GlobalErrorControl(; method = HOErrorControl())
+    return GlobalErrorControl(method)
+end
+
 """
     First defect control, then global error control
 """
@@ -42,3 +46,9 @@ struct HOErrorControl <: GlobalErrorControlMethod end
 Solve the BVP twice on teh doubled mesh with the original method
 """
 struct REErrorControl <: GlobalErrorControlMethod end
+
+# Some utils for error control adaptivity
+# If error control use both defect and global error or not
+@inline __use_both_error_control(::SequentialErrorControl) = true
+@inline __use_both_error_control(::HybridErrorControl) = true
+@inline __use_both_error_control(_) = false
