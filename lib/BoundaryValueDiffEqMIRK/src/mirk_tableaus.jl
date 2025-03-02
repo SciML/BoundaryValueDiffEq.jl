@@ -166,8 +166,10 @@ function constructMIRK6I(::Type{T}) where {T}
               2707592511 // 1000000000000-1006699707 / 1000000000000 * sqrt(7) -51527976591 // 1000000000000-1006699707 / 1000000000000 * sqrt(7) -610366393//75000000000+7046897949 / 1000000000000*sqrt(7)+14508670449/1000000000000*sqrt(7)*sqrt(3) -610366393 // 75000000000 + 7046897949 / 1000000000000 * sqrt(7)-14508670449 / 1000000000000 * sqrt(7) * sqrt(3) -12456457 // 1171875000+1006699707 / 109375000000 * sqrt(7) 3020099121 / 437500000000 * sqrt(7)+47328957 // 625000000 -7046897949 / 250000000000*sqrt(7) 0]
 
     τ_star = 0.4
+    p_star = 6
 
     TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star), T(p_star))
     return TU, ITU
 end
