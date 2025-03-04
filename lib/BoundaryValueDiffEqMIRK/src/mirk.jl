@@ -32,7 +32,7 @@ end
 Base.eltype(::MIRKCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+        abstol = 1e-3, adaptive = true, verbose = true, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
 
@@ -104,9 +104,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0,
 
     return MIRKCache{iip, T}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
-        k_discrete, k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect,
-        new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
+        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, new_stages,
+        resid₁_size, (; abstol, dt, adaptive, verbose, kwargs...))
 end
 
 """
@@ -127,23 +127,19 @@ function __expand_cache!(cache::MIRKCache)
     return cache
 end
 
-function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
-end
-
 function SciMLBase.solve!(cache::MIRKCache)
-    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, verbose, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
     sol_nlprob, info, defect_norm = __perform_mirk_iteration(
-        cache, abstol, adaptive; kwargs...)
+        cache, abstol, adaptive, verbose; kwargs...)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && defect_norm > abstol
             sol_nlprob, info, defect_norm = __perform_mirk_iteration(
-                cache, abstol, adaptive; kwargs...)
+                cache, abstol, adaptive, verbose; kwargs...)
         end
     end
 
@@ -156,12 +152,12 @@ function SciMLBase.solve!(cache::MIRKCache)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive::Bool; nlsolve_kwargs = (;), kwargs...)
+function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
+        verbose::Bool; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
-        nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+        nlprob, nlsolve_alg; abstol, verbose, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     defect_norm = 2 * abstol
@@ -174,11 +170,16 @@ function __perform_mirk_iteration(
     if info == ReturnCode.Success # Nonlinear Solve was successful
         defect_norm = defect_estimate!(cache)
         # The defect is greater than 10%, the solution is not acceptable
-        defect_norm > cache.alg.defect_threshold && (info = ReturnCode.Failure)
+        if defect_norm > cache.alg.defect_threshold
+            verbose &&
+                @warn "Defect norm is $defect_norm, bigger than threshold $(cache.alg.defect_threshold), halving mesh"
+            info = ReturnCode.Failure
+        end
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
         if defect_norm > abstol
+            verbose && @warn "Defect norm bigger than tolerance, refining mesh"
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache)
             if info == ReturnCode.Success
@@ -193,6 +194,7 @@ function __perform_mirk_iteration(
         # We cannot obtain a solution for the current mesh
         if 2 * (length(cache.mesh) - 1) > cache.alg.max_num_subintervals
             # New mesh would be too large
+            verbose && @warn "Mesh being too large and still failing to solve, exiting"
             info = ReturnCode.Failure
         else
             half_mesh!(cache)

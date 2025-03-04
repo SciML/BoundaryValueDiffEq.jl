@@ -489,3 +489,8 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     V = __ones_like(x, length(I))
     return sparse(I′, J′, V, m, n)
 end
+
+# Keywords processing
+function __split_kwargs(; abstol, dt, adaptive = true, verbose = true, kwargs...)
+    return ((abstol, adaptive, verbose, dt), (; abstol, adaptive, verbose, kwargs...))
+end
