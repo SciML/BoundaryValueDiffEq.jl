@@ -28,7 +28,7 @@ Generate new mesh based on the defect.
 """
 @views function mesh_selector!(cache::MIRKCache{iip, T}) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
-    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _, _), kwargs = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)
