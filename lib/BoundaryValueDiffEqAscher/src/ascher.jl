@@ -58,7 +58,7 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
-        adaptive = true, abstol = 1e-4, kwargs...)
+        adaptive = true, abstol = 1e-4, verbose = true, kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -145,27 +145,24 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     cache = AscherCache{iip, T}(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
         zeta, fixpnt, alg, prob.problem_type, bcresid_prototype, residual,
-        zval, yval, gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz,
-        dmv, pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, kwargs...))
+        zval, yval, gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv,
+        pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, verbose, kwargs...))
     return cache
 end
 
-function __split_ascher_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
-end
-
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_ascher_kwargs(; cache.kwargs...)
+    (abstol, adaptive, verbose, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
-    z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive; kwargs...)
+    z, y, info, error_norm = __perform_ascher_iteration(
+        cache, abstol, adaptive, verbose; kwargs...)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && norm(error_norm) > abstol
             z, y, info, error_norm = __perform_ascher_iteration(
-                cache, abstol, adaptive; kwargs...)
+                cache, abstol, adaptive, verbose; kwargs...)
         end
     end
     u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
@@ -174,12 +171,13 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
         cache.prob, cache.alg, cache.original_mesh, u; retcode = info)
 end
 
-function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool;
-        nlsolve_kwargs = (;), kwargs...) where {iip, T}
+function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool,
+        verbose::Bool; nlsolve_kwargs = (;), kwargs...) where {iip, T}
     info::ReturnCode.T = ReturnCode.Success
     nlprob = __construct_nlproblem(cache)
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    nlsol = __solve(nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
+    nlsol = __solve(nlprob, nlsolve_alg; abstol = abstol,
+        verbose = verbose, kwargs..., nlsolve_kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
@@ -207,16 +205,19 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         __expand_cache_for_error!(cache)
 
         _nlprob = __construct_nlproblem(cache)
-        nlsol = __solve(_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
+        nlsol = __solve(_nlprob, nlsolve_alg; abstol = abstol,
+            verbose = verbose, kwargs..., nlsolve_kwargs...)
 
         error_norm = error_estimate!(cache)
         if norm(error_norm) > abstol
+            verbose && @warn "Global error norm bigger than tolerance, refining mesh"
             mesh_selector!(cache, z, dmz, mesh, mesh_dt, abstol)
             __expand_cache_for_next_iter!(cache)
         end
     else # Something bad happened
         if 2 * (length(cache.mesh) - 1) > cache.alg.max_num_subintervals
-            # The solving process failed
+            # New mesh would be too large
+            verbose && @warn "Mesh being too large and still failing to solve, exiting"
             info = ReturnCode.Failure
         else
             # doesn't need to halve the mesh again, just use the expanded cache

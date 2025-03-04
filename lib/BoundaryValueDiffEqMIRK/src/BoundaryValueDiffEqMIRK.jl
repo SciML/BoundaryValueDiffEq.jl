@@ -18,7 +18,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __extract_mesh, __extract_u0, __has_initial_guess,
                                __initial_guess_length, __initial_guess_on_mesh,
                                __flatten_initial_guess, __build_solution, __Fix3,
-                               get_dense_ad
+                               get_dense_ad, __split_kwargs
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
