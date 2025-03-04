@@ -195,14 +195,14 @@ Generate a new mesh based on the `ŝ`.
 """
 function redistribute!(
         cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
-    N = length(mesh)
+    N = length(mesh) - 1
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
-    append!(cache.mesh, Nsub_star + 1 - N)
+    resize!(cache.mesh, Nsub_star + 1)
     cache.mesh[1] = mesh[1]
     t = mesh[1]
     integral = T(0)
-    while k ≤ N - 1
+    while k ≤ N
         next_piece = ŝ[k] * (mesh[k + 1] - t)
         _int_next = integral + next_piece
         if _int_next > ζ
@@ -217,8 +217,8 @@ function redistribute!(
         end
     end
     cache.mesh[end] = mesh[end]
-    append!(cache.mesh_dt, Nsub_star - N)
-    diff!(cache.mesh_dt, cache.mesh)
+    resize!(cache.mesh_dt, Nsub_star)
+    cache.mesh_dt .= diff(cache.mesh)
     return cache
 end
 
