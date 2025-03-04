@@ -107,8 +107,8 @@ function __perform_mirkn_iteration(
         cache::MIRKNCache, abstol, verbose; nlsolve_kwargs = (;), kwargs...)
     nlprob::NonlinearProblem = __construct_nlproblem(cache, vec(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(
-        nlprob, nlsolve_alg; abstol, verbose, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+    sol_nlprob = __solve(nlprob, nlsolve_alg; abstol = abstol, verbose = verbose,
+        kwargs..., nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     return sol_nlprob, sol_nlprob.retcode
