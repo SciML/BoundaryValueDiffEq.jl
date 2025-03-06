@@ -149,7 +149,7 @@ end
 function __resize!(x::AbstractVector{<:AbstractArray}, n, M)
     N = n - length(x)
     N == 0 && return x
-    ifelse(N > 0, append!(x, [zero(last(x)) for _ in 1:N]), resize!(x, n))
+    N > 0 ? append!(x, [zero(last(x)) for _ in 1:N]) : resize!(x, n)
     return x
 end
 
@@ -170,7 +170,7 @@ end
 function __resize!(x::AbstractVectorOfArray, n, M)
     N = n - length(x)
     N == 0 && return x
-    ifelse(N > 0, append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])), resize!(x, n))
+    N > 0 ? append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])) : resize!(x, n)
     return x
 end
 
