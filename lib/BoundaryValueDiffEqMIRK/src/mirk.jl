@@ -120,13 +120,13 @@ match the length of the new mesh.
 """
 function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_both}
     Nₙ = length(cache.mesh)
-    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
-    __append_similar!(cache.k_interp, Nₙ - 1, cache.M)
-    __append_similar!(cache.y, Nₙ, cache.M)
-    __append_similar!(cache.y₀, Nₙ, cache.M)
-    __append_similar!(cache.residual, Nₙ, cache.M)
-    __append_similar!(cache.errors, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
-    __append_similar!(cache.new_stages, Nₙ - 1, cache.M)
+    __resize!(cache.k_discrete, Nₙ - 1, cache.M)
+    __resize!(cache.k_interp, Nₙ - 1, cache.M)
+    __resize!(cache.y, Nₙ, cache.M)
+    __resize!(cache.y₀, Nₙ, cache.M)
+    __resize!(cache.residual, Nₙ, cache.M)
+    __resize!(cache.errors, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
+    __resize!(cache.new_stages, Nₙ - 1, cache.M)
     return cache
 end
 
@@ -187,7 +187,8 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache, controller)
             if info == ReturnCode.Success
-                __append_similar!(cache.y₀, length(cache.mesh), cache.M)
+                (length(mesh) < length(cache.mesh)) &&
+                    __resize!(cache.y₀, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end

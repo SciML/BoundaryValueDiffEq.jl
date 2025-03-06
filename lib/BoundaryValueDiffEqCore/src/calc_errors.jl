@@ -2,12 +2,14 @@ abstract type AbstractErrorControl end
 abstract type GlobalErrorControlMethod end
 
 """
-    Defect control
+    DefectControl()
 """
 struct DefectControl <: AbstractErrorControl end
 
 """
-    Global error control
+    GlobalErrorControl(; method = HOErorControl())
+
+Global error control methods, need to specify which gloabal error want to use.
 """
 struct GlobalErrorControl <: AbstractErrorControl
     method::GlobalErrorControlMethod
@@ -18,14 +20,18 @@ function GlobalErrorControl(; method = HOErrorControl())
 end
 
 """
-    First defect control, then global error control
+    SequentialErrorControl()
+
+First use defect control, if the defect is satisfying, then use global error control.
 """
 struct SequentialErrorControl <: AbstractErrorControl
     method::GlobalErrorControlMethod
 end
 
 """
-    Control the linear combination of defect and global error
+    HybridErrorControl(DE, GE; method = HOErrorControl())
+
+Control the linear combination of defect and global error
 """
 struct HybridErrorControl <: AbstractErrorControl
     DE

@@ -182,7 +182,7 @@ Generate new mesh based on the defect.
     n_ = T(0.1) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
-    if r₁ ≤ ρ * r₂
+    if r₁ ≤ ρ * r₃
         Nsub_star = 2 * (N - 1)
         if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
             info = ReturnCode.Failure

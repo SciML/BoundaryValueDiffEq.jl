@@ -8,7 +8,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     w, w′ = interp_weights(τ, cache.alg)
-    sum_stages!(y, cache, w, i)
+    sum_stages!(y, cache, w, i, dt)
     return y
 end
 

@@ -20,7 +20,7 @@ solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
 
 ### Radau IIA methods
 
-  - `RadauIIa1`: 1 stage Radau IIA method, with defect control adaptivity
+  - `RadauIIa1`: 1 stage Radau IIA method, without defect control adaptivity
   - `RadauIIa2`: 2 stage Radau IIA method, with defect control adaptivity.
   - `RadauIIa3`: 3 stage Radau IIA method, with defect control adaptivity.
   - `RadauIIa5`: 5 stage Radau IIA method, with defect control adaptivity.
@@ -35,14 +35,14 @@ solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
 
 ### Lobatto IIIB methods
 
-  - `LobattoIIIb2`: 2 stage Lobatto IIIb method, with defect control adaptivity.
+  - `LobattoIIIb2`: 2 stage Lobatto IIIb method, without defect control adaptivity.
   - `LobattoIIIb3`: 3 stage Lobatto IIIb method, with defect control adaptivity.
   - `LobattoIIIb4`: 4 stage Lobatto IIIb method, with defect control adaptivity.
   - `LobattoIIIb5`: 5 stage Lobatto IIIb method, with defect control adaptivity.
 
 ### Lobatto IIIC methods
 
-  - `LobattoIIIc2`: 2 stage Lobatto IIIc method, with defect control adaptivity.
+  - `LobattoIIIc2`: 2 stage Lobatto IIIc method, without defect control adaptivity.
   - `LobattoIIIc3`: 3 stage Lobatto IIIc method, with defect control adaptivity.
   - `LobattoIIIc4`: 4 stage Lobatto IIIc method, with defect control adaptivity.
   - `LobattoIIIc5`: 5 stage Lobatto IIIc method, with defect control adaptivity.
