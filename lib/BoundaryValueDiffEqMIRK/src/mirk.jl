@@ -178,8 +178,6 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     if info == ReturnCode.Success # Nonlinear Solve was successful
         error_norm = error_estimate!(
             cache, controller, sol_nlprob, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
-        # The defect is greater than 10%, the solution is not acceptable
-        error_norm > cache.alg.defect_threshold && (info = ReturnCode.Failure)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable

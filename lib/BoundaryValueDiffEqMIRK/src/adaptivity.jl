@@ -81,9 +81,8 @@ end
 
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::GlobalErrorControl) where {iip, T}
-    (; order, errors, TU, mesh, mesh_dt) = cache
+    (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
-    (; p_star) = TU
     N = length(mesh)
 
     safety_factor = T(1.3)
@@ -322,7 +321,11 @@ end
         errors.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
     end
 
-    return maximum(Base.Fix1(maximum, abs), errors.u)
+    defect_norm = maximum(Base.Fix1(maximum, abs), errors.u)
+    # The defect is greater than 10%, the solution is not acceptable
+    info = ifelse(
+        defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
+    return defect_norm, info
 end
 
 # Sequential error control
@@ -338,7 +341,7 @@ end
             nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
         error_norm = global_error_norm
     end
-    return error_norm
+    return error_norm, ReturnCode.Success
 end
 
 # Hybrid error control
@@ -352,7 +355,7 @@ end
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
 
     error_norm = defect_norm + global_error_norm
-    return error_norm
+    return error_norm, ReturnCode.Success
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
@@ -369,7 +372,7 @@ end
         high_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     high_sol = high_sol_original.u[1:2:end]
     error_norm = global_error(VectorOfArray(high_sol), copy(cache.y₀), errors)
-    return error_norm
+    return error_norm, ReturnCode.Success
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
