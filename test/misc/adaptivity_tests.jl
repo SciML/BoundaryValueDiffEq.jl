@@ -39,22 +39,22 @@
         @eval radau_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
     end
     @testset "MIRK methods" for order in (2, 3, 4, 5, 6)
-        @test_nowarn sol = solve(prob, mirk_solver(order), dt = 0.01)
+        @test_nowarn sol = solve(prob, mirk_solver(Val(order)), dt = 0.01)
     end
 
     @testset "RadauIIa methods" for stage in (2, 3, 5, 7)
-        @test_nowarn sol = solve(prob, radau_solver(stage), dt = 0.01)
+        @test_nowarn sol = solve(prob, radau_solver(Val(stage)), dt = 0.01)
     end
 
     @testset "LobattoIIIa methods" for stage in (2, 3, 4, 5)
-        @test_nowarn sol = solve(prob, lobattoIIIa_solver(stage), dt = 0.01)
+        @test_nowarn sol = solve(prob, lobattoIIIa_solver(Val(stage)), dt = 0.01)
     end
 
     @testset "LobattoIIIb methods" for stage in (3, 4, 5)
-        @test_nowarn sol = solve(prob, lobattoIIIb_solver(stage), dt = 0.01)
+        @test_nowarn sol = solve(prob, lobattoIIIb_solver(Val(stage)), dt = 0.01)
     end
 
     @testset "LobattoIIIc methods" for stage in (3, 4, 5)
-        @test_nowarn sol = solve(prob, lobattoIIIc_solver(stage), dt = 0.01)
+        @test_nowarn sol = solve(prob, lobattoIIIc_solver(Val(stage)), dt = 0.01)
     end
 end
