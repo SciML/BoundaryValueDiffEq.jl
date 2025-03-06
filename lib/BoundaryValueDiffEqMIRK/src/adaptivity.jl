@@ -218,7 +218,7 @@ function redistribute!(
     end
     cache.mesh[end] = mesh[end]
     resize!(cache.mesh_dt, Nsub_star)
-    cache.mesh_dt .= diff(cache.mesh)
+    diff!(cache.mesh_dt, cache.mesh)
     return cache
 end
 
