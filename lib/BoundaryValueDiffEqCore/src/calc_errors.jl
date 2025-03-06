@@ -4,7 +4,13 @@ abstract type GlobalErrorControlMethod end
 """
     DefectControl()
 """
-struct DefectControl <: AbstractErrorControl end
+struct DefectControl{T} <: AbstractErrorControl
+    defect_threshold::T
+
+    function DefectControl(; defect_threshold = 0.1)
+        return new{typeof(defect_threshold)}(defect_threshold)
+    end
+end
 
 """
     GlobalErrorControl(; method = HOErorControl())
@@ -13,10 +19,10 @@ Global error control methods, need to specify which gloabal error want to use.
 """
 struct GlobalErrorControl <: AbstractErrorControl
     method::GlobalErrorControlMethod
-end
 
-function GlobalErrorControl(; method = HOErrorControl())
-    return GlobalErrorControl(method)
+    function GlobalErrorControl(; method = HOErrorControl())
+        return new(method)
+    end
 end
 
 """
@@ -26,28 +32,40 @@ First use defect control, if the defect is satisfying, then use global error con
 """
 struct SequentialErrorControl <: AbstractErrorControl
     method::GlobalErrorControlMethod
+
+    function SequentialErrorControl(; method = HOErrorControl())
+        return new(method)
+    end
 end
 
 """
-    HybridErrorControl(DE, GE; method = HOErrorControl())
+    HybridErrorControl(; DE = 1.0, GE = 1.0; method = HOErrorControl())
 
-Control the linear combination of defect and global error
+Control the both of the defect and global error, where the error norm is the linear combination of the defect and global error.
 """
-struct HybridErrorControl <: AbstractErrorControl
-    DE
-    GE
+struct HybridErrorControl{T1, T2} <: AbstractErrorControl
+    DE::T1
+    GE::T2
     method::GlobalErrorControlMethod
+
+    function HybridErrorControl(; DE = 1.0, GE = 1.0, method = HOErrorControl())
+        return new{typeof(DE), typeof{GE}}(DE, GE, method)
+    end
 end
 
 """
-    Higher order global error estimation
+    HOErrorControl()
+
+Higher order global error estimation
 
 Solve the BVP twice with an order+2 method on the original mesh
 """
 struct HOErrorControl <: GlobalErrorControlMethod end
 
 """
-    Richardson extrapolation global error estimation
+    REErrorControl()
+
+Richardson extrapolation global error estimation
 
 Solve the BVP twice on teh doubled mesh with the original method
 """

@@ -176,7 +176,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
-        error_norm = error_estimate!(
+        error_norm, info = error_estimate!(
             cache, controller, sol_nlprob, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     end
 
