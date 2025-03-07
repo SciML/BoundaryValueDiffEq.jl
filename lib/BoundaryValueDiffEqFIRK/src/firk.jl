@@ -78,8 +78,8 @@ function shrink_y(y, N, stage)
     return y_shrink
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, controller = DefectControl(), kwargs...)
     if alg.nested_nlsolve
         return init_nested(
             prob, alg; dt = dt, abstol = abstol, adaptive = adaptive, kwargs...)
@@ -89,8 +89,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     end
 end
 
-function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
@@ -182,8 +182,8 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
         nest_tol, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
-function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
