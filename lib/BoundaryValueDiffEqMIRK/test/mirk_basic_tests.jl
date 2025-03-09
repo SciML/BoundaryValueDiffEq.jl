@@ -375,12 +375,9 @@ end
         residual[2] = u(pi / 2)[1] - pi / 2
     end
     prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
-    @test_nowarn sol = solve(
-        prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = DefectControl())
-    @test_nowarn sol = solve(
-        prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = GlobalErrorControl())
-    @test_nowarn sol = solve(
-        prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = SequentialErrorControl())
-    @test_nowarn sol = solve(
-        prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = HybridErrorControl())
+    for error_control in (DefectControl(), GlobalErrorControl(),
+        SequentialErrorControl(), HybridErrorControl())
+        @test_nowarn sol = solve(
+            prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = error_control)
+    end
 end

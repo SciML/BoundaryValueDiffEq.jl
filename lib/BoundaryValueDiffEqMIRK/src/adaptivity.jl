@@ -22,9 +22,11 @@ function interval(mesh, t)
 end
 
 """
-    mesh_selector!(cache::MIRKCache)
+    mesh_selector!(cache::MIRKCache, controller::DefectControl)
+    mesh_selector!(cache::MIRKCache, controller::GlobalErrorControl)
+    mesh_selector!(cache::MIRKCache, controller::Union{SequentialErrorControl, HybridErrorControl})
 
-Generate new mesh based on the defect.
+Generate new mesh based on the defect or the global error.
 """
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::DefectControl) where {iip, T}
@@ -136,7 +138,6 @@ end
         controller::Union{SequentialErrorControl, HybridErrorControl}) where {iip, T}
     (; order, errors, TU, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
-    (; p_star) = TU
     N = length(mesh)
 
     safety_factor = T(1.3)
@@ -147,7 +148,6 @@ end
 
     info = ReturnCode.Success
 
-    #TODO: need mesh selection for both defect and global errors
     ŝ = [maximum(abs, d) for d in errors]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
@@ -248,12 +248,12 @@ function half_mesh!(cache::MIRKCache)
 end
 
 """
-    half_sol(sol)
+    halve_sol(sol)
 
 The input sol has length of `n + 1`. Divide the original solution into two equal length
 solution.
 """
-function half_sol(sol::AbstractVectorOfArray{T}) where {T}
+function halve_sol(sol::AbstractVectorOfArray{T}, mesh) where {T}
     new_sol = copy(sol)
     n = length(sol) - 1
     resize!(new_sol, 2 * n + 1)
@@ -264,28 +264,51 @@ function half_sol(sol::AbstractVectorOfArray{T}) where {T}
     @simd for i in (2n):-2:2
         new_sol[i] = (new_sol[i + 1] + new_sol[i - 1]) ./ T(2)
     end
-    return new_sol
+    mes = deepcopy(mesh)
+    resize!(mes, 2 * n + 1)
+    mes[1] = mesh[1]
+    mes[end] = mesh[end]
+    for i in (2n - 1):-2:1
+        mes[i] = mes[(i + 1) ÷ 2]
+    end
+    for i in (2n):-2:2
+        mes[i] = (mes[i + 1] + mes[i - 1]) / 2
+    end
+    return DiffEqArray(new_sol.u, mes)
 end
 
 """
-    error_estimate!(cache::MIRKCache)
+    error_estimate!(cache::MIRKCache, controller::DefectControl)
+    error_estimate!(cache::MIRKCache, controller::GlobalErrorControl)
+    error_estimate!(cache::MIRKCache, controller::SequentialErrorControl)
+    error_estimate!(cache::MIRKCache, controller::HybridErrorControl)
 
-defect_estimate use the discrete solution approximation Y, plus stages of
+error_estimate for the defect uses the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
-an interpolant
+an interpolant.
+
+error_estimate for the global error use the higher order or doubled mesh to estiamte the
+global error according to err = max(abs(Y_high - Y_low)) / (1 + abs(Y_low))
+
+error_estimate for the sequential error first uses the defect controller, if the defect is
+satisfying, then use the global error controller.
+
+error_estimate for the hybrid error control uses the linear combination of defect and global
+error to estimate the error norm.
 """
 # Defect control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T}, controller::GlobalErrorControl, sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        cache::MIRKCache{iip, T}, controller::GlobalErrorControl, errors,
+        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     return error_estimate!(cache::MIRKCache{iip, T}, controller, controller.method,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        errors, sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
 end
 
 # Global error control
-@views function error_estimate!(cache::MIRKCache{iip, T}, controller::DefectControl, sol,
+@views function error_estimate!(
+        cache::MIRKCache{iip, T}, controller::DefectControl, errors, sol,
         nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    (; f, alg, mesh, mesh_dt, errors) = cache
+    (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
     # Evaluate at the first sample point
@@ -330,76 +353,94 @@ end
 
 # Sequential error control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T}, controller::SequentialErrorControl, sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    defect_norm = error_estimate!(cache::MIRKCache{iip, T}, DefectControl(), sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        cache::MIRKCache{iip, T}, controller::SequentialErrorControl, errors,
+        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    defect_norm, info = error_estimate!(cache::MIRKCache{iip, T}, DefectControl(), errors,
+        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     error_norm = defect_norm
     if defect_norm <= abstol
-        global_error_norm = error_estimate!(
-            cache::MIRKCache{iip, T}, GlobalErrorControl(), sol,
-            nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        global_error_norm, info = error_estimate!(
+            cache::MIRKCache{iip, T}, GlobalErrorControl(), controller.method,
+            errors, sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
         error_norm = global_error_norm
+        return error_norm, info
     end
-    return error_norm, ReturnCode.Success
+    return error_norm, info
 end
 
 # Hybrid error control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T}, controller::HybridErrorControl, sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    defect_norm = error_estimate!(cache::MIRKCache{iip, T}, DefectControl(), sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        cache::MIRKCache{iip, T}, controller::HybridErrorControl, errors,
+        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    L = length(cache.mesh) - 1
+    defect_norm, _ = error_estimate!(
+        cache::MIRKCache{iip, T}, DefectControl(), @views(errors[1:L]),
+        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     defect_norm
-    global_error_norm = error_estimate!(cache::MIRKCache{iip, T}, GlobalErrorControl(), sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+    global_error_norm, _ = error_estimate!(
+        cache::MIRKCache{iip, T}, GlobalErrorControl(), controller.method,
+        @views(errors[(L + 1):end]), sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
 
-    error_norm = defect_norm + global_error_norm
+    error_norm = controller.DE * defect_norm + controller.GE * global_error_norm
     return error_norm, ReturnCode.Success
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
-        global_error_control::REErrorControl, sol, nlsolve_alg,
-        abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    (; prob, alg, errors) = cache
+        global_error_control::REErrorControl, errors, sol,
+        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
-    new_prob = remake(prob, u0 = half_sol(cache.y₀))
-    high_cache = SciMLBase.__init(new_prob, alg, dt = dt / 2, adaptive = false)
+    high_sol = halve_sol(cache.y₀, cache.mesh)
+    new_prob = remake(prob, u0 = high_sol)
+    high_cache = SciMLBase.__init(new_prob, alg, adaptive = false)
 
-    high_nlprob = __construct_nlproblem(high_cache, sol, copy(sol))
+    high_nlprob = __construct_nlproblem(
+        high_cache, vec(high_sol), VectorOfArray(high_sol.u))
     high_sol_original = __solve(
         high_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
-    high_sol = high_sol_original.u[1:2:end]
-    error_norm = global_error(VectorOfArray(high_sol), copy(cache.y₀), errors)
+    recursive_unflatten!(high_sol, high_sol_original.u)
+    error_norm = global_error(
+        VectorOfArray(copy(high_sol.u[1:2:end])), copy(cache.y₀), errors)
     return error_norm, ReturnCode.Success
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
-        global_error_control::HOErrorControl, sol, nlsolve_alg,
-        abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    (; prob, alg, errors) = cache
+        global_error_control::HOErrorControl, errors, sol,
+        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+    (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
-    new_prob = remake(prob, u0 = copy(cache.y₀))
+    high_sol = DiffEqArray(deepcopy(cache.y₀).u, cache.mesh)
+    new_prob = remake(prob, u0 = high_sol)
     high_cache = SciMLBase.__init(
         new_prob, __high_order_method(alg), dt = dt, adaptive = false)
 
-    high_nlprob = __construct_nlproblem(high_cache, sol, copy(sol))
-    high_sol = __solve(
+    high_nlprob = __construct_nlproblem(high_cache, sol.u, high_sol)
+    high_sol_nlprob = __solve(
         high_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
-    error_norm = global_error(VectorOfArray(high_sol.u), copy(cache.y₀), errors)
-    return error_norm
+    recursive_unflatten!(high_sol, high_sol_nlprob)
+    error_norm = global_error(VectorOfArray(high_sol.u), cache.y₀, errors)
+    return error_norm, ReturnCode.Success
 end
 
-@inline function __high_order_mirk(alg::AbstractMIRK)
+@inline function __high_order_method(alg::AbstractMIRK)
     new_alg = Symbol("MIRK$(alg_order(alg) + 2)")
     return @eval $(new_alg)()
 end
 
 @views function global_error(high_sol, low_sol, errors)
-    errors .= (high_sol .- low_sol) ./ (1 .+ low_sol)
+    err = (high_sol .- low_sol) ./ (1 .+ abs.(low_sol))
+    GE_subinterval!(errors, err)
     return maximum(Base.Fix1(maximum, abs), errors.u)
+end
+
+# Assigns the global error estimate for each subinterval
+# Basically shrink Nig+1 error estimates to Nig error estimates
+@views function GE_subinterval!(errors, err)
+    copyto!(errors.u,
+        [ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])),
+             err.u[i], err.u[i + 1]) for i in 1:(length(err) - 1)])
 end
 
 """
@@ -474,7 +515,7 @@ end
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
-    z .= z .* dt[1] .+ cache.y₀.u[i]
+    z .= z .* dt .+ cache.y₀.u[i]
 
     return z, z′
 end

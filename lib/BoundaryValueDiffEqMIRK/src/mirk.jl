@@ -23,7 +23,6 @@
     # The following 2 caches are never resized
     fᵢ_cache
     fᵢ₂_cache
-    controller
     errors
     new_stages
     resid_size
@@ -108,8 +107,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     return MIRKCache{iip, T, use_both}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, controller, errors,
-        new_stages, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages,
+        resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
@@ -130,8 +129,7 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     return cache
 end
 
-function __split_mirk_kwargs(;
-        abstol, dt, adaptive = true, controller = DefectControl(), kwargs...)
+function __split_mirk_kwargs(; abstol, dt, adaptive = true, controller, kwargs...)
     return ((abstol, adaptive, controller, dt), (; abstol, adaptive, kwargs...))
 end
 
@@ -176,8 +174,8 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
-        error_norm, info = error_estimate!(
-            cache, controller, sol_nlprob, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        error_norm, info = error_estimate!(cache, controller, cache.errors, sol_nlprob,
+            nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
@@ -187,6 +185,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
             if info == ReturnCode.Success
                 (length(mesh) < length(cache.mesh)) &&
                     __resize!(cache.y₀, length(cache.mesh), cache.M)
+                #__resize!(cache.y₀, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end

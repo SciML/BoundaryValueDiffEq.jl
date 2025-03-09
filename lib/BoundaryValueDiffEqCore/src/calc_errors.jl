@@ -1,4 +1,18 @@
+"""
+    AbstractErrorControl
+
+Abstract type for different error control methods.
+"""
 abstract type AbstractErrorControl end
+
+"""
+    GlobalErrorControlMethod
+
+Abstract type for different global error control methods, and according to the different global error estimation methods, there are
+
+  - `HOErrorControl`: Higher order global error estimation method
+  - `REErrorControl`: Richardson extrapolation global error estimation method
+"""
 abstract type GlobalErrorControlMethod end
 
 """
@@ -28,7 +42,7 @@ struct GlobalErrorControl <: AbstractErrorControl
 end
 
 """
-    SequentialErrorControl()
+    SequentialErrorControl(; method = HOErrorControl())
 
 First use defect controller, if the defect is satisfying, then use global error controller.
 """
