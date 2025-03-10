@@ -21,7 +21,7 @@ abstract type GlobalErrorControlMethod end
 Defect estimation method with defect as
 
 ```math
-DE = max\frac{|S'(x) - f(x,S(x))|}{1 + |f(x,S(x))}
+defect = \\max\\frac{S'(x) - f(x,S(x))}{1 + |f(x,S(x))|}
 ```
 
 Defect controller, with the maximum `defect_threshold` as 0.1, when the estimating defect is greater than the `defect_threshold`, the mesh will be refined.
@@ -87,7 +87,7 @@ Higher order global error estimation method
 Uses a solution from order+2 method on the original mesh and calculate the error with
 
 ```math
-GE = max\frac{|u_p - u_{p+2}|}{1 + |u_p|}
+error = \\max\\frac{u_p - u_{p+2}}{1 + |u_p|}
 ```
 """
 struct HOErrorControl <: GlobalErrorControlMethod end
@@ -99,7 +99,9 @@ Richardson extrapolation global error estimation method
 
 Use Richardson extrapolation to calculate the error on the doubled mesh with
 
-GE = \frac{2^p}{2^p-1} * max\frac{|u_h - u_{h/2}|}{1 + |u_h|}
+```math
+error = \\frac{2^p}{2^p-1} * \\max\\frac{u_h - u_{h/2}}{1 + |u_h|}
+```
 """
 struct REErrorControl <: GlobalErrorControlMethod end
 

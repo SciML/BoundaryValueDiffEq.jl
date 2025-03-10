@@ -24,7 +24,8 @@ end
 """
     mesh_selector!(cache::MIRKCache, controller::DefectControl)
     mesh_selector!(cache::MIRKCache, controller::GlobalErrorControl)
-    mesh_selector!(cache::MIRKCache, controller::Union{SequentialErrorControl, HybridErrorControl})
+    mesh_selector!(cache::MIRKCache, controller::SequentialErrorControl)
+    mesh_selector!(cache::MIRKCache, controller::HybridErrorControl)
 
 Generate new mesh based on the defect or the global error.
 """
@@ -35,7 +36,7 @@ Generate new mesh based on the defect or the global error.
     N = length(mesh)
 
     safety_factor = T(1.3)
-    ρ = T(1.0) # Set rho=1 means mesh distribution will take place everytime.
+    ρ = T(1.0)
     Nsub_star = 0
     Nsub_star_ub = 4 * (N - 1)
     Nsub_star_lb = N ÷ 2
@@ -95,7 +96,7 @@ end
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in errors]  # Broadcasting breaks GPU Compilation
+    ŝ = [maximum(abs, d) for d in errors]
     ŝ .= (ŝ ./ abstol) .^ (T(1) / order)
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -108,7 +109,8 @@ end
 
     if r₁ ≤ ρ * r₃
         Nsub_star = 2 * (N - 1)
-        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+        # Need to determine the too large threshold
+        if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt
@@ -148,7 +150,7 @@ end
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in errors]  # Broadcasting breaks GPU Compilation
+    ŝ = [maximum(abs, d) for d in errors]
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -161,7 +163,8 @@ end
 
     if r₁ ≤ ρ * r₃
         Nsub_star = 2 * (N - 1)
-        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+        # Need to determine the too large threshold
+        if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt
@@ -216,7 +219,8 @@ end
 
     if r₁ ≤ ρ * r₃
         Nsub_star = 2 * (N - 1)
-        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+        # Need to determine the too large threshold
+        if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt
@@ -305,8 +309,7 @@ end
 """
     halve_sol(sol)
 
-The input sol has length of `n + 1`. Divide the original solution into two equal length
-solution.
+The input sol has length of `n + 1`. Divide the original mesh and u from original solution into `2n + 1` one.
 """
 function halve_sol(sol::AbstractVectorOfArray{T}, mesh) where {T}
     new_sol = copy(sol)
@@ -319,17 +322,17 @@ function halve_sol(sol::AbstractVectorOfArray{T}, mesh) where {T}
     @simd for i in (2n):-2:2
         new_sol[i] = (new_sol[i + 1] + new_sol[i - 1]) ./ T(2)
     end
-    mes = deepcopy(mesh)
-    resize!(mes, 2 * n + 1)
-    mes[1] = mesh[1]
-    mes[end] = mesh[end]
+    new_mesh = deepcopy(mesh)
+    resize!(new_mesh, 2 * n + 1)
+    new_mesh[1] = mesh[1]
+    new_mesh[end] = mesh[end]
     for i in (2n - 1):-2:1
-        mes[i] = mes[(i + 1) ÷ 2]
+        new_mesh[i] = new_mesh[(i + 1) ÷ 2]
     end
     for i in (2n):-2:2
-        mes[i] = (mes[i + 1] + mes[i - 1]) / 2
+        new_mesh[i] = (new_mesh[i + 1] + new_mesh[i - 1]) / 2
     end
-    return DiffEqArray(new_sol.u, mes)
+    return DiffEqArray(new_sol.u, new_mesh)
 end
 
 """
@@ -338,16 +341,21 @@ end
     error_estimate!(cache::MIRKCache, controller::SequentialErrorControl)
     error_estimate!(cache::MIRKCache, controller::HybridErrorControl)
 
+## Defect Control
+
 error_estimate for the defect uses the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant.
 
+## Global Error Control
 error_estimate for the global error use the higher order or doubled mesh to estiamte the
 global error according to err = max(abs(Y_high - Y_low)) / (1 + abs(Y_low))
 
+## Sequential Error Control
 error_estimate for the sequential error first uses the defect controller, if the defect is
 satisfying, then use the global error controller.
 
+## Hybrid Error Control
 error_estimate for the hybrid error control uses the linear combination of defect and global
 error to estimate the error norm.
 """

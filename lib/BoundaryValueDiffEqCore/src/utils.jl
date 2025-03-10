@@ -144,8 +144,17 @@ function eval_bc_residual!(
     bcb!(resid[2], dub, ub, p)
 end
 
-# NOTE: We use `last` since the `first` might not conform to the same structure. For eg,
-#       in the case of residuals
+"""
+    __resize!(x, n, M)
+
+Resizes the input `x` to length `n` and returns the resized array. If `n` is less than the
+length of `x`, it truncates the array. If `n` is greater than the length of `x`, it appends
+zeros to the array.
+
+!!! note
+
+    We use `last` since the `first` might not conform to the same structure. For example, in the case of residuals
+"""
 function __resize!(x::AbstractVector{<:AbstractArray}, n, M)
     N = n - length(x)
     N == 0 && return x
