@@ -184,7 +184,8 @@ Generate new mesh based on the defect.
 
     if r₁ ≤ ρ * r₃
         Nsub_star = 2 * (N - 1)
-        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+        # Need to determine the too large threshold
+        if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt

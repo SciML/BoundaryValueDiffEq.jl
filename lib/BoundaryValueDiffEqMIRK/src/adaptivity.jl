@@ -354,15 +354,14 @@ error to estimate the error norm.
 # Defect control
 @views function error_estimate!(
         cache::MIRKCache{iip, T}, controller::GlobalErrorControl, errors,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
     return error_estimate!(cache::MIRKCache{iip, T}, controller, controller.method,
-        errors, sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        errors, sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
 end
 
 # Global error control
-@views function error_estimate!(
-        cache::MIRKCache{iip, T}, controller::DefectControl, errors, sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+@views function error_estimate!(cache::MIRKCache{iip, T}, controller::DefectControl, errors,
+        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
@@ -400,6 +399,7 @@ end
     end
 
     defect_norm = maximum(Base.Fix1(maximum, abs), errors.u)
+
     # The defect is greater than 10%, the solution is not acceptable
     info = ifelse(
         defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
@@ -409,15 +409,15 @@ end
 # Sequential error control
 @views function error_estimate!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl, errors,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
     defect_norm, info = error_estimate!(cache::MIRKCache{iip, T}, controller.defect, errors,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
     error_norm = defect_norm
     if defect_norm <= abstol
         global_error_norm, info = error_estimate!(
             cache::MIRKCache{iip, T}, controller.global_error,
             controller.global_error.method, errors, sol,
-            nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+            nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
         error_norm = global_error_norm
         return error_norm, info
     end
@@ -426,15 +426,15 @@ end
 
 # Hybrid error control
 function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorControl, errors,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
     L = length(cache.mesh) - 1
     defect = errors[:, 1:L]
     global_error = errors[:, (L + 1):end]
     defect_norm, _ = error_estimate!(cache::MIRKCache{iip, T}, controller.defect, defect,
-        sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
     global_error_norm, _ = error_estimate!(
         cache::MIRKCache{iip, T}, controller.global_error, controller.global_error.method,
-        global_error, sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        global_error, sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
 
     error_norm = controller.DE * defect_norm + controller.GE * global_error_norm
     copyto!(errors, VectorOfArray(vcat(defect.u, global_error.u)))
@@ -443,7 +443,7 @@ end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
         global_error_control::REErrorControl, errors, sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
@@ -463,7 +463,7 @@ end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
         global_error_control::HOErrorControl, errors, sol,
-        nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
+        nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess

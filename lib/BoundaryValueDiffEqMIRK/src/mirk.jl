@@ -175,7 +175,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
         error_norm, info = error_estimate!(cache, controller, cache.errors, sol_nlprob,
-            nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+            nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
