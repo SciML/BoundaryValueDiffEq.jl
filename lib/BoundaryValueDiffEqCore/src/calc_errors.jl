@@ -42,30 +42,34 @@ struct GlobalErrorControl <: AbstractErrorControl
 end
 
 """
-    SequentialErrorControl(; method = HOErrorControl())
+    SequentialErrorControl(; defect = DefectControl(), global_error = GlobalErrorControl())
 
 First use defect controller, if the defect is satisfying, then use global error controller.
 """
 struct SequentialErrorControl <: AbstractErrorControl
-    method::GlobalErrorControlMethod
+    defect::DefectControl
+    global_error::GlobalErrorControl
 
-    function SequentialErrorControl(; method = HOErrorControl())
-        return new(method)
+    function SequentialErrorControl(;
+            defect = DefectControl(), global_error = GlobalErrorControl())
+        return new(defect, global_error)
     end
 end
 
 """
-    HybridErrorControl(; DE = 1.0, GE = 1.0; method = HOErrorControl())
+    HybridErrorControl(; DE = 1.0, GE = 1.0, defect = DefectControl(), global_error = GlobalErrorControl())
 
 Control both of the defect and global error, where the error norm is the linear combination of the defect and global error.
 """
 struct HybridErrorControl{T1, T2} <: AbstractErrorControl
     DE::T1
     GE::T2
-    method::GlobalErrorControlMethod
+    defect::DefectControl
+    global_error::GlobalErrorControl
 
-    function HybridErrorControl(; DE = 1.0, GE = 1.0, method = HOErrorControl())
-        return new{typeof(DE), typeof(GE)}(DE, GE, method)
+    function HybridErrorControl(; DE = 1.0, GE = 1.0, defect = DefectControl(),
+            global_error = GlobalErrorControl())
+        return new{typeof(DE), typeof(GE)}(DE, GE, defect, global_error)
     end
 end
 
@@ -89,6 +93,5 @@ struct REErrorControl <: GlobalErrorControlMethod end
 
 # Some utils for error control adaptivity
 # If error control use both defect and global error or not
-@inline __use_both_error_control(::SequentialErrorControl) = true
 @inline __use_both_error_control(::HybridErrorControl) = true
 @inline __use_both_error_control(_) = false

@@ -88,7 +88,7 @@ end
     N = length(mesh)
 
     safety_factor = T(1.3)
-    ρ = T(2.0) # Set rho=2 means mesh distribution will take place everytime.
+    ρ = T(2.0)
     Nsub_star = 0
     Nsub_star_ub = 4 * (N - 1)
     Nsub_star_lb = N ÷ 2
@@ -134,14 +134,14 @@ end
     return meshₒ, mesh_dt₀, Nsub_star, info
 end
 
-@views function mesh_selector!(cache::MIRKCache{iip, T},
-        controller::Union{SequentialErrorControl, HybridErrorControl}) where {iip, T}
+@views function mesh_selector!(
+        cache::MIRKCache{iip, T}, controller::SequentialErrorControl) where {iip, T}
     (; order, errors, TU, mesh, mesh_dt) = cache
     (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)
-    ρ = T(2.0) # Set rho=2 means mesh distribution will take place everytime.
+    ρ = T(2.0)
     Nsub_star = 0
     Nsub_star_ub = 4 * (N - 1)
     Nsub_star_lb = N ÷ 2
@@ -150,6 +150,61 @@ end
 
     ŝ = [maximum(abs, d) for d in errors]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
+    r₁ = maximum(ŝ)
+    r₂ = sum(ŝ)
+    r₃ = r₂ / (N - 1)
+
+    n_predict = round(Int, (safety_factor * r₂) + 1)
+    n = N - 1
+    n_ = T(0.1) * n
+    n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
+
+    if r₁ ≤ ρ * r₃
+        Nsub_star = 2 * (N - 1)
+        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+            info = ReturnCode.Failure
+            meshₒ = mesh
+            mesh_dt₀ = mesh_dt
+        else
+            meshₒ = copy(mesh)
+            mesh_dt₀ = copy(mesh_dt)
+            half_mesh!(cache)
+        end
+    else
+        Nsub_star = clamp(n_predict, Nsub_star_lb, Nsub_star_ub)
+        if Nsub_star > cache.alg.max_num_subintervals
+            # Mesh redistribution fails
+            info = ReturnCode.Failure
+            meshₒ = mesh
+            mesh_dt₀ = mesh_dt
+        else
+            ŝ ./= mesh_dt
+            meshₒ = copy(mesh)
+            mesh_dt₀ = copy(mesh_dt)
+            redistribute!(cache, Nsub_star, ŝ, meshₒ, mesh_dt₀)
+        end
+    end
+    return meshₒ, mesh_dt₀, Nsub_star, info
+end
+
+@views function mesh_selector!(
+        cache::MIRKCache{iip, T}, controller::HybridErrorControl) where {iip, T}
+    (; order, errors, TU, mesh, mesh_dt) = cache
+    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    N = length(mesh)
+
+    safety_factor = T(1.3)
+    ρ = T(2.0)
+    Nsub_star = 0
+    Nsub_star_ub = 4 * (N - 1)
+    Nsub_star_lb = N ÷ 2
+
+    info = ReturnCode.Success
+
+    ŝ₁ = [maximum(abs, d) for d in errors.u[1:(N - 1)]]
+    ŝ₂ = [maximum(abs, d) for d in errors.u[N:end]]
+    ŝ = similar(ŝ₁)
+    ŝ .= (ŝ₁ ./ abstol) .^ (T(1) / (order + 1)) + (ŝ₂ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
     r₃ = r₂ / (N - 1)
@@ -355,13 +410,14 @@ end
 @views function error_estimate!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl, errors,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
-    defect_norm, info = error_estimate!(cache::MIRKCache{iip, T}, DefectControl(), errors,
+    defect_norm, info = error_estimate!(cache::MIRKCache{iip, T}, controller.defect, errors,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     error_norm = defect_norm
     if defect_norm <= abstol
         global_error_norm, info = error_estimate!(
-            cache::MIRKCache{iip, T}, GlobalErrorControl(), controller.method,
-            errors, sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+            cache::MIRKCache{iip, T}, controller.global_error,
+            controller.global_error.method, errors, sol,
+            nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
         error_norm = global_error_norm
         return error_norm, info
     end
@@ -369,19 +425,19 @@ end
 end
 
 # Hybrid error control
-@views function error_estimate!(
-        cache::MIRKCache{iip, T}, controller::HybridErrorControl, errors,
+function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorControl, errors,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     L = length(cache.mesh) - 1
-    defect_norm, _ = error_estimate!(
-        cache::MIRKCache{iip, T}, DefectControl(), @views(errors[1:L]),
+    defect = errors[1:L]
+    global_error = errors[(L + 1):end]
+    defect_norm, _ = error_estimate!(cache::MIRKCache{iip, T}, controller.defect, defect,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
-    defect_norm
     global_error_norm, _ = error_estimate!(
-        cache::MIRKCache{iip, T}, GlobalErrorControl(), controller.method,
-        @views(errors[(L + 1):end]), sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
+        cache::MIRKCache{iip, T}, controller.global_error, controller.global_error.method,
+        global_error, sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
 
     error_norm = controller.DE * defect_norm + controller.GE * global_error_norm
+    copyto!(errors, VectorOfArray(vcat(defect.u, global_error.u)))
     return error_norm, ReturnCode.Success
 end
 
@@ -411,10 +467,9 @@ end
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
-    high_sol = DiffEqArray(deepcopy(cache.y₀).u, cache.mesh)
+    high_sol = DiffEqArray(cache.y₀.u, cache.mesh)
     new_prob = remake(prob, u0 = high_sol)
-    high_cache = SciMLBase.__init(
-        new_prob, __high_order_method(alg), dt = dt, adaptive = false)
+    high_cache = SciMLBase.__init(new_prob, __high_order_method(alg), adaptive = false)
 
     high_nlprob = __construct_nlproblem(high_cache, sol.u, high_sol)
     high_sol_nlprob = __solve(
