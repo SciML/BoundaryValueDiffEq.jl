@@ -18,7 +18,13 @@ abstract type GlobalErrorControlMethod end
 """
     DefectControl(; defect_threshold = 0.1)
 
-Defect controller, with the maximum defec threshold as 0.1.
+Defect estimation method with defect as
+
+```math
+DE = max\frac{|S'(x) - f(x,S(x))|}{1 + |f(x,S(x))}
+```
+
+Defect controller, with the maximum `defect_threshold` as 0.1, when the estimating defect is greater than the `defect_threshold`, the mesh will be refined.
 """
 struct DefectControl{T} <: AbstractErrorControl
     defect_threshold::T
@@ -31,7 +37,7 @@ end
 """
     GlobalErrorControl(; method = HOErorControl())
 
-Global error controller, need to specify which gloabal error want to use.
+Global error controller, use high order global error estimation method `HOErrorControl` as default.
 """
 struct GlobalErrorControl <: AbstractErrorControl
     method::GlobalErrorControlMethod
@@ -78,7 +84,11 @@ end
 
 Higher order global error estimation method
 
-Solve the BVP twice with an order+2 method on the original mesh
+Uses a solution from order+2 method on the original mesh and calculate the error with
+
+```math
+GE = max\frac{|u_p - u_{p+2}|}{1 + |u_p|}
+```
 """
 struct HOErrorControl <: GlobalErrorControlMethod end
 
@@ -87,7 +97,9 @@ struct HOErrorControl <: GlobalErrorControlMethod end
 
 Richardson extrapolation global error estimation method
 
-Solve the BVP twice on teh doubled mesh with the original method
+Use Richardson extrapolation to calculate the error on the doubled mesh with
+
+GE = \frac{2^p}{2^p-1} * max\frac{|u_h - u_{h/2}|}{1 + |u_h|}
 """
 struct REErrorControl <: GlobalErrorControlMethod end
 

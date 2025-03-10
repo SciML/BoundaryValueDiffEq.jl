@@ -428,8 +428,8 @@ end
 function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorControl, errors,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs) where {iip, T}
     L = length(cache.mesh) - 1
-    defect = errors[1:L]
-    global_error = errors[(L + 1):end]
+    defect = errors[:, 1:L]
+    global_error = errors[:, (L + 1):end]
     defect_norm, _ = error_estimate!(cache::MIRKCache{iip, T}, controller.defect, defect,
         sol, nlsolve_alg, abstol, dt, kwargs, nlsolve_kwargs)
     global_error_norm, _ = error_estimate!(
@@ -458,7 +458,7 @@ end
     recursive_unflatten!(high_sol, high_sol_original.u)
     error_norm = global_error(
         VectorOfArray(copy(high_sol.u[1:2:end])), copy(cache.y₀), errors)
-    return error_norm, ReturnCode.Success
+    return error_norm * 2^cache.order / (2^cache.order - 1), ReturnCode.Success
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
