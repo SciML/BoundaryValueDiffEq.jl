@@ -18,7 +18,7 @@ abstract type GlobalErrorControlMethod end
 """
     DefectControl(; defect_threshold = 0.1)
 
-Defect estimation method with defect as
+Defect estimation method with defect defined as
 
 ```math
 defect = \\max\\frac{S'(x) - f(x,S(x))}{1 + |f(x,S(x))|}
@@ -50,7 +50,7 @@ end
 """
     SequentialErrorControl(; defect = DefectControl(), global_error = GlobalErrorControl())
 
-First use defect controller, if the defect is satisfying, then use global error controller.
+First use the defect controller, if the defect is satisfying, then use global error controller.
 """
 struct SequentialErrorControl <: AbstractErrorControl
     defect::DefectControl
