@@ -24,9 +24,11 @@ function constructMIRK2(::Type{T}) where {T}
     v_star = [0, 1]
     x_star = [0, 0, 0, 0]
     τ_star = 0.25
+    p_star = 2
 
     TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star), Int64(p_star))
     return TU, ITU
 end
 
@@ -45,9 +47,11 @@ function constructMIRK3(::Type{T}) where {T}
     v_star = [1]
     x_star = [0, 0, 0]
     τ_star = 0.25
+    p_star = 3
 
     TU = MIRKTableau(Int64(s), T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        Int64(s_star), T.(c_star), T.(v_star), T.(x_star), T(τ_star), Int64(p_star))
     return TU, ITU
 end
 
@@ -67,9 +71,11 @@ function constructMIRK4(::Type{T}) where {T}
     v_star = [27 // 32]
     x_star = [3 // 64, -9 // 64, 0, 0]
     τ_star = 0.226
+    p_star = 4
 
     TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star), Int64(p_star))
     return TU, ITU
 end
 
@@ -91,9 +97,11 @@ function constructMIRK5(::Type{T}) where {T}
     x_star = [14//1125 -74//875 -128//3375 104//945 0 0
               1//2 4508233//1958887 48720832//2518569 -27646420//17629983 -11517095//559682 0]
     τ_star = 0.3
+    p_star = 5
 
     TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star), Int64(p_star))
     return TU, ITU
 end
 
@@ -118,9 +126,11 @@ function constructMIRK6(::Type{T}) where {T}
               1225//32768 -1547//32768 287//2048 -749//4096 861//16384 0 0 0 0
               233//3456 -19//1152 0 0 0 -5//72 7//72 -17//216 0]
     τ_star = 0.7156
+    p_star = 6
 
     TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star), Int64(p_star))
     return TU, ITU
 end
 
@@ -131,11 +141,6 @@ function constructMIRK6I(::Type{T}) where {T}
     v = [0, 1, 1 // 2 - 9 * sqrt(21) / 98, 1 // 2 + 9 * sqrt(21) / 98, 1 // 2]
     b = [7 // 90, 7 // 90, 16 // 45, 16 // 45, 2 // 15, 0, 0, 0, 0]
     b = [1 // 20, 1 // 20, 49 // 180, 49 // 180, 16 // 45]
-    x = [0 0 0 0 0
-         0 0 0 0 0
-         9//64 -3//64 0 0 0
-         3//64 -9//64 0 0 0
-         -5//24 5//24 2//3 -2//3 0]
 
     x = [0 0 0 0 0
          0 0 0 0 0
@@ -156,8 +161,10 @@ function constructMIRK6I(::Type{T}) where {T}
               2707592511 // 1000000000000-1006699707 / 1000000000000 * sqrt(7) -51527976591 // 1000000000000-1006699707 / 1000000000000 * sqrt(7) -610366393//75000000000+7046897949 / 1000000000000*sqrt(7)+14508670449/1000000000000*sqrt(7)*sqrt(3) -610366393 // 75000000000 + 7046897949 / 1000000000000 * sqrt(7)-14508670449 / 1000000000000 * sqrt(7) * sqrt(3) -12456457 // 1171875000+1006699707 / 109375000000 * sqrt(7) 3020099121 / 437500000000 * sqrt(7)+47328957 // 625000000 -7046897949 / 250000000000*sqrt(7) 0]
 
     τ_star = 0.4
+    p_star = 6
 
     TU = MIRKTableau(s, T.(c), T.(v), T.(b), T.(x))
-    ITU = MIRKInterpTableau(s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star))
+    ITU = MIRKInterpTableau(
+        s_star, T.(c_star), T.(v_star), T.(x_star), T(τ_star), T(p_star))
     return TU, ITU
 end

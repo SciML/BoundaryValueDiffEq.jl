@@ -4,7 +4,7 @@ pages = ["index.md",
     "Getting Started with BVP solving in Julia" => "tutorials/getting_started.md",
     "Tutorials" => Any["tutorials/continuation.md", "tutorials/solve_nlls_bvp.md"],
     "Basics" => Any["basics/bvp_problem.md", "basics/bvp_functions.md",
-        "basics/solve.md", "basics/autodiff.md"],
+        "basics/solve.md", "basics/autodiff.md", "basics/error_control.md"],
     "Solver Summaries and Recommendations" => Any[
         "solvers/mirk.md", "solvers/firk.md", "solvers/shooting.md", "solvers/mirkn.md",
         "solvers/ascher.md", "solvers/simple_solvers.md", "solvers/wrappers.md"],

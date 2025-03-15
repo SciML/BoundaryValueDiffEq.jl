@@ -144,33 +144,42 @@ function eval_bc_residual!(
     bcb!(resid[2], dub, ub, p)
 end
 
-__append_similar!(::Nothing, n, _) = nothing
+"""
+    __resize!(x, n, M)
 
-# NOTE: We use `last` since the `first` might not conform to the same structure. For eg,
-#       in the case of residuals
-function __append_similar!(x::AbstractVector{<:AbstractArray}, n, _)
+Resizes the input `x` to length `n` and returns the resized array. If `n` is less than the
+length of `x`, it truncates the array. If `n` is greater than the length of `x`, it appends
+zeros to the array.
+
+!!! note
+
+    We use `last` since the `first` might not conform to the same structure. For example, in the case of residuals
+"""
+function __resize!(x::AbstractVector{<:AbstractArray}, n, M)
     N = n - length(x)
     N == 0 && return x
-    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, [zero(last(x)) for _ in 1:N])
+    N > 0 ? append!(x, [zero(last(x)) for _ in 1:N]) : resize!(x, n)
     return x
 end
 
-function __append_similar!(x::AbstractVector{<:MaybeDiffCache}, n, M)
+__resize!(::Nothing, n, _) = nothing
+
+function __resize!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     N = n - length(x)
     N == 0 && return x
-    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    chunksize = pickchunksize(M * (N + length(x)))
-    append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
+    if N > 0
+        chunksize = pickchunksize(M * (N + length(x)))
+        append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
+    else
+        resize!(x, n)
+    end
     return x
 end
 
-__append_similar!(::Nothing, n, _, _) = nothing
-function __append_similar!(x::AbstractVectorOfArray, n, _)
+function __resize!(x::AbstractVectorOfArray, n, M)
     N = n - length(x)
     N == 0 && return x
-    N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
-    append!(x, VectorOfArray([similar(last(x)) for _ in 1:N]))
+    N > 0 ? append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])) : resize!(x, n)
     return x
 end
 

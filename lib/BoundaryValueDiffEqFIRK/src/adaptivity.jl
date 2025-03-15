@@ -182,9 +182,10 @@ Generate new mesh based on the defect.
     n_ = T(0.1) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
-    if r₁ ≤ ρ * r₂
+    if r₁ ≤ ρ * r₃
         Nsub_star = 2 * (N - 1)
-        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+        # Need to determine the too large threshold
+        if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt
@@ -218,14 +219,14 @@ Generate a new mesh based on the `ŝ`.
 """
 function redistribute!(cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}},
         Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
-    N = length(mesh)
+    N = length(mesh) - 1
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
-    append!(cache.mesh, Nsub_star + 1 - N)
+    resize!(cache.mesh, Nsub_star + 1)
     cache.mesh[1] = mesh[1]
     t = mesh[1]
     integral = T(0)
-    while k ≤ N - 1
+    while k ≤ N
         next_piece = ŝ[k] * (mesh[k + 1] - t)
         _int_next = integral + next_piece
         if _int_next > ζ
@@ -240,7 +241,7 @@ function redistribute!(cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip
         end
     end
     cache.mesh[end] = mesh[end]
-    append!(cache.mesh_dt, Nsub_star - N)
+    resize!(cache.mesh_dt, Nsub_star)
     diff!(cache.mesh_dt, cache.mesh)
     return cache
 end

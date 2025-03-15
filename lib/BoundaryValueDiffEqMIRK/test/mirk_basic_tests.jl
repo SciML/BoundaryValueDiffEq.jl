@@ -361,3 +361,23 @@ end
     sol_SA = solve(bvp_SA, MIRK4(), dt = 0.05)
     @test SciMLBase.successful_retcode(sol_SA.retcode)
 end
+
+@testitem "Error Control Adaptivity" begin
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -9.81 * sin(θ)
+    end
+    function bc!(residual, u, p, t)
+        residual[1] = u(pi / 4)[1] + pi / 2
+        residual[2] = u(pi / 2)[1] - pi / 2
+    end
+    prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
+    for error_control in (DefectControl(), GlobalErrorControl(),
+        SequentialErrorControl(), HybridErrorControl())
+        @test_nowarn sol = solve(
+            prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = error_control)
+    end
+end

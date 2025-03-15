@@ -78,8 +78,8 @@ function shrink_y(y, N, stage)
     return y_shrink
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, controller = DefectControl(), kwargs...)
     if alg.nested_nlsolve
         return init_nested(
             prob, alg; dt = dt, abstol = abstol, adaptive = adaptive, kwargs...)
@@ -89,8 +89,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
     end
 end
 
-function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
@@ -182,8 +182,8 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
         nest_tol, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
-function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0,
-        abstol = 1e-3, adaptive = true, kwargs...)
+function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+        adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
@@ -271,21 +271,21 @@ match the length of the new mesh.
 """
 function __expand_cache!(cache::FIRKCacheExpand)
     Nₙ = length(cache.mesh)
-    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
-    __append_similar!(cache.y, Nₙ, cache.M, cache.TU)
-    __append_similar!(cache.y₀, Nₙ, cache.M, cache.TU)
-    __append_similar!(cache.residual, Nₙ, cache.M, cache.TU)
-    __append_similar!(cache.defect, Nₙ - 1, cache.M, cache.TU)
+    __resize!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
+    __resize!(cache.y, Nₙ, cache.M, cache.TU)
+    __resize!(cache.y₀, Nₙ, cache.M, cache.TU)
+    __resize!(cache.residual, Nₙ, cache.M, cache.TU)
+    __resize!(cache.defect, Nₙ - 1, cache.M)
     return cache
 end
 
 function __expand_cache!(cache::FIRKCacheNested)
     Nₙ = length(cache.mesh)
-    __append_similar!(cache.k_discrete, Nₙ - 1, cache.M)
-    __append_similar!(cache.y, Nₙ, cache.M)
-    __append_similar!(cache.y₀, Nₙ, cache.M)
-    __append_similar!(cache.residual, Nₙ, cache.M)
-    __append_similar!(cache.defect, Nₙ - 1, cache.M)
+    __resize!(cache.k_discrete, Nₙ - 1, cache.M)
+    __resize!(cache.y, Nₙ, cache.M)
+    __resize!(cache.y₀, Nₙ, cache.M)
+    __resize!(cache.residual, Nₙ, cache.M)
+    __resize!(cache.defect, Nₙ - 1, cache.M)
     return cache
 end
 
@@ -370,7 +370,7 @@ function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache)
             if info == ReturnCode.Success
-                __append_similar!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
+                __resize!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end

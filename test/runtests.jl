@@ -1,7 +1,7 @@
 using ReTestItems, BoundaryValueDiffEq, Hwloc, InteractiveUtils, Pkg
 
 @info sprint(InteractiveUtils.versioninfo)
-#=
+
 const GROUP = lowercase(get(ENV, "GROUP", "All"))
 
 const RETESTITEMS_NWORKERS = parse(Int,
@@ -16,8 +16,3 @@ const RETESTITEMS_NWORKER_THREADS = parse(Int,
 ReTestItems.runtests(
     BoundaryValueDiffEq; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
     nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS)
-=#
-@time "Test package" begin
-    ReTestItems.runtests("misc/")
-    ReTestItems.runtests("wrappers/")
-end
