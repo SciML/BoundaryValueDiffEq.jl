@@ -34,7 +34,14 @@ function bc!(residual, u, p, t)
     residual[2] = u(pi / 2)[1] - pi / 2
 end
 prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
-sol = solve(prob, MIRK4(), dt = 0.05)
+sol = solve(prob,
+    MIRK4(;
+        jac_alg = BVPJacobianAlgorithm(
+            bc_diffmode = AutoEnzyme(
+                mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated),
+            nonbc_diffmode = AutoEnzyme(
+                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))),
+    dt = 0.05)
 ```
 
 ## Available Solvers

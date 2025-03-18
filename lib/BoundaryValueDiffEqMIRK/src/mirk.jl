@@ -29,6 +29,18 @@
     kwargs
 end
 
+function recursive_unflatten(y::Vector{<:AbstractArray}, x::AbstractVector)
+    l = length(first(y))
+    dist_y = [x[(i + 1):(i + l)] for i in 0:l:(length(x) - l)]
+    return dist_y
+end
+
+function recursive_unflatten(y, x::AbstractVector)
+    l = length(first(y))
+    dist_y = [x[(i + 1):(i + l)] for i in 0:l:(length(x) - l)]
+    return dist_y
+end
+
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
@@ -212,40 +224,56 @@ end
 function __construct_nlproblem(
         cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
+    jac_alg = cache.alg.jac_alg
 
     eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
-        @closure (du, u, p) -> __mirk_loss_bc!(
-            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
+        @closure (du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh,
+            cache, __cache_trait(jac_alg.bc_diffmode))
     else
-        @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
+        @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh,
+            cache, __cache_trait(jac_alg.bc_diffmode))
     end
 
     loss_collocation = if iip
         @closure (du, u, p) -> __mirk_loss_collocation!(
-            du, u, p, cache.y, cache.mesh, cache.residual, cache)
+            du, u, p, cache.y, cache.mesh, cache.residual,
+            cache, __cache_trait(jac_alg.nonbc_diffmode))
     else
         @closure (u, p) -> __mirk_loss_collocation(
-            u, p, cache.y, cache.mesh, cache.residual, cache)
+            u, p, cache.y, cache.mesh, cache.residual,
+            cache, __cache_trait(jac_alg.nonbc_diffmode))
     end
 
     loss = if iip
-        @closure (du, u, p) -> __mirk_loss!(
-            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, eval_sol)
+        @closure (du, u, p) -> __mirk_loss!(du, u, p, cache.y, pt, cache.bc, cache.residual,
+            cache.mesh, cache, eval_sol, NoDiffCacheNeeded())#__cache_trait(jac_alg.diffmode))
     else
         @closure (u, p) -> __mirk_loss(
-            u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol)
+            u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol, NoDiffCacheNeeded())
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
 end
 
-@views function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC,
-        residual, mesh, cache, EvalSol) where {BC}
+@views function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
+        mesh, cache, EvalSol, trait::DiffCacheNeeded) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    Φ!(resids[2:end], cache, y_, u, p)
+    Φ!(resids[2:end], cache, y_, u, trait)
+    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
+    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
+    eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
+    recursive_flatten!(resid, resids)
+    return nothing
+end
+
+@views function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
+        mesh, cache, EvalSol, trait::NoDiffCacheNeeded) where {BC}
+    y_ = recursive_unflatten(y, u)
+    resids = [r for r in residual]
+    Φ!(resids[2:end], cache, y_, u, trait)
     EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
@@ -254,10 +282,10 @@ end
 end
 
 @views function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache, _) where {BC1, BC2}
+        residual, mesh, cache, _, trait::DiffCacheNeeded) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    Φ!(resids[2:end], cache, y_, u, p)
+    Φ!(resids[2:end], cache, y_, u, trait)
     soly_ = VectorOfArray(y_)
     resida = resids[1][1:prod(cache.resid_size[1])]
     residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
@@ -266,10 +294,33 @@ end
     return nothing
 end
 
-@views function __mirk_loss(
-        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, EvalSol) where {BC}
+@views function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
+        residual, mesh, cache, _, trait::NoDiffCacheNeeded) where {BC1, BC2}
+    y_ = recursive_unflatten(y, u)
+    resids = [r for r in residual]
+    Φ!(resids[2:end], cache, y_, u, trait)
+    soly_ = VectorOfArray(y_)
+    resida = resids[1][1:prod(cache.resid_size[1])]
+    residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
+    eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
+    recursive_flatten_twopoint!(resid, resids, cache.resid_size)
+    return nothing
+end
+
+@views function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh,
+        cache, EvalSol, trait::DiffCacheNeeded) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resid_co = Φ(cache, y_, u, p)
+    resid_co = Φ(cache, y_, u, trait)
+    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
+    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
+    resid_bc = eval_bc_residual(pt, bc, EvalSol, p, mesh)
+    return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
+end
+
+@views function __mirk_loss(u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache,
+        EvalSol, trait::NoDiffCacheNeeded) where {BC}
+    y_ = recursive_unflatten(y, u)
+    resid_co = Φ(cache, y_, u, trait)
     EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
     resid_bc = eval_bc_residual(pt, bc, EvalSol, p, mesh)
@@ -277,39 +328,82 @@ end
 end
 
 @views function __mirk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2},
-        mesh, cache, _) where {BC1, BC2}
+        mesh, cache, _, trait::DiffCacheNeeded) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    resid_co = Φ(cache, y_, u, p)
+    resid_co = Φ(cache, y_, u, trait)
     soly_ = VectorOfArray(y_)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 
-@views function __mirk_loss_bc!(
-        resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+@views function __mirk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2}, mesh,
+        cache, _, trait::NoDiffCacheNeeded) where {BC1, BC2}
+    y_ = recursive_unflatten(y, u)
+    resid_co = Φ(cache, y_, u, trait)
+    soly_ = VectorOfArray(y_)
+    resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
+    return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
+end
+
+@views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache,
+        trait::DiffCacheNeeded) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
     return nothing
 end
 
-@views function __mirk_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKCache) where {BC}
+@views function __mirk_loss_bc!(resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKCache,
+        trait::NoDiffCacheNeeded) where {BC}
+    y_ = recursive_unflatten(y, u)
+    soly_ = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
+    eval_bc_residual!(resid, pt, bc!, soly_, p, mesh)
+    return nothing
+end
+
+@views function __mirk_loss_bc(
+        u, p, pt, bc!::BC, y, mesh, cache::MIRKCache, trait::DiffCacheNeeded) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
 end
 
-@views function __mirk_loss_collocation!(resid, u, p, y, mesh, residual, cache)
+@views function __mirk_loss_bc(
+        u, p, pt, bc!::BC, y, mesh, cache::MIRKCache, trait::NoDiffCacheNeeded) where {BC}
+    y_ = recursive_unflatten(y, u)
+    soly_ = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
+    return eval_bc_residual(pt, bc!, soly_, p, mesh)
+end
+
+@views function __mirk_loss_collocation!(
+        resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded)
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual[2:end]]
-    Φ!(resids, cache, y_, u, p)
+    Φ!(resids, cache, y_, u, trait)
     recursive_flatten!(resid, resids)
     return nothing
 end
 
-@views function __mirk_loss_collocation(u, p, y, mesh, residual, cache)
+@views function __mirk_loss_collocation!(
+        resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded)
+    y_ = recursive_unflatten(y, u)
+    resids = [r for r in residual[2:end]]
+    Φ!(resids, cache, y_, u, trait)
+    recursive_flatten!(resid, resids)
+    return nothing
+end
+
+@views function __mirk_loss_collocation(
+        u, p, y, mesh, residual, cache, trait::DiffCacheNeeded)
     y_ = recursive_unflatten!(y, u)
-    resids = Φ(cache, y_, u, p)
+    resids = Φ(cache, y_, u, trait)
+    return mapreduce(vec, vcat, resids)
+end
+
+@views function __mirk_loss_collocation(
+        u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded)
+    y_ = recursive_unflatten(y, u)
+    resids = Φ(cache, y_, u, trait)
     return mapreduce(vec, vcat, resids)
 end
 
@@ -464,7 +558,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     jac_prototype = if iip
-        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p)) #zero(init_jacobian(diffcache))
+        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p))
     else
         DI.jacobian(loss, diffcache, diffmode, y, Constant(cache.p))
     end

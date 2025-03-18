@@ -128,7 +128,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     dt = t[ii + 1] - t[ii]
     τ = (tval - t[ii]) / dt
     w, _ = interp_weights(τ, alg)
-    __maybe_matmul!(z, k_discrete[ii].du[:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_discrete[ii][:, 1:stage], w[1:stage])
     z .= z .* dt .+ u[ii]
     return z
 end
