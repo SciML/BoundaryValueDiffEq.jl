@@ -14,8 +14,8 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, __similar, __vec, __vec_f, __vec_f!,
                                __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
-                               __internal_nlsolve_problem, MaybeDiffCache, __extract_mesh,
-                               __extract_u0, __has_initial_guess, __initial_guess_length,
+                               __internal_nlsolve_problem, __extract_mesh, __extract_u0,
+                               __has_initial_guess, __initial_guess_length,
                                __initial_guess_on_mesh, __flatten_initial_guess,
                                __build_solution, __Fix3, _sparse_like, get_dense_ad
 
