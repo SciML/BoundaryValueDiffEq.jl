@@ -2,7 +2,7 @@
 
 !!! note
     
-    We support ForwardDiff.jl, FiniteDiff.jl and PolyesterForwardDiff.jl(PolyesterForwardDiff only for collocation methods) via DifferentiationInterface.jl. Please refer to
+    We support ForwardDiff.jl, FiniteDiff.jl, Enzyme.jl, Mooncake.jl and PolyesterForwardDiff.jl(PolyesterForwardDiff only for collocation methods) via DifferentiationInterface.jl. Please refer to
     the [backends page](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/explanation/backends/)
     for more information.
 

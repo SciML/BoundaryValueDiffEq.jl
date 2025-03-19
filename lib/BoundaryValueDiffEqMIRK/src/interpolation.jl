@@ -82,7 +82,8 @@ end
 end
 
 function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
-        cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w,
+        i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     z .= zero(z)
@@ -93,9 +94,23 @@ function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
 
     return z
 end
+function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
+        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, w,
+        i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+    (; stage, k_discrete, k_interp) = cache
+    (; s_star) = cache.ITU
+    z .= zero(z)
+    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z .= z .* dt .+ id.u[i]
 
-@views function sum_stages!(z, z′, id::MIRKInterpolation, cache::MIRKCache,
-        w, w′, i::Int, dt = cache.mesh_dt[i])
+    return z
+end
+
+@views function sum_stages!(
+        z, z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        w, w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
@@ -105,6 +120,24 @@ end
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
+    __maybe_matmul!(
+        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+    z .= z .* dt[1] .+ id.u[i]
+
+    return z, z′
+end
+@views function sum_stages!(
+        z, z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w, w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+    (; stage, k_discrete, k_interp) = cache
+    (; s_star) = cache.ITU
+
+    z .= zero(z)
+    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z′ .= zero(z′)
+    __maybe_matmul!(z′, k_discrete[i][:, 1:stage], w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
     z .= z .* dt[1] .+ id.u[i]
@@ -128,7 +161,9 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     dt = t[ii + 1] - t[ii]
     τ = (tval - t[ii]) / dt
     w, _ = interp_weights(τ, alg)
-    __maybe_matmul!(z, k_discrete[ii][:, 1:stage], w[1:stage])
+    K = __needs_diffcache(alg.jac_alg) ? k_discrete[ii].du[:, 1:stage] :
+        k_discrete[ii][:, 1:stage]
+    __maybe_matmul!(z, K, w[1:stage])
     z .= z .* dt .+ u[ii]
     return z
 end
