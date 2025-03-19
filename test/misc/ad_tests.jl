@@ -15,6 +15,7 @@
         end
         u0 = [pi / 2, pi / 2]
         tspan = (0.0, pi / 2)
+        prob = BVProblem(simplependulum!, bc!, u0, tspan)
         jac_alg_forwarddiff = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff())
         jac_alg_enzyme = BVPJacobianAlgorithm(
@@ -26,7 +27,6 @@
             bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
             nonbc_diffmode = AutoEnzyme(
                 mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
-        prob = BVProblem(simplependulum!, bc!, u0, tspan)
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
             @test_nowarn sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
         end
