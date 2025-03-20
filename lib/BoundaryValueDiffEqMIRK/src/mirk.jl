@@ -343,7 +343,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         end
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = jac_alg.nonbc_diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode.coloring_algorithm))
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -452,7 +452,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             cache.M, N)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = jac_alg.diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode))
     else
         jac_alg.diffmode
     end
