@@ -226,7 +226,7 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_coll
     (; nlsolve, jac_alg) = cache.alg
     N = length(cache.mesh)
 
-    resid_prototype = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+    resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
         __similar(y, cache.M * 2 * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
 
@@ -258,6 +258,7 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_coll
             u, jac_prototype, jac_alg.diffmode, diffcache, loss, p)
     end
 
+    resid_prototype = copy(resid)
     nlf = NonlinearFunction{iip}(
         loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
     return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
