@@ -320,9 +320,11 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     lz = reduce(vcat, cache.z)
     resid_prototype = zero(lz)
     diffmode = if jac_alg.diffmode isa AutoSparse
-        AutoSparse(get_dense_ad(jac_alg.diffmode);
-            sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
-            coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode))
+        #AutoSparse(get_dense_ad(jac_alg.diffmode);
+        #    sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
+        #    coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode))
+        # Ascher collocation need more generalized collocation to support AutoSparse
+        get_dense_ad(jac_alg.diffmode)
     else
         jac_alg.diffmode
     end

@@ -7,8 +7,7 @@ using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
                                __concrete_nonlinearsolve_algorithm,
                                __internal_nlsolve_problem, BoundaryValueDiffEqAlgorithm,
                                __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
-                               __extract_mesh, get_dense_ad, __get_bcresid_prototype,
-                               __default_coloring_algorithm, __default_sparsity_detector
+                               __extract_mesh, get_dense_ad, __get_bcresid_prototype
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
