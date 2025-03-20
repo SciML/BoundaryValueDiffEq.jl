@@ -105,7 +105,7 @@ function __solve_nlproblem!(
             alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.diffmode))
+            coloring_algorithm = alg.jac_alg.diffmode.coloring_algorithm)
     else
         alg.jac_alg.diffmode
     end
@@ -157,7 +157,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
             alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.nonbc_diffmode))
+            coloring_algorithm = alg.jac_alg.nonbc_diffmode.coloring_algorithm)
     else
         alg.jac_alg.nonbc_diffmode
     end

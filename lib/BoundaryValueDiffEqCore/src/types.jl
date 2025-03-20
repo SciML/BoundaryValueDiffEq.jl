@@ -74,7 +74,7 @@ function concrete_jacobian_algorithm(
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointBVProblem ? __default_bc_sparse_ad :
-                   __default_sparse_ad)(u0) : jac_alg.bc_diffmode
+                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
@@ -86,7 +86,7 @@ function concrete_jacobian_algorithm(
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
                   (prob_type isa TwoPointSecondOrderBVProblem ? __default_bc_sparse_ad :
-                   __default_sparse_ad)(u0) : jac_alg.bc_diffmode
+                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
 
