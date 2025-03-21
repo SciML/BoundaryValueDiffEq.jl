@@ -119,6 +119,13 @@ end
         coloring_algorithm = GreedyColoringAlgorithm())
 end
 
+@inline __default_coloring_algorithm(diffmode::AutoSparse) = isnothing(diffmode) ?
+                                                             GreedyColoringAlgorithm() :
+                                                             diffmode.coloring_algorithm
+@inline __default_sparsity_detector(diffmode::AutoSparse) = isnothing(diffmode) ?
+                                                            TracerLocalSparsityDetector() :
+                                                            diffmode.sparsity_detector
+
 @inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
     return isbitstype(T) ? __default_nonsparse_ad(T) : __default_nonsparse_ad(first(x))
 end

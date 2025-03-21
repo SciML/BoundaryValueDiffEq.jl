@@ -310,6 +310,7 @@ end
 
 function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     (; alg, pt) = cache
+    (; jac_alg) = alg
     loss = if iip
         @closure (res, z, p) -> @views Φ!(cache, z, res, pt)
     else
@@ -318,14 +319,14 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
 
     lz = reduce(vcat, cache.z)
     resid_prototype = zero(lz)
-    diffmode = if alg.jac_alg.diffmode isa AutoSparse
-        #AutoSparse(get_dense_ad(alg.jac_alg.diffmode);
-        #    sparsity_detector = SparseConnectivityTracer.TracerSparsityDetector(),
-        #    coloring_algorithm = GreedyColoringAlgorithm(LargestFirst()))
+    diffmode = if jac_alg.diffmode isa AutoSparse
+        #AutoSparse(get_dense_ad(jac_alg.diffmode);
+        #    sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
+        #    coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode))
         # Ascher collocation need more generalized collocation to support AutoSparse
-        get_dense_ad(alg.jac_alg.diffmode)
+        get_dense_ad(jac_alg.diffmode)
     else
-        alg.jac_alg.diffmode
+        jac_alg.diffmode
     end
 
     jac_cache = if iip

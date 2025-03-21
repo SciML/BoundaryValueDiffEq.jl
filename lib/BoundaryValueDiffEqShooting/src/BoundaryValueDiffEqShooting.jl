@@ -11,6 +11,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                concrete_jacobian_algorithm, eval_bc_residual,
                                eval_bc_residual!, get_tmp, __maybe_matmul!,
                                __extract_problem_details, __initial_guess,
+                               __default_coloring_algorithm, __default_sparsity_detector,
                                __maybe_allocate_diffcache, __get_bcresid_prototype,
                                __similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
                                __materialize_jacobian_algorithm, __default_nonsparse_ad,

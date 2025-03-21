@@ -126,6 +126,12 @@ end
 function eval_bc_residual!(
         resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t) where {BC}
     M = length(sol[1])
+    bc!(resid, dsol, sol, p, t)
+end
+
+function eval_bc_residual!(resid::AbstractArray{<:AbstractArray},
+        ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t) where {BC}
+    M = length(sol[1])
     res_bc = vcat(resid[1], resid[2])
     bc!(res_bc, dsol, sol, p, t)
     copyto!(resid[1], res_bc[1:M])

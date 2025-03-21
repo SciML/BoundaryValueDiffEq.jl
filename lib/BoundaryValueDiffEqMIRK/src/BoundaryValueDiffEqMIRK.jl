@@ -20,7 +20,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __build_solution, __Fix3, get_dense_ad, _sparse_like,
                                AbstractErrorControl, DefectControl, GlobalErrorControl,
                                SequentialErrorControl, HybridErrorControl, HOErrorControl,
-                               __use_both_error_control
+                               __use_both_error_control, __default_coloring_algorithm
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
