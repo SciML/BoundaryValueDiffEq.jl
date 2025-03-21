@@ -305,7 +305,7 @@ function __multiple_shooting_mpoint_jacobian!(
     J_bc = @view(J[1:M, :])
     J_c = @view(J[(M + 1):end, :])
 
-    DI.jacobian!(ode_fn, resid_nodes, J_c, ode_jac_cache, nonbc_diffmode, us)
+    DI.jacobian!(ode_fn, resid_nodes.du, J_c, ode_jac_cache, nonbc_diffmode, us)
     DI.jacobian!(bc_fn, resid_bc, J_bc, bc_jac_cache, bc_diffmode, us)
 
     return nothing
