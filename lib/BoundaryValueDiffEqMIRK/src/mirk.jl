@@ -213,7 +213,7 @@ end
 function __construct_nlproblem(
         cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
-    jac_alg = cache.alg.jac_alg
+    (; jac_alg) = cache.alg
 
     eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
@@ -261,12 +261,11 @@ end
 @views function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
         mesh, cache, EvalSol, trait::NoDiffCacheNeeded) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait)
+    Φ!(residual[2:end], cache, y_, u, trait)
     EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
-    eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
-    recursive_flatten!(resid, resids)
+    eval_bc_residual!(residual[1], pt, bc!, EvalSol, p, mesh)
+    recursive_flatten!(resid, residual)
     return nothing
 end
 
@@ -286,13 +285,12 @@ end
 @views function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
         residual, mesh, cache, _, trait::NoDiffCacheNeeded) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait)
+    Φ!(residual[2:end], cache, y_, u, trait)
     soly_ = VectorOfArray(y_)
-    resida = resids[1][1:prod(cache.resid_size[1])]
-    residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
+    resida = residual[1][1:prod(cache.resid_size[1])]
+    residb = residual[1][(prod(cache.resid_size[1]) + 1):end]
     eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
-    recursive_flatten_twopoint!(resid, resids, cache.resid_size)
+    recursive_flatten_twopoint!(resid, residual, cache.resid_size)
     return nothing
 end
 
@@ -384,7 +382,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         end
         AutoSparse(get_dense_ad(jac_alg.nonbc_diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = jac_alg.nonbc_diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode))
     else
         J_full_band = nothing
         jac_alg.nonbc_diffmode
@@ -493,7 +491,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
             cache.M, N)
         AutoSparse(get_dense_ad(jac_alg.diffmode);
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = jac_alg.diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode))
     else
         jac_alg.diffmode
     end

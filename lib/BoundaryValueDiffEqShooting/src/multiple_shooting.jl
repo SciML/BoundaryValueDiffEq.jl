@@ -105,7 +105,7 @@ function __solve_nlproblem!(
             alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = alg.jac_alg.diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.diffmode))
     else
         alg.jac_alg.diffmode
     end
@@ -157,7 +157,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
             alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = alg.jac_alg.nonbc_diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.nonbc_diffmode))
     else
         alg.jac_alg.nonbc_diffmode
     end
@@ -169,6 +169,11 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     # BC Part
     (; bc_diffmode) = alg.jac_alg
+    bc_diffmode = if bc_diffmode isa AutoSparse
+        get_dense_ad(alg.jac_alg.bc_diffmode)
+    else
+        bc_diffmode
+    end
     bc_jac_cache = DI.prepare_jacobian(
         nothing, similar(bcresid_prototype), bc_diffmode, u_at_nodes)
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(
