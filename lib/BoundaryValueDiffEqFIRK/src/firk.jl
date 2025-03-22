@@ -1,4 +1,4 @@
-@concrete struct FIRKCacheNested{iip, T}
+@concrete struct FIRKCacheNested{iip, T, diffcache}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -30,7 +30,7 @@
 end
 
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
-@concrete struct FIRKCacheExpand{iip, T}
+@concrete struct FIRKCacheExpand{iip, T, diffcache}
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -97,6 +97,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
+    diffcache = __cache_trait(alg.jac_alg)
 
     t₀, t₁ = prob.tspan
     ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
@@ -175,7 +176,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
             (K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
     end
 
-    return FIRKCacheNested{iip, T}(
+    return FIRKCacheNested{iip, T, typeof(diffcache)}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob,
@@ -189,6 +190,7 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
+    diffcache = __cache_trait(alg.jac_alg)
 
     iip = isinplace(prob)
 
@@ -257,7 +259,7 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    return FIRKCacheExpand{iip, T}(
+    return FIRKCacheExpand{iip, T, typeof(diffcache)}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual,
         fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, (; abstol, dt, adaptive, kwargs...))

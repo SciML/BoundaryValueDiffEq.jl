@@ -43,7 +43,7 @@ end
 end
 
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false},
-        y, u, p, mesh, mesh_dt, stage::Int)
+        y, u, p, mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded)
     (; c, a, b) = TU
     tmp1 = similar(fᵢ_cache)
     K = similar(k_discrete[1])

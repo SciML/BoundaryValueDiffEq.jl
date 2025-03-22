@@ -281,7 +281,8 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
+@views function defect_estimate!(cache::FIRKCacheExpand{
+        iip, T, DiffCacheNeeded}) where {iip, T}
     (; f, M, stage, mesh, mesh_dt, defect, ITU) = cache
     (; q_coeff, τ_star) = ITU
 
@@ -324,7 +325,52 @@ an interpolant
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::FIRKCacheNested{iip, T}) where {iip, T}
+@views function defect_estimate!(cache::FIRKCacheExpand{
+        iip, T, NoDiffCacheNeeded}) where {iip, T}
+    (; f, M, stage, mesh, mesh_dt, defect, ITU) = cache
+    (; q_coeff, τ_star) = ITU
+
+    ctr = 1
+    K = zeros(eltype(cache.y[1]), M, stage)
+    for i in 1:(length(mesh) - 1)
+        h = mesh_dt[i]
+
+        # Load interpolation residual
+        for j in 1:stage
+            K[:, j] = cache.y[ctr + j]
+        end
+
+        # Defect estimate from q(x) at y_i + τ* * h
+        yᵢ₁ = copy(cache.y[ctr])
+        yᵢ₂ = copy(yᵢ₁)
+        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, K)
+        if iip
+            f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
+        else
+            yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
+        end
+        yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+        est₁ = maximum(abs, yᵢ₁)
+
+        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, K)
+        # Defect estimate from q(x) at y_i + (1-τ*) * h
+        if iip
+            f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+        else
+            yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+        end
+        yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+        est₂ = maximum(abs, yᵢ₂)
+
+        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+        ctr += stage + 1 # Advance one step
+    end
+
+    return maximum(Base.Fix1(maximum, abs), defect)
+end
+
+@views function defect_estimate!(cache::FIRKCacheNested{
+        iip, T, DiffCacheNeeded}) where {iip, T}
     (; f, mesh, mesh_dt, defect, ITU, nest_prob, nest_tol) = cache
     (; q_coeff, τ_star) = ITU
 
@@ -337,6 +383,58 @@ end
         yᵢ₂ = copy(yᵢ₁)
 
         K = copy(cache.k_discrete[i].du)
+
+        if minimum(abs.(K)) < 1e-2
+            K = fill(one(eltype(K)), size(K))
+        end
+
+        nestprob_p[1] = mesh[i]
+        nestprob_p[2] = mesh_dt[i]
+        nestprob_p[3:end] .= yᵢ₁
+
+        _nestprob = remake(nest_prob, p = nestprob_p)
+        nest_sol = __solve(_nestprob, nlsolve_alg; abstol = nest_tol)
+
+        # Defect estimate from q(x) at y_i + τ* * h
+        z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_sol.u)
+        if iip
+            f(yᵢ₁, z₁, cache.p, mesh[i] + τ_star * h)
+        else
+            yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
+        end
+        yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+        est₁ = maximum(abs, yᵢ₁)
+
+        # Defect estimate from q(x) at y_i + (1-τ*) * h
+        z₂, z₂′ = eval_q(yᵢ₂, (T(1) - τ_star), h, q_coeff, nest_sol.u)
+        if iip
+            f(yᵢ₂, z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+        else
+            yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
+        end
+        yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+        est₂ = maximum(abs, yᵢ₂)
+
+        defect.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+    end
+
+    return maximum(Base.Fix1(maximum, abs), defect)
+end
+
+@views function defect_estimate!(cache::FIRKCacheNested{
+        iip, T, NoDiffCacheNeeded}) where {iip, T}
+    (; f, mesh, mesh_dt, defect, ITU, nest_prob, nest_tol) = cache
+    (; q_coeff, τ_star) = ITU
+
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
+    nestprob_p = zeros(T, cache.M + 2)
+
+    for i in 1:(length(mesh) - 1)
+        h = mesh_dt[i]
+        yᵢ₁ = copy(cache.y[i])
+        yᵢ₂ = copy(yᵢ₁)
+
+        K = copy(cache.k_discrete[i])
 
         if minimum(abs.(K)) < 1e-2
             K = fill(one(eltype(K)), size(K))
