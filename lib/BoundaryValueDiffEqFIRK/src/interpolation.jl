@@ -139,7 +139,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
     # Quick handle for the case where tval is at the boundary
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
-    K = __similar(first(u), length(first(u)), stage)
+    K = safe_similar(first(u), length(first(u)), stage)
     j = interval(t, tval)
     ctr_y = (j - 1) * (stage + 1) + 1
 

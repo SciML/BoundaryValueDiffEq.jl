@@ -17,7 +17,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
 
-    K = __similar(cache.y[1].du, M, stage)
+    K = safe_similar(cache.y[1].du, M, stage)
 
     ctr_y = (j - 1) * (stage + 1) + 1
 
