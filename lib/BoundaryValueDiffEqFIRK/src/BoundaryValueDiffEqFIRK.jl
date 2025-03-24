@@ -10,7 +10,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual,
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
-                               __extract_problem_details, __initial_guess,
+                               __extract_problem_details, __initial_guess, nodual_value,
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, __similar, __vec, __vec_f, __vec_f!,
                                __vec_bc, __vec_bc!, recursive_flatten_twopoint!,

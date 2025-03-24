@@ -504,3 +504,11 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     V = __ones_like(x, length(I))
     return sparse(I′, J′, V, m, n)
 end
+
+nodual_value(x) = x
+nodual_value(x::ForwardDiff.Dual) = ForwardDiff.value(x)
+nodual_value(x::AbstractArray{<:ForwardDiff.Dual}) = map(ForwardDiff.value, x)
+nodual_value(x::SparseConnectivityTracer.Dual) = SparseConnectivityTracer.primal(x)
+function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
+    map(SparseConnectivityTracer.primal, x)
+end
