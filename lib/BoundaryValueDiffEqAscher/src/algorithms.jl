@@ -54,7 +54,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
     end
 end
 
-function concretize_jacobian_algorithm(alg::AbstractAscher, prob)
-    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    return alg
+function BoundaryValueDiffEqCore.concrete_jacobian_algorithm(
+        jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg::AbstractAscher)
+    return BVPJacobianAlgorithm(__default_nonsparse_ad(prob.u0))
 end

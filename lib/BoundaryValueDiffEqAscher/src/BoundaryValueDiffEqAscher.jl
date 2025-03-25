@@ -4,7 +4,7 @@ using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
 using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, __extract_problem_details,
                                concrete_jacobian_algorithm, __Fix3,
-                               __concrete_nonlinearsolve_algorithm,
+                               __concrete_nonlinearsolve_algorithm, __default_nonsparse_ad,
                                __internal_nlsolve_problem, BoundaryValueDiffEqAlgorithm,
                                __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
                                __extract_mesh, get_dense_ad, __get_bcresid_prototype
