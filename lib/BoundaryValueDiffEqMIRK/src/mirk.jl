@@ -186,7 +186,6 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
             if info == ReturnCode.Success
                 (length(mesh) < length(cache.mesh)) &&
                     __resize!(cache.y₀, length(cache.mesh), cache.M)
-                #__resize!(cache.y₀, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end
