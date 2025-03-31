@@ -118,7 +118,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
     stage = alg_stage(alg)
 
     k_discrete = [__maybe_allocate_diffcache(
-                      __similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
+                      safe_similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -132,7 +132,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
         nothing
     end
 
-    defect = VectorOfArray([__similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig])
+    defect = VectorOfArray([safe_similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
@@ -214,7 +214,7 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
     k_discrete = [__maybe_allocate_diffcache(
-                      __similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig] # Runtime dispatch
+                      safe_similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig] # Runtime dispatch
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -442,7 +442,7 @@ function __construct_nlproblem(
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
+    resid_collocation = safe_similar(y, cache.M * (N - 1) * (stage + 1))
 
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
@@ -523,7 +523,7 @@ function __construct_nlproblem(
     (; stage) = cache
     N = length(cache.mesh)
 
-    resid_collocation = __similar(y, cache.M * (N - 1) * (stage + 1))
+    resid_collocation = safe_similar(y, cache.M * (N - 1) * (stage + 1))
 
     resid = vcat(
         @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]), resid_collocation,
@@ -582,7 +582,7 @@ function __construct_nlproblem(
     N = length(cache.mesh)
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = __similar(y, cache.M * (N - 1))
+    resid_collocation = safe_similar(y, cache.M * (N - 1))
 
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
@@ -660,7 +660,7 @@ function __construct_nlproblem(
     N = length(cache.mesh)
 
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-        __similar(y, cache.M * (N - 1)),
+        safe_similar(y, cache.M * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
 
     diffmode = if jac_alg.diffmode isa AutoSparse

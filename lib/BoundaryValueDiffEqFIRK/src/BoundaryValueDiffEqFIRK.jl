@@ -16,7 +16,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
                                __internal_nlsolve_problem, __extract_mesh, __extract_u0,
                                __default_coloring_algorithm, __maybe_allocate_diffcache,
-                               __restructure_sol, __get_bcresid_prototype, __similar, __vec,
+                               __restructure_sol, __get_bcresid_prototype, safe_similar, __vec,
                                __vec_f, __vec_f!, __vec_bc, __vec_bc!, __cache_trait,
                                recursive_flatten_twopoint!, __internal_nlsolve_problem,
                                __extract_mesh, __extract_u0, DiffCacheNeeded,

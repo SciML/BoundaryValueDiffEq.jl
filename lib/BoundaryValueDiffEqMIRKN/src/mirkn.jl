@@ -47,7 +47,7 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
     stage = alg_stage(alg)
     bcresid_prototype = zero(vcat(X, X))
     k_discrete = [__maybe_allocate_diffcache(
-                      __similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
+                      safe_similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
 
     residual = if iip
         __alloc.(copy.(@view(y₀.u[1:end])))
@@ -160,7 +160,7 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_coll
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = __similar(y, cache.M * (2 * N - 2))
+    resid_collocation = safe_similar(y, cache.M * (2 * N - 2))
 
     bc_diffmode = if jac_alg.bc_diffmode isa AutoSparse
         AutoSparse(get_dense_ad(jac_alg.bc_diffmode);
@@ -227,7 +227,7 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_coll
     N = length(cache.mesh)
 
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-        __similar(y, cache.M * 2 * (N - 1)),
+        safe_similar(y, cache.M * 2 * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
 
     diffmode = if jac_alg.diffmode isa AutoSparse

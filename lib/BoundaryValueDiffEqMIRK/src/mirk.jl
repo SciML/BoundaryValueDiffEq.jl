@@ -56,7 +56,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     stage = alg_stage(alg)
 
     k_discrete = [__maybe_allocate_diffcache(
-                      __similar(X, N, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
+                      safe_similar(X, N, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
     k_interp = VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -359,7 +359,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
-    resid_collocation = __similar(y, cache.M * (N - 1))
+    resid_collocation = safe_similar(y, cache.M * (N - 1))
 
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
@@ -478,7 +478,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     N = length(cache.mesh)
 
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-        __similar(y, cache.M * (N - 1)),
+        safe_similar(y, cache.M * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
     L = length(cache.bcresid_prototype)
 
