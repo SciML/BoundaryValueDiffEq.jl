@@ -271,13 +271,14 @@ function __get_bcresid_prototype(::StandardSecondOrderBVProblem, prob::BVProblem
     return prototype, size(prototype)
 end
 
-@inline function __similar(x, args...)
+@inline function safe_similar(x::AbstractArray{<:T}, args...) where {T <: Number}
     y = similar(x, args...)
-    return zero(y)
+    fill!(y, T(0))
+    return y
 end
 
 @inline function __fill_like(v, x, args...)
-    y = __similar(x, args...)
+    y = similar(x, args...)
     fill!(y, v)
     return y
 end

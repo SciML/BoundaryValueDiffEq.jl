@@ -13,7 +13,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __extract_problem_details, __initial_guess,
                                __default_coloring_algorithm, __default_sparsity_detector,
                                __maybe_allocate_diffcache, __get_bcresid_prototype,
-                               __similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+                               safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
                                __materialize_jacobian_algorithm, __default_nonsparse_ad,
                                recursive_flatten_twopoint!, __internal_nlsolve_problem,
                                NoDiffCacheNeeded, DiffCacheNeeded, __extract_mesh,
