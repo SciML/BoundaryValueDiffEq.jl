@@ -132,3 +132,15 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     z .= z .* dt .+ u[ii]
     return z
 end
+
+function (s::EvalSol{C})(tval::Number, T::Type{Val{1}}) where {C <: MIRKCache}
+    (; t, u, cache) = s
+    (; alg, stage, k_discrete, mesh_dt) = cache
+    z′ = zero(last(u))
+    ii = interval(t, tval)
+    dt = mesh_dt[ii]
+    τ = (tval - t[ii]) / dt
+    _, w′ = interp_weights(τ, alg)
+    __maybe_matmul!(z′, k_discrete[ii].du[:, 1:stage], w′[1:stage])
+    return z′
+end
