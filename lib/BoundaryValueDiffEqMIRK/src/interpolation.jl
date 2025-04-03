@@ -84,7 +84,7 @@ end
 function sum_stages!(z::AbstractArray, id::MIRKInterpolation, cache::MIRKCache, w, i::Int)
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
-    dt = mesh_dt[i]
+    dt = cache.mesh_dt[i]
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
