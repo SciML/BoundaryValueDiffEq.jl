@@ -81,10 +81,10 @@ end
     sum_stages!(z, dz, id, cache, w, w′, i)
 end
 
-function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
-        cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(z::AbstractArray, id::MIRKInterpolation, cache::MIRKCache, w, i::Int)
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
+    dt = mesh_dt[i]
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
@@ -94,11 +94,10 @@ function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
     return z
 end
 
-@views function sum_stages!(z, z′, id::MIRKInterpolation, cache::MIRKCache,
-        w, w′, i::Int, dt = cache.mesh_dt[i])
+@views function sum_stages!(z, z′, id::MIRKInterpolation, cache::MIRKCache, w, w′, i::Int)
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
-
+    dt = cache.mesh_dt[i]
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(

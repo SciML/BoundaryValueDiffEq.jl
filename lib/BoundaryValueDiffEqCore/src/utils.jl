@@ -1,5 +1,5 @@
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
-recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
+recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.du), x)
 
 function recursive_flatten(x::Vector{<:AbstractArray})
     y = zero(first(x), recursive_length(x))
@@ -17,7 +17,7 @@ end
 end
 @views function recursive_flatten_twopoint!(
         y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
-    x_, xiter = Iterators.peel(x)
+    x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
     for xᵢ in xiter
@@ -70,6 +70,15 @@ end
         @inbounds @. z = α * A[:, j] * b[j] + β * z
     end
     return z
+end
+
+"""
+    interval(mesh, t)
+
+Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
+"""
+function interval(mesh, t)
+    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
 end
 
 ## Easier to dispatch
@@ -169,6 +178,7 @@ function __resize!(x::AbstractVector{<:AbstractArray}, n, M)
 end
 
 __resize!(::Nothing, n, _) = nothing
+__resize!(::Nothing, n, _, _) = nothing
 
 function __resize!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     N = n - length(x)
@@ -284,6 +294,7 @@ end
 end
 
 @inline __ones_like(args...) = __fill_like(1, args...)
+@inline __zeros_like(args...) = __fill_like(0, args...)
 
 @inline __safe_vec(x) = vec(x)
 @inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)

@@ -26,7 +26,7 @@ end
 Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
-        dt = 0.0, adaptive = false, kwargs...)
+        dt = 0.0, abstol = 1e-3, adaptive = false, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     t₀, t₁ = prob.tspan
@@ -85,16 +85,16 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKNCache{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete, y,
-        y₀, residual, fᵢ_cache, fᵢ₂_cache, resid_size, (; dt, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
+        alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual,
+        fᵢ_cache, fᵢ₂_cache, resid_size, (; abstol, dt, adaptive, kwargs...))
 end
 
-function __split_mirkn_kwargs(; dt, kwargs...)
-    return ((dt), (; kwargs...))
+function __split_mirkn_kwargs(; abstol, dt, adaptive = false, kwargs...)
+    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
-    (_), kwargs = __split_mirkn_kwargs(; cache.kwargs...)
+    (abstol, adaptive, dt), kwargs = __split_mirkn_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     sol_nlprob, info = __perform_mirkn_iteration(cache; kwargs...)
@@ -119,12 +119,11 @@ end
 function __construct_nlproblem(
         cache::MIRKNCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
+    L = length(cache.mesh)
 
-    eval_sol = EvalSol(
-        __restructure_sol(y₀.u[1:length(cache.mesh)], cache.in_size), cache.mesh, cache)
+    eval_sol = EvalSol(__restructure_sol(y₀.u[1:L], cache.in_size), cache.mesh, cache)
     eval_dsol = EvalSol(
-        __restructure_sol(y₀.u[(length(cache.mesh) + 1):end], cache.in_size),
-        cache.mesh, cache)
+        __restructure_sol(y₀.u[(L + 1):end], cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
         @closure (du, u, p) -> __mirkn_loss_bc!(
@@ -355,9 +354,8 @@ end
         residual, mesh, cache::MIRKNCache, _, _) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    soly_ = VectorOfArray(y_)
     Φ!(resids[3:end], cache, y_, u, p)
-    eval_bc_residual!(resids[1:2], pt, bc!, soly_, p, mesh)
+    eval_bc_residual!(resids[1:2], pt, bc!, y_, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -365,8 +363,7 @@ end
 @views function __mirkn_loss(u, p, y, pt::TwoPointSecondOrderBVProblem,
         bc!::BC, mesh, cache::MIRKNCache, _, _) where {BC}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
     resid_co = Φ(cache, y_, u, p)
-    resid_bc = eval_bc_residual(pt, bc!, soly_, p, mesh)
+    resid_bc = eval_bc_residual(pt, bc!, y_, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end

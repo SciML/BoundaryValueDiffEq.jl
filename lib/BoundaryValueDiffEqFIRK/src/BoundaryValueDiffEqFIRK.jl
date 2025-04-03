@@ -5,7 +5,7 @@ using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_nonlinearsolve_algorithm, diff!,
+                               __concrete_nonlinearsolve_algorithm, diff!, interval,
                                __FastShortcutBVPCompatibleNonlinearPolyalg,
                                __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual,

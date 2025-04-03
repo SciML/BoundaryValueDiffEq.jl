@@ -415,6 +415,7 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
             u, p, cache.y, cache.mesh, cache.residual, cache)
     end
 
+    println("y: ", typeof(cache.y))
     loss = if iip
         @closure (du, u, p) -> __firk_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, eval_sol)
@@ -707,14 +708,13 @@ end
     return nothing
 end
 
-@views function __firk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache, _) where {BC1, BC2}
+@views function __firk_loss!(resid, u, p, y::AbstractVector, pt::TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
     resids = [get_tmp(r, u) for r in residual]
     resida = resids[1][1:prod(cache.resid_size[1])]
     residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
-    eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
+    eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
     Φ!(resids[2:end], cache, y_, u, p)
     recursive_flatten_twopoint!(resid, resids, cache.resid_size)
     return nothing
@@ -729,11 +729,10 @@ end
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 
-@views function __firk_loss(u, p, y, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2},
-        mesh, cache, _) where {BC1, BC2}
+@views function __firk_loss(u, p, y::AbstractVector, pt::TwoPointBVProblem,
+        bc::Tuple{BC1, BC2}, mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
-    resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
+    resid_bca, resid_bcb = eval_bc_residual(pt, bc, y_, p, mesh)
     resid_co = Φ(cache, y_, u, p)
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end

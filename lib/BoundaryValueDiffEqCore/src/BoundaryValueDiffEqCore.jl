@@ -33,8 +33,8 @@ include("calc_errors.jl")
 
 function SciMLBase.__solve(
         prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
-    cache = init(prob, alg, args...; kwargs...)
-    return solve!(cache)
+    cache = SciMLBase.__init(prob, alg, args...; kwargs...)
+    return SciMLBase.solve!(cache)
 end
 
 export BVPJacobianAlgorithm
