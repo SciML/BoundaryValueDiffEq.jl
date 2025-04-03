@@ -24,11 +24,11 @@ using SparseMatrixColorings: GreedyColoringAlgorithm
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 
 include("types.jl")
+include("solution_utils.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
-include("misc_utils.jl")
 include("calc_errors.jl")
 
 function SciMLBase.__solve(
