@@ -415,7 +415,6 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
             u, p, cache.y, cache.mesh, cache.residual, cache)
     end
 
-    println("y: ", typeof(cache.y))
     loss = if iip
         @closure (du, u, p) -> __firk_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, eval_sol)
