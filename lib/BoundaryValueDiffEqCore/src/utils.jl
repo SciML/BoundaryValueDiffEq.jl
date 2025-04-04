@@ -94,8 +94,8 @@ function eval_bc_residual(
 end
 function eval_bc_residual(
         ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t) where {BC}
-    ua = sol(first(t))
-    ub = sol(last(t))
+    ua = first(sol)
+    ub = last(sol)
     resida = bca(ua, p)
     residb = bcb(ub, p)
     return (resida, residb)
@@ -115,8 +115,8 @@ eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, 
 end
 @views function eval_bc_residual!(
         resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol::AbstractArray, p, t) where {BC}
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
-    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
+    ua = first(sol)
+    ub = last(sol)
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
@@ -187,6 +187,16 @@ function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::
     ub = sol[:, L]
     dua = sol[:, L + 1]
     dub = sol[:, end]
+    bca!(resid[1], dua, ua, p)
+    bcb!(resid[2], dub, ub, p)
+end
+function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem,
+        (bca!, bcb!)::BC, sol::AbstractArray, p, t) where {BC}
+    L = length(t)
+    ua = first(sol)
+    ub = sol[L]
+    dua = sol[L + 1]
+    dub = last(sol)
     bca!(resid[1], dua, ua, p)
     bcb!(resid[2], dub, ub, p)
 end
