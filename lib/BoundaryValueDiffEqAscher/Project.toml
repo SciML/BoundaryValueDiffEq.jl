@@ -56,6 +56,9 @@ StaticArrays = "1.9.8"
 Test = "1.10"
 julia = "1.10"
 
+[sources]
+BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
+
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"

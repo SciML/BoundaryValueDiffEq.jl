@@ -18,6 +18,14 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 
+[sources]
+BoundaryValueDiffEqAscher = {path = "lib/BoundaryValueDiffEqAscher"}
+BoundaryValueDiffEqCore = {path = "lib/BoundaryValueDiffEqCore"}
+BoundaryValueDiffEqFIRK = {path = "lib/BoundaryValueDiffEqFIRK"}
+BoundaryValueDiffEqMIRK = {path = "lib/BoundaryValueDiffEqMIRK"}
+BoundaryValueDiffEqMIRKN = {path = "lib/BoundaryValueDiffEqMIRKN"}
+BoundaryValueDiffEqShooting = {path = "lib/BoundaryValueDiffEqShooting"}
+
 [weakdeps]
 ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 
