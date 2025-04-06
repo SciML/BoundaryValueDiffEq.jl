@@ -31,7 +31,7 @@ jobs:
         version:
           - "1"
           - "lts"
-          - "pre"
+          #- "pre"
         group:
           - EXPANDED
           - NESTED

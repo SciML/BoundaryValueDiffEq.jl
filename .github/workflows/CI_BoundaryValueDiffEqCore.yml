@@ -30,7 +30,7 @@ jobs:
         version:
           - "1"
           - "lts"
-          - "pre"
+          #- "pre"
         group:
           - core
         os:
