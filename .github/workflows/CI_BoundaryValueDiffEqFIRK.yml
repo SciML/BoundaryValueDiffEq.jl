@@ -31,7 +31,7 @@ jobs:
         version:
           - "1"
           - "lts"
-          - "pre"
+          #- "pre"
         group:
           - EXPANDED
           - NESTED
@@ -101,7 +101,7 @@ jobs:
           Pkg.Registry.update()
           # Install packages present in subdirectories
           dev_pks = Pkg.PackageSpec[]
-          for path in ("lib/BoundaryValueDiffEqCore", )
+          for path in ("lib/BoundaryValueDiffEqCore",)
               push!(dev_pks, Pkg.PackageSpec(; path))
           end
           Pkg.develop(dev_pks)

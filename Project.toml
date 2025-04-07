@@ -18,6 +18,14 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 
+[sources]
+BoundaryValueDiffEqAscher = {path = "lib/BoundaryValueDiffEqAscher"}
+BoundaryValueDiffEqCore = {path = "lib/BoundaryValueDiffEqCore"}
+BoundaryValueDiffEqFIRK = {path = "lib/BoundaryValueDiffEqFIRK"}
+BoundaryValueDiffEqMIRK = {path = "lib/BoundaryValueDiffEqMIRK"}
+BoundaryValueDiffEqMIRKN = {path = "lib/BoundaryValueDiffEqMIRKN"}
+BoundaryValueDiffEqShooting = {path = "lib/BoundaryValueDiffEqShooting"}
+
 [weakdeps]
 ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 
@@ -37,10 +45,10 @@ BoundaryValueDiffEqShooting = "1"
 DiffEqBase = "6.161.0"
 DiffEqDevTools = "2.45"
 FastClosures = "0.3.2"
-ForwardDiff = "0.10.38"
+ForwardDiff = "0.10.38, 1"
 Hwloc = "3.3"
 InteractiveUtils = "<0.0.1, 1"
-JET = "0.9.12"
+JET = "0.9"
 LinearAlgebra = "1.10"
 LinearSolve = "3.7"
 NonlinearSolveFirstOrder = "1.3"

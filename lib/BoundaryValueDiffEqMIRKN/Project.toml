@@ -25,6 +25,9 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[sources]
+BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
+
 [compat]
 ADTypes = "1.11"
 Aqua = "0.8.7"
@@ -37,10 +40,10 @@ DiffEqDevTools = "2.44"
 DifferentiationInterface = "0.6.42"
 FastAlmostBandedMatrices = "0.1.4"
 FastClosures = "0.3.2"
-ForwardDiff = "0.10.38"
+ForwardDiff = "0.10.38, 1"
 Hwloc = "3"
 InteractiveUtils = "<0.0.1, 1"
-JET = "0.9.12"
+JET = "0.9"
 LinearAlgebra = "1.10"
 LinearSolve = "2.21, 3"
 OrdinaryDiffEq = "6.90.1"

@@ -39,7 +39,7 @@ jobs:
         version:
           - "1"
           - "lts"
-          - "pre"
+          #- "pre"
         os:
           - ubuntu-latest
     steps:
