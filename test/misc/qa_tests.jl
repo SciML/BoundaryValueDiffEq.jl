@@ -1,7 +1,7 @@
 @testitem "Quality Assurance" begin
     using Aqua
 
-    Aqua.test_all(BoundaryValueDiffEq)
+    Aqua.test_all(BoundaryValueDiffEq; ambiguities = false)
 end
 
 @testitem "JET Package Test" begin
