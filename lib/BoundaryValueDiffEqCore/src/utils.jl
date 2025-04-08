@@ -137,6 +137,14 @@ end
     bcb!(resid[2], ub, p)
     return resid
 end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::SciMLBase.ODESolution, p, t) where {BC}
+    ua = first(sol)
+    ub = last(sol)
+    bca!(resid[1], ua, p)
+    bcb!(resid[2], ub, p)
+    return resid
+end
 
 function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, t) where {BC}
     res_bc = bc(dy, y, p, t)
