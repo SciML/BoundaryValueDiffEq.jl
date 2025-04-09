@@ -42,8 +42,6 @@ function BoundaryValueDiffEqCore.__resize!(
     return x
 end
 
-BoundaryValueDiffEqCore.__resize!(::Nothing, n, _, TU) = nothing
-
 @inline __K0_on_u0(u0::AbstractArray, stage) = repeat(u0, 1, stage)
 @inline function __K0_on_u0(u0::AbstractVector{<:AbstractArray}, stage)
     u0_mat = hcat(u0...)

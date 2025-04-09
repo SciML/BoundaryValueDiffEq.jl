@@ -143,15 +143,6 @@ function s_constraints(M, h)
 end
 
 """
-    interval(mesh, t)
-
-Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
-"""
-function interval(mesh, t)
-    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
-end
-
-"""
     mesh_selector!(cache::FIRKCacheExpand)
     mesh_selector!(cache::FIRKCacheNested)
 
