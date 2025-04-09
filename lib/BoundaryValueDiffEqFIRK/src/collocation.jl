@@ -223,7 +223,7 @@ end
 @views function Φ(fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
         u, p, mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded)
     (; c, a, b) = TU
-    residuals = [__similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp1 = similar(fᵢ_cache)
     K = similar(k_discrete[1])
     T = eltype(u)
@@ -292,7 +292,7 @@ end
     (; b) = TU
     (; nest_prob, alg, nest_tol) = cache
 
-    residuals = [__similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])

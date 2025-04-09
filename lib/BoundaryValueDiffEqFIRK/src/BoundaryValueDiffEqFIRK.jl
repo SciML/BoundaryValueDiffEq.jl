@@ -12,8 +12,8 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
                                __extract_problem_details, __initial_guess, nodual_value,
                                __maybe_allocate_diffcache, __restructure_sol,
-                               __get_bcresid_prototype, __similar, __vec, __vec_f, __vec_f!,
-                               __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
+                               __get_bcresid_prototype, __vec, __vec_f, __vec_f!, __vec_bc,
+                               __vec_bc!, recursive_flatten_twopoint!,
                                __internal_nlsolve_problem, __extract_mesh, __extract_u0,
                                __default_coloring_algorithm, __maybe_allocate_diffcache,
                                __restructure_sol, __get_bcresid_prototype, safe_similar,
@@ -161,8 +161,7 @@ include("sparse_jacobians.jl")
     bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
-    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
-    resid[2] = ub[2] + 1.729109)
+    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
     bc1_nlls_a = (ua, p) -> [ua[1]]
     bc1_nlls_b = (ub, p) -> [ub[1] - 1, ub[2] + 1.729109]
