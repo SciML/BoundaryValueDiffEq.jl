@@ -16,19 +16,22 @@ for order in (2, 3, 4, 5, 6)
           - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
+
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
-            - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-              `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
-            - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-              `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
-              `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
-              possible else `AutoFiniteDiff`.
+
+              + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
+              + For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
+                `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                possible else `AutoFiniteDiff`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
         !!! note
+
             For type-stability, the chunksizes for ForwardDiff ADTypes in
             `BVPJacobianAlgorithm` must be provided.
 
@@ -69,19 +72,22 @@ for order in (6)
           - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
+
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
-            - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-              `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
-            - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-              `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
-              `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
-              possible else `AutoFiniteDiff`.
+
+              + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+                `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
+              + For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+                `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
+                `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+                possible else `AutoFiniteDiff`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
         !!! note
+
             For type-stability, the chunksizes for ForwardDiff ADTypes in
             `BVPJacobianAlgorithm` must be provided.
 
