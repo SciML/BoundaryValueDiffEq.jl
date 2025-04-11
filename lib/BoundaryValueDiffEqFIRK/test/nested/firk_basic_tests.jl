@@ -443,3 +443,50 @@ end =#
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
 end
+
+@testitem "Nested nlsolve kwargs in FIRK" begin
+    tspan = (0.0, π / 2)
+    function simplependulum!(du, u, p, t)
+        g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
+
+    function bc_pendulum!(residual, u, p, t)
+        residual[1] = u(pi / 4)[1] + π / 2
+        residual[2] = u(pi / 2)[1] - π / 2
+    end
+
+    u0 = [pi / 2, pi / 2]
+    prob = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
+    nested = true
+    nested_nlsolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)
+
+    @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
+        @test_nowarn solve(prob,
+            radau_solver(Val(stage); nested_nlsolve = nested,
+                nested_nlsolve_kwargs = nested_nlsolve_kwargs);
+            dt = 0.005)
+    end
+
+    @testset "LobattoIIIa$stage" for stage in (3, 4, 5)
+        @test_nowarn solve(prob,
+            lobattoIIIa_solver(Val(stage); nested_nlsolve = nested,
+                nested_nlsolve_kwargs = nested_nlsolve_kwargs);
+            dt = 0.005)
+    end
+
+    @testset "LobattoIIIb$stage" for stage in (3, 4, 5)
+        @test_nowarn solve(prob,
+            lobattoIIIb_solver(Val(stage); nested_nlsolve = nested,
+                nested_nlsolve_kwargs = nested_nlsolve_kwargs);
+            dt = 0.005)
+    end
+
+    @testset "LobattoIIIc$stage" for stage in (3, 4, 5)
+        @test_nowarn solve(prob,
+            lobattoIIIb_solver(Val(stage); nested_nlsolve = nested,
+                nested_nlsolve_kwargs = nested_nlsolve_kwargs);
+            dt = 0.005)
+    end
+end
