@@ -12,9 +12,11 @@ solve(prob::BVProblem, alg, dt; kwargs...)
 solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
 ```
 
-!!! note "Nested nonlinear solving in FIRK methods"
-    
-    When encountered with large BVP system, setting `nested_nlsolve` to `true` enables FIRK methods to use nested nonlinear solving for the implicit FIRK step instead of solving as a part of the global residual(when default as `nested_nlsolve=false`),
+## Nested nonlinear solving in FIRK methods
+
+When working with large boundary value problems, especially those involving stiff systems, computational efficiency and solver robustness become critical concerns. To improve the efficiency of FIRK methods on large BVPs, we can use nested nonlinear solving to obtain the implicit FIRK step instead of solving them as part of the global residual. In BoundaryValueDiffEq.jl, we can set `nested_nlsolve` as `true` to enable FIRK methods to compute the implicit FIRK steps using nested nonlinear solving(default option in FIRK methods is `nested_nlsolve=false`).
+
+Moreover, the nested nonlinear problem solver can be finely tuned to meet specific accuracy requirements by providing detailed keyword arguments through the `nested_nlsolve_kwargs` option in any FIRK solver, for example, `RadauIIa5(; nested_nlsolve = true, nested_nlsolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))`, where `nested_nlsolve_kwargs` can be any common keyword arguments in NonlinearSolve.jl, see [Common Solver Options in NonlinearSolve.jl](https://docs.sciml.ai/NonlinearSolve/stable/basics/solve/).
 
 ## Full List of Methods
 
