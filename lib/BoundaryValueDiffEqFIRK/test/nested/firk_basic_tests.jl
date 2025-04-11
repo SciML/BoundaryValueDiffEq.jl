@@ -444,7 +444,7 @@ end =#
     SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
 end
 
-@testitem "Nested nlsolve kwargs in FIRK" begin
+@testitem "Nested nlsolve kwargs in FIRK" setup=[FIRKNestedConvergenceTests] begin
     tspan = (0.0, π / 2)
     function simplependulum!(du, u, p, t)
         g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
