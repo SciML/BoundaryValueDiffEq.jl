@@ -1,5 +1,5 @@
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
-recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
+recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.du), x)
 
 function recursive_flatten(x::Vector{<:AbstractArray})
     y = zero(first(x), recursive_length(x))
@@ -17,7 +17,7 @@ end
 end
 @views function recursive_flatten_twopoint!(
         y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
-    x_, xiter = Iterators.peel(x)
+    x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
     for xᵢ in xiter
@@ -72,12 +72,30 @@ end
     return z
 end
 
+"""
+    interval(mesh, t)
+
+Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
+"""
+function interval(mesh, t)
+    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
+end
+
 ## Easier to dispatch
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
-function eval_bc_residual(::TwoPointBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
-    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
+function eval_bc_residual(
+        ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractVectorOfArray, p, t) where {BC}
+    ua = sol[:, 1]
+    ub = sol[:, end]
+    resida = bca(ua, p)
+    residb = bcb(ub, p)
+    return (resida, residb)
+end
+function eval_bc_residual(
+        ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t) where {BC}
+    ua = first(sol)
+    ub = last(sol)
     resida = bca(ua, p)
     residb = bcb(ub, p)
     return (resida, residb)
@@ -87,18 +105,42 @@ function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(
-        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
-    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
+@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractVectorOfArray, p, t) where {BC}
+    ua = sol[:, 1]
+    ub = sol[:, end]
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
 @views function eval_bc_residual!(
-        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))
-    ub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))
+        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol::AbstractArray, p, t) where {BC}
+    ua = first(sol)
+    ub = last(sol)
+    bca!(resid.resida, ua, p)
+    bcb!(resid.residb, ub, p)
+    return resid
+end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractVectorOfArray, p, t) where {BC}
+    ua = sol[:, 1]
+    ub = sol[:, end]
+    bca!(resid[1], ua, p)
+    bcb!(resid[2], ub, p)
+    return resid
+end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractArray, p, t) where {BC}
+    ua = first(sol)
+    ub = last(sol)
+    bca!(resid[1], ua, p)
+    bcb!(resid[2], ub, p)
+    return resid
+end
+@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::SciMLBase.ODESolution, p, t) where {BC}
+    ua = first(sol)
+    ub = last(sol)
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
@@ -108,14 +150,22 @@ function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, t) w
     res_bc = bc(dy, y, p, t)
     return res_bc
 end
-function eval_bc_residual(
-        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol, p, t) where {BC}
-    M = length(sol[1])
+function eval_bc_residual(::TwoPointSecondOrderBVProblem, (bca, bcb)::BC,
+        sol::AbstractVectorOfArray, p, t) where {BC}
     L = length(t)
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))[1:M]
-    ub = sol isa VectorOfArray ? sol[:, L] : sol(last(t))[1:M]
-    dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(t))[(M + 1):end]
-    dub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))[(M + 1):end]
+    ua = sol[:, 1]
+    ub = sol[:, L]
+    dua = sol[:, L + 1]
+    dub = sol[:, end]
+    return vcat(bca(dua, ua, p), bcb(dub, ub, p))
+end
+function eval_bc_residual(
+        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t) where {BC}
+    L = length(t)
+    ua = first(sol)
+    ub = sol[L]
+    dua = sol[L + 1]
+    dub = last(sol)
     return vcat(bca(dua, ua, p), bcb(dub, ub, p))
 end
 
@@ -138,14 +188,23 @@ function eval_bc_residual!(resid::AbstractArray{<:AbstractArray},
     copyto!(resid[2], res_bc[(M + 1):end])
 end
 
-function eval_bc_residual!(
-        resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC, sol, p, t) where {BC}
-    M = length(sol[1])
+function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractVectorOfArray, p, t) where {BC}
     L = length(t)
-    ua = sol isa VectorOfArray ? sol[:, 1] : sol(first(t))[1:M]
-    ub = sol isa VectorOfArray ? sol[:, L] : sol(last(t))[1:M]
-    dua = sol isa VectorOfArray ? sol[:, L + 1] : sol(first(t))[(M + 1):end]
-    dub = sol isa VectorOfArray ? sol[:, end] : sol(last(t))[(M + 1):end]
+    ua = sol[:, 1]
+    ub = sol[:, L]
+    dua = sol[:, L + 1]
+    dub = sol[:, end]
+    bca!(resid[1], dua, ua, p)
+    bcb!(resid[2], dub, ub, p)
+end
+function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem,
+        (bca!, bcb!)::BC, sol::AbstractArray, p, t) where {BC}
+    L = length(t)
+    ua = first(sol)
+    ub = sol[L]
+    dua = sol[L + 1]
+    dub = last(sol)
     bca!(resid[1], dua, ua, p)
     bcb!(resid[2], dub, ub, p)
 end
@@ -169,6 +228,7 @@ function __resize!(x::AbstractVector{<:AbstractArray}, n, M)
 end
 
 __resize!(::Nothing, n, _) = nothing
+__resize!(::Nothing, n, _, _) = nothing
 
 function __resize!(x::AbstractVector{<:MaybeDiffCache}, n, M)
     N = n - length(x)
@@ -284,6 +344,7 @@ end
 end
 
 @inline __ones_like(args...) = __fill_like(1, args...)
+@inline __zeros_like(args...) = __fill_like(0, args...)
 
 @inline __safe_vec(x) = vec(x)
 @inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)

@@ -13,15 +13,6 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 end
 
 """
-    interval(mesh, t)
-
-Find the interval that `t` belongs to in `mesh`. Assumes that `mesh` is sorted.
-"""
-function interval(mesh, t)
-    return clamp(searchsortedfirst(mesh, t) - 1, 1, length(mesh) - 1)
-end
-
-"""
     mesh_selector!(cache::MIRKCache, controller::DefectControl)
     mesh_selector!(cache::MIRKCache, controller::GlobalErrorControl)
     mesh_selector!(cache::MIRKCache, controller::SequentialErrorControl)
