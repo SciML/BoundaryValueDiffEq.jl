@@ -1,4 +1,4 @@
-# Algorithms from ODEInterface.jl
+# Algorithms from BVPInterface.jl
 """
     BVPM2(; max_num_subintervals = 3000, method_choice = 4, diagnostic_output = 1,
         error_control = 1, singular_term = nothing)
@@ -33,7 +33,7 @@ Fortran code for solving two-point boundary value problems. For detailed documen
 
 !!! note
 
-    Only available if the `ODEInterface` package is loaded.
+    Only available if the `BVPInterface` package is loaded.
 """
 struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
     max_num_subintervals::Int
@@ -44,8 +44,8 @@ struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
 
     function BVPM2(max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
             error_control::Int, singular_term::Union{Nothing, AbstractMatrix})
-        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
-            error("`BVPM2` requires `ODEInterface.jl` to be loaded")
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqBVPInterfaceExt) === nothing
+            error("`BVPM2` requires `BVPInterface.jl` to be loaded")
         end
         return new{typeof(singular_term)}(max_num_subintervals, method_choice,
             diagnostic_output, error_control, singular_term)
@@ -85,7 +85,7 @@ For detailed documentation, see
 
 !!! note
 
-    Only available if the `ODEInterface` package is loaded.
+    Only available if the `BVPInterface` package is loaded.
 """
 struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
     bvpclass::Int
@@ -93,8 +93,8 @@ struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
     odesolver::O
 
     function BVPSOL(bvpclass::Int, sol_method::Int, odesolver)
-        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
-            error("`BVPSOL` requires `ODEInterface.jl` to be loaded")
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqBVPInterfaceExt) === nothing
+            error("`BVPSOL` requires `BVPInterface.jl` to be loaded")
         end
         return new{typeof(odesolver)}(bvpclass, sol_method, odesolver)
     end
@@ -102,6 +102,78 @@ end
 
 function BVPSOL(; bvpclass = 2, sol_method = 0, odesolver = nothing)
     return BVPSOL(bvpclass, sol_method, odesolver)
+end
+
+"""
+    COLSYS(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
+        max_num_subintervals = 3000, bc_func = nothing, dbc_func = nothing,
+        zeta = nothing)
+    COLSYS(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+        max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector)
+
+## Keyword Arguments:
+
+  - `bvpclass`: Boundary value problem classification, default as nonlinear and
+    "extra sensitive", available choices:
+
+      + `0`: Linear boundary value problem.
+      + `1`: Nonlinear and regular.
+      + `2`: Nonlinear and "extra sensitive" (first relax factor is rstart and the
+        nonlinear iteration does not rely on past convergence).
+      + `3`: fail-early: return immediately upon: a) two successive non-convergences.
+        b) after obtaining an error estimate for the first time.
+
+  - `collocationpts`: Number of collocation points per subinterval. Require
+    orders[i] ≤ k ≤ 7, default as 7
+  - `diagnostic_output`: Diagnostic output for COLSYS, default as no printout, available
+    choices:
+
+      + `-1`: Full diagnostic printout.
+      + `0`: Selected printout.
+      + `1`: No printout.
+  - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+  - `bc_func`: Boundary condition accord with BVPInterface.jl, only used for multi-points BVP.
+  - `dbc_func`: Jacobian of boundary condition accord with BVPInterface.jl, only used for multi-points BVP.
+  - `zeta`: The points in interval where boundary conditions are specified, only used for multi-points BVP.
+
+A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
+ODEs. It incorporates a new basis representation replacing b-splines, and improvements for
+the linear and nonlinear algebraic equation solvers.
+
+!!! warning
+
+    Only supports two-point boundary value problems.
+
+!!! note
+
+    Only available if the `BVPInterface` package is loaded.
+"""
+struct COLSYS <: BoundaryValueDiffEqAlgorithm
+    bvpclass::Int
+    collocationpts::Int
+    diagnostic_output::Int
+    max_num_subintervals::Int
+    bc_func::Union{Function, Nothing}
+    dbc_func::Union{Function, Nothing}
+    zeta::Union{AbstractVector, Nothing}
+
+    function COLSYS(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+            max_num_subintervals::Int, bc_func::Union{Function, Nothing},
+            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqBVPInterfaceExt) === nothing
+            error("`COLSYS` requires `BVPInterface.jl` to be loaded")
+        end
+        return new(bvpclass, collocationpts, diagnostic_output,
+            max_num_subintervals, bc_func, dbc_func, zeta)
+    end
+end
+
+function COLSYS(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
+        max_num_subintervals::Int = 4000, bc_func::Union{Function, Nothing} = nothing,
+        dbc_func::Union{Function, Nothing} = nothing,
+        zeta::Union{AbstractVector, Nothing} = nothing)
+    return COLSYS(bvpclass, collocationpts, diagnostic_output,
+        max_num_subintervals, bc_func, dbc_func, zeta)
 end
 
 """
@@ -132,8 +204,8 @@ end
       + `0`: Selected printout.
       + `1`: No printout.
   - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
-  - `bc_func`: Boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
-  - `dbc_func`: Jacobian of boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
+  - `bc_func`: Boundary condition accord with BVPInterface.jl, only used for multi-points BVP.
+  - `dbc_func`: Jacobian of boundary condition accord with BVPInterface.jl, only used for multi-points BVP.
   - `zeta`: The points in interval where boundary conditions are specified, only used for multi-points BVP.
 
 A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
@@ -146,7 +218,7 @@ the linear and nonlinear algebraic equation solvers.
 
 !!! note
 
-    Only available if the `ODEInterface` package is loaded.
+    Only available if the `BVPInterface` package is loaded.
 """
 struct COLNEW <: BoundaryValueDiffEqAlgorithm
     bvpclass::Int
@@ -160,8 +232,8 @@ struct COLNEW <: BoundaryValueDiffEqAlgorithm
     function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
             max_num_subintervals::Int, bc_func::Union{Function, Nothing},
             dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
-        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
-            error("`COLNEW` requires `ODEInterface.jl` to be loaded")
+        if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqBVPInterfaceExt) === nothing
+            error("`COLNEW` requires `BVPInterface.jl` to be loaded")
         end
         return new(bvpclass, collocationpts, diagnostic_output,
             max_num_subintervals, bc_func, dbc_func, zeta)
