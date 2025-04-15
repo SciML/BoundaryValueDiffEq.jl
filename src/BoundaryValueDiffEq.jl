@@ -3,7 +3,7 @@ module BoundaryValueDiffEq
 using ADTypes
 using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using BoundaryValueDiffEqAscher
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm
 using BoundaryValueDiffEqFIRK
 using BoundaryValueDiffEqMIRK
 using BoundaryValueDiffEqMIRKN

@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T, use_both}
+@concrete struct MIRKCache{iip, T, use_both} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations

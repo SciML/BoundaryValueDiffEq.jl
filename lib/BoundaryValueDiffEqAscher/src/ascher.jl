@@ -1,4 +1,4 @@
-@concrete struct AscherCache{iip, T}
+@concrete struct AscherCache{iip, T} <: AbstractBoundaryValueDiffEqCache
     prob
     f
     jac
@@ -58,7 +58,7 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
-        adaptive = true, abstol = 1e-4, kwargs...)
+        adaptive = true, abstol = nothing, kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -156,6 +156,7 @@ end
 
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
     (abstol, adaptive, _), kwargs = __split_ascher_kwargs(; cache.kwargs...)
+    abstol = get_abstol(abstol, T)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the

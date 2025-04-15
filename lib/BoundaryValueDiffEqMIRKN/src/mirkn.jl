@@ -1,4 +1,4 @@
-@concrete mutable struct MIRKNCache{iip, T}
+@concrete mutable struct MIRKNCache{iip, T} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRKN method
     stage::Int                 # The state of MIRKN method
     M::Int                     # The number of equations

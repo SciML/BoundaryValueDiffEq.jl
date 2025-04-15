@@ -1,4 +1,4 @@
-abstract type AbstractAscher <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractAscher <: AbstractBoundaryValueDiffEqAlgorithm end
 
 for stage in (1, 2, 3, 4, 5, 6, 7)
     alg = Symbol("Ascher$(stage)")

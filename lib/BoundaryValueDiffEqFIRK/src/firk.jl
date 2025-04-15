@@ -1,4 +1,4 @@
-@concrete struct FIRKCacheNested{iip, T}
+@concrete struct FIRKCacheNested{iip, T} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -28,8 +28,7 @@
     kwargs
 end
 
-Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
-@concrete struct FIRKCacheExpand{iip, T}
+@concrete struct FIRKCacheExpand{iip, T} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -77,7 +76,7 @@ function shrink_y(y, N, stage)
     return y_shrink
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
         adaptive = true, controller = DefectControl(), kwargs...)
     if alg.nested_nlsolve
         return init_nested(
@@ -88,7 +87,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol =
     end
 end
 
-function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
@@ -179,7 +178,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
         fᵢ₂_cache, defect, nestprob, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
-function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
@@ -290,8 +289,9 @@ function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
     return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
-function SciMLBase.solve!(cache::FIRKCacheExpand)
+function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
     (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    abstol = get_abstol(abstol, T)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -316,8 +316,9 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function SciMLBase.solve!(cache::FIRKCacheNested)
+function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
     (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    abstol = get_abstol(abstol, T)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
