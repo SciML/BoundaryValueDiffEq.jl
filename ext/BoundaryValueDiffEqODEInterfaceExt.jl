@@ -1,7 +1,7 @@
 module BoundaryValueDiffEqODEInterfaceExt
 
 using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, __extract_u0,
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, __extract_u0,
                                __initial_guess_length, __extract_mesh,
                                __flatten_initial_guess, __get_bcresid_prototype,
                                __has_initial_guess, __initial_guess

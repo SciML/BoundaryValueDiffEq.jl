@@ -33,6 +33,6 @@ export Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7
 
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
-export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
+export BVPJacobianAlgorithm
 
 end
