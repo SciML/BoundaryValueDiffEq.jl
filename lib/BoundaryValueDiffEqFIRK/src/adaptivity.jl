@@ -369,7 +369,8 @@ end
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::FIRKCacheNested{iip, T, DiffCacheNeeded}) where {iip, T}
+@views function defect_estimate!(cache::FIRKCacheNested{
+        iip, T, DiffCacheNeeded}) where {iip, T}
     (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 

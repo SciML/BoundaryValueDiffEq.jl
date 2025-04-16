@@ -444,9 +444,9 @@ function __mirk_mpoint_jacobian!(J::AlmostBandedMatrix, J_c, x, bc_diffmode, non
         bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C,
         resid_bc, resid_collocation, L::Int, p) where {BC, C}
     J_bc = fillpart(J)
-    DI.jacobian!(loss_bc, resid_bc, J_bc, bc_diffcache, bc_diffmode, x, Constant(p))
     DI.jacobian!(loss_collocation, resid_collocation, J_c,
         nonbc_diffcache, nonbc_diffmode, x, Constant(p))
+    DI.jacobian!(loss_bc, resid_bc, J_bc, bc_diffcache, bc_diffmode, x, Constant(p))
     exclusive_bandpart(J) .= J_c
     finish_part_setindex!(J)
     return nothing
@@ -495,25 +495,18 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         jac_alg.diffmode
     end
 
-    diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
-    else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
-    end
+    prepare = @elapsed diffcache = DI.prepare_jacobian(
+        loss, resid, diffmode, y, Constant(cache.p))
 
-    jac_prototype = if iip
-        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p))
-    else
-        DI.jacobian(loss, diffcache, diffmode, y, Constant(cache.p))
-    end
+    println("prepare jacobian: ", prepare)
 
-    jac = if iip
-        @closure (J, u, p) -> __mirk_2point_jacobian!(
-            J, u, jac_alg.diffmode, diffcache, loss, resid, p)
-    else
-        @closure (u, p) -> __mirk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, loss, p)
-    end
+    compute_jac_prototype = @elapsed jac_prototype = DI.jacobian(
+        loss, resid, diffcache, diffmode, y, Constant(cache.p))
+
+    println("compute jac_prototype: ", compute_jac_prototype)
+
+    jac = @closure (J, u, p) -> __mirk_2point_jacobian!(
+        J, u, jac_alg.diffmode, diffcache, loss, resid, p)
 
     resid_prototype = copy(resid)
     nlf = NonlinearFunction{iip}(
@@ -522,7 +515,9 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 end
 
 function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}
-    DI.jacobian!(loss_fn, resid, J, diffcache, diffmode, x, Constant(p))
+    compute_jac = @elapsed DI.jacobian!(
+        loss_fn, resid, J, diffcache, diffmode, x, Constant(p))
+    println("compute_jac: ", compute_jac)
     return J
 end
 

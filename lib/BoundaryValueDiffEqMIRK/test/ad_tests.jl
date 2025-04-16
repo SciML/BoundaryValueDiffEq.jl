@@ -32,7 +32,7 @@
         end
     end
 
-    @testset "Test different AD on multipoint BVP" begin
+    @testset "Test different AD on multipoint BVP using Interpolation BC" begin
         function simplependulum!(du, u, p, t)
             θ = u[1]
             dθ = u[2]

@@ -147,7 +147,7 @@ end
 @views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y,
         u, p, mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded)
     (; b) = TU
-    (; nest_prob, nest_tol) = cache
+    (; nest_prob, alg) = cache
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])
@@ -167,7 +167,7 @@ end
         K = k_discrete[i]
 
         _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = solve(_nestprob, nest_nlsolve_alg; abstol = nest_tol)
+        nestsol = solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
@@ -290,7 +290,7 @@ end
 @views function Φ(fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
         mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded)
     (; b) = TU
-    (; nest_prob, alg, nest_tol) = cache
+    (; nest_prob, alg) = cache
 
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
 
@@ -310,7 +310,7 @@ end
         nestprob_p[3:end] = yᵢ
 
         _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = solve(_nestprob, nest_nlsolve_alg, abstol = nest_tol)
+        nestsol = solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
