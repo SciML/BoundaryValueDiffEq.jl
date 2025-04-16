@@ -56,7 +56,6 @@ end
     resid_size
     kwargs
 end
-Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N::Int, stage::Int)
     y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)
@@ -100,6 +99,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = noth
     ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
+    abstol = get_abstol(abstol, T)
 
     chunksize = pickchunksize(M * (Nig - 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
@@ -192,6 +192,7 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = no
     ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
+    abstol = get_abstol(abstol, T)
 
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
@@ -291,7 +292,6 @@ end
 
 function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
     (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
-    abstol = get_abstol(abstol, T)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -318,7 +318,6 @@ end
 
 function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
     (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
-    abstol = get_abstol(abstol, T)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the

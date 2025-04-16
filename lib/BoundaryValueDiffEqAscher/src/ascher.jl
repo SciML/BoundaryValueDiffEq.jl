@@ -41,8 +41,6 @@
     kwargs
 end
 
-Base.eltype(::AscherCache{iip, T}) where {iip, T} = T
-
 function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
     t₀ = prob.tspan[1]
     t₁ = prob.tspan[2]
@@ -58,7 +56,7 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
-        adaptive = true, abstol = nothing, kwargs...)
+        controller = GlobalErrorControl(), adaptive = true, abstol = nothing, kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
