@@ -36,10 +36,10 @@ DiffEqBase = "6.158.3"
 DiffEqDevTools = "2.44"
 DifferentiationInterface = "0.6.42"
 FastClosures = "0.3.2"
-ForwardDiff = "0.10.38"
+ForwardDiff = "0.10.38, 1"
 Hwloc = "3"
 InteractiveUtils = "<0.0.1, 1"
-JET = "0.9.12"
+JET = "0.9"
 LinearAlgebra = "1.10"
 LinearSolve = "2.36.2, 3"
 PreallocationTools = "0.4.24"
@@ -55,6 +55,9 @@ SparseArrays = "1.10"
 StaticArrays = "1.9.8"
 Test = "1.10"
 julia = "1.10"
+
+[sources]
+BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"

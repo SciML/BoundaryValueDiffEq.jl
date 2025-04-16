@@ -24,7 +24,6 @@
     fᵢ₂_cache
     defect
     nest_prob
-    nest_tol
     resid_size
     kwargs
 end
@@ -166,7 +165,6 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
     K0 = __K0_on_u0(prob.u0, stage) # Somewhat arbitrary initialization of K
 
     nestprob_p = zeros(T, M + 2)
-    nest_tol = alg.nest_tol
 
     if iip
         nestprob = NonlinearProblem(
@@ -177,10 +175,9 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
     end
 
     return FIRKCacheNested{iip, T, typeof(diffcache)}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
-        k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob,
-        nest_tol, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
+        TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache,
+        fᵢ₂_cache, defect, nestprob, resid₁_size, (; abstol, dt, adaptive, kwargs...))
 end
 
 function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,

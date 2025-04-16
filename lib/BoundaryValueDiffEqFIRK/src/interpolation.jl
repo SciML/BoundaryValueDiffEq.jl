@@ -176,7 +176,7 @@ end
 # Nested FIRK
 function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     (; t, u, cache) = s
-    (; f, nest_prob, nest_tol, alg, mesh_dt, p, ITU) = cache
+    (; f, nest_prob, alg, mesh_dt, p, ITU) = cache
     (; q_coeff) = ITU
     stage = alg_stage(alg)
     # Quick handle for the case where tval is at the boundary
@@ -210,7 +210,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
 
     # TODO: Better initial guess or nestprob
     _nestprob = remake(nest_prob, p = nestprob_p, u0 = zeros(T, length(u[1]), stage))
-    nestsol = __solve(_nestprob, nest_nlsolve_alg; abstol = nest_tol)
+    nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
