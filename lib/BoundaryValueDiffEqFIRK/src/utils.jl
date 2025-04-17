@@ -3,7 +3,8 @@ function BoundaryValueDiffEqCore.__resize!(
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
-    N > 0 ? append!(x, [similar(last(x)) for _ in 1:N]) : resize!(x, (n - 1) * (s + 1) + 1)
+    N > 0 ? append!(x, [safe_similar(last(x)) for _ in 1:N]) :
+    resize!(x, (n - 1) * (s + 1) + 1)
     return x
 end
 
@@ -28,7 +29,7 @@ function BoundaryValueDiffEqCore.__resize!(
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
-    N > 0 ? append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])) :
+    N > 0 ? append!(x, VectorOfArray([safe_similar(last(x)) for _ in 1:N])) :
     resize!(x, (n - 1) * (s + 1) + 1)
     return x
 end
@@ -38,7 +39,7 @@ function BoundaryValueDiffEqCore.__resize!(
     (; s) = TU
     N = n - length(x)
     N == 0 && return x
-    N > 0 ? append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])) : resize!(x, n)
+    N > 0 ? append!(x, VectorOfArray([safe_similar(last(x)) for _ in 1:N])) : resize!(x, n)
     return x
 end
 
