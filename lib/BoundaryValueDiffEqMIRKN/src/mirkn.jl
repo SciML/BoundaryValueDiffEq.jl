@@ -23,6 +23,8 @@
     kwargs
 end
 
+Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
+
 function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
         dt = 0.0, adaptive = false, kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)

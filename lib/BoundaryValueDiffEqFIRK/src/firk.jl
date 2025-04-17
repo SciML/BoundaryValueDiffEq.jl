@@ -28,6 +28,8 @@
     kwargs
 end
 
+Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
+
 @concrete struct FIRKCacheExpand{iip, T} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
@@ -56,6 +58,8 @@ end
     resid_size
     kwargs
 end
+
+Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N::Int, stage::Int)
     y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)

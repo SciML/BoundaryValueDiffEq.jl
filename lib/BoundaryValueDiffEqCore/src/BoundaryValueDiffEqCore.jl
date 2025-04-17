@@ -38,7 +38,7 @@ function SciMLBase.__solve(prob::AbstractBVProblem,
     return solve!(cache)
 end
 
-export BVPJacobianAlgorithm
+export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl
 export HOErrorControl, REErrorControl
 

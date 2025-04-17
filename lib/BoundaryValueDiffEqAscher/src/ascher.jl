@@ -41,6 +41,8 @@
     kwargs
 end
 
+Base.eltype(::AscherCache{iip, T}) where {iip, T} = T
+
 function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
     t₀ = prob.tspan[1]
     t₁ = prob.tspan[2]
