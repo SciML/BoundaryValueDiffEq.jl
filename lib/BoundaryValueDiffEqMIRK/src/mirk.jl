@@ -29,6 +29,8 @@
     kwargs
 end
 
+Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
+
 function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
