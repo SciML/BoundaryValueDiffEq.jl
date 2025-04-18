@@ -1,6 +1,6 @@
 @concrete struct FIRKCacheNested{iip, T} <: AbstractBoundaryValueDiffEqCache
-    order::Int                 # The order of MIRK method
-    stage::Int                 # The state of MIRK method
+    order::Int                 # The order of FIRK method
+    stage::Int                 # The state of FIRK method
     M::Int                     # The number of equations
     in_size
     f
@@ -31,8 +31,8 @@ end
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
 
 @concrete struct FIRKCacheExpand{iip, T} <: AbstractBoundaryValueDiffEqCache
-    order::Int                 # The order of MIRK method
-    stage::Int                 # The state of MIRK method
+    order::Int                 # The order of FIRK method
+    stage::Int                 # The state of FIRK method
     M::Int                     # The number of equations
     in_size
     f
