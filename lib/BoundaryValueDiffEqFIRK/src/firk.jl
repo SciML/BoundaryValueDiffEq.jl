@@ -290,12 +290,12 @@ function __expand_cache!(cache::FIRKCacheNested)
     return cache
 end
 
-function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
+function __split_firk_kwargs(; abstol, dt, adaptive = true, kwargs...)
     return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
 end
 
 function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_firk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -321,7 +321,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
 end
 
 function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_firk_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the

@@ -58,7 +58,7 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
-        controller = GlobalErrorControl(), adaptive = true, abstol = nothing, kwargs...)
+        controller = GlobalErrorControl(), adaptive = true, abstol = 1e-4, kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
