@@ -1,5 +1,5 @@
 # Algorithms
-abstract type AbstractMIRKN <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractMIRKN <: AbstractBoundaryValueDiffEqAlgorithm end
 
 for order in (4, 6)
     alg = Symbol("MIRKN$(order)")

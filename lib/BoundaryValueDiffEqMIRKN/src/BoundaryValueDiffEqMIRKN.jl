@@ -3,13 +3,12 @@ module BoundaryValueDiffEqMIRKN
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
-                               recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
-                               __FastShortcutBVPCompatibleNonlinearPolyalg,
-                               __FastShortcutBVPCompatibleNLLSPolyalg, eval_bc_residual,
-                               eval_bc_residual!, get_tmp, __maybe_matmul!,
-                               __extract_problem_details, __initial_guess,
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
+                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
+                               get_abstol, recursive_flatten, recursive_flatten!,
+                               recursive_unflatten!, __concrete_nonlinearsolve_algorithm,
+                               diff!, EvalSol, eval_bc_residual, eval_bc_residual!, get_tmp,
+                               __maybe_matmul!, __extract_problem_details, __initial_guess,
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, safe_similar, __vec, __vec_f,
                                __vec_f!, __vec_bc, __vec_bc!, __vec_so_bc!, __vec_so_bc,

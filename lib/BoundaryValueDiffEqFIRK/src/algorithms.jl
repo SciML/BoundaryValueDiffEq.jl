@@ -1,5 +1,5 @@
 # Algorithms
-abstract type AbstractFIRK <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractFIRK <: AbstractBoundaryValueDiffEqAlgorithm end
 
 for stage in (1, 2, 3, 5, 7)
     alg = Symbol("RadauIIa$(stage)")

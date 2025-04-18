@@ -1,3 +1,3 @@
-SciMLBase.isautodifferentiable(::BoundaryValueDiffEqAlgorithm) = true
-SciMLBase.allows_arbitrary_number_types(::BoundaryValueDiffEqAlgorithm) = true
-SciMLBase.allowscomplex(alg::BoundaryValueDiffEqAlgorithm) = true
+SciMLBase.isautodifferentiable(::AbstractBoundaryValueDiffEqAlgorithm) = true
+SciMLBase.allows_arbitrary_number_types(::AbstractBoundaryValueDiffEqAlgorithm) = true
+SciMLBase.allowscomplex(alg::AbstractBoundaryValueDiffEqAlgorithm) = true

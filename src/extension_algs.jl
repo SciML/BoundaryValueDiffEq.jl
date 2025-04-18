@@ -35,7 +35,7 @@ Fortran code for solving two-point boundary value problems. For detailed documen
 
     Only available if the `ODEInterface` package is loaded.
 """
-struct BVPM2{S} <: BoundaryValueDiffEqAlgorithm
+struct BVPM2{S} <: AbstractBoundaryValueDiffEqAlgorithm
     max_num_subintervals::Int
     method_choice::Int
     diagnostic_output::Int
@@ -87,7 +87,7 @@ For detailed documentation, see
 
     Only available if the `ODEInterface` package is loaded.
 """
-struct BVPSOL{O} <: BoundaryValueDiffEqAlgorithm
+struct BVPSOL{O} <: AbstractBoundaryValueDiffEqAlgorithm
     bvpclass::Int
     sol_method::Int
     odesolver::O
@@ -148,7 +148,7 @@ the linear and nonlinear algebraic equation solvers.
 
     Only available if the `ODEInterface` package is loaded.
 """
-struct COLNEW <: BoundaryValueDiffEqAlgorithm
+struct COLNEW <: AbstractBoundaryValueDiffEqAlgorithm
     bvpclass::Int
     collocationpts::Int
     diagnostic_output::Int

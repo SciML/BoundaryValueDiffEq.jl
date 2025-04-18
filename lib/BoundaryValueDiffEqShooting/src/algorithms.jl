@@ -1,5 +1,5 @@
 # Algorithms
-abstract type AbstractShooting <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractShooting <: AbstractBoundaryValueDiffEqAlgorithm end
 
 """
     Shooting(ode_alg; kwargs...)

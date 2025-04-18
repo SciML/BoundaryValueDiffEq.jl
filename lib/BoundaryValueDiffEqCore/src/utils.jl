@@ -185,7 +185,7 @@ end
 function __resize!(x::AbstractVectorOfArray, n, M)
     N = n - length(x)
     N == 0 && return x
-    N > 0 ? append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])) : resize!(x, n)
+    N > 0 ? append!(x, VectorOfArray([safe_similar(last(x)) for _ in 1:N])) : resize!(x, n)
     return x
 end
 
