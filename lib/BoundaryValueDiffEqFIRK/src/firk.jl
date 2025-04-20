@@ -182,7 +182,7 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6
         resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
-function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
+function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 

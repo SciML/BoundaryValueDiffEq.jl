@@ -26,7 +26,7 @@ end
 Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN; dt = 0.0,
-        adaptive = false, controller = NoErrorControl(), kwargs...)
+        adaptive = false, abstol = 1e-6, controller = NoErrorControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     t₀, t₁ = prob.tspan
