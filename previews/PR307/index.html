@@ -14,7 +14,7 @@ Pkg.add(&quot;BoundaryValueDiffEq&quot;)</code></pre><h2 id="Contributing"><a cl
   <span class="sgr90">[daee34ce] </span>DocumenterCitations v1.3.7
   <span class="sgr90">[d12716ef] </span>DocumenterInterLinks v1.0.0
   <span class="sgr90">[87fe0de2] </span>LineSearch v0.1.4
-  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.7.2
+  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.8.0
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.93.0
   <span class="sgr90">[91a5bcdd] </span>Plots v1.40.13
   <span class="sgr90">[0bca4576] </span>SciMLBase v2.84.0
@@ -128,7 +128,7 @@ Environment:
   <span class="sgr90">[0f8b85d8] </span>JSON3 v1.14.2
   <span class="sgr90">[7d188eb4] </span>JSONSchema v1.4.1
   <span class="sgr90">[ae98c720] </span>Jieko v0.2.1
-  <span class="sgr90">[ba0b0d4f] </span>Krylov v0.9.10
+  <span class="sgr90">[ba0b0d4f] </span>Krylov v0.10.0
   <span class="sgr90">[b964fa9f] </span>LaTeXStrings v1.4.0
   <span class="sgr90">[23fbe1c1] </span>Latexify v0.16.7
   <span class="sgr90">[10f19ff3] </span>LayoutPointers v0.1.17
@@ -136,7 +136,7 @@ Environment:
   <span class="sgr90">[5078a376] </span>LazyArrays v2.6.1
   <span class="sgr90">[87fe0de2] </span>LineSearch v0.1.4
   <span class="sgr90">[d3d80556] </span>LineSearches v7.3.0
-  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.7.2
+  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.8.0
   <span class="sgr90">[2ab3a3ac] </span>LogExpFunctions v0.3.29
   <span class="sgr90">[e6f89c97] </span>LoggingExtras v1.1.0
   <span class="sgr90">[1914dd2f] </span>MacroTools v0.5.16
@@ -152,7 +152,7 @@ Environment:
   <span class="sgr90">[d41bc354] </span>NLSolversBase v7.9.1
   <span class="sgr90">[77ba4419] </span>NaNMath v1.1.3
   <span class="sgr90">[8913a72c] </span>NonlinearSolve v4.6.0
-  <span class="sgr90">[be0214bd] </span>NonlinearSolveBase v1.5.2
+  <span class="sgr90">[be0214bd] </span>NonlinearSolveBase v1.5.3
   <span class="sgr90">[5959db7a] </span>NonlinearSolveFirstOrder v1.3.1
   <span class="sgr90">[9a2c21bd] </span>NonlinearSolveQuasiNewton v1.2.1
   <span class="sgr90">[26075421] </span>NonlinearSolveSpectralMethods v1.1.1
@@ -220,7 +220,7 @@ Environment:
   <span class="sgr90">[992d4aef] </span>Showoff v1.0.3
   <span class="sgr90">[be0294bd] </span>SimpleBoundaryValueDiffEq v1.2.0
   <span class="sgr90">[777ac1f9] </span>SimpleBufferStream v1.2.0
-  <span class="sgr90">[727e6d20] </span>SimpleNonlinearSolve v2.2.1
+  <span class="sgr90">[727e6d20] </span>SimpleNonlinearSolve v2.2.2
   <span class="sgr90">[699a6c99] </span>SimpleTraits v0.9.4
   <span class="sgr90">[ce78b400] </span>SimpleUnPack v1.1.0
   <span class="sgr90">[a2af1166] </span>SortingAlgorithms v1.2.1
@@ -257,7 +257,7 @@ Environment:
   <span class="sgr90">[19fa3120] </span>VertexSafeGraphs v0.2.0
   <span class="sgr90">[ddb6d928] </span>YAML v0.4.13
   <span class="sgr90">[6e34b625] </span>Bzip2_jll v1.0.9+0
-  <span class="sgr90">[83423d85] </span>Cairo_jll v1.18.4+0
+<span class="sgr32">⌃</span> <span class="sgr90">[83423d85] </span>Cairo_jll v1.18.4+0
   <span class="sgr90">[ee1fde0b] </span>Dbus_jll v1.16.2+0
   <span class="sgr90">[2702e6a9] </span>EpollShim_jll v0.0.20230411+1
   <span class="sgr90">[2e619515] </span>Expat_jll v2.6.5+0
@@ -279,7 +279,7 @@ Environment:
   <span class="sgr90">[1d63c593] </span>LLVMOpenMP_jll v18.1.7+0
   <span class="sgr90">[dd4b983a] </span>LZO_jll v2.10.3+0
 <span class="sgr33">⌅</span> <span class="sgr90">[e9f186c6] </span>Libffi_jll v3.2.2+2
-  <span class="sgr90">[7e76a0d4] </span>Libglvnd_jll v1.7.0+0
+  <span class="sgr90">[7e76a0d4] </span>Libglvnd_jll v1.7.1+1
   <span class="sgr90">[94ce4f54] </span>Libiconv_jll v1.18.0+0
   <span class="sgr90">[4b2f31a3] </span>Libmount_jll v2.41.0+0
   <span class="sgr90">[89763e89] </span>Libtiff_jll v4.7.1+0
@@ -307,20 +307,20 @@ Environment:
   <span class="sgr90">[935fb764] </span>Xorg_libXcursor_jll v1.2.3+0
   <span class="sgr90">[a3789734] </span>Xorg_libXdmcp_jll v1.1.6+0
   <span class="sgr90">[1082639a] </span>Xorg_libXext_jll v1.3.7+0
-  <span class="sgr90">[d091e8ba] </span>Xorg_libXfixes_jll v6.0.0+0
+  <span class="sgr90">[d091e8ba] </span>Xorg_libXfixes_jll v6.0.1+0
   <span class="sgr90">[a51aa0fd] </span>Xorg_libXi_jll v1.8.2+0
-  <span class="sgr90">[d1454406] </span>Xorg_libXinerama_jll v1.1.5+0
-  <span class="sgr90">[ec84b674] </span>Xorg_libXrandr_jll v1.5.4+0
+  <span class="sgr90">[d1454406] </span>Xorg_libXinerama_jll v1.1.6+0
+  <span class="sgr90">[ec84b674] </span>Xorg_libXrandr_jll v1.5.5+0
   <span class="sgr90">[ea2f1a96] </span>Xorg_libXrender_jll v0.9.12+0
   <span class="sgr90">[c7cfdc94] </span>Xorg_libxcb_jll v1.17.1+0
-  <span class="sgr90">[cc61e674] </span>Xorg_libxkbfile_jll v1.1.2+1
+  <span class="sgr90">[cc61e674] </span>Xorg_libxkbfile_jll v1.1.3+0
   <span class="sgr90">[e920d4aa] </span>Xorg_xcb_util_cursor_jll v0.1.4+0
   <span class="sgr90">[12413925] </span>Xorg_xcb_util_image_jll v0.4.0+1
   <span class="sgr90">[2def613f] </span>Xorg_xcb_util_jll v0.4.0+1
   <span class="sgr90">[975044d2] </span>Xorg_xcb_util_keysyms_jll v0.4.0+1
   <span class="sgr90">[0d47668e] </span>Xorg_xcb_util_renderutil_jll v0.3.9+1
   <span class="sgr90">[c22f9ab0] </span>Xorg_xcb_util_wm_jll v0.4.1+1
-  <span class="sgr90">[35661453] </span>Xorg_xkbcomp_jll v1.4.6+1
+  <span class="sgr90">[35661453] </span>Xorg_xkbcomp_jll v1.4.7+0
   <span class="sgr90">[33bec58e] </span>Xorg_xkeyboard_config_jll v2.39.0+0
   <span class="sgr90">[c5fb5394] </span>Xorg_xtrans_jll v1.6.0+0
   <span class="sgr90">[3161d3a3] </span>Zstd_jll v1.5.7+1
@@ -387,4 +387,4 @@ Environment:
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.11.0+0
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.52.0+1
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.4.0+2
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.17.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.17.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.1 on <span class="colophon-date" title="Friday 18 April 2025 18:40">Friday 18 April 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.17.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.17.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.1 on <span class="colophon-date" title="Sunday 20 April 2025 14:30">Sunday 20 April 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
