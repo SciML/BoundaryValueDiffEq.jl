@@ -82,11 +82,11 @@ end
 function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
         adaptive = true, controller = DefectControl(), kwargs...)
     if alg.nested_nlsolve
-        return init_nested(
-            prob, alg; dt = dt, abstol = abstol, adaptive = adaptive, kwargs...)
+        return init_nested(prob, alg; dt = dt, abstol = abstol,
+            adaptive = adaptive, controller = controller, kwargs...)
     else
-        return init_expanded(
-            prob, alg; dt = dt, abstol = abstol, adaptive = adaptive, kwargs...)
+        return init_expanded(prob, alg; dt = dt, abstol = abstol,
+            adaptive = adaptive, controller = controller, kwargs...)
     end
 end
 
@@ -176,9 +176,10 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6
     end
 
     return FIRKCacheNested{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
-        TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache,
-        fᵢ₂_cache, defect, nestprob, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
+        k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob,
+        resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
@@ -257,9 +258,9 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = no
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return FIRKCacheExpand{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual,
-        fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
+        TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache,
+        fᵢ₂_cache, defect, resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
