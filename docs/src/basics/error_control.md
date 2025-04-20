@@ -25,6 +25,7 @@ DefectControl
 GlobalErrorControl
 SequentialErrorControl
 HybridErrorControl
+NoErrorControl
 ```
 
 While we can achieve global error control in different ways, we can use different methods to estimate the global error:

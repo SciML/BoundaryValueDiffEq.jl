@@ -5,9 +5,9 @@ using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
-                               get_abstol, recursive_flatten, recursive_flatten!,
-                               recursive_unflatten!, __concrete_nonlinearsolve_algorithm,
-                               diff!, EvalSol, eval_bc_residual, eval_bc_residual!, get_tmp,
+                               recursive_flatten, recursive_flatten!, recursive_unflatten!,
+                               __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
+                               eval_bc_residual, eval_bc_residual!, get_tmp,
                                __maybe_matmul!, __extract_problem_details, __initial_guess,
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, safe_similar, __vec, __vec_f,
@@ -18,7 +18,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __flatten_initial_guess, __build_solution, __Fix3,
                                __default_sparse_ad, __default_nonsparse_ad, get_dense_ad,
                                concrete_jacobian_algorithm, __default_coloring_algorithm,
-                               __default_sparsity_detector
+                               __default_sparsity_detector, __split_kwargs, NoErrorControl
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

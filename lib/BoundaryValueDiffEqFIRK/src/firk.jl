@@ -90,7 +90,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol =
     end
 end
 
-function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = nothing,
+function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
@@ -103,7 +103,6 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = noth
     ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
-    abstol = get_abstol(abstol, T)
 
     chunksize = pickchunksize(M * (Nig - 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
@@ -196,7 +195,6 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = no
     ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
-    abstol = get_abstol(abstol, T)
 
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
@@ -290,12 +288,8 @@ function __expand_cache!(cache::FIRKCacheNested)
     return cache
 end
 
-function __split_firk_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
-end
-
 function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_firk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -321,7 +315,7 @@ function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
 end
 
 function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_firk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -578,7 +572,6 @@ function __construct_nlproblem(
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
     resid_collocation = safe_similar(y, cache.M * (N - 1))
-
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
     else
