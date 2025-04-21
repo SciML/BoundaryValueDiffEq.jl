@@ -20,6 +20,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SimpleBoundaryValueDiffEq = "be0294bd-f90f-4760-ac4e-3421ce2b2da0"
 
 [sources]
+BoundaryValueDiffEq = {path = "../"}
 BoundaryValueDiffEqAscher = {path = "../lib/BoundaryValueDiffEqAscher"}
 BoundaryValueDiffEqCore = {path = "../lib/BoundaryValueDiffEqCore"}
 BoundaryValueDiffEqFIRK = {path = "../lib/BoundaryValueDiffEqFIRK"}
