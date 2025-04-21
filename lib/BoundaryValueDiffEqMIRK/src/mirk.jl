@@ -495,18 +495,25 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
         jac_alg.diffmode
     end
 
-    prepare = @elapsed diffcache = DI.prepare_jacobian(
-        loss, resid, diffmode, y, Constant(cache.p))
+    diffcache = if iip
+        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+    end
 
-    println("prepare jacobian: ", prepare)
+    jac_prototype = if iip
+        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p))
+    else
+        DI.jacobian(loss, diffcache, diffmode, y, Constant(cache.p))
+    end
 
-    compute_jac_prototype = @elapsed jac_prototype = DI.jacobian(
-        loss, resid, diffcache, diffmode, y, Constant(cache.p))
-
-    println("compute jac_prototype: ", compute_jac_prototype)
-
-    jac = @closure (J, u, p) -> __mirk_2point_jacobian!(
-        J, u, jac_alg.diffmode, diffcache, loss, resid, p)
+    jac = if iip
+        @closure (J, u, p) -> __mirk_2point_jacobian!(
+            J, u, jac_alg.diffmode, diffcache, loss, resid, p)
+    else
+        @closure (u, p) -> __mirk_2point_jacobian(
+            u, jac_prototype, jac_alg.diffmode, diffcache, loss, p)
+    end
 
     resid_prototype = copy(resid)
     nlf = NonlinearFunction{iip}(
@@ -515,9 +522,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 end
 
 function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}
-    compute_jac = @elapsed DI.jacobian!(
-        loss_fn, resid, J, diffcache, diffmode, x, Constant(p))
-    println("compute_jac: ", compute_jac)
+    DI.jacobian!(loss_fn, resid, J, diffcache, diffmode, x, Constant(p))
     return J
 end
 

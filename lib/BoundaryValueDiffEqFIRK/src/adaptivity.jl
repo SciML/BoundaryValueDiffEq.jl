@@ -423,7 +423,7 @@ end
 
 @views function defect_estimate!(cache::FIRKCacheNested{
         iip, T, NoDiffCacheNeeded}) where {iip, T}
-    (; f, mesh, mesh_dt, defect, ITU, nest_prob, nest_tol) = cache
+    (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
@@ -445,7 +445,7 @@ end
         nestprob_p[3:end] .= yᵢ₁
 
         _nestprob = remake(nest_prob, p = nestprob_p)
-        nest_sol = __solve(_nestprob, nlsolve_alg; abstol = nest_tol)
+        nest_sol = __solve(_nestprob, nlsolve_alg; alg.nested_nlsolve_kwargs...)
 
         # Defect estimate from q(x) at y_i + τ* * h
         z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_sol.u)
