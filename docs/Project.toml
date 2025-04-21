@@ -19,6 +19,15 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SimpleBoundaryValueDiffEq = "be0294bd-f90f-4760-ac4e-3421ce2b2da0"
 
+[sources]
+BoundaryValueDiffEqAscher = {path = "../lib/BoundaryValueDiffEqAscher"}
+BoundaryValueDiffEqCore = {path = "../lib/BoundaryValueDiffEqCore"}
+BoundaryValueDiffEqFIRK = {path = "../lib/BoundaryValueDiffEqFIRK"}
+BoundaryValueDiffEqMIRK = {path = "../lib/BoundaryValueDiffEqMIRK"}
+BoundaryValueDiffEqMIRKN = {path = "../lib/BoundaryValueDiffEqMIRKN"}
+BoundaryValueDiffEqShooting = {path = "../lib/BoundaryValueDiffEqShooting"}
+
+
 [compat]
 ADTypes = "1.9"
 BoundaryValueDiffEq = "5.13.0"
