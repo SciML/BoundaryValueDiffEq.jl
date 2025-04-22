@@ -26,19 +26,21 @@ using SparseMatrixColorings: GreedyColoringAlgorithm
 include("types.jl")
 include("utils.jl")
 include("algorithms.jl")
+include("abstract_types.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
 include("misc_utils.jl")
 include("calc_errors.jl")
 
-function SciMLBase.__solve(
-        prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
+function SciMLBase.__solve(prob::AbstractBVProblem,
+        alg::AbstractBoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end
 
-export BVPJacobianAlgorithm
-export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl
+export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
+export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
+       NoErrorControl
 export HOErrorControl, REErrorControl
 
 end

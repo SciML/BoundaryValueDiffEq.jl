@@ -20,7 +20,7 @@
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        sol = solve(bvp1, solver; verbose = false, dt = 1.0)
+        sol = solve(bvp1, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
         @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-2
     end
 
@@ -44,7 +44,7 @@
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        sol = solve(bvp2, solver; verbose = false, dt = 1.0)
+        sol = solve(bvp2, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
         resid_f = Array{Float64}(undef, 3)
         bc1!(resid_f, sol, nothing, sol.t)
         @test norm(resid_f, Inf) < 1e-2
@@ -61,7 +61,7 @@
         tspan)
 
     for solver in SOLVERS
-        sol = solve(bvp3, solver; verbose = false, dt = 1.0)
+        sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
         @test norm(vcat(bc1a(sol.u[1], nothing), bc1b(sol.u[end], nothing)), Inf) < 1e-2
     end
 

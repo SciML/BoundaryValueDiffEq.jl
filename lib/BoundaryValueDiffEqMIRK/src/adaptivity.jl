@@ -32,7 +32,7 @@ Generate new mesh based on the defect or the global error.
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::DefectControl) where {iip, T}
     (; order, errors, mesh, mesh_dt) = cache
-    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)
@@ -85,7 +85,7 @@ end
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::GlobalErrorControl) where {iip, T}
     (; order, errors, mesh, mesh_dt) = cache
-    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)
@@ -139,7 +139,7 @@ end
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl) where {iip, T}
     (; order, errors, TU, mesh, mesh_dt) = cache
-    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)
@@ -193,7 +193,7 @@ end
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::HybridErrorControl) where {iip, T}
     (; order, errors, TU, mesh, mesh_dt) = cache
-    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)

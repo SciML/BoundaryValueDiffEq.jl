@@ -3,11 +3,10 @@ module BoundaryValueDiffEqMIRK
 using ADTypes
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
+                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_nonlinearsolve_algorithm, diff!,
-                               __FastShortcutBVPCompatibleNonlinearPolyalg,
-                               __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
+                               __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual,
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
                                __extract_problem_details, __initial_guess,
@@ -20,7 +19,8 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __build_solution, __Fix3, get_dense_ad, _sparse_like,
                                AbstractErrorControl, DefectControl, GlobalErrorControl,
                                SequentialErrorControl, HybridErrorControl, HOErrorControl,
-                               __use_both_error_control, __default_coloring_algorithm
+                               __use_both_error_control, __default_coloring_algorithm,
+                               __split_kwargs
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

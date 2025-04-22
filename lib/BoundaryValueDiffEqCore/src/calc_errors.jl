@@ -80,6 +80,13 @@ struct HybridErrorControl{T1, T2} <: AbstractErrorControl
 end
 
 """
+    NoErrorControl()
+
+No error control method.
+"""
+struct NoErrorControl <: AbstractErrorControl end
+
+"""
     HOErrorControl()
 
 Higher order global error estimation method

@@ -167,7 +167,8 @@ end
     @testset "Problem: $i" for i in 1:4
         prob = OverconstrainedProbArr[i]
         @testset "Solver: $name" for (name, solver) in zip(SOLVERS_NAMES, SOLVERS)
-            sol = solve(prob, solver; verbose = false, dt = 1.0)
+            sol = solve(
+                prob, solver; verbose = false, dt = 1.0, abstol = 1e-1, reltol = 1e-1)
             @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-2
         end
     end
