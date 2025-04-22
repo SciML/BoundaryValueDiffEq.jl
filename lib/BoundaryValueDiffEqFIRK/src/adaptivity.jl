@@ -5,7 +5,8 @@
 After we construct an interpolant, we use interp_eval to evaluate it.
 """
 @views function interp_eval!(
-        y::AbstractArray, cache::FIRKCacheExpand{iip}, t, mesh, mesh_dt) where {iip}
+        y::AbstractArray, cache::FIRKCacheExpand{iip, T, DiffCacheNeeded},
+        t, mesh, mesh_dt) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -48,7 +49,52 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 end
 
 @views function interp_eval!(
-        y::AbstractArray, cache::FIRKCacheNested{iip, T}, t, mesh, mesh_dt) where {iip, T}
+        y::AbstractArray, cache::FIRKCacheExpand{iip, T, NoDiffCacheNeeded},
+        t, mesh, mesh_dt) where {iip, T}
+    j = interval(mesh, t)
+    h = mesh_dt[j]
+    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1
+        h *= lf
+    end
+    τ = (t - mesh[j])
+
+    (; f, M, stage, p, ITU) = cache
+    (; q_coeff) = ITU
+
+    K = safe_similar(cache.y[1], M, stage)
+
+    ctr_y = (j - 1) * (stage + 1) + 1
+
+    yᵢ = cache.y[ctr_y]
+    yᵢ₊₁ = cache.y[ctr_y + stage + 1]
+
+    if iip
+        dyᵢ = similar(yᵢ)
+        dyᵢ₊₁ = similar(yᵢ₊₁)
+
+        f(dyᵢ, yᵢ, p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, p, mesh[j + 1])
+    else
+        dyᵢ = f(yᵢ, p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, p, mesh[j + 1])
+    end
+
+    # Load interpolation residual
+    for jj in 1:stage
+        K[:, jj] = cache.y[ctr_y + jj]
+    end
+
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+
+    S_interpolate!(y, τ, S_coeffs)
+    return y
+end
+
+@views function interp_eval!(
+        y::AbstractArray, cache::FIRKCacheNested{iip, T, DiffCacheNeeded},
+        t, mesh, mesh_dt) where {iip, T}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -65,6 +111,52 @@ end
 
     yᵢ = copy(cache.y[j].du)
     yᵢ₊₁ = copy(cache.y[j + 1].du)
+
+    if iip
+        dyᵢ = similar(yᵢ)
+        dyᵢ₊₁ = similar(yᵢ₊₁)
+
+        f(dyᵢ, yᵢ, cache.p, mesh[j])
+        f(dyᵢ₊₁, yᵢ₊₁, cache.p, mesh[j + 1])
+    else
+        dyᵢ = f(yᵢ, cache.p, mesh[j])
+        dyᵢ₊₁ = f(yᵢ₊₁, cache.p, mesh[j + 1])
+    end
+
+    nestprob_p[1] = mesh[j]
+    nestprob_p[2] = mesh_dt[j]
+    nestprob_p[3:end] .= yᵢ
+
+    _nestprob = remake(nest_prob, p = nestprob_p)
+    nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
+    K = nestsol.u
+
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+
+    S_interpolate!(y, τ, S_coeffs)
+    return y
+end
+
+@views function interp_eval!(
+        y::AbstractArray, cache::FIRKCacheNested{iip, T, NoDiffCacheNeeded},
+        t, mesh, mesh_dt) where {iip, T}
+    (; f, ITU, nest_prob, alg) = cache
+    (; q_coeff) = ITU
+
+    j = interval(mesh, t)
+    h = mesh_dt[j]
+    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    if lf > 1
+        h *= lf
+    end
+    τ = (t - mesh[j])
+
+    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nestprob_p = zeros(T, cache.M + 2)
+
+    yᵢ = copy(cache.y[j])
+    yᵢ₊₁ = copy(cache.y[j + 1])
 
     if iip
         dyᵢ = similar(yᵢ)
