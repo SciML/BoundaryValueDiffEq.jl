@@ -28,41 +28,44 @@
             nonbc_diffmode = AutoEnzyme(
                 mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            @test_nowarn sol = solve(
+            sol = solve(
                 prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = true), dt = 0.05)
+            @test SciMLBase.successful_retcode(sol)
         end
     end
-    #=
-        @testset "Test different AD on multipoint BVP using Interpolation BC" begin
-            function simplependulum!(du, u, p, t)
-                θ = u[1]
-                dθ = u[2]
-                du[1] = dθ
-                du[2] = -9.81 * sin(θ)
-            end
-            function bc!(residual, u, p, t)
-                residual[1] = u(pi / 4)[1] + pi / 2
-                residual[2] = u(pi / 2)[1] - pi / 2
-            end
-            u0 = [pi / 2, pi / 2]
-            tspan = (0.0, pi / 2)
-            prob = BVProblem(simplependulum!, bc!, u0, tspan)
-            jac_alg_forwarddiff = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff())
-            jac_alg_enzyme = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoEnzyme(
-                    mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated)),
-                nonbc_diffmode = AutoEnzyme(
-                    mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
-            jac_alg_mooncake = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-                nonbc_diffmode = AutoEnzyme(
-                    mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
-            for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-                @test_nowarn sol = solve(prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = true), dt = 0.05)
-            end
+
+    @testset "Test different AD on multipoint BVP using Interpolation BC" begin
+        function simplependulum!(du, u, p, t)
+            θ = u[1]
+            dθ = u[2]
+            du[1] = dθ
+            du[2] = -9.81 * sin(θ)
         end
-    =#
+        function bc!(residual, u, p, t)
+            residual[1] = u(pi / 4)[1] + pi / 2
+            residual[2] = u(pi / 2)[1] - pi / 2
+        end
+        u0 = [pi / 2, pi / 2]
+        tspan = (0.0, pi / 2)
+        prob = BVProblem(simplependulum!, bc!, u0, tspan)
+        jac_alg_forwarddiff = BVPJacobianAlgorithm(
+            bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff())
+        jac_alg_enzyme = BVPJacobianAlgorithm(
+            bc_diffmode = AutoSparse(AutoEnzyme(
+                mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated)),
+            nonbc_diffmode = AutoEnzyme(
+                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+        jac_alg_mooncake = BVPJacobianAlgorithm(
+            bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
+            nonbc_diffmode = AutoEnzyme(
+                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+        for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
+            sol = solve(
+                prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = true), dt = 0.05)
+            @test SciMLBase.successful_retcode(sol)
+        end
+    end
+
     @testset "Test different AD on twopoint BVP" begin
         function f!(du, u, p, t)
             du[1] = u[2]
@@ -87,8 +90,9 @@
         jac_alg_mooncake = BVPJacobianAlgorithm(AutoSparse(AutoMooncake(;
             config = nothing)))
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            @test_nowarn sol = solve(
+            sol = solve(
                 prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = true), dt = 0.01)
+            @test SciMLBase.successful_retcode(sol)
         end
     end
 end
