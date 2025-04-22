@@ -3,5 +3,5 @@
 ## Solvers
 
 ```@docs
-BoundaryValueDiffEqCore.BoundaryValueDiffEqAlgorithm
+BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm
 ```

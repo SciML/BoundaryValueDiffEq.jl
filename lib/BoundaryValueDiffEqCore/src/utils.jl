@@ -185,7 +185,7 @@ end
 function __resize!(x::AbstractVectorOfArray, n, M)
     N = n - length(x)
     N == 0 && return x
-    N > 0 ? append!(x, VectorOfArray([similar(last(x)) for _ in 1:N])) : resize!(x, n)
+    N > 0 ? append!(x, VectorOfArray([safe_similar(last(x)) for _ in 1:N])) : resize!(x, n)
     return x
 end
 
@@ -406,10 +406,10 @@ Takes the input initial guess and returns the mesh.
 """
 @inline __extract_mesh(u₀, t₀, t₁, n::Int) = collect(range(t₀; stop = t₁, length = n + 1))
 @inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
-@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = u₀.t
-@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = u₀.t
-@inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Int) = u₀.t
-@inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Number) = u₀.t
+@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = copy(u₀.t)
+@inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = copy(u₀.t)
+@inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Int) = copy(u₀.t)
+@inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Number) = copy(u₀.t)
 
 """
     __has_initial_guess(u₀) -> Bool
@@ -512,4 +512,8 @@ nodual_value(x::AbstractArray{<:ForwardDiff.Dual}) = map(ForwardDiff.value, x)
 nodual_value(x::SparseConnectivityTracer.Dual) = SparseConnectivityTracer.primal(x)
 function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
     map(SparseConnectivityTracer.primal, x)
+end
+
+function __split_kwargs(; abstol, adaptive, controller, kwargs...)
+    return ((abstol, adaptive, controller), (; abstol, adaptive, kwargs...))
 end

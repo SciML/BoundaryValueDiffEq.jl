@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T, use_both, diffcache}
+@concrete struct MIRKCache{iip, T, use_both, diffcache} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -31,7 +31,7 @@ end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-3,
+function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-6,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
@@ -130,23 +130,19 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     return cache
 end
 
-function __split_mirk_kwargs(; abstol, dt, adaptive = true, controller, kwargs...)
-    return ((abstol, adaptive, controller, dt), (; abstol, adaptive, kwargs...))
-end
-
 function SciMLBase.solve!(cache::MIRKCache)
-    (abstol, adaptive, controller, dt), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, adaptive, controller), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
     sol_nlprob, info, error_norm = __perform_mirk_iteration(
-        cache, abstol, adaptive, controller, dt; kwargs...)
+        cache, abstol, adaptive, controller; kwargs...)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && error_norm > abstol
             sol_nlprob, info, error_norm = __perform_mirk_iteration(
-                cache, abstol, adaptive, controller, dt; kwargs...)
+                cache, abstol, adaptive, controller; kwargs...)
         end
     end
 
@@ -160,7 +156,7 @@ function SciMLBase.solve!(cache::MIRKCache)
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
-        controller, dt; nlsolve_kwargs = (;), kwargs...)
+        controller; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(

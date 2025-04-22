@@ -1,4 +1,4 @@
-@concrete mutable struct MIRKNCache{iip, T}
+@concrete mutable struct MIRKNCache{iip, T} <: AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRKN method
     stage::Int                 # The state of MIRKN method
     M::Int                     # The number of equations
@@ -25,8 +25,8 @@ end
 
 Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 
-function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
-        dt = 0.0, adaptive = false, kwargs...)
+function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN; dt = 0.0,
+        adaptive = false, abstol = 1e-6, controller = NoErrorControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     t₀, t₁ = prob.tspan
@@ -85,16 +85,13 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKNCache{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete, y,
-        y₀, residual, fᵢ_cache, fᵢ₂_cache, resid_size, (; dt, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
+        TU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache,
+        fᵢ₂_cache, resid_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
-function __split_mirkn_kwargs(; dt, kwargs...)
-    return ((dt), (; kwargs...))
-end
 function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
-    (_), kwargs = __split_mirkn_kwargs(; cache.kwargs...)
+    (_, _, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     sol_nlprob, info = __perform_mirkn_iteration(cache; kwargs...)
