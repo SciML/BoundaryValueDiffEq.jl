@@ -21,8 +21,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                AbstractErrorControl, DefectControl, GlobalErrorControl,
                                SequentialErrorControl, HybridErrorControl, HOErrorControl,
                                __use_both_error_control, __default_coloring_algorithm,
-                               DiffCacheNeeded, NoDiffCacheNeeded
-                               __split_kwargs
+                               DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
