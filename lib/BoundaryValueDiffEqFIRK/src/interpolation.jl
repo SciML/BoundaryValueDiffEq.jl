@@ -133,7 +133,7 @@ end
 # Expanded FIRK
 function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
     (; t, u, cache) = s
-    (; f, alg, ITU, p) = cache
+    (; f, alg, ITU, mesh_dt, p) = cache
     (; q_coeff) = ITU
     stage = alg_stage(alg)
     # Quick handle for the case where tval is at the boundary
@@ -161,16 +161,65 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
     for jj in 1:stage
         K[:, jj] = u[ctr_y + jj]
     end
-    h = t[j + 1] - t[j]
+    h = mesh_dt(j)
     τ = tval - t[j]
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
-    S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
+    M = size(K, 1)
+    z₁, z₁′ = similar(yᵢ), similar(yᵢ₊₁)
+    for i in 1:M
+        ki = @view K[i, :]
+        coeffs = get_q_coeffs_interp(q_coeff, ki, h)
+        z₁[i] = yᵢ[i] + sum(coeffs[ii] * (τ * h)^(ii) for ii in axes(coeffs, 1))
+        z₁′[i] = sum(ii * coeffs[ii] * (τ * h)^(ii - 1) for ii in axes(coeffs, 1))
+    end
+
+    S_coeffs = get_S_coeffs_interp(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     z = similar(yᵢ)
 
     S_interpolate!(z, τ, S_coeffs)
     return z
+end
+
+function get_S_coeffs_interp(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
+    vals = vcat(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
+    M = length(yᵢ)
+    A = s_constraints_interp(M, h)
+    coeffs = reshape(A \ vals, 6, M)'
+    return coeffs
+end
+
+function get_q_coeffs_interp(A, ki, h)
+    coeffs = A * ki
+    for i in axes(coeffs, 1)
+        coeffs[i] = coeffs[i] / (h^(i - 1))
+    end
+    return coeffs
+end
+
+function s_constraints_interp(M, h)
+    t = repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], M)
+    A = zeros(6 * M, 6 * M)
+
+    for i in 1:6
+        row_start = (i - 1) * M + 1
+        for k in 0:(M - 1)
+            for j in 1:6
+                A[row_start + k, j + k * 6] = t[i + k * 6]^(j - 1)
+            end
+        end
+    end
+    for i in 4:6
+        row_start = (i - 1) * M + 1
+        for k in 0:(M - 1)
+            for j in 1:6
+                A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
+                                              (j - 1) * t[i + k * 6]^(j - 2)
+            end
+        end
+    end
+
+    return A
 end
 
 # Nested FIRK

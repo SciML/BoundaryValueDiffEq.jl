@@ -212,7 +212,7 @@ end
 Form the quartic interpolation constraint matrix, see bvp5c paper.
 """
 function s_constraints(M, h)
-    t = vec(repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], 1, M))
+    t = repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], M)
     A = zeros(6 * M, 6 * M)
     for i in 1:6
         row_start = (i - 1) * M + 1
