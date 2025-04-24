@@ -161,7 +161,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
     for jj in 1:stage
         K[:, jj] = u[ctr_y + jj]
     end
-    h = mesh_dt(j)
+    h = mesh_dt[j]
     τ = tval - t[j]
 
     M = size(K, 1)
@@ -232,7 +232,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
     j = interval(t, tval)
-    h = t[j + 1] - t[j]
+    h = mesh_dt[j]
     τ = tval - t[j]
     T = eltype(first(u))
 
