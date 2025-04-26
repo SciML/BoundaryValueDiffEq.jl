@@ -1,5 +1,8 @@
 @testitem "BigFloat compatibility" begin
     using BoundaryValueDiffEq
+    # Need Sparspak for BigFloat
+    using Sparspak
+
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)
         θ = u[1]
