@@ -23,7 +23,7 @@
 
     function f!(du, u, p, t)
         du[1] = u[2]
-        du[2] = 1 / p * u[1]
+        du[2] = u[1]
     end
     function bca!(resid_a, u_a, p)
         resid_a[1] = u_a[1] - 1
