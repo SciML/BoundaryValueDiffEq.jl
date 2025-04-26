@@ -304,6 +304,12 @@ end
             (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a))]
     end
 
+    function prob_bvp_linear_analytic_derivative(u, λ, t)
+        a = 1 / sqrt(λ)
+        return [(-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a))]
+    end
+
     function prob_bvp_linear_f!(du, u, p, t)
         du[1] = u[2]
         du[2] = 1 / p * u[1]
