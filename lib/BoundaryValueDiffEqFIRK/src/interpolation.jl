@@ -54,7 +54,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
+        interpolant!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt, deriv)
         vals[j] = idxs !== nothing ? z[idxs] : z
     end
     return DiffEqArray(vals, tvals)
@@ -68,7 +68,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
+        interpolant!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt, deriv)
         vals[j] = z
     end
 end
@@ -185,7 +185,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
+        interpolant!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt, deriv)
         vals[j] = idxs !== nothing ? z[idxs] : z
     end
     return DiffEqArray(vals, tvals)
@@ -199,7 +199,7 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
+        interpolant!(z, id.cache, tvals[j], id.cache.mesh, id.cache.mesh_dt, deriv)
         vals[j] = z
     end
 end
@@ -212,7 +212,7 @@ end
 end
 
 @inline function interpolant!(z::AbstractArray, cache::FIRKCacheExpand{iip},
-        t, mesh, mesh_dt, T::Type{Val{0}}) where {iip}
+        t, mesh, mesh_dt, ::Type{Val{0}}) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1)
@@ -254,7 +254,7 @@ end
 end
 
 @inline function interpolant!(dz::AbstractArray, cache::FIRKCacheExpand{iip},
-        t, mesh, mesh_dt, T::Type{Val{1}}) where {iip}
+        t, mesh, mesh_dt, ::Type{Val{1}}) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1)
