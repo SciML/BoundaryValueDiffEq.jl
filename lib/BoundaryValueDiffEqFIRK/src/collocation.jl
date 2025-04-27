@@ -137,7 +137,7 @@ end
         K = get_tmp(k_discrete[i], u)
 
         _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
+        nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
@@ -279,7 +279,7 @@ end
         nestprob_p[3:end] = yᵢ
 
         _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
+        nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
