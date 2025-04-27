@@ -283,6 +283,12 @@ end
             (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a))]
     end
 
+    function prob_bvp_linear_analytic_derivative(u, λ, t)
+        a = 1 / sqrt(λ)
+        return [(-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a))]
+    end
+
     function prob_bvp_linear_f!(du, u, p, t)
         du[1] = u[2]
         du[2] = 1 / p * u[1]
@@ -326,26 +332,51 @@ end
     end
 
     @testset "Radau interpolations" begin
-        @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
+        @testset "Interpolation tests for RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
             @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
             @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
             @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
             @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
         end
+
+        @testset "Derivtive Interpolation tests for RadauIIa$stage" for stage in (
+            2, 3, 5, 7)
+            @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
+            sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
+            dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
+
+            @test sol(0.04, Val{0})≈sol_analytic atol=testTol
+            @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+        end
     end
 
     @testset "LobattoIII interpolations" begin
-        for (id, lobatto_solver) in zip(
-            ("a", "b", "c"), (lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
-            begin
-                @testset "LobattoIII$(id)$stage" for stage in (3, 4, 5)
-                    @time sol = solve(
-                        prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
-                    @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-                    @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-                    @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-                    @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+        @testset "Interpolation tests for Lobatto" begin
+            for (id, lobatto_solver) in zip(("a", "b", "c"),
+                (lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
+                begin
+                    @testset "Interpolation tests for LobattoIII$(id)$stage" for stage in (
+                        3, 4, 5)
+                        @time sol = solve(
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
+                        @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
+                        @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
+                        @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
+                        @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+                    end
+
+                    @testset "Derivative Interpolation tests for lobatto$(id)$stage" for stage in (
+                        3, 4, 5)
+                        @time sol = solve(
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
+                        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
+                        dsol_analytic = prob_bvp_linear_analytic_derivative(
+                            nothing, λ, 0.04)
+
+                        @test sol(0.04, Val{0})≈sol_analytic atol=testTol
+                        @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+                    end
                 end
             end
         end
