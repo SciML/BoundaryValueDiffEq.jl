@@ -7,8 +7,7 @@ SOLVERS = [firk(; nlsolve, nested_nlsolve = true)
 nlsolve in (NewtonRaphson(), GaussNewton(), TrustRegion())]
 
 SOLVERS_NAMES = ["$solver with $nlsolve"
-                 for solver in
-                     ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
+                 for solver in ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
 nlsolve in ["NewtonRaphson", "GaussNewton", "TrustRegion"]]
 
 ### Overconstrained BVP ###

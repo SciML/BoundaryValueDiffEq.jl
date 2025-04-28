@@ -77,8 +77,7 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
-    f,
-    bc = if X isa AbstractVector
+    f, bc = if X isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
@@ -86,10 +85,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
             @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
         else
             (
-                @closure((r, u,
-                    p)->__vec_bc!(r, u, p, first(prob.f.bc), resid₁_size[1], size(X))),
-                @closure((
-                    r, u, p)->__vec_bc!(r, u, p, last(prob.f.bc), resid₁_size[2], size(X))))
+                @closure((r, u, p)->__vec_bc!(
+                    r, u, p, first(prob.f.bc), resid₁_size[1], size(X))),
+                @closure((r, u, p)->__vec_bc!(
+                    r, u, p, last(prob.f.bc), resid₁_size[2], size(X))))
         end
         vecf!, vecbc!
     else
@@ -136,13 +135,12 @@ function SciMLBase.solve!(cache::MIRKCache)
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
-    sol_nlprob, info,
-    error_norm = __perform_mirk_iteration(cache, abstol, adaptive, controller; kwargs...)
+    sol_nlprob, info, error_norm = __perform_mirk_iteration(
+        cache, abstol, adaptive, controller; kwargs...)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && error_norm > abstol
-            sol_nlprob, info,
-            error_norm = __perform_mirk_iteration(
+            sol_nlprob, info, error_norm = __perform_mirk_iteration(
                 cache, abstol, adaptive, controller; kwargs...)
         end
     end
@@ -172,8 +170,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
-        error_norm,
-        info = error_estimate!(cache, controller, cache.errors, sol_nlprob,
+        error_norm, info = error_estimate!(cache, controller, cache.errors, sol_nlprob,
             nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
     end
 
@@ -215,30 +212,26 @@ function __construct_nlproblem(
     eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
-        @closure (
-            du, u, p) -> __mirk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
+        @closure (du, u, p) -> __mirk_loss_bc!(
+            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     else
         @closure (u, p) -> __mirk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache)
     end
 
     loss_collocation = if iip
-        @closure (du,
-            u,
-            p) -> __mirk_loss_collocation!(
+        @closure (du, u, p) -> __mirk_loss_collocation!(
             du, u, p, cache.y, cache.mesh, cache.residual, cache)
     else
-        @closure (u,
-            p) -> __mirk_loss_collocation(u, p, cache.y, cache.mesh, cache.residual, cache)
+        @closure (u, p) -> __mirk_loss_collocation(
+            u, p, cache.y, cache.mesh, cache.residual, cache)
     end
 
     loss = if iip
-        @closure (du,
-            u,
-            p) -> __mirk_loss!(
+        @closure (du, u, p) -> __mirk_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, eval_sol)
     else
-        @closure (
-            u, p) -> __mirk_loss(u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol)
+        @closure (u, p) -> __mirk_loss(
+            u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol)
     end
 
     return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
@@ -377,14 +370,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     jac = if iip
-        @closure (J,
-            u,
-            p) -> __mirk_mpoint_jacobian!(
+        @closure (J, u, p) -> __mirk_mpoint_jacobian!(
             J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
             loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p)
     else
-        @closure (u,
-            p) -> __mirk_mpoint_jacobian(
+        @closure (u, p) -> __mirk_mpoint_jacobian(
             jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc,
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
@@ -474,12 +464,10 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     jac = if iip
-        @closure (J,
-            u,
-            p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, loss, resid, p)
+        @closure (J, u, p) -> __mirk_2point_jacobian!(
+            J, u, jac_alg.diffmode, diffcache, loss, resid, p)
     else
-        @closure (u,
-            p) -> __mirk_2point_jacobian(
+        @closure (u, p) -> __mirk_2point_jacobian(
             u, jac_prototype, jac_alg.diffmode, diffcache, loss, p)
     end
 

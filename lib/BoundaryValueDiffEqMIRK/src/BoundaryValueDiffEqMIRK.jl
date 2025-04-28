@@ -96,7 +96,6 @@ include("sparse_jacobians.jl")
 
     @compile_workload begin
         @sync for prob in probs, alg in algs
-
             Threads.@spawn solve(prob, alg; dt = 0.2)
         end
     end
@@ -153,7 +152,6 @@ include("sparse_jacobians.jl")
 
     @compile_workload begin
         @sync for prob in probs, alg in algs
-
             Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1e-2)
         end
     end

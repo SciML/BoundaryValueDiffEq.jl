@@ -19,20 +19,20 @@
     end
     for stage in (2, 3, 4, 5)
         s = Symbol("LobattoIIIa$(stage)")
-        @eval lobattoIIIa_solver(
-            ::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+        @eval lobattoIIIa_solver(::Val{$stage}, args...; kwargs...) = $(s)(
+            args...; kwargs...)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIb$(stage)")
-        @eval lobattoIIIb_solver(
-            ::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+        @eval lobattoIIIb_solver(::Val{$stage}, args...; kwargs...) = $(s)(
+            args...; kwargs...)
     end
 
     for stage in (3, 4, 5)
         s = Symbol("LobattoIIIc$(stage)")
-        @eval lobattoIIIc_solver(
-            ::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
+        @eval lobattoIIIc_solver(::Val{$stage}, args...; kwargs...) = $(s)(
+            args...; kwargs...)
     end
 
     for stage in (2, 3, 5, 7)
