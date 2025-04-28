@@ -1,6 +1,6 @@
-@concrete struct FIRKCacheNested{iip, T}
-    order::Int                 # The order of MIRK method
-    stage::Int                 # The state of MIRK method
+@concrete struct FIRKCacheNested{iip, T} <: AbstractBoundaryValueDiffEqCache
+    order::Int                 # The order of FIRK method
+    stage::Int                 # The state of FIRK method
     M::Int                     # The number of equations
     in_size
     f
@@ -24,15 +24,15 @@
     fᵢ₂_cache
     defect
     nest_prob
-    nest_tol
     resid_size
     kwargs
 end
 
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
-@concrete struct FIRKCacheExpand{iip, T}
-    order::Int                 # The order of MIRK method
-    stage::Int                 # The state of MIRK method
+
+@concrete struct FIRKCacheExpand{iip, T} <: AbstractBoundaryValueDiffEqCache
+    order::Int                 # The order of FIRK method
+    stage::Int                 # The state of FIRK method
     M::Int                     # The number of equations
     in_size
     f
@@ -58,6 +58,7 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     resid_size
     kwargs
 end
+
 Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
 function extend_y(y, N::Int, stage::Int)
@@ -78,18 +79,18 @@ function shrink_y(y, N, stage)
     return y_shrink
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
         adaptive = true, controller = DefectControl(), kwargs...)
     if alg.nested_nlsolve
-        return init_nested(
-            prob, alg; dt = dt, abstol = abstol, adaptive = adaptive, kwargs...)
+        return init_nested(prob, alg; dt = dt, abstol = abstol,
+            adaptive = adaptive, controller = controller, kwargs...)
     else
-        return init_expanded(
-            prob, alg; dt = dt, abstol = abstol, adaptive = adaptive, kwargs...)
+        return init_expanded(prob, alg; dt = dt, abstol = abstol,
+            adaptive = adaptive, controller = controller, kwargs...)
     end
 end
 
-function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
@@ -165,7 +166,6 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
     K0 = __K0_on_u0(prob.u0, stage) # Somewhat arbitrary initialization of K
 
     nestprob_p = zeros(T, M + 2)
-    nest_tol = alg.nest_tol
 
     if iip
         nestprob = NonlinearProblem(
@@ -179,10 +179,10 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt,
         k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob,
-        nest_tol, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
-function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-3,
+function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
         adaptive = true, controller = DefectControl(), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
@@ -258,9 +258,9 @@ function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return FIRKCacheExpand{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual,
-        fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, (; abstol, dt, adaptive, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
+        TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache,
+        fᵢ₂_cache, defect, resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
@@ -289,12 +289,8 @@ function __expand_cache!(cache::FIRKCacheNested)
     return cache
 end
 
-function __split_mirk_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
-end
-
-function SciMLBase.solve!(cache::FIRKCacheExpand)
-    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
+    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -319,8 +315,8 @@ function SciMLBase.solve!(cache::FIRKCacheExpand)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function SciMLBase.solve!(cache::FIRKCacheNested)
-    (abstol, adaptive, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
+    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -577,7 +573,6 @@ function __construct_nlproblem(
     resid_bc = cache.bcresid_prototype
     L = length(resid_bc)
     resid_collocation = safe_similar(y, cache.M * (N - 1))
-
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
     else

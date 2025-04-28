@@ -3,12 +3,10 @@ module BoundaryValueDiffEqShooting
 using ADTypes
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!, __any_sparse_ad,
-                               __FastShortcutBVPCompatibleNonlinearPolyalg,
-                               __FastShortcutBVPCompatibleNLLSPolyalg, __cache_trait,
-                               concrete_jacobian_algorithm, eval_bc_residual,
+                               __cache_trait, concrete_jacobian_algorithm, eval_bc_residual,
                                eval_bc_residual!, get_tmp, __maybe_matmul!,
                                __extract_problem_details, __initial_guess,
                                __default_coloring_algorithm, __default_sparsity_detector,

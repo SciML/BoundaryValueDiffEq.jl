@@ -3,13 +3,12 @@ module BoundaryValueDiffEqMIRKN
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
+                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
-                               __FastShortcutBVPCompatibleNonlinearPolyalg,
-                               __FastShortcutBVPCompatibleNLLSPolyalg, eval_bc_residual,
-                               eval_bc_residual!, get_tmp, __maybe_matmul!,
-                               __extract_problem_details, __initial_guess,
+                               eval_bc_residual, eval_bc_residual!, get_tmp,
+                               __maybe_matmul!, __extract_problem_details, __initial_guess,
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, safe_similar, __vec, __vec_f,
                                __vec_f!, __vec_bc, __vec_bc!, __vec_so_bc!, __vec_so_bc,
@@ -19,7 +18,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorith
                                __flatten_initial_guess, __build_solution, __Fix3,
                                __default_sparse_ad, __default_nonsparse_ad, get_dense_ad,
                                concrete_jacobian_algorithm, __default_coloring_algorithm,
-                               __default_sparsity_detector, interval
+                               __default_sparsity_detector, interval, __split_kwargs, NoErrorControl
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

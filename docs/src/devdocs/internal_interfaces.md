@@ -3,5 +3,5 @@
 ## Solvers
 
 ```julia
-BoundaryValueDiffEqCore.BoundaryValueDiffEqAlgorithm
+BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm
 ```

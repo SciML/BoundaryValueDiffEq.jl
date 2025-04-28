@@ -49,7 +49,7 @@ end
 
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheNested{iip, T}, t, mesh, mesh_dt) where {iip, T}
-    (; f, ITU, nest_prob, nest_tol, alg) = cache
+    (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
     j = interval(mesh, t)
@@ -82,7 +82,7 @@ end
     nestprob_p[3:end] .= yᵢ
 
     _nestprob = remake(nest_prob, p = nestprob_p)
-    nestsol = __solve(_nestprob, nest_nlsolve_alg; abstol = nest_tol)
+    nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
@@ -151,7 +151,7 @@ Generate new mesh based on the defect.
 @views function mesh_selector!(cache::Union{
         FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
-    (abstol, _, _), kwargs = __split_mirk_kwargs(; cache.kwargs...)
+    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)
@@ -316,7 +316,7 @@ an interpolant
 end
 
 @views function defect_estimate!(cache::FIRKCacheNested{iip, T}) where {iip, T}
-    (; f, mesh, mesh_dt, defect, ITU, nest_prob, nest_tol) = cache
+    (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
@@ -338,7 +338,7 @@ end
         nestprob_p[3:end] .= yᵢ₁
 
         _nestprob = remake(nest_prob, p = nestprob_p)
-        nest_sol = __solve(_nestprob, nlsolve_alg; abstol = nest_tol)
+        nest_sol = __solve(_nestprob, nlsolve_alg; alg.nested_nlsolve_kwargs...)
 
         # Defect estimate from q(x) at y_i + τ* * h
         z₁, z₁′ = eval_q(yᵢ₁, τ_star, h, q_coeff, nest_sol.u)

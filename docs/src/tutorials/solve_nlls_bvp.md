@@ -35,7 +35,7 @@ end
 tspan = (0.0, 100.0)
 u0 = [0.0, 1.0]
 prob = BVProblem(BVPFunction(f!, bc!; bcresid_prototype = zeros(3)), u0, tspan)
-sol = solve(prob, MIRK4(), dt = 0.01)
+sol = solve(prob, MIRK4(), dt = 0.01, abstol = 1e-3)
 plot(sol)
 ```
 

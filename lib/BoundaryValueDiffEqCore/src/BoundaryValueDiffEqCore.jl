@@ -27,6 +27,7 @@ include("types.jl")
 include("solution_utils.jl")
 include("utils.jl")
 include("algorithms.jl")
+include("abstract_types.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
 include("calc_errors.jl")
@@ -37,8 +38,9 @@ function SciMLBase.__solve(
     return SciMLBase.solve!(cache)
 end
 
-export BVPJacobianAlgorithm
-export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl
+export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
+export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
+       NoErrorControl
 export HOErrorControl, REErrorControl
 
 end
