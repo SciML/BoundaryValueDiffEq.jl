@@ -18,6 +18,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `zeta`: side condition points, should always be provided.
 
         !!! note
+
             For type-stability, the chunksizes for ForwardDiff ADTypes in
             `BVPJacobianAlgorithm` must be provided.
 

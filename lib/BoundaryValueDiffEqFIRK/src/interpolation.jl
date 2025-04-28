@@ -295,10 +295,10 @@ end
     dS_interpolate!(dz, τ, S_coeffs)
 end
 
-@inline __build_interpolation(cache::FIRKCacheExpand, u::AbstractVector) = FIRKExpandInterpolation(
-    cache.mesh, u, cache)
-@inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(
-    cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheExpand,
+    u::AbstractVector) = FIRKExpandInterpolation(cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheNested,
+    u::AbstractVector) = FIRKNestedInterpolation(cache.mesh, u, cache)
 
 # Intermidiate solution for evaluating boundry conditions
 # basically simplified version of the interpolation for FIRK

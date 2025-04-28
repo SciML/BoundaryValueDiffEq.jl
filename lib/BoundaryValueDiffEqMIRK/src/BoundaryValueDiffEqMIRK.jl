@@ -96,6 +96,7 @@ include("sparse_jacobians.jl")
 
     @compile_workload begin
         @sync for prob in probs, alg in algs
+
             Threads.@spawn solve(prob, alg; dt = 0.2)
         end
     end
@@ -118,8 +119,7 @@ include("sparse_jacobians.jl")
     bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
-    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
-    resid[2] = ub[2] + 1.729109)
+    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
     bc1_nlls_a = (ua, p) -> [ua[1]]
     bc1_nlls_b = (ub, p) -> [ub[1] - 1, ub[2] + 1.729109]
@@ -153,6 +153,7 @@ include("sparse_jacobians.jl")
 
     @compile_workload begin
         @sync for prob in probs, alg in algs
+
             Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1e-2)
         end
     end

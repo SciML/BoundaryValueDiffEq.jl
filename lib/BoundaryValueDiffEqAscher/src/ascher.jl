@@ -100,7 +100,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
 
     iip = isinplace(prob)
 
-    f, bc = if prob.u0 isa AbstractVector
+    f,
+    bc = if prob.u0 isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(u0))
@@ -160,8 +161,9 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
 
     if adaptive
         while SciMLBase.successful_retcode(info) && norm(error_norm) > abstol
-            z, y, info, error_norm = __perform_ascher_iteration(
-                cache, abstol, adaptive; kwargs...)
+            z, y,
+            info,
+            error_norm = __perform_ascher_iteration(cache, abstol, adaptive; kwargs...)
         end
     end
     u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
@@ -338,10 +340,11 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     end
 
     jac = if iip
-        @closure (J, u, p) -> __ascher_mpoint_jacobian!(
-            J, u, diffmode, jac_cache, loss, lz, cache.p)
+        @closure (J, u,
+            p) -> __ascher_mpoint_jacobian!(J, u, diffmode, jac_cache, loss, lz, cache.p)
     else
-        @closure (u, p) -> __ascher_mpoint_jacobian(
+        @closure (u,
+            p) -> __ascher_mpoint_jacobian(
             jac_prototype, u, diffmode, jac_cache, loss, cache.p)
     end
 
