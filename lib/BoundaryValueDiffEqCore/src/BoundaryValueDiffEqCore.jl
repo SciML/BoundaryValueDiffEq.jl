@@ -32,8 +32,8 @@ include("alg_utils.jl")
 include("default_nlsolve.jl")
 include("calc_errors.jl")
 
-function SciMLBase.__solve(
-        prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
+function SciMLBase.__solve(prob::AbstractBVProblem,
+        alg::AbstractBoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = SciMLBase.__init(prob, alg, args...; kwargs...)
     return SciMLBase.solve!(cache)
 end
