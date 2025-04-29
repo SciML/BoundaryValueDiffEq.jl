@@ -254,10 +254,9 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, p)
-    soly_ = VectorOfArray(y_)
     resida = resids[1][1:prod(cache.resid_size[1])]
     residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
-    eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
+    eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
     recursive_flatten_twopoint!(resid, resids, cache.resid_size)
     return nothing
 end
@@ -276,8 +275,7 @@ end
         mesh, cache, _) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, p)
-    soly_ = VectorOfArray(y_)
-    resid_bca, resid_bcb = eval_bc_residual(pt, bc, soly_, p, mesh)
+    resid_bca, resid_bcb = eval_bc_residual(pt, bc, y_, p, mesh)
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
 end
 

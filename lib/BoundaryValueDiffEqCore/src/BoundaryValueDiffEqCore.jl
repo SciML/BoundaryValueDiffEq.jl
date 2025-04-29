@@ -24,18 +24,18 @@ using SparseMatrixColorings: GreedyColoringAlgorithm
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 
 include("types.jl")
+include("solution_utils.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("abstract_types.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
-include("misc_utils.jl")
 include("calc_errors.jl")
 
 function SciMLBase.__solve(prob::AbstractBVProblem,
         alg::AbstractBoundaryValueDiffEqAlgorithm, args...; kwargs...)
-    cache = init(prob, alg, args...; kwargs...)
-    return solve!(cache)
+    cache = SciMLBase.__init(prob, alg, args...; kwargs...)
+    return SciMLBase.solve!(cache)
 end
 
 export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm

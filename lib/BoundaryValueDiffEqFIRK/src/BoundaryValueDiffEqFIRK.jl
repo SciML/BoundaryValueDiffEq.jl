@@ -7,7 +7,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
                                __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
-                               concrete_jacobian_algorithm, eval_bc_residual,
+                               concrete_jacobian_algorithm, eval_bc_residual, interval,
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
                                __extract_problem_details, __initial_guess,
                                __default_coloring_algorithm, __maybe_allocate_diffcache,
@@ -156,8 +156,7 @@ include("sparse_jacobians.jl")
     bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
-    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
-    resid[2] = ub[2] + 1.729109)
+    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
     bc1_nlls_a = (ua, p) -> [ua[1]]
     bc1_nlls_b = (ub, p) -> [ub[1] - 1, ub[2] + 1.729109]
