@@ -719,7 +719,8 @@ end
     return nothing
 end
 
-@views function __firk_loss!(resid, u, p, y::AbstractVector, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
+@views function __firk_loss!(
+        resid, u, p, y::AbstractVector, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
         residual, mesh, cache, _, trait::DiffCacheNeeded) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
@@ -752,8 +753,8 @@ end
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 
-@views function __firk_loss(u, p, y::AbstractVector, pt::TwoPointBVProblem, bc::Tuple{BC1, BC2},
-        mesh, cache, _, trait) where {BC1, BC2}
+@views function __firk_loss(u, p, y::AbstractVector, pt::TwoPointBVProblem,
+        bc::Tuple{BC1, BC2}, mesh, cache, _, trait) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     soly_ = VectorOfArray(y_)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, y_, p, mesh)

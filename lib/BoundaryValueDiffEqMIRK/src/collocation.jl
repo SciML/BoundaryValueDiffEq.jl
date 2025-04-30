@@ -91,7 +91,7 @@ end
 @views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p,
         mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded)
     (; c, v, x, b) = TU
-    residuals = [__similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp = similar(fᵢ_cache)
     T = eltype(u)
     for i in eachindex(k_discrete)

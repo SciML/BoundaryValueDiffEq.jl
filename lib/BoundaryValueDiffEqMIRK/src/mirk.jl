@@ -103,10 +103,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    #prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKCache{iip, T, use_both, typeof(diffcache)}(
-        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
+        alg_order(alg), stage, N, size(X), f, bc, prob, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages,
         resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
@@ -156,11 +156,11 @@ function SciMLBase.solve!(cache::MIRKCache)
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
-        controller; nlsolve_kwargs = (;), kwargs...)
+        controller::AbstractErrorControl; nlsolve_kwargs = (;), kwargs...)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
-        nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+        nlprob, nlsolve_alg; abstol = abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     error_norm = 2 * abstol
@@ -280,10 +280,9 @@ end
         residual, mesh, cache, _, trait::NoDiffCacheNeeded) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait)
-    soly_ = VectorOfArray(y_)
     resida = residual[1][1:prod(cache.resid_size[1])]
     residb = residual[1][(prod(cache.resid_size[1]) + 1):end]
-    eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
+    eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
     recursive_flatten_twopoint!(resid, residual, cache.resid_size)
     return nothing
 end
