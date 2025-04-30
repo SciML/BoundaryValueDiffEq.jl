@@ -45,13 +45,13 @@ end
 
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
 @testitem "BVPSOL" setup=[ODEInterfaceWrapperTestSetup] begin
-    using ODEInterface, OrdinaryDiffEq, RecursiveArrayTools, NonlinearSolveFirstOrder
+    using ODEInterface, OrdinaryDiffEqTsit5, RecursiveArrayTools, NonlinearSolveFirstOrder
 
     tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
         p; bcresid_prototype = (zeros(1), zeros(1)))
 
     # Just generate a solution for bvpsol
-    sol_ms = solve(tpprob, MultipleShooting(10, DP5(), NewtonRaphson());
+    sol_ms = solve(tpprob, MultipleShooting(10, Tsit5(), NewtonRaphson());
         dt = π / 20, abstol = 1e-5, maxiters = 1000, adaptive = false)
 
     initial_u0 = [sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]]
