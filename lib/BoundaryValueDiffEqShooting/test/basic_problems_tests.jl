@@ -160,7 +160,8 @@ end
 end
 
 @testitem "Flow in a Channel" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock, LinearAlgebra
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock,
+          LinearAlgebra
 
     function flow_in_a_channel!(du, u, p, t)
         R, P = p
