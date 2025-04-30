@@ -210,7 +210,8 @@ end
 end
 #FIXME: MultipleShooting fails for large out-of-place BVP systems
 @testitem "Ray Tracing" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock, LinearAlgebra
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock,
+          LinearAlgebra
 
     @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
     @inline ux(x, y, z, p) = -p[1] * sin(p[1] * x)
