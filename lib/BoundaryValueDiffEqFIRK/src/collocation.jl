@@ -86,7 +86,7 @@ function FIRK_nlsolve!(res, K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
     tmp1 = similar(K, T, size(K, 1))
 
     for r in 1:s
-        @. tmp1 = yᵢ
+        @. tmp1 = T.(yᵢ)
         __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
 
         f!(@view(res[:, r]), tmp1, p_f!, mesh_i + c[r] * h)
