@@ -129,7 +129,7 @@ end
 
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl) where {iip, T}
-    (; order, errors, TU, mesh, mesh_dt) = cache
+    (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
@@ -183,7 +183,7 @@ end
 
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::HybridErrorControl) where {iip, T}
-    (; order, errors, TU, mesh, mesh_dt) = cache
+    (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
@@ -359,8 +359,9 @@ error to estimate the error norm.
 end
 
 # Global error control
-@views function error_estimate!(cache::MIRKCache{iip, T}, controller::DefectControl, errors,
-        sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T}
+@views function error_estimate!(
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, controller::DefectControl,
+        errors, sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T, use_both}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
@@ -387,6 +388,52 @@ end
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
         if iip
             yᵢ₂ = cache.y[i + 1].du
+            f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+        else
+            yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+        end
+        yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
+        est₂ = maximum(abs, yᵢ₂)
+
+        errors.u[i] .= est₁ > est₂ ? yᵢ₁ : yᵢ₂
+    end
+
+    defect_norm = maximum(Base.Fix1(maximum, abs), errors.u)
+
+    # The defect is greater than 10%, the solution is not acceptable
+    info = ifelse(
+        defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
+    return defect_norm, info
+end
+@views function error_estimate!(
+        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, controller::DefectControl,
+        errors, sol, nlsolve_alg, abstol, kwargs, nlsolve_kwargs) where {iip, T, use_both}
+    (; f, alg, mesh, mesh_dt) = cache
+    (; τ_star) = cache.ITU
+
+    # Evaluate at the first sample point
+    w₁, w₁′ = interp_weights(τ_star, alg)
+    # Evaluate at the second sample point
+    w₂, w₂′ = interp_weights(T(1) - τ_star, alg)
+
+    interp_setup!(cache)
+
+    for i in 1:(length(mesh) - 1)
+        dt = mesh_dt[i]
+
+        z, z′ = sum_stages!(cache, w₁, w₁′, i)
+        if iip
+            yᵢ₁ = cache.y[i]
+            f(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
+        else
+            yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
+        end
+        yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
+        est₁ = maximum(abs, yᵢ₁)
+
+        z, z′ = sum_stages!(cache, w₂, w₂′, i)
+        if iip
+            yᵢ₂ = cache.y[i + 1]
             f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         else
             yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
@@ -503,10 +550,10 @@ end
 `interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-@views function interp_setup!(cache::MIRKCache{iip, T}) where {iip, T}
+@views function interp_setup!(cache::MIRKCache{
+        iip, T, use_both, DiffCacheNeeded}) where {iip, T, use_both}
     (; x_star, s_star, c_star, v_star) = cache.ITU
     (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
-
     for r in 1:(s_star - stage)
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
@@ -534,17 +581,53 @@ Here, the ki_interp is the stages in one subinterval.
 
     return k_interp
 end
+@views function interp_setup!(cache::MIRKCache{
+        iip, T, use_both, NoDiffCacheNeeded}) where {iip, T, use_both}
+    (; x_star, s_star, c_star, v_star) = cache.ITU
+    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
+    for r in 1:(s_star - stage)
+        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
+        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
+        for j in eachindex(k_discrete)
+            __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
+        end
+        if r > 1
+            for j in eachindex(k_interp)
+                __maybe_matmul!(
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1))
+            end
+        end
+        for i in eachindex(new_stages)
+            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
+                               (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
+            if iip
+                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            else
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            end
+        end
+    end
+
+    return k_interp
+end
 
 """
     sum_stages!(cache::MIRKCache, w, w′, i::Int)
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 """
-function sum_stages!(cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w, w′,
+        i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
+function sum_stages!(cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, w,
+        w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+    sum_stages!(cache.fᵢ_cache, cache.fᵢ₂_cache, cache, w, w′, i, dt)
+end
 
-function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.mesh_dt[i])
+function sum_stages!(z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
@@ -556,8 +639,23 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache, w, i::Int, dt = cache.m
 
     return z
 end
+function sum_stages!(
+        z::AbstractArray, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+    (; stage, k_discrete, k_interp) = cache
+    (; s_star) = cache.ITU
 
-@views function sum_stages!(z, z′, cache::MIRKCache, w, w′, i::Int, dt = cache.mesh_dt[i])
+    z .= zero(z)
+    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z .= z .* dt .+ cache.y₀.u[i]
+
+    return z
+end
+
+@views function sum_stages!(z, z′, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w,
+        w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
@@ -567,6 +665,23 @@ end
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
+    __maybe_matmul!(
+        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+    z .= z .* dt .+ cache.y₀.u[i]
+
+    return z, z′
+end
+@views function sum_stages!(z, z′, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w, w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+    (; stage, k_discrete, k_interp) = cache
+    (; s_star) = cache.ITU
+
+    z .= zero(z)
+    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z′ .= zero(z′)
+    __maybe_matmul!(z′, k_discrete[i][:, 1:stage], w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
     z .= z .* dt .+ cache.y₀.u[i]

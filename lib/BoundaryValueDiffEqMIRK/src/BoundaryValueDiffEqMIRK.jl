@@ -10,17 +10,18 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                concrete_jacobian_algorithm, eval_bc_residual,
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
                                __extract_problem_details, __initial_guess, interval,
-                               __maybe_allocate_diffcache, __restructure_sol,
-                               __get_bcresid_prototype, safe_similar, __vec, __vec_f,
-                               __vec_f!, __vec_bc, __vec_bc!, recursive_flatten_twopoint!,
-                               __internal_nlsolve_problem, __extract_mesh, __extract_u0,
-                               __has_initial_guess, __initial_guess_length,
+                               __needs_diffcache, __maybe_allocate_diffcache,
+                               __restructure_sol, __cache_trait, __get_bcresid_prototype,
+                               safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+                               recursive_flatten_twopoint!, __internal_nlsolve_problem,
+                               __extract_mesh, __extract_u0, __has_initial_guess,
+                               __initial_guess_length, __cache_trait,
                                __initial_guess_on_mesh, __flatten_initial_guess,
                                __build_solution, __Fix3, get_dense_ad, _sparse_like,
                                AbstractErrorControl, DefectControl, GlobalErrorControl,
                                SequentialErrorControl, HybridErrorControl, HOErrorControl,
                                __use_both_error_control, __default_coloring_algorithm,
-                               __split_kwargs
+                               DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

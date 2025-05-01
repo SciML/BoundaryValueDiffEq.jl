@@ -2,7 +2,7 @@
 
 !!! note
     
-    We support ForwardDiff.jl, FiniteDiff.jl and PolyesterForwardDiff.jl(PolyesterForwardDiff only for collocation methods) via DifferentiationInterface.jl. Please refer to
+    We support ForwardDiff.jl, FiniteDiff.jl, Enzyme.jl, Mooncake.jl and PolyesterForwardDiff.jl(PolyesterForwardDiff only for collocation methods) via DifferentiationInterface.jl. Please refer to
     the [backends page](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/explanation/backends/)
     for more information.
 
@@ -25,3 +25,9 @@ In BoundaryValueDiffEq.jl, we require AD to obtain the Jacobian of the loss func
   - [`AutoPolyesterForwardDiff`](@extref ADTypes.AutoPolyesterForwardDiff): Might be faster
     than [`AutoForwardDiff`](@extref ADTypes.AutoForwardDiff) for large problems. Requires
     `PolyesterForwardDiff.jl` to be installed and loaded.
+  - [`AutoEnzyme(; mode = Enzyme.Forward)`](@extref ADTypes.AutoEnzyme): Source transformation forward mode AD.
+
+## Summary of Reverse Mode AD Backends
+
+  - [`AutoEnzyme(; mode = Enzyme.Reverse)`](@extref ADTypes.AutoEnzyme): Source transformation reverse mode AD.
+  - [`AutoMooncake(; config = nothing)`](@extref ADTypes.AutoMooncake): Source transformation reverse mode AD.

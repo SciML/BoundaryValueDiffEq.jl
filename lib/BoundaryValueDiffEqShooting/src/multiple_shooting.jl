@@ -105,7 +105,7 @@ function __solve_nlproblem!(
             alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = alg.jac_alg.diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.diffmode))
     else
         alg.jac_alg.diffmode
     end
@@ -157,7 +157,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
             alg, prob.problem_type, bcresid_prototype, u0, N, cur_nshoot)
         AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
-            coloring_algorithm = alg.jac_alg.nonbc_diffmode.coloring_algorithm)
+            coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.nonbc_diffmode))
     else
         alg.jac_alg.nonbc_diffmode
     end
@@ -169,6 +169,11 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     # BC Part
     (; bc_diffmode) = alg.jac_alg
+    bc_diffmode = if bc_diffmode isa AutoSparse
+        get_dense_ad(alg.jac_alg.bc_diffmode)
+    else
+        bc_diffmode
+    end
     bc_jac_cache = DI.prepare_jacobian(
         nothing, similar(bcresid_prototype), bc_diffmode, u_at_nodes)
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(
@@ -189,8 +194,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     jac_prototype = vcat(jac_prototype_ode, jac_prototype_bc)
 
     jac_fn = @closure (J, u, p) -> __multiple_shooting_mpoint_jacobian!(
-        J, u, p, similar(bcresid_prototype), resid_nodes, ode_jac_cache,
-        bc_jac_cache, ode_fn, bc_fn, nonbc_diffmode, bc_diffmode, N, M)
+        J, u, p, similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
+        ode_fn, bc_fn, nonbc_diffmode, bc_diffmode, N, M, __cache_trait(alg.jac_alg))
 
     loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype = resid_prototype,
         jac_prototype = jac_prototype, jac = jac_fn)
@@ -295,12 +300,23 @@ function __multiple_shooting_2point_jacobian!(
 end
 
 function __multiple_shooting_mpoint_jacobian!(
-        J, us, p, resid_bc, resid_nodes, ode_jac_cache, bc_jac_cache, ode_fn::F1,
-        bc_fn::F2, nonbc_diffmode, bc_diffmode, N::Int, M::Int) where {F1, F2}
+        J, us, p, resid_bc, resid_nodes, ode_jac_cache, bc_jac_cache, ode_fn::F1, bc_fn::F2,
+        nonbc_diffmode, bc_diffmode, N::Int, M::Int, ::DiffCacheNeeded) where {F1, F2}
     J_bc = @view(J[1:M, :])
     J_c = @view(J[(M + 1):end, :])
 
     DI.jacobian!(ode_fn, resid_nodes.du, J_c, ode_jac_cache, nonbc_diffmode, us)
+    DI.jacobian!(bc_fn, resid_bc, J_bc, bc_jac_cache, bc_diffmode, us)
+
+    return nothing
+end
+function __multiple_shooting_mpoint_jacobian!(
+        J, us, p, resid_bc, resid_nodes, ode_jac_cache, bc_jac_cache, ode_fn::F1, bc_fn::F2,
+        nonbc_diffmode, bc_diffmode, N::Int, M::Int, ::NoDiffCacheNeeded) where {F1, F2}
+    J_bc = @view(J[1:M, :])
+    J_c = @view(J[(M + 1):end, :])
+
+    DI.jacobian!(ode_fn, resid_nodes, J_c, ode_jac_cache, nonbc_diffmode, us)
     DI.jacobian!(bc_fn, resid_bc, J_bc, bc_jac_cache, bc_diffmode, us)
 
     return nothing
