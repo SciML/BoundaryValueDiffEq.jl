@@ -43,6 +43,7 @@ Hwloc = "3"
 InteractiveUtils = "<0.0.1, 1"
 JET = "0.9.18"
 LinearAlgebra = "1.10"
+OrdinaryDiffEqLowOrderRK = "1"
 OrdinaryDiffEqRosenbrock = "1"
 OrdinaryDiffEqTsit5 = "1"
 OrdinaryDiffEqVerner = "1"
@@ -67,6 +68,7 @@ DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 Hwloc = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+OrdinaryDiffEqLowOrderRK = "1344f307-1e59-4825-a18e-ace9aa3fa4c6"
 OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
 OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
@@ -78,4 +80,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "JET", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
+test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "JET", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
