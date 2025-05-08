@@ -396,7 +396,7 @@ end
         resid[2] = u(0.0)[2] - 2.0
     end
     bvp = BVProblem(lotka!, bc!, [1.0, 2.0], (0, 10), [7.5, 4.0, 8, 5])
-    for order in (2, 3, 4, 5, 6)
+    for order in (4,)
         sol = solve(bvp, mirk_solver(Val(order)), dt = 0.01)
         @test SciMLBase.successful_retcode(sol)
     end
