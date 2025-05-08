@@ -627,7 +627,8 @@ function sum_stages!(cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, w,
     sum_stages!(cache.fᵢ_cache, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
 
-@views function sum_stages!(z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+@views function sum_stages!(
+        z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
         w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, original_y₀) = cache
     (; s_star) = cache.ITU
