@@ -109,8 +109,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     return MIRKCache{iip, T, use_both, typeof(diffcache)}(
         alg_order(alg), stage, N, size(X), f, bc, prob, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        k_interp, y, y₀, similar(y₀), residual, fᵢ_cache, fᵢ₂_cache, errors,
-        new_stages, resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
+        k_interp, y, y₀, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages,
+        resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
