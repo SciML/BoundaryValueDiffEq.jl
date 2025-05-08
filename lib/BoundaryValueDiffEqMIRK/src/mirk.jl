@@ -16,14 +16,15 @@
     mesh                       # Discrete mesh
     mesh_dt                    # Step size
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
-    k_interp                   # Stage information associated with the discrete Runge-Kutta method
-    y
-    y₀
+    k_interp                   # Stage information associated with the continuous Runge-Kutta method
+    y                          # Diffcached solution
+    y₀                         # Current discrete solution
+    original_y₀                # Original discrete solution for interpolant evaluation
     residual
     # The following 2 caches are never resized
     fᵢ_cache
     fᵢ₂_cache
-    errors
+    errors                     # Error estimates, could be defect or global error
     new_stages
     resid_size
     kwargs
@@ -107,8 +108,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     return MIRKCache{iip, T, use_both}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages,
-        resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
+        k_interp, y, y₀, similar(y₀), residual, fᵢ_cache, fᵢ₂_cache, errors,
+        new_stages, resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
@@ -123,6 +124,7 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     __resize!(cache.k_interp, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
     __resize!(cache.y₀, Nₙ, cache.M)
+    __resize!(cache.original_y₀, Nₙ, cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
     __resize!(cache.errors, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __resize!(cache.new_stages, Nₙ - 1, cache.M)
@@ -159,7 +161,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(
-        nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+        nlprob, nlsolve_alg; abstol = abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     error_norm = 2 * abstol
@@ -179,9 +181,10 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache, controller)
             if info == ReturnCode.Success
+                # Keep the discrete solution for interpolant evaluation
+                copyto!(cache.original_y₀, cache.y₀)
                 (length(mesh) < length(cache.mesh)) &&
                     __resize!(cache.y₀, length(cache.mesh), cache.M)
-                #__resize!(cache.y₀, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end
