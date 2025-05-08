@@ -68,15 +68,25 @@ function concrete_jacobian_algorithm(
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
 end
 
+# For multi-point BVP, we only care about bc_diffmode and nonbc_diffmode
 function concrete_jacobian_algorithm(
-        jac_alg::BVPJacobianAlgorithm, prob_type, prob::BVProblem, alg)
+        jac_alg::BVPJacobianAlgorithm, prob_type::StandardBVProblem, prob::BVProblem, alg)
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
-    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
-    bc_diffmode = jac_alg.bc_diffmode === nothing ?
-                  (prob_type isa TwoPointBVProblem ? __default_bc_sparse_ad :
-                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
+    bc_diffmode = jac_alg.bc_diffmode === nothing ? __default_bc_sparse_ad(u0) :
+                  jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
                      jac_alg.nonbc_diffmode
+    diffmode = jac_alg.diffmode === nothing ? nothing : jac_alg.diffmode
+    return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
+end
+
+# For two-point BVP, we only care about diffmode
+function concrete_jacobian_algorithm(
+        jac_alg::BVPJacobianAlgorithm, prob_type::TwoPointBVProblem, prob::BVProblem, alg)
+    u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
+    diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
+    bc_diffmode = jac_alg.bc_diffmode === nothing ? nothing : jac_alg.bc_diffmode
+    nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? nothing : jac_alg.nonbc_diffmode
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
@@ -151,22 +161,13 @@ end
            __needs_diffcache(jac_alg.nonbc_diffmode)
 end
 
-# We don't need to always allocate a DiffCache. This works around that.
-@concrete struct FakeDiffCache
-    du
-end
-
 function __maybe_allocate_diffcache(x, chunksize, jac_alg)
-    return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : FakeDiffCache(x)
+    return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : x
 end
 __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(zero(x.du), chunksize)
-__maybe_allocate_diffcache(x::FakeDiffCache, _) = FakeDiffCache(zero(x.du))
-
-const MaybeDiffCache = Union{DiffCache, FakeDiffCache}
 
 ## get_tmp shows a warning as it should on cache exapansion, this behavior however is
 ## expected for adaptive BVP solvers so we write our own `get_tmp` and drop the warning logs
-@inline get_tmp(dc::FakeDiffCache, u) = dc.du
 
 @inline function get_tmp(dc, u)
     return Logging.with_logger(Logging.NullLogger()) do
@@ -180,4 +181,8 @@ struct NoDiffCacheNeeded end
 
 @inline __cache_trait(::AutoForwardDiff) = DiffCacheNeeded()
 @inline __cache_trait(ad::AutoSparse) = __cache_trait(ADTypes.dense_ad(ad))
+@inline function __cache_trait(jac_alg::BVPJacobianAlgorithm)
+    isnothing(jac_alg.diffmode) ? __cache_trait(jac_alg.nonbc_diffmode) :
+    __cache_trait(jac_alg.diffmode)
+end
 @inline __cache_trait(_) = NoDiffCacheNeeded()

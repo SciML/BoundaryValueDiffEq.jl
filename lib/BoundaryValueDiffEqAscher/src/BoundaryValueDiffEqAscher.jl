@@ -2,13 +2,15 @@ module BoundaryValueDiffEqAscher
 
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
+
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                __extract_problem_details, concrete_jacobian_algorithm,
                                __Fix3, __concrete_nonlinearsolve_algorithm,
                                __internal_nlsolve_problem, __vec, __vec_f, __vec_f!,
                                __vec_bc, __vec_bc!, __extract_mesh, get_dense_ad,
-                               __get_bcresid_prototype, __split_kwargs
+                               __get_bcresid_prototype, __split_kwargs,
+                               __default_nonsparse_ad
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

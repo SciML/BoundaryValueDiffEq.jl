@@ -1,5 +1,5 @@
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
-recursive_length(x::Vector{<:MaybeDiffCache}) = sum(xᵢ -> length(xᵢ.du), x)
+recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
 function recursive_flatten(x::Vector{<:AbstractArray})
     y = zero(first(x), recursive_length(x))
@@ -37,7 +37,7 @@ end
     return y
 end
 
-@views function recursive_unflatten!(y::Vector{<:MaybeDiffCache}, x::AbstractVector)
+@views function recursive_unflatten!(y::Vector{<:DiffCache}, x::AbstractVector)
     return recursive_unflatten!(get_tmp.(y, (x,)), x)
 end
 
@@ -230,7 +230,7 @@ end
 __resize!(::Nothing, n, _) = nothing
 __resize!(::Nothing, n, _, _) = nothing
 
-function __resize!(x::AbstractVector{<:MaybeDiffCache}, n, M)
+function __resize!(x::AbstractVector{<:DiffCache}, n, M)
     N = n - length(x)
     N == 0 && return x
     if N > 0
@@ -565,6 +565,14 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     J′ = adapt(parameterless_type(x), J)
     V = __ones_like(x, length(I))
     return sparse(I′, J′, V, m, n)
+end
+
+nodual_value(x) = x
+nodual_value(x::ForwardDiff.Dual) = ForwardDiff.value(x)
+nodual_value(x::AbstractArray{<:ForwardDiff.Dual}) = map(ForwardDiff.value, x)
+nodual_value(x::SparseConnectivityTracer.Dual) = SparseConnectivityTracer.primal(x)
+function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
+    map(SparseConnectivityTracer.primal, x)
 end
 
 function __split_kwargs(; abstol, adaptive, controller, kwargs...)

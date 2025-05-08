@@ -9,7 +9,7 @@ function BoundaryValueDiffEqCore.__resize!(
 end
 
 function BoundaryValueDiffEqCore.__resize!(
-        x::AbstractVector{<:MaybeDiffCache}, n, M, TU::FIRKTableau{false})
+        x::AbstractVector{<:DiffCache}, n, M, TU::FIRKTableau{false})
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
