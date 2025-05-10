@@ -1,5 +1,5 @@
 @testitem "Lambert's Problem" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEq, LinearAlgebra
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqLowOrderRK, LinearAlgebra
 
     y0 = [-4.7763169762853989E+06, -3.8386398704441520E+05, -5.3500183933132319E+06,
         -5528.612564911408, 1216.8442360202787, 4845.114446429901]

@@ -1,4 +1,4 @@
-abstract type AbstractAscher <: BoundaryValueDiffEqAlgorithm end
+abstract type AbstractAscher <: AbstractBoundaryValueDiffEqAlgorithm end
 
 for stage in (1, 2, 3, 4, 5, 6, 7)
     alg = Symbol("Ascher$(stage)")
@@ -18,6 +18,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `zeta`: side condition points, should always be provided.
 
         !!! note
+
             For type-stability, the chunksizes for ForwardDiff ADTypes in
             `BVPJacobianAlgorithm` must be provided.
 
@@ -54,7 +55,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
     end
 end
 
-function concretize_jacobian_algorithm(alg::AbstractAscher, prob)
-    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-    return alg
+function BoundaryValueDiffEqCore.concrete_jacobian_algorithm(
+        jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg::AbstractAscher)
+    return BVPJacobianAlgorithm(__default_nonsparse_ad(prob.u0))
 end

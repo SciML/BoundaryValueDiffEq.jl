@@ -2,6 +2,6 @@
 
 ## Solvers
 
-```julia
-BoundaryValueDiffEqCore.BoundaryValueDiffEqAlgorithm
+```@docs
+BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm
 ```

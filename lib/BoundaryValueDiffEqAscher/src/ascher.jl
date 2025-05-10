@@ -1,4 +1,4 @@
-@concrete struct AscherCache{iip, T}
+@concrete struct AscherCache{iip, T} <: AbstractBoundaryValueDiffEqCache
     prob
     f
     jac
@@ -58,7 +58,7 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
 end
 
 function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
-        adaptive = true, abstol = 1e-4, kwargs...)
+        controller = GlobalErrorControl(), adaptive = true, abstol = 1e-4, kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -145,17 +145,13 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
     cache = AscherCache{iip, T}(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
         zeta, fixpnt, alg, prob.problem_type, bcresid_prototype, residual,
-        zval, yval, gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz,
-        dmv, pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, kwargs...))
+        zval, yval, gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv,
+        pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, controller, kwargs...))
     return cache
 end
 
-function __split_ascher_kwargs(; abstol, dt, adaptive = true, kwargs...)
-    return ((abstol, adaptive, dt), (; abstol, adaptive, kwargs...))
-end
-
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_ascher_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the

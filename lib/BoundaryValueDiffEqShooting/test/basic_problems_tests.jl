@@ -1,5 +1,5 @@
 @testitem "Basic Shooting" begin
-    using BoundaryValueDiffEqShooting, LinearAlgebra, LinearSolve, OrdinaryDiffEq, JET
+    using BoundaryValueDiffEqShooting, LinearAlgebra, OrdinaryDiffEqTsit5, JET
 
     SOLVERS = [Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
@@ -126,7 +126,7 @@
 end
 
 @testitem "Shooting with Complex Values" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEq, LinearAlgebra, LinearSolve
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
 
     SOLVERS = [
         Shooting(Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())), Shooting(Vern7()),
@@ -160,7 +160,8 @@ end
 end
 
 @testitem "Flow in a Channel" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEq, LinearAlgebra, LinearSolve
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock,
+          LinearAlgebra
 
     function flow_in_a_channel!(du, u, p, t)
         R, P = p
@@ -209,7 +210,8 @@ end
 end
 #FIXME: MultipleShooting fails for large out-of-place BVP systems
 @testitem "Ray Tracing" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEq, LinearAlgebra, LinearSolve
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock,
+          LinearAlgebra
 
     @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
     @inline ux(x, y, z, p) = -p[1] * sin(p[1] * x)

@@ -1,5 +1,5 @@
 @testitem "VectorOfVector Initial Condition" begin
-    using BoundaryValueDiffEqFIRK, OrdinaryDiffEq
+    using BoundaryValueDiffEqFIRK, OrdinaryDiffEqRosenbrock
     #System Constants
     ss = 1 #excitatory parameter
     sj = 0 #inhibitory parameter

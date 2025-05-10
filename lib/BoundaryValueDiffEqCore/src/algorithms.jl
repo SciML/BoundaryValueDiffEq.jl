@@ -1,10 +1,10 @@
 # Algorithms
 """
-    BoundaryValueDiffEqAlgorithm
+    AbstractBoundaryValueDiffEqAlgorithm
 
 Abstract type for all boundary value problem algorithms.
 """
-abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
+abstract type AbstractBoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 
 @inline __nameof(::T) where {T} = nameof(T)
 @inline __nameof(::Type{T}) where {T} = nameof(T)
@@ -17,7 +17,7 @@ abstract type BoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
     push!(list, "$fieldname = $(__nameof(field))()")
 end
 
-function Base.show(io::IO, alg::BoundaryValueDiffEqAlgorithm)
+function Base.show(io::IO, alg::AbstractBoundaryValueDiffEqAlgorithm)
     print(io, "$(__nameof(alg))(")
     modifiers = String[]
     for field in fieldnames(typeof(alg))

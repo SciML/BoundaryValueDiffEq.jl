@@ -1,16 +1,13 @@
 module BoundaryValueDiffEq
 
 using ADTypes
-using ArrayInterface: matrix_colors, parameterless_type, undefmatrix, fast_scalar_indexing
 using BoundaryValueDiffEqAscher
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm
 using BoundaryValueDiffEqFIRK
 using BoundaryValueDiffEqMIRK
 using BoundaryValueDiffEqMIRKN
 using BoundaryValueDiffEqShooting
 using DiffEqBase: DiffEqBase, solve
-using FastClosures: @closure
-using ForwardDiff: ForwardDiff, pickchunksize
 using Reexport: @reexport
 using SciMLBase
 
@@ -33,6 +30,6 @@ export Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7
 
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
-export MIRKJacobianComputationAlgorithm, BVPJacobianAlgorithm
+export BVPJacobianAlgorithm
 
 end

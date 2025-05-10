@@ -3,22 +3,26 @@ module BoundaryValueDiffEqFIRK
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
+                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_nonlinearsolve_algorithm, diff!,
-                               __FastShortcutBVPCompatibleNonlinearPolyalg,
-                               __FastShortcutBVPCompatibleNLLSPolyalg, EvalSol,
-                               concrete_jacobian_algorithm, eval_bc_residual,
+                               __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
+                               concrete_jacobian_algorithm, eval_bc_residual, interval,
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
-                               __extract_problem_details, __initial_guess,
+                               __extract_problem_details, __initial_guess, nodual_value,
+                               __maybe_allocate_diffcache, __restructure_sol,
+                               __get_bcresid_prototype, __vec, __vec_f, __vec_f!, __vec_bc,
+                               __vec_bc!, recursive_flatten_twopoint!,
+                               __internal_nlsolve_problem, __extract_mesh, __extract_u0,
                                __default_coloring_algorithm, __maybe_allocate_diffcache,
                                __restructure_sol, __get_bcresid_prototype, safe_similar,
-                               __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+                               __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!, __cache_trait,
                                recursive_flatten_twopoint!, __internal_nlsolve_problem,
-                               MaybeDiffCache, __extract_mesh, __extract_u0,
-                               __has_initial_guess, __initial_guess_length,
-                               __initial_guess_on_mesh, __flatten_initial_guess,
-                               __build_solution, __Fix3, _sparse_like, get_dense_ad
+                               __extract_mesh, __extract_u0, DiffCacheNeeded,
+                               NoDiffCacheNeeded, __has_initial_guess,
+                               __initial_guess_length, __initial_guess_on_mesh,
+                               __flatten_initial_guess, __build_solution, __Fix3,
+                               __split_kwargs, _sparse_like, get_dense_ad
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
@@ -156,8 +160,7 @@ include("sparse_jacobians.jl")
     bc1_nlls = (sol, p, t) -> [sol(0.0)[1], sol(100.0)[1] - 1, sol(100.0)[2] + 1.729109]
 
     bc1_nlls_a! = (resid, ua, p) -> (resid[1] = ua[1])
-    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1;
-    resid[2] = ub[2] + 1.729109)
+    bc1_nlls_b! = (resid, ub, p) -> (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
     bc1_nlls_a = (ua, p) -> [ua[1]]
     bc1_nlls_b = (ub, p) -> [ub[1] - 1, ub[2] + 1.729109]

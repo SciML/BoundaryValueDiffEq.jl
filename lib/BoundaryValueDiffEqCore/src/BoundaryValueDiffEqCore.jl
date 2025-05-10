@@ -18,27 +18,29 @@ using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
                  StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
-using SparseConnectivityTracer: TracerLocalSparsityDetector
+using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm
 
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 
 include("types.jl")
+include("solution_utils.jl")
 include("utils.jl")
 include("algorithms.jl")
+include("abstract_types.jl")
 include("alg_utils.jl")
 include("default_nlsolve.jl")
-include("misc_utils.jl")
 include("calc_errors.jl")
 
-function SciMLBase.__solve(
-        prob::AbstractBVProblem, alg::BoundaryValueDiffEqAlgorithm, args...; kwargs...)
-    cache = init(prob, alg, args...; kwargs...)
-    return solve!(cache)
+function SciMLBase.__solve(prob::AbstractBVProblem,
+        alg::AbstractBoundaryValueDiffEqAlgorithm, args...; kwargs...)
+    cache = SciMLBase.__init(prob, alg, args...; kwargs...)
+    return SciMLBase.solve!(cache)
 end
 
-export BVPJacobianAlgorithm
-export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl
+export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
+export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
+       NoErrorControl
 export HOErrorControl, REErrorControl
 
 end

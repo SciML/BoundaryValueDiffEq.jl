@@ -1,5 +1,5 @@
 @testitem "Overconstrained BVP" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEq, LinearAlgebra, JET
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, LinearAlgebra, JET
 
     SOLVERS = [
         Shooting(Tsit5(), NewtonRaphson(),
