@@ -381,3 +381,50 @@ end
             prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = error_control)
     end
 end
+
+@testitem "Derivative boundary conditions" begin
+    prob_bvp_nonlinear_14_f(y1, y2, y3, y4) = y2 * y3 - y1 * y4
+    function prob_bvp_nonlinear_14_f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = u[3]
+        du[3] = u[4]
+        du[4] = prob_bvp_nonlinear_14_f(u[1], u[2], u[3], u[4])
+    end
+    function prob_bvp_nonlinear_14_bc!(res, u, p, t)
+        res[1] = u(0.0)[1]
+        res[2] = u(0.0)[2]
+        res[3] = u(1.0)[1] - 1
+        res[4] = u(1.0)[2]
+    end
+    prob_bvp_nonlinear_14_function = BVPFunction(
+        prob_bvp_nonlinear_14_f!, prob_bvp_nonlinear_14_bc!)
+    prob_bvp_nonlinear_14_tspan = (0.0, 1.0)
+
+    prob_bvp_nonlinear_normal = BVProblem(
+        prob_bvp_nonlinear_14_function, [1.0, 0.0, 0.0, 0.0], prob_bvp_nonlinear_14_tspan)
+
+    @test_nowarn sol1 = solve(
+        prob_bvp_nonlinear_normal, MIRK4(), dt = 0.01, adaptive = false)
+
+    prob_bvp_nonlinear_14_f(y1, y2, y3, y4) = y2 * y3 - y1 * y4
+    function prob_bvp_nonlinear_14_f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = u[3]
+        du[3] = u[4]
+        du[4] = prob_bvp_nonlinear_14_f(u[1], u[2], u[3], u[4])
+    end
+    function prob_bvp_nonlinear_bc!(res, u, p, t)
+        res[1] = u(0.0)[1]
+        res[2] = u(0.0, Val{1})[1]
+        res[3] = u(1.0)[1] - 1
+        res[4] = u(1.0, Val{1})[1]
+    end
+    prob_bvp_nonlinear_function = BVPFunction(
+        prob_bvp_nonlinear_14_f!, prob_bvp_nonlinear_bc!)
+    prob_bvp_nonlinear_14_tspan = (0.0, 1.0)
+
+    prob_bvp_nonlinear_14 = BVProblem(
+        prob_bvp_nonlinear_function, [1.0, 0.0, 0.0, 0.0], prob_bvp_nonlinear_14_tspan)
+
+    @test_nowarn sol2 = solve(prob_bvp_nonlinear_14, MIRK4(), dt = 0.01, adaptive = false)
+end
