@@ -20,13 +20,15 @@
     fᵢ_cache
     fᵢ₂_cache
     resid_size
+    nlsolve_kwargs
     kwargs
 end
 
 Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 
 function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN; dt = 0.0,
-        adaptive = false, abstol = 1e-6, controller = NoErrorControl(), kwargs...)
+        adaptive = false, abstol = 1e-6, controller = NoErrorControl(),
+        nlsolve_kwargs = (; abstol = abstol / 100), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     t₀, t₁ = prob.tspan
@@ -85,16 +87,16 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN; dt = 0
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKNCache{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
-        TU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache,
-        fᵢ₂_cache, resid_size, (; abstol, dt, adaptive, controller, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p, alg, TU,
+        bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual, fᵢ_cache, fᵢ₂_cache,
+        resid_size, nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
-    (_, _, _), kwargs = __split_kwargs(; cache.kwargs...)
+    (_, _, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
-    sol_nlprob, info = __perform_mirkn_iteration(cache; kwargs...)
+    sol_nlprob, info = __perform_mirkn_iteration(cache)
 
     solu = ArrayPartition.(
         cache.y₀.u[1:length(cache.mesh)], cache.y₀.u[(length(cache.mesh) + 1):end])
@@ -103,10 +105,10 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_mirkn_iteration(cache::MIRKNCache; nlsolve_kwargs = (;), kwargs...)
+function __perform_mirkn_iteration(cache::MIRKNCache)
     nlprob::NonlinearProblem = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(nlprob, nlsolve_alg; kwargs..., nlsolve_kwargs..., alias_u0 = true)
+    sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     return sol_nlprob, sol_nlprob.retcode
