@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqAscher"
 uuid = "7227322d-7511-4e07-9247-ad6ff830280e"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.5.1"
+version = "1.6.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"

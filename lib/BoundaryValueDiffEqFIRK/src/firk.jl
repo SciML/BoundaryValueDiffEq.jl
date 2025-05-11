@@ -81,9 +81,9 @@ function shrink_y(y, N, stage)
     return y_shrink
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
-        adaptive = true, controller = DefectControl(),
-        nlsolve_kwargs = (; abstol = abstol / 100), kwargs...)
+function SciMLBase.__init(
+        prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
     if alg.nested_nlsolve
         return init_nested(prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
             controller = controller, nlsolve_kwargs = nlsolve_kwargs, kwargs...)
@@ -93,9 +93,9 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol =
     end
 end
 
-function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
-        adaptive = true, controller = DefectControl(),
-        nlsolve_kwargs = (; abstol = abstol / 100), kwargs...)
+function init_nested(
+        prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
@@ -187,9 +187,9 @@ function init_nested(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6
         nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
-function init_expanded(prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6,
-        adaptive = true, controller = DefectControl(),
-        nlsolve_kwargs = (; abstol = abstol / 100), kwargs...)
+function init_expanded(
+        prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     if adaptive && isa(alg, FIRKNoAdaptivity)
