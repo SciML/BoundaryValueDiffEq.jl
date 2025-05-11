@@ -381,3 +381,23 @@ end
             prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = error_control)
     end
 end
+
+# https://github.com/SciML/BoundaryValueDiffEq.jl/issues/319
+@testitem "Test interpolant evaluation with big defect" setup=[MIRKConvergenceTests] begin
+    function lotka!(du, u, p, t)
+        x = u[1]
+        y = u[2]
+        du[1] = p[1] * x - p[2] * x * y
+        du[2] = -p[3] * y + p[4] * x * y
+    end
+
+    function bc!(resid, u, p, t)
+        resid[1] = u(0.0)[1] - 1.0
+        resid[2] = u(0.0)[2] - 2.0
+    end
+    bvp = BVProblem(lotka!, bc!, [1.0, 2.0], (0, 10), [7.5, 4.0, 8, 5])
+    for order in (4, 5, 6)
+        sol = solve(bvp, mirk_solver(Val(order)), dt = 0.01)
+        @test SciMLBase.successful_retcode(sol)
+    end
+end
