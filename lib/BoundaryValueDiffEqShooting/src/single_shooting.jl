@@ -37,9 +37,9 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     y_ = similar(resid_prototype)
 
     jac_cache = if iip
-        DI.prepare_jacobian(nothing, y_, diffmode, vec(u0))
+        DI.prepare_jacobian(nothing, y_, diffmode, vec(u0); strict = Val(false))
     else
-        DI.prepare_jacobian(nothing, diffmode, vec(u0))
+        DI.prepare_jacobian(nothing, diffmode, vec(u0); strict = Val(false))
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(

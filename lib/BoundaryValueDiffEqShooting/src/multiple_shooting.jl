@@ -111,7 +111,8 @@ function __solve_nlproblem!(
     end
 
     resid_prototype_cached = similar(resid_prototype)
-    jac_cache = DI.prepare_jacobian(nothing, resid_prototype_cached, diffmode, u_at_nodes)
+    jac_cache = DI.prepare_jacobian(
+        nothing, resid_prototype_cached, diffmode, u_at_nodes; strict = Val(false))
 
     ode_cache_jac_fn = __multiple_shooting_init_jacobian_odecache(
         ensemblealg, prob, jac_cache, diffmode, alg.ode_alg,
@@ -161,8 +162,8 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     else
         alg.jac_alg.nonbc_diffmode
     end
-    ode_jac_cache = DI.prepare_jacobian(
-        nothing, similar(u_at_nodes, cur_nshoot * N), nonbc_diffmode, u_at_nodes)
+    ode_jac_cache = DI.prepare_jacobian(nothing, similar(u_at_nodes, cur_nshoot * N),
+        nonbc_diffmode, u_at_nodes; strict = Val(false))
     ode_cache_ode_jac_fn = __multiple_shooting_init_jacobian_odecache(
         ensemblealg, prob, ode_jac_cache, nonbc_diffmode,
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
@@ -175,7 +176,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         bc_diffmode
     end
     bc_jac_cache = DI.prepare_jacobian(
-        nothing, similar(bcresid_prototype), bc_diffmode, u_at_nodes)
+        nothing, similar(bcresid_prototype), bc_diffmode, u_at_nodes; strict = Val(false))
     ode_cache_bc_jac_fn = __multiple_shooting_init_jacobian_odecache(
         ensemblealg, prob, bc_jac_cache, bc_diffmode,
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
