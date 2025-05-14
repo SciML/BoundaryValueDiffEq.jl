@@ -32,9 +32,9 @@ end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-6,
-        adaptive = true, controller = DefectControl(),
-        nlsolve_kwargs = (; abstol = abstol / 100), kwargs...)
+function SciMLBase.__init(
+        prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
