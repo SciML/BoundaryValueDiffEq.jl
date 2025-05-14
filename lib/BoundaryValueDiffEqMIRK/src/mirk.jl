@@ -173,7 +173,7 @@ function __perform_mirk_iteration(
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
         error_norm, info = error_estimate!(
-            cache, controller, cache.errors, sol_nlprob, nlsolve_alg)
+            cache, controller, cache.errors, sol_nlprob, nlsolve_alg, abstol)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable

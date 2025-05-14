@@ -352,13 +352,15 @@ error to estimate the error norm.
 """
 # Defect control
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
-        errors, sol, nlsolve_alg) where {iip, T}
-    return error_estimate!(cache, controller, controller.method, errors, sol, nlsolve_alg)
+        errors, sol, nlsolve_alg, abstol) where {iip, T}
+    return error_estimate!(
+        cache, controller, controller.method, errors, sol, nlsolve_alg, abstol)
 end
 
 # Global error control
-@views function error_estimate!(cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
-        controller::DefectControl, errors, sol, nlsolve_alg) where {iip, T, use_both}
+@views function error_estimate!(
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, controller::DefectControl,
+        errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
@@ -402,8 +404,9 @@ end
         defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
     return defect_norm, info
 end
-@views function error_estimate!(cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        controller::DefectControl, errors, sol, nlsolve_alg) where {iip, T, use_both}
+@views function error_estimate!(
+        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, controller::DefectControl,
+        errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
@@ -451,14 +454,14 @@ end
 # Sequential error control
 @views function error_estimate!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl,
-        errors, sol, nlsolve_alg) where {iip, T}
+        errors, sol, nlsolve_alg, abstol) where {iip, T}
     defect_norm, info = error_estimate!(
-        cache::MIRKCache{iip, T}, controller.defect, errors, sol, nlsolve_alg)
+        cache::MIRKCache{iip, T}, controller.defect, errors, sol, nlsolve_alg, abstol)
     error_norm = defect_norm
     if defect_norm <= abstol
         global_error_norm, info = error_estimate!(
             cache::MIRKCache{iip, T}, controller.global_error,
-            controller.global_error.method, errors, sol, nlsolve_alg)
+            controller.global_error.method, errors, sol, nlsolve_alg, abstol)
         error_norm = global_error_norm
         return error_norm, info
     end
@@ -467,15 +470,15 @@ end
 
 # Hybrid error control
 function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorControl,
-        errors, sol, nlsolve_alg) where {iip, T}
+        errors, sol, nlsolve_alg, abstol) where {iip, T}
     L = length(cache.mesh) - 1
     defect = errors[:, 1:L]
     global_error = errors[:, (L + 1):end]
     defect_norm, _ = error_estimate!(
-        cache::MIRKCache{iip, T}, controller.defect, defect, sol, nlsolve_alg)
+        cache::MIRKCache{iip, T}, controller.defect, defect, sol, nlsolve_alg, abstol)
     global_error_norm, _ = error_estimate!(
         cache, controller.global_error, controller.global_error.method,
-        global_error, sol, nlsolve_alg)
+        global_error, sol, nlsolve_alg, abstol)
 
     error_norm = controller.DE * defect_norm + controller.GE * global_error_norm
     copyto!(errors, VectorOfArray(vcat(defect.u, global_error.u)))
@@ -483,7 +486,8 @@ function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorContro
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
-        global_error_control::REErrorControl, errors, sol, nlsolve_alg) where {iip, T}
+        global_error_control::REErrorControl, errors,
+        sol, nlsolve_alg, abstol) where {iip, T}
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
@@ -502,7 +506,8 @@ end
 end
 
 @views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
-        global_error_control::HOErrorControl, errors, sol, nlsolve_alg) where {iip, T}
+        global_error_control::HOErrorControl, errors,
+        sol, nlsolve_alg, abstol) where {iip, T}
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
