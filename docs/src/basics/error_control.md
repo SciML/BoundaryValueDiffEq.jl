@@ -1,4 +1,4 @@
-# Error Control Adaptivity
+# [Error Control Adaptivity](@id error_control)
 
 Adaptivity helps ensure the quality of the our numerical solution, and when our solution exhibits significant estimating errors, adaptivity automatically refine the mesh based on the error distribution, and providing a final satisfying solution.
 

@@ -26,13 +26,15 @@
     errors
     new_stages
     resid_size
+    nlsolve_kwargs
     kwargs
 end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-6,
-        adaptive = true, controller = DefectControl(), kwargs...)
+function SciMLBase.__init(
+        prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
@@ -106,10 +108,10 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol =
     #prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKCache{iip, T, use_both, typeof(diffcache)}(
-        alg_order(alg), stage, N, size(X), f, bc, prob, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages,
-        resid₁_size, (; abstol, dt, adaptive, controller, kwargs...))
+        alg_order(alg), stage, N, size(X), f, bc, prob, prob.problem_type, prob.p,
+        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size,
+        nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
@@ -131,18 +133,18 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
 end
 
 function SciMLBase.solve!(cache::MIRKCache)
-    (abstol, adaptive, controller), kwargs = __split_kwargs(; cache.kwargs...)
+    (abstol, adaptive, controller), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
     sol_nlprob, info, error_norm = __perform_mirk_iteration(
-        cache, abstol, adaptive, controller; kwargs...)
+        cache, abstol, adaptive, controller)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && error_norm > abstol
             sol_nlprob, info, error_norm = __perform_mirk_iteration(
-                cache, abstol, adaptive, controller; kwargs...)
+                cache, abstol, adaptive, controller)
         end
     end
 
@@ -155,12 +157,11 @@ function SciMLBase.solve!(cache::MIRKCache)
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
-        controller::AbstractErrorControl; nlsolve_kwargs = (;), kwargs...)
+function __perform_mirk_iteration(
+        cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(
-        nlprob, nlsolve_alg; abstol = abstol, kwargs..., nlsolve_kwargs..., alias_u0 = true)
+    sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     error_norm = 2 * abstol
@@ -171,8 +172,8 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool,
     info::ReturnCode.T = sol_nlprob.retcode
 
     if info == ReturnCode.Success # Nonlinear Solve was successful
-        error_norm, info = error_estimate!(cache, controller, cache.errors, sol_nlprob,
-            nlsolve_alg, abstol, kwargs, nlsolve_kwargs)
+        error_norm, info = error_estimate!(
+            cache, controller, cache.errors, sol_nlprob, nlsolve_alg, abstol)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable

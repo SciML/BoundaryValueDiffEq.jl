@@ -38,6 +38,7 @@
     ipvtw
     TU
     valstr
+    nlsolve_kwargs
     kwargs
 end
 
@@ -57,8 +58,9 @@ function get_fixed_points(prob::BVProblem, alg::AbstractAscher)
     end
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
-        controller = GlobalErrorControl(), adaptive = true, abstol = 1e-4, kwargs...)
+function SciMLBase.__init(
+        prob::BVProblem, alg::AbstractAscher; dt = 0.0, controller = GlobalErrorControl(),
+        adaptive = true, abstol = 1e-4, nlsolve_kwargs = (; abstol = abstol), kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -143,25 +145,24 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; dt = 0.0,
 
     g = build_almost_block_diagonals(zeta, ncomp, mesh, T)
     cache = AscherCache{iip, T}(
-        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
-        zeta, fixpnt, alg, prob.problem_type, bcresid_prototype, residual,
-        zval, yval, gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv,
-        pvtg, pvtw, TU, valst, (; abstol, dt, adaptive, controller, kwargs...))
+        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
+        fixpnt, alg, prob.problem_type, bcresid_prototype, residual, zval, yval,
+        gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU,
+        valst, nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
     return cache
 end
 
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
-    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
-    z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive; kwargs...)
+    z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive)
 
     if adaptive
         while SciMLBase.successful_retcode(info) && norm(error_norm) > abstol
-            z, y, info, error_norm = __perform_ascher_iteration(
-                cache, abstol, adaptive; kwargs...)
+            z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive)
         end
     end
     u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
@@ -170,21 +171,19 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
         cache.prob, cache.alg, cache.original_mesh, u; retcode = info)
 end
 
-function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool;
-        nlsolve_kwargs = (;), kwargs...) where {iip, T}
+function __perform_ascher_iteration(
+        cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {iip, T}
     info::ReturnCode.T = ReturnCode.Success
     nlprob = __construct_nlproblem(cache)
     nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    nlsol = __solve(nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
+    nlsol = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
-    N = length(cache.mesh)
-
     z = copy(cache.z)
     y = copy(cache.y)
-    for i in 1:N
-        @views approx(cache, cache.mesh[i], z[i], y[i])
+    for (i, m) in enumerate(cache.mesh)
+        @views approx(cache, m, z[i], y[i])
     end
 
     # Preserve dmz, and mesh for the mesh selection
@@ -203,7 +202,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         __expand_cache_for_error!(cache)
 
         _nlprob = __construct_nlproblem(cache)
-        nlsol = __solve(_nlprob, nlsolve_alg; abstol, kwargs..., nlsolve_kwargs...)
+        nlsol = __solve(_nlprob, nlsolve_alg; cache.nlsolve_kwargs...)
 
         error_norm = error_estimate!(cache)
         if norm(error_norm) > abstol
