@@ -7,7 +7,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     i = interval(mesh, t)
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
-    w, w′ = interp_weights(τ, cache.alg)
+    w, _ = interp_weights(τ, cache.alg)
     sum_stages!(y, cache, w, i, dt)
     return y
 end
@@ -624,32 +624,35 @@ function sum_stages!(cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, w,
     sum_stages!(cache.fᵢ_cache, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
 
+# Here we should not directly in-place change z in several steps
+# because in final step we actually need to use the original z(which is cache.y₀.u[i])
+# we use fᵢ₂_cache to avoid additional allocations.
 function sum_stages!(z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
         w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, fᵢ₂_cache) = cache
     (; s_star) = cache.ITU
 
-    z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
+    fᵢ₂_cache .= zero(z)
+    __maybe_matmul!(fᵢ₂_cache, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
-    z .= z .* dt .+ cache.y₀.u[i]
+        fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z .= fᵢ₂_cache .* dt .+ cache.y₀.u[i]
 
-    return z
+    return nothing
 end
 function sum_stages!(
         z::AbstractArray, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
         w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, fᵢ₂_cache) = cache
     (; s_star) = cache.ITU
 
-    z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    fᵢ₂_cache .= zero(z)
+    __maybe_matmul!(fᵢ₂_cache, k_discrete[i][:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
-    z .= z .* dt .+ cache.y₀.u[i]
+        fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+    z .= fᵢ₂_cache .* dt .+ cache.y₀.u[i]
 
-    return z
+    return nothing
 end
 
 @views function sum_stages!(z, z′, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w,
