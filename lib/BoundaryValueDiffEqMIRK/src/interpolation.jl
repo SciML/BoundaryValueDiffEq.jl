@@ -151,9 +151,9 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     w, _ = evalsol_interp_weights(τ, alg)
-    K = __needs_diffcache(alg.jac_alg) ? k_discrete[ii].du[:, 1:stage] :
-        k_discrete[ii][:, 1:stage]
-    __maybe_matmul!(z, K, w[1:stage])
+    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
+        @view(k_discrete[ii][:, 1:stage])
+    __maybe_matmul!(z, K, @view(w[1:stage]))
     z .= z .* dt .+ u[ii]
     return z
 end
