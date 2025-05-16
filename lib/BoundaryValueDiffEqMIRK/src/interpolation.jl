@@ -67,8 +67,8 @@ end
     i = interval(mesh, t)
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
-    w, w′ = interp_weights(τ, cache.alg)
-    sum_stages!(z, id, cache, w, i)
+    w, _ = interp_weights(τ, cache.alg)
+    sum_stages!(z, id, cache, w, i, T)
 end
 
 @inline function interpolant!(dz::AbstractArray, id::MIRKInterpolation,
@@ -76,14 +76,13 @@ end
     i = interval(mesh, t)
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
-    w, w′ = interp_weights(τ, cache.alg)
-    z = similar(dz)
-    sum_stages!(z, dz, id, cache, w, w′, i)
+    _, w′ = interp_weights(τ, cache.alg)
+    sum_stages!(dz, id, cache, w′, i, T)
 end
 
-function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
+@views function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
         cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
-        w, i::Int) where {iip, T, use_both}
+        w, i::Int, ::Type{Val{0}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
@@ -93,11 +92,11 @@ function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ id.u[i]
 
-    return z
+    return nothing
 end
-function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
+@views function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
         cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w, i::Int) where {iip, T, use_both}
+        w, i::Int, ::Type{Val{0}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
@@ -107,44 +106,33 @@ function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ id.u[i]
 
-    return z
+    return nothing
 end
 
 @views function sum_stages!(
-        z, z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
-        w, w′, i::Int) where {iip, T, use_both}
+        z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
-    dt = cache.mesh_dt[i]
-    z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
-    __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
-    z .= z .* dt[1] .+ id.u[i]
 
-    return z, z′
+    return nothing
 end
 @views function sum_stages!(
-        z, z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w, w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+        z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
-    z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
-    __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i][:, 1:stage], w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
-    z .= z .* dt[1] .+ id.u[i]
 
-    return z, z′
+    return nothing
 end
 
 @inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(

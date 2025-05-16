@@ -175,7 +175,6 @@ end
 
 function eval_bc_residual!(
         resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t) where {BC}
-    M = length(sol[1])
     bc!(resid, dsol, sol, p, t)
 end
 
