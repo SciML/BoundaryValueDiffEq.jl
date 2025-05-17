@@ -401,3 +401,22 @@ end
         @test SciMLBase.successful_retcode(sol)
     end
 end
+
+@testitem "Test maxsol and minsol" setup=[MIRKConvergenceTests] begin
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -9.81 * sin(θ)
+    end
+    function bc!(residual, u, p, t)
+        residual[1] = maxsol(u, (0.0, pi / 2)) - 5.0496477654230745
+        residual[2] = minsol(u, (0.0, pi / 2)) + 4.8161991710010925
+    end
+    prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
+    for order in (4, 6)
+        sol = solve(prob, mirk_solver(Val(order)), dt = 0.05)
+        @test SciMLBase.successful_retcode(sol)
+    end
+end

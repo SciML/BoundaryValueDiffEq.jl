@@ -160,5 +160,6 @@ end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I
 export BVPJacobianAlgorithm
+export maxsol, minsol
 
 end

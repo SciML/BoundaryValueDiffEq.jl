@@ -158,6 +158,89 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     return z
 end
 
+# Interpolate intermidiate solution at multiple points
+function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
+    (; t, u, cache) = s
+    (; alg, stage, k_discrete, mesh_dt) = cache
+    # Quick handle for the case where tval is at the boundary
+    zvals = [zero(last(u)) for _ in tvals]
+    for (i, tval) in enumerate(tvals)
+        (tval == t[1]) && return first(u)
+        (tval == t[end]) && return last(u)
+        ii = interval(t, tval)
+        dt = mesh_dt[ii]
+        τ = (tval - t[ii]) / dt
+        w, _ = evalsol_interp_weights(τ, alg)
+        K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
+            @view(k_discrete[ii][:, 1:stage])
+        __maybe_matmul!(zvals[i], K, @view(w[1:stage]))
+        zvals[i] .= zvals[i] .* dt .+ u[ii]
+    end
+    return zvals
+end
+
+# Intermidiate derivative solution for evaluating boundry conditions
+function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
+    (; t, u, cache) = s
+    (; alg, stage, k_discrete, mesh_dt) = cache
+    z′ = zeros(typeof(tval), 2)
+    ii = interval(t, tval)
+    dt = mesh_dt[ii]
+    τ = (tval - t[ii]) / dt
+    _, w′ = interp_weights(τ, alg)
+    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    return z′
+end
+
+"""
+n root-finding problems to find the critical points with continuous derivative polynomials
+"""
+function __construct_then_solve_root_problem(
+        sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+    (; alg) = sol.cache
+    n = first(size(sol))
+    nlprobs = Vector{NonlinearProblem}(undef, n)
+    for i in 1:n
+        f = @closure (t, p) -> sol(t, Val{1})[i]
+        nlprob = NonlinearProblem(f, sol.cache.prob.u0[i], tspan)
+        nlprobs[i] = nlprob
+    end
+    nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(first(nlprobs), alg.nlsolve)
+    for (i, nlprob) in enumerate(nlprobs)
+        nlsols[i] = solve(nlprob, nlsolve_alg)
+    end
+    return nlsols
+end
+
+# It turns out the critical points can't cover all possible maximum/minimum values
+# especially when the solution are monotonic, we still need to compare the extremes with
+# value at critical points to find the maximum/minimum
+
+"""
+    maxsol(sol::EvalSol, tspan::Tuple)
+
+Find the maximum of the solution over the time span `tspan`.
+"""
+function maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+    nlsols = __construct_then_solve_root_problem(sol, tspan)
+    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
+    u = sol(tvals)
+    return max(maximum(sol), maximum(Iterators.flatten(u)))
+end
+
+"""
+    minsol(sol::EvalSol, tspan::Tuple)
+
+Find the minimum of the solution over the time span `tspan`.
+"""
+function minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+    nlsols = __construct_then_solve_root_problem(sol, tspan)
+    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
+    u = sol(tvals)
+    return min(minimum(sol), minimum(Iterators.flatten(u)))
+end
+
 @inline function evalsol_interp_weights(τ::T, ::MIRK2) where {T}
     w = [0, τ * (1 - τ / 2), τ^2 / 2]
 
