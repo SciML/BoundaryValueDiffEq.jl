@@ -11,7 +11,7 @@ lb \leq u \leq ub
 where `lb=-4.8161991710010925` and `ub=5.0496477654230745`. So the states must be bigger than `lb` but smaller than `ub`. To solve such problems, we can simply use the `minsol` and `maxsol` functions when defining the boundary value problem in BoundaryValueDiffEq.jl.
 
 ```@example inequality
-using BoundaryValueDiffEq
+using BoundaryValueDiffEq, Plots
 tspan = (0.0, pi / 2)
 function simplependulum!(du, u, p, t)
     θ = u[1]
