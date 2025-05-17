@@ -402,7 +402,7 @@ end
     end
 end
 
-@testset "Test maxsol and minsol" begin
+@testitem "Test maxsol and minsol" setup=[MIRKConvergenceTests] begin
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)
         θ = u[1]
@@ -415,6 +415,8 @@ end
         residual[2] = minsol(u, (0.0, pi / 2)) + 4.8161991710010925
     end
     prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
-    sol = solve(prob, MIRK4(), dt = 0.05)
-    @test SciMLBase.successful_retcode(sol)
+    for order in (4, 6)
+        sol = solve(prob, mirk_solver(Val(order)), dt = 0.05)
+        @test SciMLBase.successful_retcode(sol)
+    end
 end
