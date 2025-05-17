@@ -25,6 +25,7 @@ Generate new mesh based on the defect or the global error.
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
+    n = N - 1
 
     safety_factor = T(1.3)
     ρ = T(1.0)
@@ -41,13 +42,12 @@ Generate new mesh based on the defect or the global error.
     r₃ = r₂ / (N - 1)
 
     n_predict = round(Int, (safety_factor * r₂) + 1)
-    n = N - 1
     n_ = T(0.1) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
     if r₁ ≤ ρ * r₃
-        Nsub_star = 2 * (N - 1)
-        if Nsub_star > cache.alg.max_num_subintervals # Need to determine the too large threshold
+        Nsub_star = 2 * n
+        if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
             meshₒ = mesh
             mesh_dt₀ = mesh_dt
@@ -78,6 +78,7 @@ end
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
+    n = N - 1
 
     safety_factor = T(1.3)
     ρ = T(2.0)
@@ -91,15 +92,14 @@ end
     ŝ .= (ŝ ./ abstol) .^ (T(1) / order)
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
-    r₃ = r₂ / (N - 1)
+    r₃ = r₂ / n
 
     n_predict = round(Int, (safety_factor * r₂) + 1)
-    n = N - 1
     n_ = T(0.1) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
     if r₁ ≤ ρ * r₃
-        Nsub_star = 2 * (N - 1)
+        Nsub_star = 2 * n
         # Need to determine the too large threshold
         if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
@@ -132,6 +132,7 @@ end
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
+    n = N - 1
 
     safety_factor = T(1.3)
     ρ = T(2.0)
@@ -145,7 +146,7 @@ end
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
-    r₃ = r₂ / (N - 1)
+    r₃ = r₂ / n
 
     n_predict = round(Int, (safety_factor * r₂) + 1)
     n = N - 1
@@ -153,7 +154,7 @@ end
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
     if r₁ ≤ ρ * r₃
-        Nsub_star = 2 * (N - 1)
+        Nsub_star = 2 * n
         # Need to determine the too large threshold
         if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
@@ -186,30 +187,30 @@ end
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
+    n = N - 1
 
     safety_factor = T(1.3)
     ρ = T(2.0)
     Nsub_star = 0
-    Nsub_star_ub = 4 * (N - 1)
+    Nsub_star_ub = 4 * n
     Nsub_star_lb = N ÷ 2
 
     info = ReturnCode.Success
 
-    ŝ₁ = [maximum(abs, d) for d in errors.u[1:(N - 1)]]
+    ŝ₁ = [maximum(abs, d) for d in errors.u[1:n]]
     ŝ₂ = [maximum(abs, d) for d in errors.u[N:end]]
     ŝ = similar(ŝ₁)
     ŝ .= (ŝ₁ ./ abstol) .^ (T(1) / (order + 1)) + (ŝ₂ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
-    r₃ = r₂ / (N - 1)
+    r₃ = r₂ / n
 
     n_predict = round(Int, (safety_factor * r₂) + 1)
-    n = N - 1
     n_ = T(0.1) * n
     n_predict = ifelse(abs((n_predict - n)) < n_, round(Int, n + n_), n_predict)
 
     if r₁ ≤ ρ * r₃
-        Nsub_star = 2 * (N - 1)
+        Nsub_star = 2 * n
         # Need to determine the too large threshold
         if Nsub_star > cache.alg.max_num_subintervals
             info = ReturnCode.Failure
@@ -627,7 +628,8 @@ end
 # Here we should not directly in-place change z in several steps
 # because in final step we actually need to use the original z(which is cache.y₀.u[i])
 # we use fᵢ₂_cache to avoid additional allocations.
-function sum_stages!(z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+@views function sum_stages!(
+        z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
         w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, fᵢ₂_cache) = cache
     (; s_star) = cache.ITU
@@ -640,7 +642,7 @@ function sum_stages!(z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCa
 
     return nothing
 end
-function sum_stages!(
+@views function sum_stages!(
         z::AbstractArray, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
         w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, fᵢ₂_cache) = cache
