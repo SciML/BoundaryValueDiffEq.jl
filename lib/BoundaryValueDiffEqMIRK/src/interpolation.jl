@@ -193,21 +193,18 @@ function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
 end
 
 """
-n root-finding problems to find the critical points with continuous derivative polynomials
+Construct n root-finding problems and solve them to find the critical points with continuous derivative polynomials
 """
 function __construct_then_solve_root_problem(
         sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
     (; alg) = sol.cache
     n = first(size(sol))
-    nlprobs = Vector{NonlinearProblem}(undef, n)
+    nlprobs = Vector{SciMLBase.NonlinearProblem}(undef, n)
+    nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
+    nlsolve_alg = __FastShortcutNonlinearPolyalg(eltype(sol.cache))
     for i in 1:n
         f = @closure (t, p) -> sol(t, Val{1})[i]
         nlprob = NonlinearProblem(f, sol.cache.prob.u0[i], tspan)
-        nlprobs[i] = nlprob
-    end
-    nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(first(nlprobs), alg.nlsolve)
-    for (i, nlprob) in enumerate(nlprobs)
         nlsols[i] = solve(nlprob, nlsolve_alg)
     end
     return nlsols

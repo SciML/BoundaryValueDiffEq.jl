@@ -36,6 +36,18 @@ function __FastShortcutBVPCompatibleNonlinearPolyalg(
     return NonlinearSolvePolyAlgorithm(algs)
 end
 
+function __FastShortcutNonlinearPolyalg(::Type{T} = Float64; concrete_jac = nothing,
+        linsolve = nothing, autodiff = nothing) where {T}
+    if T <: Complex
+        algs = (NewtonRaphson(; concrete_jac, linsolve, autodiff),)
+    else
+        algs = (NewtonRaphson(; concrete_jac, linsolve, autodiff),
+            NewtonRaphson(; concrete_jac, linsolve, linesearch = BackTracking(), autodiff),
+            TrustRegion(; concrete_jac, linsolve, autodiff))
+    end
+    return NonlinearSolvePolyAlgorithm(algs)
+end
+
 @inline __concrete_nonlinearsolve_algorithm(prob, alg) = alg
 @inline function __concrete_nonlinearsolve_algorithm(prob, ::Nothing)
     if prob isa NonlinearLeastSquaresProblem
