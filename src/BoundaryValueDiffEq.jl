@@ -32,4 +32,6 @@ export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
 export BVPJacobianAlgorithm
 
+export maxsol, minsol
+
 end

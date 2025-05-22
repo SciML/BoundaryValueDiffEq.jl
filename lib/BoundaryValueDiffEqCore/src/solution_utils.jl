@@ -29,3 +29,6 @@ Base.eltype(e::EvalSol) = eltype(e.u)
 function Base.show(io::IO, m::MIME"text/plain", e::EvalSol)
     (print(io, "t: "); show(io, m, e.t); println(io); print(io, "u: "); show(io, m, e.u))
 end
+
+Base.maximum(sol::EvalSol) = maximum(Iterators.flatten(sol.u))
+Base.minimum(sol::EvalSol) = minimum(Iterators.flatten(sol.u))

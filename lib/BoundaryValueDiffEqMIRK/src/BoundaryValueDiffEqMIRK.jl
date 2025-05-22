@@ -21,7 +21,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                DefectControl, GlobalErrorControl, SequentialErrorControl,
                                HybridErrorControl, HOErrorControl, __use_both_error_control,
                                __default_coloring_algorithm, DiffCacheNeeded,
-                               NoDiffCacheNeeded, __split_kwargs
+                               NoDiffCacheNeeded, __split_kwargs,
+                               __FastShortcutNonlinearPolyalg
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
@@ -160,5 +161,6 @@ end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I
 export BVPJacobianAlgorithm
+export maxsol, minsol
 
 end
