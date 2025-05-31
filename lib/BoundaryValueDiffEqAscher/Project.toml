@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqAscher"
 uuid = "7227322d-7511-4e07-9247-ad6ff830280e"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.6.0"
+version = "1.6.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -27,7 +27,7 @@ BoundaryValueDiffEqCore = "1"
 ConcreteStructs = "0.2.3"
 DiffEqBase = "6.167"
 DiffEqDevTools = "2.44"
-DifferentiationInterface = "0.6.42"
+DifferentiationInterface = "0.6.42, 0.7"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
 Hwloc = "3"
