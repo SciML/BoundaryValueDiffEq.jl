@@ -27,10 +27,13 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
     loss_fn = if iip
-        @closure (du, u, p) -> __single_shooting_loss!(
+        @closure (du,
+            u,
+            p) -> __single_shooting_loss!(
             du, u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type, resid_size)
     else
-        @closure (u, p) -> __single_shooting_loss(
+        @closure (u,
+            p) -> __single_shooting_loss(
             u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type)
     end
 
@@ -47,7 +50,8 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
         diffmode, u0, alg.ode_alg; ode_kwargs...)
 
     loss_fnₚ = if iip
-        @closure (du, u) -> __single_shooting_loss!(
+        @closure (du,
+            u) -> __single_shooting_loss!(
             du, u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size)
     else
         @closure (u) -> __single_shooting_loss(
@@ -61,10 +65,11 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     end
 
     jac_fn = if iip
-        @closure (J, u, p) -> __single_shooting_jacobian!(
-            J, u, jac_cache, diffmode, loss_fnₚ, y_)
+        @closure (
+            J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fnₚ, y_)
     else
-        @closure (u, p) -> __single_shooting_jacobian(
+        @closure (u,
+            p) -> __single_shooting_jacobian(
             jac_prototype, u, jac_cache, diffmode, loss_fnₚ)
     end
 

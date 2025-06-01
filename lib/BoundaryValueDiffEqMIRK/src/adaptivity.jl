@@ -456,12 +456,13 @@ end
 @views function error_estimate!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl,
         errors, sol, nlsolve_alg, abstol) where {iip, T}
-    defect_norm, info = error_estimate!(
+    defect_norm,
+    info = error_estimate!(
         cache::MIRKCache{iip, T}, controller.defect, errors, sol, nlsolve_alg, abstol)
     error_norm = defect_norm
     if defect_norm <= abstol
-        global_error_norm, info = error_estimate!(
-            cache::MIRKCache{iip, T}, controller.global_error,
+        global_error_norm,
+        info = error_estimate!(cache::MIRKCache{iip, T}, controller.global_error,
             controller.global_error.method, errors, sol, nlsolve_alg, abstol)
         error_norm = global_error_norm
         return error_norm, info
@@ -475,10 +476,11 @@ function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorContro
     L = length(cache.mesh) - 1
     defect = errors[:, 1:L]
     global_error = errors[:, (L + 1):end]
-    defect_norm, _ = error_estimate!(
+    defect_norm,
+    _ = error_estimate!(
         cache::MIRKCache{iip, T}, controller.defect, defect, sol, nlsolve_alg, abstol)
-    global_error_norm, _ = error_estimate!(
-        cache, controller.global_error, controller.global_error.method,
+    global_error_norm,
+    _ = error_estimate!(cache, controller.global_error, controller.global_error.method,
         global_error, sol, nlsolve_alg, abstol)
 
     error_norm = controller.DE * defect_norm + controller.GE * global_error_norm
@@ -572,8 +574,8 @@ Here, the ki_interp is the stages in one subinterval.
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][:, r] .= f(
-                    new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                k_interp.u[i][
+                    :, r] .= f(new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             end
         end
     end
@@ -602,8 +604,8 @@ end
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][:, r] .= f(
-                    new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                k_interp.u[i][
+                    :, r] .= f(new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             end
         end
     end
