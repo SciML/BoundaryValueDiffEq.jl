@@ -16,7 +16,7 @@ tspan = (0.0, 100.0)
 u0 = [0.0, 1.0]
 prob = BVProblem(BVPFunction(f!, bc!; bcresid_prototype = zeros(3)), u0, tspan)
 sol = solve(prob, MIRK4(), dt = 0.01, abstol = 1e-3)
-plot(sol)</code></pre><img src="e9ebd0d8.svg" alt="Example block output"/><p>Since this BVP imposes constaints only at the two endpoints, we can use <code>TwoPointBVProlem</code> to handle such cases.</p><pre><code class="language-julia hljs">function f!(du, u, p, t)
+plot(sol)</code></pre><img src="475200b0.svg" alt="Example block output"/><p>Since this BVP imposes constaints only at the two endpoints, we can use <code>TwoPointBVProlem</code> to handle such cases.</p><pre><code class="language-julia hljs">function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
 end
@@ -51,7 +51,7 @@ xspan = (0.0, 1.0)
 u0 = [0.0, 1.0, 0.0, 1.0]
 prob = BVProblem(BVPFunction(f!, bc!; bcresid_prototype = zeros(2)), u0, xspan)
 sol = solve(prob, MIRK4(), dt = 0.01)
-plot(sol)</code></pre><img src="037bc786.svg" alt="Example block output"/><p>Since this problem has less constraints than the state variables, so there would be infinitely many solutions with different <code>u0</code> specified.</p><p>The above underdetermined is also being able to reformulated as <code>TwoPointBVProblem</code></p><pre><code class="language-julia hljs">function f!(du, u, p, t)
+plot(sol)</code></pre><img src="c420a275.svg" alt="Example block output"/><p>Since this problem has less constraints than the state variables, so there would be infinitely many solutions with different <code>u0</code> specified.</p><p>The above underdetermined is also being able to reformulated as <code>TwoPointBVProblem</code></p><pre><code class="language-julia hljs">function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = u[3]
     du[3] = u[4]
