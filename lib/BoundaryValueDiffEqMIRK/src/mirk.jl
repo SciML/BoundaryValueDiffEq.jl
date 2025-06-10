@@ -1,4 +1,5 @@
-@concrete struct MIRKCache{iip, T, use_both, diffcache} <: AbstractBoundaryValueDiffEqCache
+@concrete struct MIRKCache{iip, T, use_both, diffcache, fit_parameters} <:
+                 AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
     M::Int                     # The number of equations
@@ -38,9 +39,11 @@ function SciMLBase.__init(
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
+    fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     t₀, t₁ = prob.tspan
-    ig, T, N, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    ig, T, N, Nig, X = __extract_problem_details(
+        prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -51,7 +54,7 @@ function SciMLBase.__init(
     fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
+    y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)
@@ -81,7 +84,18 @@ function SciMLBase.__init(
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
     f, bc = if X isa AbstractVector
-        prob.f, prob.f.bc
+        #TODO: Simplify the logic by wrapping the functions
+        if fit_parameters == true
+            l_parameters = length(prob.p)
+            vecf! = function (du, u, p, t)
+                prob.f(du, u, u[(end - l_parameters + 1):end], t)
+                du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        else
+            prob.f, prob.f.bc
+        end
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
@@ -107,11 +121,11 @@ function SciMLBase.__init(
 
     #prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    return MIRKCache{iip, T, use_both, typeof(diffcache)}(
+    return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, N, size(X), f, bc, prob, prob.problem_type, prob.p,
         alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size,
-        nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
+        nlsolve_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
 end
 
 """
@@ -132,9 +146,11 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     return cache
 end
 
-function SciMLBase.solve!(cache::MIRKCache)
+function SciMLBase.solve!(cache::MIRKCache{iip, T, use_both, diffcache,
+        fit_parameters}) where {iip, T, use_both, diffcache, fit_parameters}
     (abstol, adaptive, controller), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
+    prob = cache.prob
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
@@ -148,13 +164,21 @@ function SciMLBase.solve!(cache::MIRKCache)
         end
     end
 
+    # Parameter estimation, put the estimated parameters to sol.prob.p
+    if fit_parameters
+        length_p = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_p + 1):end])
+        map(x -> resize!(x, length_p), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_p)
+    end
+
     u = recursivecopy(cache.y₀)
 
     interpolation = __build_interpolation(cache, u.u)
 
     odesol = DiffEqBase.build_solution(
-        cache.prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info)
-    return __build_solution(cache.prob, odesol, sol_nlprob)
+        prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info)
+    return __build_solution(prob, odesol, sol_nlprob)
 end
 
 function __perform_mirk_iteration(
@@ -474,7 +498,6 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
         safe_similar(y, cache.M * (N - 1)),
         @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]))
-    L = length(cache.bcresid_prototype)
 
     diffmode = if jac_alg.diffmode isa AutoSparse
         sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
@@ -503,10 +526,10 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
 
     jac = if iip
         @closure (J, u, p) -> __mirk_2point_jacobian!(
-            J, u, jac_alg.diffmode, diffcache, loss, resid, p)
+            J, u, diffmode, diffcache, loss, resid, p)
     else
         @closure (u, p) -> __mirk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, loss, p)
+            u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
     resid_prototype = copy(resid)

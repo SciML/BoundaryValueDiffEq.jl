@@ -360,8 +360,9 @@ end
 
 # Global error control
 @views function error_estimate!(
-        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, controller::DefectControl,
-        errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded, fit_parameters},
+        controller::DefectControl, errors, sol, nlsolve_alg,
+        abstol) where {iip, T, use_both, fit_parameters}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
