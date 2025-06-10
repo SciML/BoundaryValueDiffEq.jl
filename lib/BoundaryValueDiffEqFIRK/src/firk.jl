@@ -141,7 +141,8 @@ function init_nested(
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
-    f, bc = if X isa AbstractVector
+    f,
+    bc = if X isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
@@ -149,10 +150,10 @@ function init_nested(
             @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
         else
             (
-                @closure((r, u, p)->__vec_bc!(
-                    r, u, p, first(prob.f.bc), resid₁_size[1], size(X))),
-                @closure((r, u, p)->__vec_bc!(
-                    r, u, p, last(prob.f.bc), resid₁_size[2], size(X))))
+                @closure((r, u,
+                    p)->__vec_bc!(r, u, p, first(prob.f.bc), resid₁_size[1], size(X))),
+                @closure((
+                    r, u, p)->__vec_bc!(r, u, p, last(prob.f.bc), resid₁_size[2], size(X))))
         end
         vecf!, vecbc!
     else
@@ -237,7 +238,8 @@ function init_expanded(
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
-    f, bc = if X isa AbstractVector
+    f,
+    bc = if X isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
@@ -245,10 +247,10 @@ function init_expanded(
             @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
         else
             (
-                @closure((r, u, p)->__vec_bc!(
-                    r, u, p, first(prob.f.bc)[1], resid₁_size[1], size(X))),
-                @closure ((r, u, p) -> __vec_bc!(
-                    r, u, p, last(prob.f.bc)[2], resid₁_size[2], size(X))))
+                @closure((r, u,
+                    p)->__vec_bc!(r, u, p, first(prob.f.bc)[1], resid₁_size[1], size(X))),
+                @closure ((r, u,
+                    p) -> __vec_bc!(r, u, p, last(prob.f.bc)[2], resid₁_size[2], size(X))))
         end
         vecf!, vecbc!
     else
@@ -307,8 +309,8 @@ function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
 
     if adaptive
         while SciMLBase.successful_retcode(info) && defect_norm > abstol
-            sol_nlprob, info, defect_norm = __perform_firk_iteration(
-                cache, abstol, adaptive)
+            sol_nlprob, info,
+            defect_norm = __perform_firk_iteration(cache, abstol, adaptive)
         end
     end
 
@@ -332,8 +334,8 @@ function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
 
     if adaptive
         while SciMLBase.successful_retcode(info) && defect_norm > abstol
-            sol_nlprob, info, defect_norm = __perform_firk_iteration(
-                cache, abstol, adaptive)
+            sol_nlprob, info,
+            defect_norm = __perform_firk_iteration(cache, abstol, adaptive)
         end
     end
 
@@ -405,26 +407,33 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
     trait = __cache_trait(jac_alg)
 
     loss_bc = if iip
-        @closure (du, u, p) -> __firk_loss_bc!(
-            du, u, p, pt, cache.bc, cache.y, cache.mesh, cache, trait)
+        @closure (du,
+            u,
+            p) -> __firk_loss_bc!(du, u, p, pt, cache.bc, cache.y, cache.mesh, cache, trait)
     else
-        @closure (u, p) -> __firk_loss_bc(
-            u, p, pt, cache.bc, cache.y, cache.mesh, cache, trait)
+        @closure (
+            u, p) -> __firk_loss_bc(u, p, pt, cache.bc, cache.y, cache.mesh, cache, trait)
     end
 
     loss_collocation = if iip
-        @closure (du, u, p) -> __firk_loss_collocation!(
+        @closure (du,
+            u,
+            p) -> __firk_loss_collocation!(
             du, u, p, cache.y, cache.mesh, cache.residual, cache, trait)
     else
-        @closure (u, p) -> __firk_loss_collocation(
+        @closure (u,
+            p) -> __firk_loss_collocation(
             u, p, cache.y, cache.mesh, cache.residual, cache, trait)
     end
 
     loss = if iip
-        @closure (du, u, p) -> __firk_loss!(du, u, p, cache.y, pt, cache.bc, cache.residual,
+        @closure (du,
+            u,
+            p) -> __firk_loss!(du, u, p, cache.y, pt, cache.bc, cache.residual,
             cache.mesh, cache, eval_sol, trait)
     else
-        @closure (u, p) -> __firk_loss(
+        @closure (u,
+            p) -> __firk_loss(
             u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol, trait)
     end
 
@@ -499,11 +508,14 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J, u, p) -> __firk_mpoint_jacobian!(
+        @closure (J,
+            u,
+            p) -> __firk_mpoint_jacobian!(
             J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
             loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p)
     else
-        @closure (u, p) -> __firk_mpoint_jacobian(
+        @closure (u,
+            p) -> __firk_mpoint_jacobian(
             jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc,
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
@@ -560,10 +572,13 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J, u, p) -> __firk_2point_jacobian!(
+        @closure (J,
+            u,
+            p) -> __firk_2point_jacobian!(
             J, u, jac_alg.diffmode, diffcache, loss, resid, cache.p)
     else
-        @closure (u, p) -> __firk_2point_jacobian(
+        @closure (u,
+            p) -> __firk_2point_jacobian(
             u, jac_prototype, jac_alg.diffmode, diffcache, loss, cache.p)
     end
 
@@ -635,11 +650,14 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J, u, p) -> __firk_mpoint_jacobian!(
+        @closure (J,
+            u,
+            p) -> __firk_mpoint_jacobian!(
             J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
             loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p)
     else
-        @closure (u, p) -> __firk_mpoint_jacobian(
+        @closure (u,
+            p) -> __firk_mpoint_jacobian(
             jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc,
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
@@ -687,10 +705,13 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J, u, p) -> __firk_2point_jacobian!(
+        @closure (J,
+            u,
+            p) -> __firk_2point_jacobian!(
             J, u, jac_alg.diffmode, diffcache, loss, resid, cache.p)
     else
-        @closure (u, p) -> __firk_2point_jacobian(
+        @closure (u,
+            p) -> __firk_2point_jacobian(
             u, jac_prototype, jac_alg.diffmode, diffcache, loss, cache.p)
     end
 

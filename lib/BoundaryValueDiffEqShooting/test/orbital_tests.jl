@@ -51,8 +51,8 @@
     cur_bc_2point_b! = (resid, sol, p) -> bc!_generator_2p_b(resid, sol, init_val)
 
     bvp = BVProblem(orbital!, cur_bc!, y0, tspan; nlls = Val(false))
-    for autodiff in (
-        AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+    for autodiff in
+        (AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
         AutoSparse(AutoForwardDiff(; chunksize = 6)),
         AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparse(AutoFiniteDiff()))
         nlsolve = TrustRegion(; autodiff)
