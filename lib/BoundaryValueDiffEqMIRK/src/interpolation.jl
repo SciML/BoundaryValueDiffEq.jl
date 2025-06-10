@@ -116,7 +116,7 @@ end
         w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both, fit_parameters}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
-    length_z = length(z)
+    length_z = length(z′)
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
     __maybe_matmul!(z′, k_interp.u[i][1:length_z, 1:(s_star - stage)],
@@ -129,7 +129,7 @@ end
         w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both, fit_parameters}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
-    length_z = length(z)
+    length_z = length(z′)
 
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i][1:length_z, 1:stage], w′[1:stage])
