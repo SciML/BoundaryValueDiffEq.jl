@@ -42,7 +42,10 @@ function SciMLBase.__init(
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     t₀, t₁ = prob.tspan
-    ig, T, N, Nig, X = __extract_problem_details(
+    ig, T,
+    N,
+    Nig,
+    X = __extract_problem_details(
         prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
@@ -83,7 +86,8 @@ function SciMLBase.__init(
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
-    f, bc = if X isa AbstractVector
+    f,
+    bc = if X isa AbstractVector
         #TODO: Simplify the logic by wrapping the functions
         if fit_parameters == true
             l_parameters = length(prob.p)
@@ -536,11 +540,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     jac = if iip
-        @closure (J, u, p) -> __mirk_2point_jacobian!(
-            J, u, diffmode, diffcache, loss, resid, p)
+        @closure (
+            J, u, p) -> __mirk_2point_jacobian!(J, u, diffmode, diffcache, loss, resid, p)
     else
-        @closure (u, p) -> __mirk_2point_jacobian(
-            u, jac_prototype, diffmode, diffcache, loss, p)
+        @closure (
+            u, p) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
     resid_prototype = copy(resid)
