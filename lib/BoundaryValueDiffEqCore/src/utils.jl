@@ -557,8 +557,6 @@ get_dense_ad(::Nothing) = nothing
 get_dense_ad(ad) = ad
 get_dense_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
-# traits for forward or reverse mode AutoForwardDiff
-
 function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     I′ = adapt(parameterless_type(x), I)
     J′ = adapt(parameterless_type(x), J)
