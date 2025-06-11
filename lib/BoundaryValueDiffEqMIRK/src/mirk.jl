@@ -514,13 +514,11 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     jac = if iip
-        @closure (J,
-            u,
-            p) -> __mirk_2point_jacobian!(J, u, jac_alg.diffmode, diffcache, loss, resid, p)
+        @closure (
+            J, u, p) -> __mirk_2point_jacobian!(J, u, diffmode, diffcache, loss, resid, p)
     else
-        @closure (u,
-            p) -> __mirk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, loss, p)
+        @closure (
+            u, p) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
     resid_prototype = copy(resid)
