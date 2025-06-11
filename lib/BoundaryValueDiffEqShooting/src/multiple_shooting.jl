@@ -134,7 +134,7 @@ function __solve_nlproblem!(
     jac_fn = @closure (J,
         u,
         p) -> __multiple_shooting_2point_jacobian!(
-        J, u, p, jac_cache, loss_fnₚ, resid_prototype_cached, alg)
+        J, u, p, jac_cache, loss_fnₚ, diffmode, resid_prototype_cached, alg)
 
     loss_function! = NonlinearFunction{true}(
         loss_fn; jac = jac_fn, resid_prototype = resid_prototype,
@@ -310,8 +310,8 @@ function __multiple_shooting_solve_internal_odes!(
 end
 
 function __multiple_shooting_2point_jacobian!(
-        J, us, p, jac_cache, loss_fn::F, resid, alg::MultipleShooting) where {F}
-    DI.jacobian!(loss_fn, resid, J, jac_cache, alg.jac_alg.diffmode, us)
+        J, us, p, jac_cache, loss_fn::F, diffmode, resid, alg::MultipleShooting) where {F}
+    DI.jacobian!(loss_fn, resid, J, jac_cache, diffmode, us)
     return nothing
 end
 

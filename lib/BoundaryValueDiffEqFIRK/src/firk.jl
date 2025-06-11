@@ -572,14 +572,12 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J,
-            u,
-            p) -> __firk_2point_jacobian!(
-            J, u, jac_alg.diffmode, diffcache, loss, resid, cache.p)
+        @closure (J, u,
+            p) -> __firk_2point_jacobian!(J, u, diffmode, diffcache, loss, resid, cache.p)
     else
         @closure (u,
             p) -> __firk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, loss, cache.p)
+            u, jac_prototype, diffmode, diffcache, loss, cache.p)
     end
 
     resid_prototype = copy(resid)
@@ -705,14 +703,12 @@ function __construct_nlproblem(
     end
 
     jac = if iip
-        @closure (J,
-            u,
-            p) -> __firk_2point_jacobian!(
-            J, u, jac_alg.diffmode, diffcache, loss, resid, cache.p)
+        @closure (J, u,
+            p) -> __firk_2point_jacobian!(J, u, diffmode, diffcache, loss, resid, cache.p)
     else
         @closure (u,
             p) -> __firk_2point_jacobian(
-            u, jac_prototype, jac_alg.diffmode, diffcache, loss, cache.p)
+            u, jac_prototype, diffmode, diffcache, loss, cache.p)
     end
 
     resid_prototype = copy(resid)
