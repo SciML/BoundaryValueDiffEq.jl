@@ -5,10 +5,10 @@ Pkg.add(&quot;BoundaryValueDiffEq&quot;)</code></pre><h2 id="Contributing"><a cl
   <span class="sgr90">[764a87c0] </span>BoundaryValueDiffEq v5.18.0 `..`
   <span class="sgr90">[7227322d] </span>BoundaryValueDiffEqAscher v1.7.0 `../lib/BoundaryValueDiffEqAscher`
   <span class="sgr90">[56b672f2] </span>BoundaryValueDiffEqCore v1.10.0 `../lib/BoundaryValueDiffEqCore`
-  <span class="sgr90">[85d9eb09] </span>BoundaryValueDiffEqFIRK v1.8.0 `../lib/BoundaryValueDiffEqFIRK`
-  <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.8.0 `../lib/BoundaryValueDiffEqMIRK`
-  <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.7.0 `../lib/BoundaryValueDiffEqMIRKN`
-  <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.8.0 `../lib/BoundaryValueDiffEqShooting`
+  <span class="sgr90">[85d9eb09] </span>BoundaryValueDiffEqFIRK v1.8.1 `../lib/BoundaryValueDiffEqFIRK`
+  <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.8.1 `../lib/BoundaryValueDiffEqMIRK`
+  <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.7.1 `../lib/BoundaryValueDiffEqMIRKN`
+  <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.8.1 `../lib/BoundaryValueDiffEqShooting`
   <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.175.0
   <span class="sgr90">[e30172f5] </span>Documenter v1.12.0
   <span class="sgr90">[daee34ce] </span>DocumenterCitations v1.3.7
@@ -17,7 +17,7 @@ Pkg.add(&quot;BoundaryValueDiffEq&quot;)</code></pre><h2 id="Contributing"><a cl
   <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.17.0
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.98.0
   <span class="sgr90">[91a5bcdd] </span>Plots v1.40.13
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.97.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.99.0
   <span class="sgr90">[be0294bd] </span>SimpleBoundaryValueDiffEq v1.2.0
   <span class="sgr90">[37e2e46d] </span>LinearAlgebra</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.10.9
 Commit 5595d20a287 (2025-03-10 12:51 UTC)
@@ -50,10 +50,10 @@ Environment:
   <span class="sgr90">[764a87c0] </span>BoundaryValueDiffEq v5.18.0 `..`
   <span class="sgr90">[7227322d] </span>BoundaryValueDiffEqAscher v1.7.0 `../lib/BoundaryValueDiffEqAscher`
   <span class="sgr90">[56b672f2] </span>BoundaryValueDiffEqCore v1.10.0 `../lib/BoundaryValueDiffEqCore`
-  <span class="sgr90">[85d9eb09] </span>BoundaryValueDiffEqFIRK v1.8.0 `../lib/BoundaryValueDiffEqFIRK`
-  <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.8.0 `../lib/BoundaryValueDiffEqMIRK`
-  <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.7.0 `../lib/BoundaryValueDiffEqMIRKN`
-  <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.8.0 `../lib/BoundaryValueDiffEqShooting`
+  <span class="sgr90">[85d9eb09] </span>BoundaryValueDiffEqFIRK v1.8.1 `../lib/BoundaryValueDiffEqFIRK`
+  <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.8.1 `../lib/BoundaryValueDiffEqMIRK`
+  <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.7.1 `../lib/BoundaryValueDiffEqMIRKN`
+  <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.8.1 `../lib/BoundaryValueDiffEqShooting`
   <span class="sgr90">[70df07ce] </span>BracketingNonlinearSolve v1.3.0
   <span class="sgr90">[2a0fbf3d] </span>CPUSummary v0.2.6
   <span class="sgr90">[d360d2e6] </span>ChainRulesCore v1.25.1
@@ -70,7 +70,7 @@ Environment:
   <span class="sgr90">[a33af91c] </span>CompositionsBase v0.1.2
   <span class="sgr90">[2569d6c7] </span>ConcreteStructs v0.2.3
   <span class="sgr90">[f0e56b4a] </span>ConcurrentUtilities v2.5.0
-  <span class="sgr90">[187b0558] </span>ConstructionBase v1.5.8
+  <span class="sgr90">[187b0558] </span>ConstructionBase v1.6.0
   <span class="sgr90">[d38c429a] </span>Contour v0.6.3
   <span class="sgr90">[adafc99b] </span>CpuId v0.3.1
   <span class="sgr90">[a8cc5b0e] </span>Crayons v4.1.1
@@ -81,7 +81,7 @@ Environment:
   <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.175.0
   <span class="sgr90">[163ba53b] </span>DiffResults v1.1.0
   <span class="sgr90">[b552c78f] </span>DiffRules v1.15.1
-<span class="sgr33">⌅</span> <span class="sgr90">[a0c0ee7d] </span>DifferentiationInterface v0.6.54
+  <span class="sgr90">[a0c0ee7d] </span>DifferentiationInterface v0.7.1
   <span class="sgr90">[43dc2714] </span>DocInventories v1.0.0
   <span class="sgr90">[ffbed154] </span>DocStringExtensions v0.9.5
   <span class="sgr90">[e30172f5] </span>Documenter v1.12.0
@@ -146,7 +146,7 @@ Environment:
   <span class="sgr90">[e1d29d7a] </span>Missings v1.2.0
   <span class="sgr90">[2e0e35c7] </span>Moshi v0.3.5
   <span class="sgr90">[46d2c3a1] </span>MuladdMacro v0.2.4
-  <span class="sgr90">[d41bc354] </span>NLSolversBase v7.9.1
+  <span class="sgr90">[d41bc354] </span>NLSolversBase v7.10.0
   <span class="sgr90">[77ba4419] </span>NaNMath v1.1.3
   <span class="sgr90">[8913a72c] </span>NonlinearSolve v4.9.0
   <span class="sgr90">[be0214bd] </span>NonlinearSolveBase v1.12.0
@@ -158,7 +158,7 @@ Environment:
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.98.0
   <span class="sgr90">[89bda076] </span>OrdinaryDiffEqAdamsBashforthMoulton v1.2.0
   <span class="sgr90">[6ad6398a] </span>OrdinaryDiffEqBDF v1.6.0
-  <span class="sgr90">[bbf590c4] </span>OrdinaryDiffEqCore v1.26.0
+  <span class="sgr90">[bbf590c4] </span>OrdinaryDiffEqCore v1.26.1
   <span class="sgr90">[50262376] </span>OrdinaryDiffEqDefault v1.4.0
   <span class="sgr90">[4302a76b] </span>OrdinaryDiffEqDifferentiation v1.10.0
   <span class="sgr90">[9286f039] </span>OrdinaryDiffEqExplicitRK v1.1.0
@@ -207,7 +207,7 @@ Environment:
   <span class="sgr90">[ae029012] </span>Requires v1.3.1
   <span class="sgr90">[7e49a35a] </span>RuntimeGeneratedFunctions v0.5.15
   <span class="sgr90">[94e857df] </span>SIMDTypes v0.1.0
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.97.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.99.0
   <span class="sgr90">[19f34311] </span>SciMLJacobianOperators v0.1.6
 <span class="sgr32">⌃</span> <span class="sgr90">[c0aeaf25] </span>SciMLOperators v0.4.0
   <span class="sgr90">[53ae85a6] </span>SciMLStructures v1.7.0
@@ -219,7 +219,7 @@ Environment:
   <span class="sgr90">[727e6d20] </span>SimpleNonlinearSolve v2.5.0
   <span class="sgr90">[ce78b400] </span>SimpleUnPack v1.1.0
   <span class="sgr90">[a2af1166] </span>SortingAlgorithms v1.2.1
-  <span class="sgr90">[9f842d2f] </span>SparseConnectivityTracer v0.6.19
+  <span class="sgr90">[9f842d2f] </span>SparseConnectivityTracer v0.6.20
   <span class="sgr90">[0a514795] </span>SparseMatrixColorings v0.4.20
   <span class="sgr90">[276daf66] </span>SpecialFunctions v2.5.1
   <span class="sgr90">[860ef19b] </span>StableRNGs v1.0.3
@@ -245,7 +245,7 @@ Environment:
   <span class="sgr90">[5c2747f8] </span>URIs v1.5.2
   <span class="sgr90">[3a884ed6] </span>UnPack v1.0.2
   <span class="sgr90">[1cfade01] </span>UnicodeFun v0.4.1
-  <span class="sgr90">[1986cc42] </span>Unitful v1.23.0
+  <span class="sgr90">[1986cc42] </span>Unitful v1.23.1
   <span class="sgr90">[45397f5d] </span>UnitfulLatexify v1.7.0
   <span class="sgr90">[41fe7b60] </span>Unzip v0.2.0
   <span class="sgr90">[ddb6d928] </span>YAML v0.4.14
@@ -310,10 +310,10 @@ Environment:
   <span class="sgr90">[cc61e674] </span>Xorg_libxkbfile_jll v1.1.3+0
   <span class="sgr90">[e920d4aa] </span>Xorg_xcb_util_cursor_jll v0.1.4+0
   <span class="sgr90">[12413925] </span>Xorg_xcb_util_image_jll v0.4.0+1
-  <span class="sgr90">[2def613f] </span>Xorg_xcb_util_jll v0.4.0+1
-  <span class="sgr90">[975044d2] </span>Xorg_xcb_util_keysyms_jll v0.4.0+1
-  <span class="sgr90">[0d47668e] </span>Xorg_xcb_util_renderutil_jll v0.3.9+1
-  <span class="sgr90">[c22f9ab0] </span>Xorg_xcb_util_wm_jll v0.4.1+1
+  <span class="sgr90">[2def613f] </span>Xorg_xcb_util_jll v0.4.1+0
+  <span class="sgr90">[975044d2] </span>Xorg_xcb_util_keysyms_jll v0.4.1+0
+  <span class="sgr90">[0d47668e] </span>Xorg_xcb_util_renderutil_jll v0.3.10+0
+  <span class="sgr90">[c22f9ab0] </span>Xorg_xcb_util_wm_jll v0.4.2+0
   <span class="sgr90">[35661453] </span>Xorg_xkbcomp_jll v1.4.7+0
   <span class="sgr90">[33bec58e] </span>Xorg_xkeyboard_config_jll v2.44.0+0
   <span class="sgr90">[c5fb5394] </span>Xorg_xtrans_jll v1.6.0+0
@@ -324,12 +324,12 @@ Environment:
   <span class="sgr90">[a4ae2306] </span>libaom_jll v3.11.0+0
   <span class="sgr90">[0ac62f75] </span>libass_jll v0.15.2+0
   <span class="sgr90">[1183f4f0] </span>libdecor_jll v0.2.2+0
-  <span class="sgr90">[2db6ffa8] </span>libevdev_jll v1.11.0+0
+  <span class="sgr90">[2db6ffa8] </span>libevdev_jll v1.13.4+0
   <span class="sgr90">[f638f0a6] </span>libfdk_aac_jll v2.0.3+0
   <span class="sgr90">[36db933b] </span>libinput_jll v1.18.0+0
   <span class="sgr90">[b53b4c65] </span>libpng_jll v1.6.48+0
   <span class="sgr90">[f27f6e37] </span>libvorbis_jll v1.3.7+2
-  <span class="sgr90">[009596ad] </span>mtdev_jll v1.1.6+0
+  <span class="sgr90">[009596ad] </span>mtdev_jll v1.1.7+0
   <span class="sgr90">[1317d2d5] </span>oneTBB_jll v2022.0.0+0
 <span class="sgr33">⌅</span> <span class="sgr90">[1270edf5] </span>x264_jll v2021.5.5+0
 <span class="sgr33">⌅</span> <span class="sgr90">[dfaa095f] </span>x265_jll v3.5.0+0
@@ -380,4 +380,4 @@ Environment:
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.11.0+0
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.52.0+1
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.4.0+2
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.12.0 on <span class="colophon-date" title="Monday 9 June 2025 04:33">Monday 9 June 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.12.0 on <span class="colophon-date" title="Wednesday 11 June 2025 16:51">Wednesday 11 June 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
