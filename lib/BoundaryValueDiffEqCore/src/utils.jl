@@ -263,7 +263,7 @@ function __extract_problem_details(prob, u0::AbstractVectorOfArray; kwargs...)
     return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
 end
 function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
-        check_positive_dt::Bool = false, fit_parameters::Bool = true)
+        check_positive_dt::Bool = false, fit_parameters::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
