@@ -123,10 +123,10 @@ function SciMLBase.__init(
         vecf, vecbc
     end
 
-    #prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
-        alg_order(alg), stage, N, size(X), f, bc, prob, prob.problem_type, prob.p,
+        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size,
         nlsolve_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
@@ -170,10 +170,10 @@ function SciMLBase.solve!(cache::MIRKCache{iip, T, use_both, diffcache,
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
     if fit_parameters
-        length_p = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_p + 1):end])
-        map(x -> resize!(x, length_p), cache.y₀)
-        resize!(cache.fᵢ₂_cache, length_p)
+        length_u = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
     end
 
     u = recursivecopy(cache.y₀)
