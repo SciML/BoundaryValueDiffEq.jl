@@ -80,8 +80,9 @@ end
     return idxs !== nothing ? z[idxs] : z
 end
 
-@inline function interpolant!(z::AbstractArray, cache::FIRKCacheNested{iip, T},
-        t, mesh, mesh_dt, ::Type{Val{0}}) where {iip, T}
+@inline function interpolant!(
+        z::AbstractArray, cache::FIRKCacheNested{iip, T, diffcache, fit_parameters},
+        t, mesh, mesh_dt, ::Type{Val{0}}) where {iip, T, diffcache, fit_parameters}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -92,12 +93,13 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_z = length(z)
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
-    yᵢ = copy(cache.y[j].du)
-    yᵢ₊₁ = copy(cache.y[j + 1].du)
+    yᵢ = copy(cache.y₀[j])
+    yᵢ₊₁ = copy(cache.y₀[j + 1])
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -112,13 +114,13 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= yᵢ
+    nestprob_p[3:end] .= vcat(yᵢ, cache.p)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_z, :]) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     S_interpolate!(z, τ, S_coeffs)
@@ -136,6 +138,7 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_dz = length(dz)
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
@@ -162,7 +165,7 @@ end
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K)
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_dz, :])
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     dS_interpolate!(dz, τ, S_coeffs)
@@ -220,16 +223,17 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_z = length(z)
 
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
 
-    K = safe_similar(cache.y[1].du, M, stage)
+    K = safe_similar(cache.y₀[1], M, stage)
 
     ctr_y = (j - 1) * (stage + 1) + 1
 
-    yᵢ = cache.y[ctr_y].du
-    yᵢ₊₁ = cache.y[ctr_y + stage + 1].du
+    yᵢ = cache.y₀[ctr_y]
+    yᵢ₊₁ = cache.y₀[ctr_y + stage + 1]
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -244,10 +248,10 @@ end
 
     # Load interpolation residual
     for jj in 1:stage
-        K[:, jj] = cache.y[ctr_y + jj].du
+        K[1:length_z, jj] = cache.y₀[ctr_y + jj]
     end
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_z, :]) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     S_interpolate!(z, τ, S_coeffs)
@@ -262,16 +266,17 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_dz = length(dz)
 
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
 
-    K = safe_similar(cache.y[1].du, M, stage)
+    K = safe_similar(cache.y₀[1], M, stage)
 
     ctr_y = (j - 1) * (stage + 1) + 1
 
-    yᵢ = cache.y[ctr_y].du
-    yᵢ₊₁ = cache.y[ctr_y + stage + 1].du
+    yᵢ = cache.y₀[ctr_y]
+    yᵢ₊₁ = cache.y₀[ctr_y + stage + 1]
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -286,10 +291,10 @@ end
 
     # Load interpolation residual
     for jj in 1:stage
-        K[:, jj] = cache.y[ctr_y + jj].du
+        K[1:length_dz, jj] = cache.y₀[ctr_y + jj]
     end
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_dz, :]) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     dS_interpolate!(dz, τ, S_coeffs)
