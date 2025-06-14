@@ -81,8 +81,8 @@ end
 end
 
 @views function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
-        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded, fit_parameters},
-        w, i::Int, ::Type{Val{0}}) where {iip, T, use_both, fit_parameters}
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        w, i::Int, ::Type{Val{0}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
@@ -96,8 +96,8 @@ end
     return nothing
 end
 @views function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
-        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded, fit_parameters},
-        w, i::Int, ::Type{Val{0}}) where {iip, T, use_both, fit_parameters}
+        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w, i::Int, ::Type{Val{0}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
@@ -111,9 +111,9 @@ end
     return nothing
 end
 
-@views function sum_stages!(z′, id::MIRKInterpolation,
-        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded, fit_parameters},
-        w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both, fit_parameters}
+@views function sum_stages!(
+        z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     length_z = length(z′)
@@ -124,9 +124,9 @@ end
 
     return nothing
 end
-@views function sum_stages!(z′, id::MIRKInterpolation,
-        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded, fit_parameters},
-        w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both, fit_parameters}
+@views function sum_stages!(
+        z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     length_z = length(z′)
