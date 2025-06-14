@@ -1,0 +1,61 @@
+# Estimate Unknown Parameters in BVP
+
+When there are unknow parameters in boundary value problems, we can estimated the unknown parameters by solving the BVP, it is quite useful in practical applications in dynamical optimziations and inverse problems. This approach allows us to incorporate both the governing differential equations and boundary conditions to infer parameters that may not be directly measurable.
+
+Let's walk through this functionality with an intuitive example. In the following tutorial, we use the [Mathieu equation](https://en.wikipedia.org/wiki/Mathieu_wavelet) which is a second-order differential equation, suppose the target unknow parameter is $\lambda$:
+
+```math
+y''+(\lambda-2q\cos(2x))y=0
+```
+
+`q` is a known real-valued parameter, with boundary conditions when `q=5`:
+
+```math
+y'(0)=0,\ y'(\pi)=0
+```
+
+The second-order BVP can be transformed into a first-order system of BVP:
+
+```math
+\begin{cases}
+y_1'=y_2\\
+y_2'=-(\lambda-2q\cos(2x))y_1
+\end{cases}
+```
+
+with boundary conditions of
+
+```math
+y_2(0)=0,\ y_2(\pi)=0
+```
+
+It is worthnoting that in this system, while we have two differetial equations, it isn't enough to estimate the unknown parameters and gurantee a unique numerical solution with only two boundary conditions. While under the hood, the parameters are estimated simultanously with the numerical solution, it makes the boundary value problem an underconstrained BVP if the number of constraints are equal to the number of states, which may result in more than one solution. So we should provide additional constrain $y(0)=1$ to make sure unique numerical solutions and the estimated parameters are we actually wanted.
+
+With BoundaryValueDiffEq.jl, it's easy to solve boundary value problems with unknown parameters, we can just specify `fit_parameters=true` when constructing the BVP and provide the guess of the unknow parameters in `prob.p`, for example, to estimate hte unknown parameters in the above BVP system:
+
+```@example unknown
+using BoundaryValueDiffEq, Plots
+tspan = (0.0, pi)
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = -(p[1] - 10 * cos(2 * t)) * u[1]
+end
+function bca!(res, u, p)
+    res[1] = u[2]
+    res[2] = u[1] - 1.0
+end
+function bcb!(res, u, p)
+    res[1] = u[2]
+end
+guess(p, t) = [cos(4t); -4sin(4t)]
+bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
+    bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+sol = solve(bvp, MIRK4(), dt = 0.05)
+plot(sol)
+```
+
+after solving the boundary value problem, the estimated unknown parameters can be accessed with
+
+```@example unknown
+sol.prob.p
+```

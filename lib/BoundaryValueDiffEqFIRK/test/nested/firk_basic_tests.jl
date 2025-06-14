@@ -519,3 +519,45 @@ end
             dt = 0.005)
     end
 end
+
+@testitem "Test unknown parameters estimation" setup=[FIRKNestedConvergenceTests] begin
+    tspan = (0.0, pi)
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -(p[1] - 10 * cos(2 * t)) * u[1]
+    end
+    function bca!(res, u, p)
+        res[1] = u[2]
+        res[2] = u[1] - 1.0
+    end
+    function bcb!(res, u, p)
+        res[1] = u[2]
+    end
+    function guess(p, t)
+        return [cos(4t); -4sin(4t)]
+    end
+    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    sol = solve(bvp, RadauIIa5(; nested_nlsolve = true), dt = 0.05)
+
+    @test sol.prob.p ≈ [17.096580050]
+
+    tspan = (0.0, pi)
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -(p[1] - 10 * cos(2 * t)) * u[1]
+    end
+    function bc!(res, u, p, t)
+        res[1] = u(0.0)[2]
+        res[2] = u(0.0)[1] - 1.0
+        res[3] = u(pi)[2]
+    end
+    function guess(p, t)
+        return [cos(4t); -4sin(4t)]
+    end
+    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    sol = solve(bvp, RadauIIa5(; nested_nlsolve = true), dt = 0.05)
+
+    @test sol.prob.p ≈ [17.096580050]
+end
