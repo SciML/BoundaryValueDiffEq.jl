@@ -450,3 +450,45 @@ end
         (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
     @test SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(), dt = 0.05))
 end
+
+@testitem "Test unknown parameters estimation" setup=[FIRKExpandedConvergenceTests] begin
+    tspan = (0.0, pi)
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -(p[1] - 10 * cos(2 * t)) * u[1]
+    end
+    function bca!(res, u, p)
+        res[1] = u[2]
+        res[2] = u[1] - 1.0
+    end
+    function bcb!(res, u, p)
+        res[1] = u[2]
+    end
+    function guess(p, t)
+        return [cos(4t); -4sin(4t)]
+    end
+    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    sol = solve(bvp, RadauIIa5(), dt = 0.05)
+
+    @test sol.prob.p ≈ [17.09658] atol=1e-5
+
+    tspan = (0.0, pi)
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -(p[1] - 10 * cos(2 * t)) * u[1]
+    end
+    function bc!(res, u, p, t)
+        res[1] = u(0.0)[2]
+        res[2] = u(0.0)[1] - 1.0
+        res[3] = u(pi)[2]
+    end
+    function guess(p, t)
+        return [cos(4t); -4sin(4t)]
+    end
+    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    sol = solve(bvp, RadauIIa5(), dt = 0.05)
+
+    @test sol.prob.p ≈ [17.09658] atol=1e-5
+end
