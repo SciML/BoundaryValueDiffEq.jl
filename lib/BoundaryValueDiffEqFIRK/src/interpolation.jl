@@ -114,7 +114,7 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= vcat(yᵢ, cache.p)
+    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
@@ -126,8 +126,9 @@ end
     S_interpolate!(z, τ, S_coeffs)
 end
 
-@inline function interpolant!(dz::AbstractArray, cache::FIRKCacheNested{iip, T},
-        t, mesh, mesh_dt, ::Type{Val{1}}) where {iip, T}
+@inline function interpolant!(
+        dz::AbstractArray, cache::FIRKCacheNested{iip, T, diffcache, fit_parameters},
+        t, mesh, mesh_dt, ::Type{Val{1}}) where {iip, T, diffcache, fit_parameters}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -143,8 +144,8 @@ end
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
-    yᵢ = copy(cache.y[j].du)
-    yᵢ₊₁ = copy(cache.y[j + 1].du)
+    yᵢ = copy(cache.y₀[j])
+    yᵢ₊₁ = copy(cache.y₀[j + 1])
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -159,7 +160,7 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= yᵢ
+    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
