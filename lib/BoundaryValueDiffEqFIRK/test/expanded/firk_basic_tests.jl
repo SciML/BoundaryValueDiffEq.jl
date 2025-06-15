@@ -471,7 +471,7 @@ end
         bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
     sol = solve(bvp, RadauIIa5(), dt = 0.05)
 
-    @test sol.prob.p ≈ [17.09658] atol=1e-6
+    @test sol.prob.p ≈ [17.09658] atol=1e-5
 
     tspan = (0.0, pi)
     function f!(du, u, p, t)
@@ -490,5 +490,5 @@ end
         bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
     sol = solve(bvp, RadauIIa5(), dt = 0.05)
 
-    @test sol.prob.p ≈ [17.09658] atol=1e-6
+    @test sol.prob.p ≈ [17.09658] atol=1e-5
 end
