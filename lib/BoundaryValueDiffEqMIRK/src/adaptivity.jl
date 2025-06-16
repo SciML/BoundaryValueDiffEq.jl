@@ -18,7 +18,7 @@ end
     mesh_selector!(cache::MIRKCache, controller::SequentialErrorControl)
     mesh_selector!(cache::MIRKCache, controller::HybridErrorControl)
 
-Generate new mesh based on the defect or the global error.
+Generate a new mesh based on the defect or the global error.
 """
 @views function mesh_selector!(
         cache::MIRKCache{iip, T}, controller::DefectControl) where {iip, T}
