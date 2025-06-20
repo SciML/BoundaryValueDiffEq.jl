@@ -262,38 +262,57 @@ function __extract_problem_details(prob, u0::AbstractVectorOfArray; kwargs...)
     _u0 = first(u0.u)
     return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
 end
-function __extract_problem_details(
-        prob, u0::AbstractArray; dt = 0.0, check_positive_dt::Bool = false)
+function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
+        check_positive_dt::Bool = false, fit_parameters::Bool = false)
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
+    if fit_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+        new_u = vcat(u0, prob.p)
+        return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
+    end
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
-function __extract_problem_details(
-        prob, f::F; dt = 0.0, check_positive_dt::Bool = false) where {F <: Function}
+function __extract_problem_details(prob, f::F; dt = 0.0, check_positive_dt::Bool = false,
+        fit_parameters::Bool = false) where {F <: Function}
     # Problem passes in a initial guess function
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
-    u0 = __initial_guess(f, prob.p, prob.tspan[1])
+
+    u0 = __initial_guess(f, prob.p, prob.tspan[1]; fit_parameters = fit_parameters)
     t₀, t₁ = prob.tspan
     return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end
 
-function __extract_problem_details(
-        prob, u0::SciMLBase.ODESolution; dt = 0.0, check_positive_dt::Bool = false)
+function __extract_problem_details(prob, u0::SciMLBase.ODESolution; dt = 0.0,
+        check_positive_dt::Bool = false, fit_parameters::Bool = false)
     # Problem passes in a initial guess function
     _u0 = first(u0.u)
     _t = u0.t
+    if fit_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+        new_u = vcat(_u0, prob.p)
+        return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
+    end
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
 end
 
-function __initial_guess(f::F, p::P, t::T) where {F, P, T}
+function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
+        p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+        fit_parameters && return vcat(f(p, t), p)
         return f(p, t)
     elseif hasmethod(f, Tuple{T})
         Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
                      `t`. The single argument version has been deprecated and will be \
                      removed in the next major release of SciMLBase.",
             :__initial_guess)
+        p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+        fit_parameters && return vcat(f(t), p)
         return f(t)
     else
         throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))
@@ -535,7 +554,7 @@ end
     return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
 end
 @inline function __initial_guess_on_mesh(
-        prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p, alias_u0::Bool)
+        prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p)
     return VectorOfArray([copy(vec(u₀)) for _ in 1:(2 * (Nig + 1))])
 end
 
