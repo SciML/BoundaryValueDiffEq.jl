@@ -98,8 +98,8 @@ end
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
-    yᵢ = copy(cache.y₀[j])
-    yᵢ₊₁ = copy(cache.y₀[j + 1])
+    yᵢ = copy(cache.y[j].du)
+    yᵢ₊₁ = copy(cache.y[j + 1].du)
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -144,8 +144,8 @@ end
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
-    yᵢ = copy(cache.y₀[j])
-    yᵢ₊₁ = copy(cache.y₀[j + 1])
+    yᵢ = copy(cache.y[j].du)
+    yᵢ₊₁ = copy(cache.y[j + 1].du)
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -229,12 +229,12 @@ end
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
 
-    K = safe_similar(cache.y₀[1], M, stage)
+    K = safe_similar(cache.y[1].du, M, stage)
 
     ctr_y = (j - 1) * (stage + 1) + 1
 
-    yᵢ = cache.y₀[ctr_y]
-    yᵢ₊₁ = cache.y₀[ctr_y + stage + 1]
+    yᵢ = cache.y[ctr_y].du
+    yᵢ₊₁ = cache.y[ctr_y + stage + 1].du
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -249,7 +249,7 @@ end
 
     # Load interpolation residual
     for jj in 1:stage
-        K[1:length_z, jj] = cache.y₀[ctr_y + jj]
+        K[1:length_z, jj] = cache.y[ctr_y + jj].du
     end
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_z, :]) # Evaluate q(x) at midpoints
@@ -272,12 +272,12 @@ end
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
 
-    K = safe_similar(cache.y₀[1], M, stage)
+    K = safe_similar(cache.y[1].du, M, stage)
 
     ctr_y = (j - 1) * (stage + 1) + 1
 
-    yᵢ = cache.y₀[ctr_y]
-    yᵢ₊₁ = cache.y₀[ctr_y + stage + 1]
+    yᵢ = cache.y[ctr_y].du
+    yᵢ₊₁ = cache.y[ctr_y + stage + 1].du
 
     if iip
         dyᵢ = similar(yᵢ)
@@ -292,7 +292,7 @@ end
 
     # Load interpolation residual
     for jj in 1:stage
-        K[1:length_dz, jj] = cache.y₀[ctr_y + jj]
+        K[1:length_dz, jj] = cache.y[ctr_y + jj].du
     end
 
     z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_dz, :]) # Evaluate q(x) at midpoints
