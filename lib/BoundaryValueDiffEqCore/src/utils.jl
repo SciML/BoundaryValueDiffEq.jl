@@ -268,6 +268,7 @@ function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
     if fit_parameters
+        prob.p isa SciMLBase.NullParameters() && throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
         new_u = vcat(u0, prob.p)
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
@@ -289,6 +290,7 @@ function __extract_problem_details(prob, u0::SciMLBase.ODESolution; dt = 0.0,
     _u0 = first(u0.u)
     _t = u0.t
     if fit_parameters
+        prob.p isa SciMLBase.NullParameters() && throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
         new_u = vcat(_u0, prob.p)
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
@@ -297,6 +299,7 @@ end
 
 function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
+        prob.p isa SciMLBase.NullParameters() && throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
         fit_parameters && return vcat(f(p, t), p)
         return f(p, t)
     elseif hasmethod(f, Tuple{T})
@@ -304,6 +307,7 @@ function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, 
                      `t`. The single argument version has been deprecated and will be \
                      removed in the next major release of SciMLBase.",
             :__initial_guess)
+        prob.p isa SciMLBase.NullParameters() && throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
         fit_parameters && return vcat(f(t), p)
         return f(t)
     else
