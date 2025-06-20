@@ -412,7 +412,6 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     j = interval(t, tval)
     h = mesh_dt[j]
     τ = tval - t[j]
-    T = eltype(first(u))
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(cache.M + 2)
@@ -436,7 +435,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     nestprob_p[3:end] .= nodual_value(yᵢ)
 
     # TODO: Better initial guess or nestprob
-    _nestprob = remake(nest_prob, p = nestprob_p, u0 = zeros(T, length(u[1]), stage))
+    _nestprob = remake(nest_prob, p = nestprob_p, u0 = zeros(length(first(u)), stage))
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
