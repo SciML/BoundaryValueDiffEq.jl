@@ -114,7 +114,7 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= ifelse.(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
+    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
@@ -160,7 +160,7 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= ifelse.(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
+    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
