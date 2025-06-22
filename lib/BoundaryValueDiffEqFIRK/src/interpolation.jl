@@ -120,7 +120,7 @@ end
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_z, :]) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_z, :])) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     S_interpolate!(z, τ, S_coeffs)
