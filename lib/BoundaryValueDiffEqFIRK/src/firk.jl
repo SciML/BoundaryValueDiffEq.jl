@@ -266,7 +266,7 @@ function init_expanded(
         if fit_parameters == true
             l_parameters = length(prob.p)
             vecf! = function (du, u, p, t)
-                prob.f(du, u, u[(end - l_parameters + 1):end], t)
+                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
                 du[(end - l_parameters + 1):end] .= 0
             end
             vecbc! = prob.f.bc
@@ -386,10 +386,10 @@ function SciMLBase.solve!(cache::FIRKCacheNested{
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
     if fit_parameters
-        length_p = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_p + 1):end])
-        map(x -> resize!(x, length_p), cache.y₀)
-        resize!(cache.fᵢ₂_cache, length_p)
+        length_u = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
     end
 
     u = recursivecopy(cache.y₀)

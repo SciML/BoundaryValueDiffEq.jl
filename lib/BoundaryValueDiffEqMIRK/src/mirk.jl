@@ -92,7 +92,7 @@ function SciMLBase.__init(
         if fit_parameters == true
             l_parameters = length(prob.p)
             vecf! = function (du, u, p, t)
-                prob.f(du, u, u[(end - l_parameters + 1):end], t)
+                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
                 du[(end - l_parameters + 1):end] .= 0
             end
             vecbc! = prob.f.bc

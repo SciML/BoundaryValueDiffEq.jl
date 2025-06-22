@@ -114,7 +114,7 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
+    nestprob_p[3:end] .= ifelse.(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
@@ -160,13 +160,13 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
+    nestprob_p[3:end] .= ifelse.(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_dz, :])
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_dz, :]))
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     dS_interpolate!(dz, τ, S_coeffs)
@@ -252,7 +252,7 @@ end
         K[1:length_z, jj] = cache.y[ctr_y + jj].du
     end
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_z, :]) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_z, :])) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     S_interpolate!(z, τ, S_coeffs)
@@ -295,7 +295,7 @@ end
         K[1:length_dz, jj] = cache.y[ctr_y + jj].du
     end
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K[1:length_dz, :]) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_dz, :])) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     dS_interpolate!(dz, τ, S_coeffs)
