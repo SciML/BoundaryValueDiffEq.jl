@@ -86,10 +86,11 @@ end
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
+    length_z = length(z)
     z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        z, k_interp.u[i][1:length_z, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ id.u[i]
 
     return nothing
@@ -100,10 +101,11 @@ end
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
+    length_z = length(z)
     z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_discrete[i][1:length_z, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        z, k_interp.u[i][1:length_z, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
     z .= z .* dt .+ id.u[i]
 
     return nothing
@@ -114,10 +116,11 @@ end
         w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
+    length_z = length(z′)
     z′ .= zero(z′)
-    __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
-    __maybe_matmul!(
-        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+    __maybe_matmul!(z′, k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′, k_interp.u[i][1:length_z, 1:(s_star - stage)],
+        w′[(stage + 1):s_star], true, true)
 
     return nothing
 end
@@ -126,11 +129,12 @@ end
         w′, i::Int, ::Type{Val{1}}) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
+    length_z = length(z′)
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′, k_discrete[i][:, 1:stage], w′[1:stage])
-    __maybe_matmul!(
-        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+    __maybe_matmul!(z′, k_discrete[i][1:length_z, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′, k_interp.u[i][1:length_z, 1:(s_star - stage)],
+        w′[(stage + 1):s_star], true, true)
 
     return nothing
 end

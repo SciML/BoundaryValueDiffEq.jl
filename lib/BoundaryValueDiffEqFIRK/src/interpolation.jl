@@ -80,8 +80,9 @@ end
     return idxs !== nothing ? z[idxs] : z
 end
 
-@inline function interpolant!(z::AbstractArray, cache::FIRKCacheNested{iip, T},
-        t, mesh, mesh_dt, ::Type{Val{0}}) where {iip, T}
+@inline function interpolant!(
+        z::AbstractArray, cache::FIRKCacheNested{iip, T, diffcache, fit_parameters},
+        t, mesh, mesh_dt, ::Type{Val{0}}) where {iip, T, diffcache, fit_parameters}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -92,6 +93,7 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_z = length(z)
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
@@ -112,20 +114,21 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= yᵢ
+    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_z, :])) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     S_interpolate!(z, τ, S_coeffs)
 end
 
-@inline function interpolant!(dz::AbstractArray, cache::FIRKCacheNested{iip, T},
-        t, mesh, mesh_dt, ::Type{Val{1}}) where {iip, T}
+@inline function interpolant!(
+        dz::AbstractArray, cache::FIRKCacheNested{iip, T, diffcache, fit_parameters},
+        t, mesh, mesh_dt, ::Type{Val{1}}) where {iip, T, diffcache, fit_parameters}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -136,6 +139,7 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_dz = length(dz)
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
@@ -156,13 +160,13 @@ end
 
     nestprob_p[1] = mesh[j]
     nestprob_p[2] = mesh_dt[j]
-    nestprob_p[3:end] .= yᵢ
+    nestprob_p[3:end] .= ifelse(fit_parameters, vcat(yᵢ, cache.p), yᵢ)
 
     _nestprob = remake(nest_prob, p = nestprob_p)
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K)
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_dz, :]))
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     dS_interpolate!(dz, τ, S_coeffs)
@@ -220,6 +224,7 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_z = length(z)
 
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
@@ -244,10 +249,10 @@ end
 
     # Load interpolation residual
     for jj in 1:stage
-        K[:, jj] = cache.y[ctr_y + jj].du
+        K[1:length_z, jj] = cache.y[ctr_y + jj].du
     end
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_z, :])) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     S_interpolate!(z, τ, S_coeffs)
@@ -262,6 +267,7 @@ end
         h *= lf
     end
     τ = (t - mesh[j])
+    length_dz = length(dz)
 
     (; f, M, stage, p, ITU) = cache
     (; q_coeff) = ITU
@@ -286,10 +292,10 @@ end
 
     # Load interpolation residual
     for jj in 1:stage
-        K[:, jj] = cache.y[ctr_y + jj].du
+        K[1:length_dz, jj] = cache.y[ctr_y + jj].du
     end
 
-    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, K) # Evaluate q(x) at midpoints
+    z₁, z₁′ = eval_q(yᵢ, 0.5, h, q_coeff, @view(K[1:length_dz, :])) # Evaluate q(x) at midpoints
     S_coeffs = get_S_coeffs(h, yᵢ, yᵢ₊₁, z₁, dyᵢ, dyᵢ₊₁, z₁′)
 
     dS_interpolate!(dz, τ, S_coeffs)
@@ -406,7 +412,6 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     j = interval(t, tval)
     h = mesh_dt[j]
     τ = tval - t[j]
-    T = eltype(first(u))
 
     nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(cache.M + 2)
@@ -430,7 +435,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     nestprob_p[3:end] .= nodual_value(yᵢ)
 
     # TODO: Better initial guess or nestprob
-    _nestprob = remake(nest_prob, p = nestprob_p, u0 = zeros(T, length(u[1]), stage))
+    _nestprob = remake(nest_prob, p = nestprob_p, u0 = zeros(length(first(u)), stage))
     nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
     K = nestsol.u
 

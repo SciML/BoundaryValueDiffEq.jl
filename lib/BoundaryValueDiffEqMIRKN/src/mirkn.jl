@@ -39,7 +39,7 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN; dt = 0
     TU = constructMIRKN(alg, T)
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob, prob.u0, Nig, prob.p, false)
+    y₀ = __initial_guess_on_mesh(prob, prob.u0, Nig, prob.p)
     chunksize = pickchunksize(M * (2 * Nig - 2))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 

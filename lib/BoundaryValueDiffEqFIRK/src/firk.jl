@@ -1,4 +1,5 @@
-@concrete struct FIRKCacheNested{iip, T, diffcache} <: AbstractBoundaryValueDiffEqCache
+@concrete struct FIRKCacheNested{iip, T, diffcache, fit_parameters} <:
+                 AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of FIRK method
     stage::Int                 # The state of FIRK method
     M::Int                     # The number of equations
@@ -31,7 +32,8 @@ end
 
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
 
-@concrete struct FIRKCacheExpand{iip, T, diffcache} <: AbstractBoundaryValueDiffEqCache
+@concrete struct FIRKCacheExpand{iip, T, diffcache, fit_parameters} <:
+                 AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of FIRK method
     stage::Int                 # The state of FIRK method
     M::Int                     # The number of equations
@@ -103,9 +105,14 @@ function init_nested(
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
     diffcache = __cache_trait(alg.jac_alg)
+    fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     t₀, t₁ = prob.tspan
-    ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    ig, T,
+    M,
+    Nig,
+    X = __extract_problem_details(
+        prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -116,7 +123,7 @@ function init_nested(
     fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
+    y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructRK(alg, T)
@@ -143,7 +150,17 @@ function init_nested(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
     bc = if X isa AbstractVector
-        prob.f, prob.f.bc
+        if fit_parameters == true
+            l_parameters = length(prob.p)
+            vecf! = function (du, u, p, t)
+                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
+                du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        else
+            prob.f, prob.f.bc
+        end
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
@@ -169,7 +186,8 @@ function init_nested(
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    K0 = __K0_on_u0(prob.u0, stage) # Somewhat arbitrary initialization of K
+    # Somewhat arbitrary initialization of K
+    K0 = __K0_on_u0(prob, stage; fit_parameters = fit_parameters)
 
     nestprob_p = zeros(T, M + 2)
 
@@ -181,7 +199,7 @@ function init_nested(
             (K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
     end
 
-    return FIRKCacheNested{iip, T, typeof(diffcache)}(
+    return FIRKCacheNested{iip, T, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size,
@@ -197,11 +215,16 @@ function init_expanded(
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
     diffcache = __cache_trait(alg.jac_alg)
+    fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     iip = isinplace(prob)
 
     t₀, t₁ = prob.tspan
-    ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    ig, T,
+    M,
+    Nig,
+    X = __extract_problem_details(
+        prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -215,7 +238,7 @@ function init_expanded(
     fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
-    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
+    _y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
     y₀ = extend_y(_y₀, Nig + 1, stage)
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
@@ -240,7 +263,17 @@ function init_expanded(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
     bc = if X isa AbstractVector
-        prob.f, prob.f.bc
+        if fit_parameters == true
+            l_parameters = length(prob.p)
+            vecf! = function (du, u, p, t)
+                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
+                du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        else
+            prob.f, prob.f.bc
+        end
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
@@ -266,7 +299,7 @@ function init_expanded(
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    return FIRKCacheExpand{iip, T, typeof(diffcache)}(
+    return FIRKCacheExpand{iip, T, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size,
@@ -299,9 +332,12 @@ function __expand_cache!(cache::FIRKCacheNested)
     return cache
 end
 
-function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
+function SciMLBase.solve!(cache::FIRKCacheExpand{
+        iip, T, diffcache, fit_parameters}) where {iip, T, diffcache, fit_parameters}
     (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
+    prob = cache.prob
+    length_u = cache.in_size
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
@@ -314,19 +350,28 @@ function SciMLBase.solve!(cache::FIRKCacheExpand{iip, T}) where {iip, T}
         end
     end
 
-    u = shrink_y(
-        [reshape(y, cache.in_size) for y in cache.y₀], length(cache.mesh), cache.stage)
+    # Parameter estimation, put the estimated parameters to sol.prob.p
+    if fit_parameters
+        length_u = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
+    end
+
+    u = shrink_y([reshape(y, length_u) for y in cache.y₀], length(cache.mesh), cache.stage)
 
     interpolation = __build_interpolation(cache, u)
 
     odesol = DiffEqBase.build_solution(
-        cache.prob, cache.alg, cache.mesh, u; interp = interpolation, retcode = info)
-    return __build_solution(cache.prob, odesol, sol_nlprob)
+        prob, cache.alg, cache.mesh, u; interp = interpolation, retcode = info)
+    return __build_solution(prob, odesol, sol_nlprob)
 end
 
-function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
+function SciMLBase.solve!(cache::FIRKCacheNested{
+        iip, T, diffcache, fit_parameters}) where {iip, T, diffcache, fit_parameters}
     (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
+    prob = cache.prob
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
@@ -337,6 +382,14 @@ function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
             sol_nlprob, info,
             defect_norm = __perform_firk_iteration(cache, abstol, adaptive)
         end
+    end
+
+    # Parameter estimation, put the estimated parameters to sol.prob.p
+    if fit_parameters
+        length_u = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
     end
 
     u = recursivecopy(cache.y₀)
@@ -344,8 +397,8 @@ function SciMLBase.solve!(cache::FIRKCacheNested{iip, T}) where {iip, T}
     interpolation = __build_interpolation(cache, u.u)
 
     odesol = DiffEqBase.build_solution(
-        cache.prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info)
-    return __build_solution(cache.prob, odesol, sol_nlprob)
+        prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info)
+    return __build_solution(prob, odesol, sol_nlprob)
 end
 
 function __perform_firk_iteration(
