@@ -188,15 +188,13 @@ function error_estimate!(cache::AscherCache)
         # in valstr in case they prove to be needed later for an error estimate.
         x = mesh[i] + (mesh_dt[i]) * 2.0 / 3.0
         @views approx(cache, x, valstr[i][3])
-        error[i] .= wgterr .*
-                    abs.(valstr[i][3] .-
+        error[i] .= wgterr .* abs.(valstr[i][3] .-
                          (isodd(i) ? valstr[Int((i + 1) / 2)][2] : valstr[Int(i / 2)][4]))
 
         x = mesh[i] + (mesh_dt[i]) / 3.0
         @views approx(cache, x, valstr[i][2])
         error[i] .= error[i] .+
-                    wgterr .*
-                    abs.(valstr[i][2] .-
+                    wgterr .* abs.(valstr[i][2] .-
                          (isodd(i) ? valstr[Int((i + 1) / 2)][1] : valstr[Int(i / 2)][3]))
     end
     return maximum(reduce(hcat, error), dims = 2)

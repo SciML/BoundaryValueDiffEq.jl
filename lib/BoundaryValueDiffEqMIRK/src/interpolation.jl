@@ -139,8 +139,8 @@ end
     return nothing
 end
 
-@inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(
-    cache.mesh, u, cache)
+@inline __build_interpolation(
+    cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
 
 # Intermidiate solution for evaluating boundry conditions
 # basically simplified version of the interpolation for MIRK

@@ -42,9 +42,14 @@ function BoundaryValueDiffEqCore.__resize!(
     N > 0 ? append!(x, VectorOfArray([safe_similar(last(x)) for _ in 1:N])) : resize!(x, n)
     return x
 end
-@inline __K0_on_u0(prob, stage; fit_parameters = false) = __K0_on_u0(
+@inline __K0_on_u0(prob,
+    stage;
+    fit_parameters = false) = __K0_on_u0(
     prob, prob.u0, stage; fit_parameters = fit_parameters)
-@inline __K0_on_u0(prob, u0::AbstractArray, stage; fit_parameters = false) = ifelse(
+@inline __K0_on_u0(prob,
+    u0::AbstractArray,
+    stage;
+    fit_parameters = false) = ifelse(
     fit_parameters, repeat(vcat(u0, prob.p), 1, stage), repeat(u0, 1, stage))
 @inline function __K0_on_u0(
         prob, u0::AbstractVector{<:AbstractArray}, stage; fit_parameters = false)

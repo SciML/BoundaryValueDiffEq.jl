@@ -5,7 +5,8 @@ using BoundaryValueDiffEqFIRK, LinearAlgebra
 SOLVERS = [firk() for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4)]
 
 SOLVERS_NAMES = ["$solver"
-                 for solver in ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"]]
+                 for solver in
+                     ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"]]
 
 ### Overconstrained BVP ###
 

@@ -117,7 +117,7 @@ function MultipleShooting(; nshoots::Int,
         nshoots, grid_coarsening)
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
-@inline MultipleShooting(nshoots::Int, ode_alg; kwargs...) = MultipleShooting(;
-    nshoots, ode_alg, kwargs...)
-@inline MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...) = MultipleShooting(;
-    nshoots, ode_alg, nlsolve, kwargs...)
+@inline MultipleShooting(
+    nshoots::Int, ode_alg; kwargs...) = MultipleShooting(; nshoots, ode_alg, kwargs...)
+@inline MultipleShooting(nshoots::Int, ode_alg, nlsolve;
+    kwargs...) = MultipleShooting(; nshoots, ode_alg, nlsolve, kwargs...)
