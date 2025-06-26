@@ -33,8 +33,8 @@
         end
     end
 
-    @testset "$(solver)" for solver in
-                             (LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5)
+    @testset "$(solver)" for solver in (
+        LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5)
         jac_algs = [BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),

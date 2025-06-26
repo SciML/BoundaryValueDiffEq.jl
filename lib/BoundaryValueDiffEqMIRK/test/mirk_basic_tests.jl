@@ -50,11 +50,11 @@ odef1! = ODEFunction(f1!, analytic = (u0, p, t) -> [5 - t, -1])
 odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
 odef2! = ODEFunction(f2!,
-    analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 odef2 = ODEFunction(f2,
-    analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
@@ -441,7 +441,7 @@ end
         bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
-    @test sol.prob.p ≈ [17.09658] atol=1e-5
+    @test sol.prob.p≈[17.09658] atol=1e-5
 
     tspan = (0.0, pi)
     function f!(du, u, p, t)
@@ -460,5 +460,5 @@ end
         bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
-    @test sol.prob.p ≈ [17.09658] atol=1e-5
+    @test sol.prob.p≈[17.09658] atol=1e-5
 end

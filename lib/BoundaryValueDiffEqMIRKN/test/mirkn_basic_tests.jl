@@ -39,8 +39,8 @@ end
 function bc_b(du, u, p)
     return [u[1]]
 end
-analytical_solution = (u0, p,
-    t) -> [(exp(-t) - exp(t - 2)) / (1 - exp(-2)), (-exp(-t) - exp(t - 2)) / (1 - exp(-2))]
+analytical_solution = (u0, p, t) -> [
+    (exp(-t) - exp(t - 2)) / (1 - exp(-2)), (-exp(-t) - exp(t - 2)) / (1 - exp(-2))]
 u0 = [1.0]
 tspan = (0.0, 1.0)
 testTol = 0.2

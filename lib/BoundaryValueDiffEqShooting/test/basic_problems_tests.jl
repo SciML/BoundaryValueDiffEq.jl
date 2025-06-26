@@ -357,12 +357,48 @@ end
     alg_default = MultipleShooting(
         10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
-    for (prob, alg) in
-        Iterators.product((prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))
+    for (prob, alg) in Iterators.product(
+        (prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))
         sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
 
         @test SciMLBase.successful_retcode(sol.retcode)
         @test norm(sol.resid, Inf) < 1e-6
     end
+end
+
+@testitem "Shooting with heterogeneous initial guess" begin
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
+    g = 9.81
+    L = 1.0
+    tspan = (0.0, pi / 2.0)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
+
+    function bc2a!(resid_a, u_a, p)
+        resid_a[1] = u_a[1] + pi / 2
+    end
+    function bc2b!(resid_b, u_b, p)
+        resid_b[1] = u_b[1] - pi / 2
+    end
+
+    u0 = [pi / 2, pi / 2]
+    bvp2 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), u0, tspan;
+        bcresid_prototype = (zeros(1), zeros(1)))
+    sol2 = solve(bvp2, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol2)
+
+    bvp3 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol2, tspan;
+        bcresid_prototype = (zeros(1), zeros(1)))
+    sol3 = solve(bvp3, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol3)
+
+    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol2.u, tspan;
+        bcresid_prototype = (zeros(1), zeros(1)))
+    sol4 = solve(bvp4, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol4)
 end
