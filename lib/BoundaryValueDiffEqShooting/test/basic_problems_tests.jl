@@ -386,6 +386,12 @@ end
         resid_b[1] = u_b[1] - pi / 2
     end
 
+    function initialGuess(p, t)
+        u1 = t * (-3.1444 * t + 6.9895) - 1.5708
+        u2 = t * (t * (6.3342 * t - 19.208) + 9.6822) + 3.9882
+        return [u1, u2]
+    end
+
     u0 = [pi / 2, pi / 2]
     bvp2 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), u0, tspan;
         bcresid_prototype = (zeros(1), zeros(1)))
@@ -401,4 +407,9 @@ end
         bcresid_prototype = (zeros(1), zeros(1)))
     sol4 = solve(bvp4, MultipleShooting(5, Vern7()))
     @test SciMLBase.successful_retcode(sol4)
+
+    bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), initialGuess,
+        tspan; bcresid_prototype = (zeros(1), zeros(1)))
+    sol5 = solve(bvp5, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol5)
 end
