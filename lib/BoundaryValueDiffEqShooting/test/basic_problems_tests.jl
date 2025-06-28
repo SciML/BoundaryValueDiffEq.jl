@@ -366,3 +366,50 @@ end
         @test norm(sol.resid, Inf) < 1e-6
     end
 end
+
+@testitem "Shooting with heterogeneous initial guess" begin
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
+    g = 9.81
+    L = 1.0
+    tspan = (0.0, pi / 2.0)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -(g / L) * sin(θ)
+    end
+
+    function bc2a!(resid_a, u_a, p)
+        resid_a[1] = u_a[1] + pi / 2
+    end
+    function bc2b!(resid_b, u_b, p)
+        resid_b[1] = u_b[1] - pi / 2
+    end
+
+    function initialGuess(p, t)
+        u1 = t * (-3.1444 * t + 6.9895) - 1.5708
+        u2 = t * (t * (6.3342 * t - 19.208) + 9.6822) + 3.9882
+        return [u1, u2]
+    end
+
+    u0 = [pi / 2, pi / 2]
+    bvp2 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), u0, tspan;
+        bcresid_prototype = (zeros(1), zeros(1)))
+    sol2 = solve(bvp2, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol2)
+
+    bvp3 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol2, tspan;
+        bcresid_prototype = (zeros(1), zeros(1)))
+    sol3 = solve(bvp3, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol3)
+
+    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol2.u, tspan;
+        bcresid_prototype = (zeros(1), zeros(1)))
+    sol4 = solve(bvp4, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol4)
+
+    bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), initialGuess,
+        tspan; bcresid_prototype = (zeros(1), zeros(1)))
+    sol5 = solve(bvp5, MultipleShooting(5, Vern7()))
+    @test SciMLBase.successful_retcode(sol5)
+end
