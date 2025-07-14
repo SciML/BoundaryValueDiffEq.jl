@@ -48,8 +48,20 @@ function __FastShortcutNonlinearPolyalg(::Type{T} = Float64; concrete_jac = noth
     return NonlinearSolvePolyAlgorithm(algs)
 end
 
-@inline __concrete_nonlinearsolve_algorithm(prob, alg) = alg
-@inline function __concrete_nonlinearsolve_algorithm(prob, ::Nothing)
+"""
+    __concrete_solve_algorithm(prob, nlsolve_alg, optimize_alg)
+
+Automatic solver choosing according to the input solver.
+If none of the solvers are specified, we use nonlinear solvers from NonlinearSolve.jl.
+If both of the nonlinear solver and optimization solver are specified, we throw an error.
+If only one of the nonlinear solver and optimization solver is specified, we use that solver.
+"""
+@inline __concrete_solve_algorithm(prob, alg, ::Nothing) = alg
+@inline __concrete_solve_algorithm(prob, ::Nothing, alg) = alg
+@inline __concrete_solve_algorithm(prob,
+    alg1,
+    alg2) = error("Both `nlsolve` and `optimize` are specified in the algorithm, but only one of them is allowed. Please specify only one of them.")
+@inline function __concrete_solve_algorithm(prob, ::Nothing, ::Nothing)
     if prob isa NonlinearLeastSquaresProblem
         return __FastShortcutBVPCompatibleNLLSPolyalg(eltype(prob.u0))
     else

@@ -17,6 +17,9 @@ for order in (2, 3, 4, 5, 6)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -48,8 +51,9 @@ for order in (2, 3, 4, 5, 6)
         }
         ```
         """
-        @kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
@@ -73,6 +77,9 @@ for order in (6)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -104,8 +111,9 @@ for order in (6)
         }
         ```
         """
-        @kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000

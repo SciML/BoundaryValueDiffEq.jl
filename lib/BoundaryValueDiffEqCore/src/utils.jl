@@ -464,6 +464,13 @@ end
     return NonlinearProblem(args...; kwargs...)
 end
 
+# Construct the internal OptimizationProblem
+@inline function __internal_optimization_problem(
+        ::BVProblem{uType, tType, iip}, args...; kwargs...) where {uType, tType, iip}
+    prob = OptimizationProblem(args...; kwargs...)
+    return prob
+end
+
 # Handling Initial Guesses
 """
     __extract_u0(u₀, t₀)
@@ -559,9 +566,16 @@ end
 end
 
 # Construct BVP Solution
-function __build_solution(prob::AbstractBVProblem, odesol, nlsol)
+function __build_solution(
+        prob::AbstractBVProblem, odesol, nlsol::SciMLBase.NonlinearSolution)
     retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
     return SciMLBase.solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
+end
+function __build_solution(
+        prob::AbstractBVProblem, odesol, optsol::SciMLBase.OptimizationSolution)
+    retcode = ifelse(SciMLBase.successful_retcode(optsol), odesol.retcode, optsol.retcode)
+    return SciMLBase.solution_new_original_retcode(
+        odesol, optsol, retcode, zeros(length(first(odesol)))) # Need a patch in SciMLBase
 end
 
 # Fix3
@@ -595,4 +609,49 @@ end
 
 function __split_kwargs(; abstol, adaptive, controller, kwargs...)
     return ((abstol, adaptive, controller), (; abstol, adaptive, kwargs...))
+end
+
+@inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs,
+    optimize_kwargs) = (nlsolve_kwargs..., alias_u0 = true)
+@inline __concrete_kwargs(::Nothing, optimize, nlsolve_kwargs, optimize_kwargs) = (;) # Doesn't support for now
+@inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs,
+    optimize_kwargs) = (nlsolve_kwargs..., alias_u0 = true)
+
+function __construct_internal_problem(
+        prob::BVProblem, alg, loss, jac, jac_prototype, resid_prototype, y, p, M, N)
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{iip}((x, p) -> 0.0, AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
+            cons = loss,
+            cons_j = jac, cons_jac_prototype = jac_prototype)
+        lcons = zeros(T, N*M)
+        ucons = zeros(T, N*M)
+        println("p: ", p)
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons = lcons, ucons = ucons)
+    end
+end
+
+function __construct_internal_problem(
+        prob::TwoPointBVProblem, alg, loss, jac, jac_prototype, resid_prototype, y, p, M, N)
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve)
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{iip}((x, p) -> 0.0, get_dense_ad(diffmode), cons = loss,
+            cons_j = jac, cons_jac_prototype = Matrix(jac_prototype))
+        lcons = zeros(T, N*M)
+        ucons = zeros(T, N*M)
+
+        return __internal_optimization_problem(
+            pro, optf, y, p; lcons = lcons, ucons = ucons)
+    end
 end
