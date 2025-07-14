@@ -76,7 +76,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
     nlf = NonlinearFunction{iip}(loss_fn; jac_prototype = jac_prototype,
         resid_prototype = resid_prototype, jac = jac_fn)
     nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
+    nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve)
     nlsol::SciMLBase.NonlinearSolution = __solve(
         nlprob, nlsolve_alg; nlsolve_kwargs..., verbose, kwargs...)
 

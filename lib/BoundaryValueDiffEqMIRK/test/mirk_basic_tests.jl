@@ -463,7 +463,7 @@ end
     @test sol.prob.p ≈ [17.09658] atol=1e-5
 end
 
-@testset "Convergence with optimization based solver" setup=[MIRKConvergenceTests] begin
+@testitem "Convergence with optimization based solver" setup=[MIRKConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools, OptimizationMOI, Ipopt
 
     @testset "Problem: $i" for i in (3, 4, 5, 6, 9, 10)

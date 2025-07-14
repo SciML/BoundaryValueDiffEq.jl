@@ -176,7 +176,7 @@ function __perform_ascher_iteration(
         cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {iip, T}
     info::ReturnCode.T = ReturnCode.Success
     nlprob = __construct_nlproblem(cache)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
+    nlsolve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve)
     nlsol = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
