@@ -218,7 +218,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
 
     # NOTE: u_at_nodes is updated inplace
     nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
+    nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve)
     __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
 
     return nothing
