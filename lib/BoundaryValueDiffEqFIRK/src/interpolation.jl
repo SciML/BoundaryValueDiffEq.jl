@@ -95,7 +95,7 @@ end
     τ = (t - mesh[j])
     length_z = length(z)
 
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
     yᵢ = copy(cache.y[j].du)
@@ -141,7 +141,7 @@ end
     τ = (t - mesh[j])
     length_dz = length(dz)
 
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
     yᵢ = copy(cache.y[j].du)
@@ -413,7 +413,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheNested}
     h = mesh_dt[j]
     τ = tval - t[j]
 
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(cache.M + 2)
 
     yᵢ = u[j]
