@@ -617,6 +617,10 @@ end
 @inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs,
     optimize_kwargs) = (nlsolve_kwargs..., alias_u0 = true)
 
+@inline __default_cost(::Nothing) = (x, p) -> 0.0
+@inline __default_cost(f) = f
+@inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
+
 function __construct_internal_problem(
         prob::BVProblem, alg, loss, jac, jac_prototype, resid_prototype, y, p, M, N)
     T = eltype(y)
@@ -626,12 +630,11 @@ function __construct_internal_problem(
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{iip}((x, p) -> 0.0, AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
+        optf = OptimizationFunction{iip}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
             cons = loss,
             cons_j = jac, cons_jac_prototype = jac_prototype)
         lcons = zeros(T, N*M)
         ucons = zeros(T, N*M)
-        println("p: ", p)
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
@@ -646,7 +649,8 @@ function __construct_internal_problem(
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{iip}((x, p) -> 0.0, get_dense_ad(diffmode), cons = loss,
+        optf = OptimizationFunction{iip}(
+            __default_cost(prob.f), get_dense_ad(diffmode), cons = loss,
             cons_j = jac, cons_jac_prototype = Matrix(jac_prototype))
         lcons = zeros(T, N*M)
         ucons = zeros(T, N*M)
