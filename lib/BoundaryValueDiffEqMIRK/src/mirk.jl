@@ -41,6 +41,7 @@ function SciMLBase.__init(
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
+    @assert (!iip & !isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     t₀, t₁ = prob.tspan
@@ -490,6 +491,7 @@ end
 function __mirk_mpoint_jacobian(
         J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache, nonbc_diffcache,
         loss_bc::BC, loss_collocation::C, L::Int, p) where {BC, C}
+    println("p: ", p)
     DI.jacobian!(loss_bc, @view(J[1:L, :]), bc_diffcache, bc_diffmode, x, Constant(p))
     DI.jacobian!(loss_collocation, @view(J[(L + 1):end, :]),
         nonbc_diffcache, nonbc_diffmode, x, Constant(p))

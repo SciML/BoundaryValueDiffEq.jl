@@ -19,7 +19,8 @@ for order in (2, 3, 4, 5, 6)
 
           - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
             `OptimizationProblem` interface can be used. Note that any autodiff argument for
-            the solver will be ignored and a custom jacobian algorithm will be used.
+            the solver will be ignored and a custom jacobian algorithm will be used. Optimization
+            solvers should first be loaded to allow this functionality.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.

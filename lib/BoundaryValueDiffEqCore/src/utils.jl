@@ -617,6 +617,8 @@ end
 @inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs,
     optimize_kwargs) = (nlsolve_kwargs..., alias_u0 = true)
 
+## Optimization solver related utils ##
+
 @inline __default_cost(::Nothing) = (x, p) -> 0.0
 @inline __default_cost(f) = f
 @inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
