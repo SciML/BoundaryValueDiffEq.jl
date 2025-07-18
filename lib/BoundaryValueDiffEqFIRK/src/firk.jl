@@ -584,7 +584,7 @@ function __construct_problem(
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, N)
+        resid_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
 end
 
 function __construct_problem(
@@ -642,7 +642,7 @@ function __construct_problem(
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, N)
+        resid_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
 end
 
 function __construct_problem(

@@ -632,7 +632,7 @@ function __construct_internal_problem(
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{iip}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
+        optf = OptimizationFunction{true}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
             cons = loss,
             cons_j = jac, cons_jac_prototype = jac_prototype)
         lcons = zeros(T, N*M)
@@ -651,9 +651,9 @@ function __construct_internal_problem(
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{iip}(
+        optf = OptimizationFunction{true}(
             __default_cost(prob.f), get_dense_ad(diffmode), cons = loss,
-            cons_j = jac, cons_jac_prototype = Matrix(jac_prototype))
+            cons_j = jac, cons_jac_prototype = jac_prototype)
         lcons = zeros(T, N*M)
         ucons = zeros(T, N*M)
 

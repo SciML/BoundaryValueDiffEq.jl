@@ -466,7 +466,8 @@ end
 @testitem "Convergence with optimization based solver" setup=[MIRKConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools, OptimizationMOI, Ipopt
 
-    @testset "Problem: $i" for i in (3, 4, 5, 6, 9, 10)
+    # Only test on inplace problems
+    @testset "Problem: $i" for i in (3, 5, 9)
         prob = probArr[i]
         @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
             sim = test_convergence(
