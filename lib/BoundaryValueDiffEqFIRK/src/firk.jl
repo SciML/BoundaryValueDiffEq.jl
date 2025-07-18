@@ -107,7 +107,7 @@ function init_nested(
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
-    @assert (!iip & !isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
+    @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
@@ -219,7 +219,7 @@ function init_expanded(
         optimize_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
-    @assert (!iip & !isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
+    @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
