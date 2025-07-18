@@ -107,6 +107,7 @@ function init_nested(
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
+    @assert (!iip & !isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
@@ -217,14 +218,13 @@ function init_expanded(
         controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
         optimize_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-
+    iip = isinplace(prob)
+    @assert (!iip & !isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
     diffcache = __cache_trait(alg.jac_alg)
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
-
-    iip = isinplace(prob)
 
     t₀, t₁ = prob.tspan
     ig, T,
