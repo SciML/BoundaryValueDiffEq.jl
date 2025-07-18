@@ -623,6 +623,12 @@ end
 @inline __default_cost(f) = f
 @inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
 
+"""
+    __construct_internal_problem
+
+Constructs the internal problem based on the type of the boundary value problem and the
+algorithm used. It returns either a `NonlinearProblem` or an `OptimizationProblem`.
+"""
 function __construct_internal_problem(
         prob::BVProblem, alg, loss, jac, jac_prototype, resid_prototype, y, p, M, N)
     T = eltype(y)
