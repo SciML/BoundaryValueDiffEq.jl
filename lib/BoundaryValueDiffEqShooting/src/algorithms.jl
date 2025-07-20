@@ -4,7 +4,7 @@ abstract type AbstractShooting <: AbstractBoundaryValueDiffEqAlgorithm end
 """
     Shooting(ode_alg; kwargs...)
     Shooting(ode_alg, nlsolve; kwargs...)
-    Shooting(; ode_alg = nothing, nlsolve = nothing, jac_alg = nothing)
+    Shooting(; ode_alg = nothing, nlsolve = nothing, optimize = nothing, jac_alg = nothing)
 
 Single shooting method, reduces BVP to an initial value problem and solves the IVP.
 
@@ -16,6 +16,9 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
   - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
     `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
     will be ignored and a custom jacobian algorithm will be used.
+  - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+    `OptimizationProblem` interface can be used. Note that any autodiff argument for the solver
+    will be ignored and a custom jacobian algorithm will be used.
   - `jac_alg`: Jacobian Algorithm used for the Nonlinear Solver. If this is not set, we
     check if `nlsolve.ad` exists and is not nothing. If it is, we use that to construct
     the jacobian. If not, we try to use the best algorithm based on the input types
@@ -25,11 +28,14 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
 @concrete struct Shooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
     ode_alg
     nlsolve
+    optimize
     jac_alg::J
 end
 
-function Shooting(; ode_alg = nothing, nlsolve = nothing, jac_alg = nothing)
-    return Shooting(ode_alg, nlsolve, __materialize_jacobian_algorithm(nlsolve, jac_alg))
+function Shooting(;
+        ode_alg = nothing, nlsolve = nothing, optimize = nothing, jac_alg = nothing)
+    return Shooting(
+        ode_alg, nlsolve, optimize, __materialize_jacobian_algorithm(nlsolve, jac_alg))
 end
 @inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
 @inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
@@ -42,7 +48,7 @@ end
 
 """
     MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
-        grid_coarsening = true, jac_alg = nothing)
+        optimize = nothing, grid_coarsening = true, jac_alg = nothing)
     MultipleShooting(nshoots::Int; kwargs...)
     MultipleShooting(nshoots::Int, ode_alg; kwargs...)
     MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...)
@@ -59,6 +65,8 @@ Significantly more stable than Single Shooting.
     poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
   - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
     `NonlinearProblem` interface can be used.
+  - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+    `OptimizationProblem` interface can be used.
   - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
     `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
     on the input types and problem type.
@@ -85,6 +93,7 @@ Significantly more stable than Single Shooting.
 @concrete struct MultipleShooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
     ode_alg
     nlsolve
+    optimize
     jac_alg::J
     nshoots::Int
     grid_coarsening
@@ -93,17 +102,18 @@ end
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, jac_alg, alg.nshoots, alg.grid_coarsening)
+        alg.ode_alg, alg.nlsolve, alg.optimize, jac_alg, alg.nshoots, alg.grid_coarsening)
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
     return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, alg.jac_alg, nshoots, alg.grid_coarsening)
+        alg.ode_alg, alg.nlsolve, alg.optimize, alg.jac_alg, nshoots, alg.grid_coarsening)
 end
 
 function MultipleShooting(; nshoots::Int,
         ode_alg = nothing,
         nlsolve = nothing,
+        optimize = nothing,
         grid_coarsening::Union{
             Bool, Function, <:AbstractVector{<:Integer}, Tuple{Vararg{Integer}}} = true,
         jac_alg = nothing)
@@ -112,9 +122,8 @@ function MultipleShooting(; nshoots::Int,
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(
-        ode_alg, nlsolve, __materialize_jacobian_algorithm(nlsolve, jac_alg),
-        nshoots, grid_coarsening)
+    return MultipleShooting(ode_alg, nlsolve, optimize,
+        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening)
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
 @inline MultipleShooting(
