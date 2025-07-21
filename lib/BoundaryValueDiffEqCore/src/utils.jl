@@ -301,18 +301,22 @@ end
 
 function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
-        p isa SciMLBase.NullParameters &&
-            throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-        fit_parameters && return vcat(f(p, t), p)
+        if fit_parameters
+            p isa SciMLBase.NullParameters &&
+                throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+            return vcat(f(p, t), p)
+        end
         return f(p, t)
     elseif hasmethod(f, Tuple{T})
         Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
                      `t`. The single argument version has been deprecated and will be \
                      removed in the next major release of SciMLBase.",
             :__initial_guess)
-        p isa SciMLBase.NullParameters &&
-            throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-        fit_parameters && return vcat(f(t), p)
+        if fit_parameters
+            p isa SciMLBase.NullParameters &&
+                throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+            return vcat(f(t), p)
+        end
         return f(t)
     else
         throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))

@@ -408,18 +408,15 @@ end
 # Problem has initial guess
 @views function __multiple_shooting_initialize!(
         nodes, prob, alg, ::Val{true}, nshoots::Int, odecache; kwargs...)
-    (; u0, tspan) = prob
+    (; u0, tspan, p) = prob
 
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
-
-    # NOTE: We don't check `u0 isa Function` since `u0` in-principle can be a callable
-    #       struct
-    u0_ = u0 isa VectorOfArray ? u0 : [__initial_guess(u0, prob.p, t) for t in nodes]
+    u0_ = __initial_guess_on_mesh(u0, nodes, p)
 
     N = length(first(u0_))
     u_at_nodes = similar(first(u0_), (nshoots + 1) * N)
-    recursive_flatten!(u_at_nodes, u0_)
+    recursive_flatten!(u_at_nodes, u0_.u)
 
     return u_at_nodes
 end
