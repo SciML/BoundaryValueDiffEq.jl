@@ -66,14 +66,14 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
 
         if prob.problem_type isa TwoPointBVProblem
             __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
-                cur_nshoot, M, N, resida_len, residb_len, solve_internal_odes!,
-                bc[1], bc[2], prob, u0, ode_cache_loss_fn, ensemblealg,
-                internal_ode_kwargs; verbose, kwargs..., nlsolve_kwargs...)
+                cur_nshoot, M, N, resida_len, residb_len, solve_internal_odes!, bc[1],
+                bc[2], prob, u0, ode_cache_loss_fn, ensemblealg, internal_ode_kwargs;
+                verbose, kwargs..., nlsolve_kwargs, optimize_kwargs...)
         else
             __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
-                cur_nshoot, M, N, prod(resid_size), solve_internal_odes!,
-                bc, prob, f, u0_size, u0, ode_cache_loss_fn, ensemblealg,
-                internal_ode_kwargs; verbose, kwargs..., nlsolve_kwargs...)
+                cur_nshoot, M, N, prod(resid_size), solve_internal_odes!, bc, prob,
+                f, u0_size, u0, ode_cache_loss_fn, ensemblealg, internal_ode_kwargs;
+                verbose, kwargs..., nlsolve_kwargs, optimize_kwargs...)
         end
     end
 
@@ -147,7 +147,6 @@ function __solve_nlproblem!(
         resid_prototype, u_at_nodes, prob.p, M, length(nodes))
 
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, kwargs...)
     solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
@@ -222,7 +221,6 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     nlprob = __construct_internal_problem(prob, alg, loss_fn, jac_fn, jac_prototype,
         resid_prototype, u_at_nodes, prob.p, M, length(nodes))
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
     solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
