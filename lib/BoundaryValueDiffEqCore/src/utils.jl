@@ -471,6 +471,12 @@ end
     return prob
 end
 
+@inline function __internal_optimization_problem(::SecondOrderBVProblem{uType, tType, iip},
+        args...; kwargs...) where {uType, tType, iip}
+    prob = OptimizationProblem(args...; kwargs...)
+    return prob
+end
+
 # Handling Initial Guesses
 """
     __extract_u0(u₀, t₀)
@@ -630,7 +636,7 @@ Constructs the internal problem based on the type of the boundary value problem 
 algorithm used. It returns either a `NonlinearProblem` or an `OptimizationProblem`.
 """
 function __construct_internal_problem(
-        prob::BVProblem, alg, loss, jac, jac_prototype, resid_prototype, y, p, M, N)
+        prob::AbstractBVProblem, alg, loss, jac, jac_prototype, resid_prototype, y, p, M, N)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
@@ -638,7 +644,7 @@ function __construct_internal_problem(
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
+        optf = OptimizationFunction{true}((x, p) -> 0.0, AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
             cons = loss,
             cons_j = jac, cons_jac_prototype = jac_prototype)
         lcons = zeros(T, N*M)
@@ -658,7 +664,7 @@ function __construct_internal_problem(
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{true}(
-            __default_cost(prob.f), get_dense_ad(diffmode), cons = loss,
+            (x, p) -> 0.0, get_dense_ad(diffmode), cons = loss,
             cons_j = jac, cons_jac_prototype = jac_prototype)
         lcons = zeros(T, N*M)
         ucons = zeros(T, N*M)

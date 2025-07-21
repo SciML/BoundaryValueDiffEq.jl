@@ -7,6 +7,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     end
+    @assert (iip || isnothing(alg_.optimize)) "Out-of-place constraints don't allow optimization solvers "
 
     alg = concretize_jacobian_algorithm(alg_, prob)
     (; diffmode) = alg.jac_alg

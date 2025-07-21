@@ -19,7 +19,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __default_sparse_ad, __default_nonsparse_ad, get_dense_ad,
                                concrete_jacobian_algorithm, __default_coloring_algorithm,
                                __default_sparsity_detector, interval, __split_kwargs,
-                               NoErrorControl
+                               NoErrorControl, __construct_internal_problem,
+                               __concrete_kwargs
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

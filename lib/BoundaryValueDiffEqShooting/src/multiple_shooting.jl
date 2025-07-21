@@ -7,6 +7,7 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
         throw(ArgumentError("Currently MultipleShooting only supports `EnsembleSerial` and \
                              `EnsembleThreads`!"))
     end
+    @assert (iip || isnothing(_alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
 
     ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
     has_initial_guess = _unwrap_val(ig)
@@ -221,7 +222,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     nlprob = __construct_internal_problem(prob, alg, loss_fn, jac_fn, jac_prototype,
         resid_prototype, u_at_nodes, prob.p, M, length(nodes))
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, kwargs...)
+    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
     solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
