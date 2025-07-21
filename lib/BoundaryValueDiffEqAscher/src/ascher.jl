@@ -39,6 +39,7 @@
     TU
     valstr
     nlsolve_kwargs
+    optimize_kwargs
     kwargs
 end
 
@@ -60,7 +61,8 @@ end
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractAscher; dt = 0.0, controller = GlobalErrorControl(),
-        adaptive = true, abstol = 1e-4, nlsolve_kwargs = (; abstol = abstol), kwargs...)
+        adaptive = true, abstol = 1e-4, nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), kwargs...)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -147,9 +149,9 @@ function SciMLBase.__init(
     g = build_almost_block_diagonals(zeta, ncomp, mesh, T)
     cache = AscherCache{iip, T}(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
-        fixpnt, alg, prob.problem_type, bcresid_prototype, residual, zval, yval,
-        gval, err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU,
-        valst, nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
+        fixpnt, alg, prob.problem_type, bcresid_prototype, residual, zval, yval, gval,
+        err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
+        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
     return cache
 end
 
@@ -176,8 +178,10 @@ function __perform_ascher_iteration(
         cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {iip, T}
     info::ReturnCode.T = ReturnCode.Success
     nlprob = __construct_nlproblem(cache)
-    nlsolve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve)
-    nlsol = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs...)
+    solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
+    kwargs = __concrete_kwargs(
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
+    nlsol = solve(nlprob, solve_alg; kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
@@ -203,7 +207,7 @@ function __perform_ascher_iteration(
         __expand_cache_for_error!(cache)
 
         _nlprob = __construct_nlproblem(cache)
-        nlsol = __solve(_nlprob, nlsolve_alg; cache.nlsolve_kwargs...)
+        nlsol = solve(_nlprob, solve_alg; kwargs...)
 
         error_norm = error_estimate!(cache)
         if norm(error_norm) > abstol
@@ -346,9 +350,9 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
             jac_prototype, u, diffmode, jac_cache, loss, cache.p)
     end
 
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    return __internal_nlsolve_problem(cache.prob, similar(lz), lz, nlf, lz, cache.p)
+    return __construct_internal_problem(
+        cache.prob, alg, loss, jac, jac_prototype, resid_prototype,
+        lz, cache.p, cache.ncomp, length(cache.mesh))
 end
 
 function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
