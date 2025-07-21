@@ -7,7 +7,6 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
         throw(ArgumentError("Currently MultipleShooting only supports `EnsembleSerial` and \
                              `EnsembleThreads`!"))
     end
-    @assert (iip || isnothing(_alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
 
     ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
     has_initial_guess = _unwrap_val(ig)
@@ -16,6 +15,7 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
+    @assert (iip || isnothing(_alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
 
     __alg = concretize_jacobian_algorithm(_alg, prob)
     alg = if has_initial_guess && Nig != __alg.nshoots
