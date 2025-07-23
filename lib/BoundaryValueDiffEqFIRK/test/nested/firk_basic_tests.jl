@@ -294,7 +294,7 @@ end
     @test_nowarn solve(bvp1, RadauIIa7(nl_solve, jac_alg; nested); dt = 0.05)
 end
 
-@testitem "Interpolation" begin
+@testitem "Interpolation" setup=[FIRKNestedConvergenceTests] begin
     using LinearAlgebra
 
     λ = 1
