@@ -99,17 +99,6 @@ for stage in (1, 2, 3, 5, 7)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            optimize::O,
-            jac_alg::J;
-            nested_nlsolve = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            O,
-            J,
-            T} = $(alg){N, O, J, T}(nlsolve, optimize, jac_alg, nested_nlsolve,
-            nested_nlsolve_kwargs, defect_threshold, max_num_subintervals)
     end
 end
 
@@ -211,17 +200,6 @@ for stage in (2, 3, 4, 5)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            optimize::O,
-            jac_alg::J;
-            nested_nlsolve = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            O,
-            J,
-            T} = $(alg){N, O, J, T}(nlsolve, optimize, jac_alg, nested_nlsolve,
-            nested_nlsolve_kwargs, defect_threshold, max_num_subintervals)
     end
 end
 
@@ -324,17 +302,6 @@ for stage in (2, 3, 4, 5)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            optimize::O,
-            jac_alg::J;
-            nested_nlsolve = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            O,
-            J,
-            T} = $(alg){N, O, J, T}(nlsolve, optimize, jac_alg, nested_nlsolve,
-            nested_nlsolve_kwargs, defect_threshold, max_num_subintervals)
     end
 end
 
@@ -437,17 +404,6 @@ for stage in (2, 3, 4, 5)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            optimize::O,
-            jac_alg::J;
-            nested_nlsolve = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            O,
-            J,
-            T} = $(alg){N, O, J, T}(nlsolve, optimize, jac_alg, nested_nlsolve,
-            nested_nlsolve_kwargs, defect_threshold, max_num_subintervals)
     end
 end
 

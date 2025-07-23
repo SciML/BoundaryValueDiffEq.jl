@@ -27,7 +27,7 @@
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
                 trajectories = 10, dt = 0.1)
             @test sol.converged
         end
@@ -40,7 +40,7 @@
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
                 trajectories = 10, dt = 0.1)
             @test sol.converged
         end
@@ -52,7 +52,7 @@
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
                 trajectories = 10, dt = 0.1)
             @test sol.converged
         end
@@ -64,7 +64,7 @@
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
                 nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(nlsolve, jac_alg; nested);
+            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
                 trajectories = 10, dt = 0.1)
             @test sol.converged
         end
