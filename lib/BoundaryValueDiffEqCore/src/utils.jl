@@ -621,11 +621,17 @@ function __split_kwargs(; abstol, adaptive, controller, kwargs...)
     return ((abstol, adaptive, controller), (; abstol, adaptive, kwargs...))
 end
 
-@inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs,
-    optimize_kwargs) = (nlsolve_kwargs..., alias_u0 = true)
+@inline __concrete_kwargs(nlsolve,
+    ::Nothing,
+    nlsolve_kwargs,
+    optimize_kwargs) = (
+    nlsolve_kwargs..., alias = SciMLBase.NonlinearAliasSpecifier(alias_u0 = true))
 @inline __concrete_kwargs(::Nothing, optimize, nlsolve_kwargs, optimize_kwargs) = (;) # Doesn't support for now
-@inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs,
-    optimize_kwargs) = (nlsolve_kwargs..., alias_u0 = true)
+@inline __concrete_kwargs(::Nothing,
+    ::Nothing,
+    nlsolve_kwargs,
+    optimize_kwargs) = (
+    nlsolve_kwargs..., alias = SciMLBase.NonlinearAliasSpecifier(alias_u0 = true))
 
 ## Optimization solver related utils ##
 

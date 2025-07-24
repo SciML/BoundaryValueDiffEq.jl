@@ -1,5 +1,6 @@
-function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
-        nlsolve_kwargs = (; abstol = 1e-6), optimize_kwargs = (; abstol = 1e-6),
+function SciMLBase.__solve(
+        prob::BVProblem, _alg::MultipleShooting; abstol = 1e-6, odesolve_kwargs = (;),
+        nlsolve_kwargs = (; abstol = abstol), optimize_kwargs = (; abstol = abstol),
         ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     (; f, tspan) = prob
 
