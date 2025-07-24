@@ -1,5 +1,6 @@
 function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
-        nlsolve_kwargs = (;), optimize_kwargs = (;), verbose = true, kwargs...)
+        nlsolve_kwargs = (; abstol = 1e-6),
+        optimize_kwargs = (; abstol = 1e-6), verbose = true, kwargs...)
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
