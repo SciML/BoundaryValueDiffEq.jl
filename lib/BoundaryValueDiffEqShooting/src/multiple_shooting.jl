@@ -144,8 +144,9 @@ function __solve_nlproblem!(
         jac_prototype = jac_prototype)
 
     # NOTE: u_at_nodes is updated inplace
-    nlprob = __construct_internal_problem(prob, alg, loss_fn, jac_fn, jac_prototype,
-        resid_prototype, u_at_nodes, prob.p, M, length(nodes))
+    nlprob = __construct_internal_problem(
+        prob, alg, loss_fn, jac_fn, jac_prototype, resid_prototype,
+        u_at_nodes, prob.p, M, length(nodes), nothing)
 
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
     solve(nlprob, nlsolve_alg; kwargs...)
@@ -219,8 +220,9 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         ode_fn, bc_fn, nonbc_diffmode, bc_diffmode, N, M, __cache_trait(alg.jac_alg))
 
     # NOTE: u_at_nodes is updated inplace
-    nlprob = __construct_internal_problem(prob, alg, loss_fn, jac_fn, jac_prototype,
-        resid_prototype, u_at_nodes, prob.p, M, length(nodes))
+    nlprob = __construct_internal_problem(
+        prob, alg, loss_fn, jac_fn, jac_prototype, resid_prototype,
+        u_at_nodes, prob.p, M, length(nodes), nothing)
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
     solve(nlprob, nlsolve_alg; kwargs...)
 
