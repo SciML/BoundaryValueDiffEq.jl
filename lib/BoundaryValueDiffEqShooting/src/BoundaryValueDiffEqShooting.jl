@@ -24,13 +24,9 @@ using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian,
                                 overloaded_input_type
-using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
-                                finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
 using LinearAlgebra
-using PrecompileTools: @compile_workload, @setup_workload
-using Preferences: Preferences
 using Reexport: @reexport
 using RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
