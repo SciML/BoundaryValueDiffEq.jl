@@ -6,7 +6,7 @@ Continuation is a commonly used technique for solving numerically difficult boun
 \epsilon y'' + xy' = \epsilon \pi^2\cos(\pi x) - \pi x\sin(\pi x)
 ```
 
-for $\epsilon=10^{-4}$, on $t\in[-1,1]$ with two point boundary conditions $y(-1)=-2, y(1)=0$. With analitical solution of $y(x)=\cos(\pi x)+\text{erf}(\frac{x}{\sqrt{2\epsilon}})/\text{erf}(\frac{1}{\sqrt{2\epsilon}})$, this problem has a rapid transition layer at $x=0$, making it difficult to solve numerically. In this tutorial, we will showcase how to use continuation with BoundaryValueDiffEq.jl to solve this BVP.
+for $\epsilon=10^{-4}$, on $t\in[-1,1]$ with two point boundary conditions $y(-1)=-2, y(1)=0$. With analytical solution of $y(x)=\cos(\pi x)+\text{erf}(\frac{x}{\sqrt{2\epsilon}})/\text{erf}(\frac{1}{\sqrt{2\epsilon}})$, this problem has a rapid transition layer at $x=0$, making it difficult to solve numerically. In this tutorial, we will showcase how to use continuation with BoundaryValueDiffEq.jl to solve this BVP.
 
 We use the substitution to transform this problem into a first order BVP system:
 

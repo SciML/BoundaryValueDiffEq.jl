@@ -33,7 +33,7 @@ prob = BVProblem(f!, bc!, u0, tspan)
 sol = solve(prob, MIRK4(), dt = 0.01)
 ```
 
-Since this proble only has constraints at the start and end of the time span, we can directly use `TwoPointBVProblem`:
+Since this probe only has constraints at the start and end of the time span, we can directly use `TwoPointBVProblem`:
 
 ```@example getting_started
 function f!(du, u, p, t)
@@ -94,7 +94,7 @@ prob = SecondOrderBVProblem(f!, bc!, u0, tspan)
 sol = solve(prob, MIRKN4(), dt = 0.01)
 ```
 
-## Solving semi-expicit boundary value differential-algebraic equations
+## Solving semi-explicit boundary value differential-algebraic equations
 
 Consider the nonlinear semi-explicit DAE of index at most 2 in COLDAE paper [ascher1994collocation](@Citet)
 

@@ -6,7 +6,7 @@
     the [backends page](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/explanation/backends/)
     for more information.
 
-In BoundaryValueDiffEq.jl, automatic differentiation backend should only be wrapped in `BVPJacobianAlgorithm(diffmode, bc_diffmode, nonbc_diffmode)`. `BVPJacobianAlgorithm(diffmode, bc_diffmode, nonbc_diffmode)` supports user-specified mixed automatic differentiation backends in differrent part of a boundary value problem, and AD choice should depended on the type of boundary value problem:
+In BoundaryValueDiffEq.jl, automatic differentiation backend should only be wrapped in `BVPJacobianAlgorithm(diffmode, bc_diffmode, nonbc_diffmode)`. `BVPJacobianAlgorithm(diffmode, bc_diffmode, nonbc_diffmode)` supports user-specified mixed automatic differentiation backends in different part of a boundary value problem, and AD choice should depended on the type of boundary value problem:
 
   - [`BVProblem`](@ref SciMLBase.BVProblem): Differentiation mode for boundary condition part and non boundary condition part should be specified, for example, `BVPJacobianAlgorithm(; bc_diffmode, nonbc_diffmode)`, default to `BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(), nonbc_diffmode = AutoSparse(AutoForwardDiff()))`.
   - [`TwoPointBVProblem`](@ref SciMLBase.TwoPointBVProblem): Differentiation mode for overall solving should be specified, for example, `BVPJacobianAlgorithm(; diffmode)`, default to `BVPJacobianAlgorithm(; diffmode = AutoSparse(AutoForwardDiff()))`.
