@@ -28,7 +28,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
         @article{Ascher1994CollocationSF,
             title={Collocation Software for Boundary Value Differential-Algebraic Equations},
             author={Uri M. Ascher and Raymond J. Spiteri},
-            journal={SIAM J. Sci. Compute.},
+            journal={SIAM J. Sci. Comput.},
             year={1994},
             volume={15},
             pages={938-952},
