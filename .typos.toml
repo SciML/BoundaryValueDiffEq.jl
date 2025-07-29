@@ -1,4 +1,8 @@
 [default.extend-words]
+# BVP-specific functions 
+Comput = "Comput"
+ABD = "ABD"
+
 # Julia-specific functions
 indexin = "indexin"
 findfirst = "findfirst"
