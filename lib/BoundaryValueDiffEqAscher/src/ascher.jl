@@ -102,8 +102,7 @@ function SciMLBase.__init(
 
     iip = isinplace(prob)
 
-    f,
-    bc = if prob.u0 isa AbstractVector
+    f, bc = if prob.u0 isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(u0))
@@ -338,11 +337,10 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     end
 
     jac = if iip
-        @closure (J, u,
-            p) -> __ascher_mpoint_jacobian!(J, u, diffmode, jac_cache, loss, lz, cache.p)
+        @closure (J, u, p) -> __ascher_mpoint_jacobian!(
+            J, u, diffmode, jac_cache, loss, lz, cache.p)
     else
-        @closure (u,
-            p) -> __ascher_mpoint_jacobian(
+        @closure (u, p) -> __ascher_mpoint_jacobian(
             jac_prototype, u, diffmode, jac_cache, loss, cache.p)
     end
 

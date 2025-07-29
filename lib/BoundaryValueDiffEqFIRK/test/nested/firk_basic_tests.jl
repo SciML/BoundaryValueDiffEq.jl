@@ -66,11 +66,11 @@ odef1! = ODEFunction(f1!, analytic = (u0, p, t) -> [5 - t, -1])
 odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
 odef2! = ODEFunction(f2!,
-    analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 odef2 = ODEFunction(f2,
-    analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
@@ -361,8 +361,8 @@ end
             @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
         end
 
-        @testset "Derivtive Interpolation tests for RadauIIa$stage" for stage in
-                                                                        (2, 3, 5, 7)
+        @testset "Derivtive Interpolation tests for RadauIIa$stage" for stage in (
+            2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
             sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
             dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
@@ -377,8 +377,8 @@ end
             for (id, lobatto_solver) in zip(("a", "b", "c"),
                 (lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
                 begin
-                    @testset "Interpolation tests for LobattoIII$(id)$stage" for stage in
-                                                                                 (3, 4, 5)
+                    @testset "Interpolation tests for LobattoIII$(id)$stage" for stage in (
+                        3, 4, 5)
                         @time sol = solve(
                             prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
                         @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
@@ -387,8 +387,7 @@ end
                         @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
                     end
 
-                    @testset "Derivative Interpolation tests for lobatto$(id)$stage" for stage in
-                                                                                         (
+                    @testset "Derivative Interpolation tests for lobatto$(id)$stage" for stage in (
                         3, 4, 5)
                         @time sol = solve(
                             prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)

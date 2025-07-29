@@ -50,11 +50,11 @@ odef1! = ODEFunction(f1!, analytic = (u0, p, t) -> [5 - t, -1])
 odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
 odef2! = ODEFunction(f2!,
-    analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 odef2 = ODEFunction(f2,
-    analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+    analytic = (u0, p, t) -> [
+        5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 

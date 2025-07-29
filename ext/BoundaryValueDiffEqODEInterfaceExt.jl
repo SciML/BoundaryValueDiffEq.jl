@@ -61,17 +61,13 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
         @closure (t, u, du) -> du .= vec(prob.f(reshape(u, u0_size), prob.p, t))
     end
     bvp2m_bc = if SciMLBase.isinplace(prob)
-        @closure (ya,
-            yb,
-            bca,
-            bcb) -> begin
+        @closure (ya, yb, bca, bcb) -> begin
             prob.f.bc[1](reshape(bca, left_bc_size), reshape(ya, u0_size), prob.p)
             prob.f.bc[2](reshape(bcb, right_bc_size), reshape(yb, u0_size), prob.p)
             return nothing
         end
     else
-        @closure (
-            ya, yb, bca, bcb) -> begin
+        @closure (ya, yb, bca, bcb) -> begin
             bca .= vec(prob.f.bc[1](reshape(ya, u0_size), prob.p))
             bcb .= vec(prob.f.bc[2](reshape(yb, u0_size), prob.p))
             return nothing
@@ -144,8 +140,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
     end
 
     bvpsol_bc = if SciMLBase.isinplace(prob)
-        @closure (ya, yb,
-            r) -> begin
+        @closure (ya, yb, r) -> begin
             left_bc = reshape(@view(r[1:no_left_bc]), left_bc_size)
             right_bc = reshape(@view(r[(no_left_bc + 1):end]), right_bc_size)
             prob.f.bc[1](left_bc, reshape(ya, u0_size), prob.p)
@@ -153,9 +148,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
             return nothing
         end
     else
-        @closure (ya,
-            yb,
-            r) -> begin
+        @closure (ya, yb, r) -> begin
             r[1:no_left_bc] .= vec(prob.f.bc[1](reshape(ya, u0_size), prob.p))
             r[(no_left_bc + 1):end] .= vec(prob.f.bc[2](reshape(yb, u0_size), prob.p))
             return nothing

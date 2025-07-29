@@ -357,8 +357,8 @@ end
     alg_default = MultipleShooting(
         10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
-    for (prob, alg) in
-        Iterators.product((prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))
+    for (prob, alg) in Iterators.product(
+        (prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))
         sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
             odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
 

@@ -301,10 +301,10 @@ end
     dS_interpolate!(dz, τ, S_coeffs)
 end
 
-@inline __build_interpolation(cache::FIRKCacheExpand,
-    u::AbstractVector) = FIRKExpandInterpolation(cache.mesh, u, cache)
-@inline __build_interpolation(cache::FIRKCacheNested,
-    u::AbstractVector) = FIRKNestedInterpolation(cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheExpand, u::AbstractVector) = FIRKExpandInterpolation(
+    cache.mesh, u, cache)
+@inline __build_interpolation(cache::FIRKCacheNested, u::AbstractVector) = FIRKNestedInterpolation(
+    cache.mesh, u, cache)
 
 # Intermidiate solution for evaluating boundry conditions
 # basically simplified version of the interpolation for FIRK
@@ -391,8 +391,8 @@ function s_constraints_interp(M, h)
         row_start = (i - 1) * M + 1
         for k in 0:(M - 1)
             for j in 1:6
-                A[row_start + k,
-                    j + k * 6] = j == 1.0 ? 0.0 : (j - 1) * t[i + k * 6]^(j - 2)
+                A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
+                                              (j - 1) * t[i + k * 6]^(j - 2)
             end
         end
     end

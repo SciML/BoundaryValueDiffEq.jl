@@ -36,12 +36,7 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
 
     internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
 
-    solve_internal_odes! = @closure (resid_nodes,
-        us,
-        p,
-        cur_nshoot,
-        nodes,
-        odecache) -> __multiple_shooting_solve_internal_odes!(
+    solve_internal_odes! = @closure (resid_nodes, us, p, cur_nshoot, nodes, odecache) -> __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoot, odecache, nodes, u0_size, N, ensemblealg, tspan)
 
     # This gets all the nshoots except the final SingleShooting case
@@ -101,9 +96,7 @@ function __solve_nlproblem!(
     resid_prototype = vcat(
         bcresid_prototype[1], similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
 
-    loss_fn = @closure (du,
-        u,
-        p) -> __multiple_shooting_2point_loss!(
+    loss_fn = @closure (du, u, p) -> __multiple_shooting_2point_loss!(
         du, u, p, cur_nshoot, nodes, prob, solve_internal_odes!,
         resida_len, residb_len, N, bca, bcb, ode_cache_loss_fn)
 
@@ -125,15 +118,12 @@ function __solve_nlproblem!(
         ensemblealg, prob, jac_cache, diffmode, alg.ode_alg,
         cur_nshoot, u0; internal_ode_kwargs...)
 
-    loss_fnₚ = @closure (du,
-        u) -> __multiple_shooting_2point_loss!(
+    loss_fnₚ = @closure (du, u) -> __multiple_shooting_2point_loss!(
         du, u, prob.p, cur_nshoot, nodes, prob, solve_internal_odes!,
         resida_len, residb_len, N, bca, bcb, ode_cache_jac_fn)
     jac_prototype = DI.jacobian(loss_fnₚ, resid_prototype, jac_cache, diffmode, u_at_nodes)
 
-    jac_fn = @closure (J,
-        u,
-        p) -> __multiple_shooting_2point_jacobian!(
+    jac_fn = @closure (J, u, p) -> __multiple_shooting_2point_jacobian!(
         J, u, p, jac_cache, loss_fnₚ, diffmode, resid_prototype_cached, alg)
 
     loss_function! = NonlinearFunction{true}(
@@ -158,9 +148,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
     resid_nodes = __maybe_allocate_diffcache(
         __resid_nodes, pickchunksize((cur_nshoot + 1) * N), alg.jac_alg.bc_diffmode)
 
-    loss_fn = @closure (du,
-        u,
-        p) -> __multiple_shooting_mpoint_loss!(
+    loss_fn = @closure (du, u, p) -> __multiple_shooting_mpoint_loss!(
         du, u, p, cur_nshoot, nodes, prob, solve_internal_odes!, resid_len,
         N, f, bc, u0_size, prob.tspan, alg.ode_alg, u0, ode_cache_loss_fn)
 
@@ -194,10 +182,9 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         alg.ode_alg, cur_nshoot, u0; internal_ode_kwargs...)
 
     # Define the functions now
-    ode_fn = @closure (du,
-        u) -> solve_internal_odes!(du, u, prob.p, cur_nshoot, nodes, ode_cache_ode_jac_fn)
-    bc_fn = @closure (du,
-        u) -> __multiple_shooting_mpoint_loss_bc!(
+    ode_fn = @closure (du, u) -> solve_internal_odes!(
+        du, u, prob.p, cur_nshoot, nodes, ode_cache_ode_jac_fn)
+    bc_fn = @closure (du, u) -> __multiple_shooting_mpoint_loss_bc!(
         du, u, prob.p, cur_nshoot, nodes, prob, solve_internal_odes!, N,
         f, bc, u0_size, prob.tspan, alg.ode_alg, u0, ode_cache_bc_jac_fn)
 
@@ -207,9 +194,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         bc_fn, similar(bcresid_prototype), bc_jac_cache, bc_diffmode, u_at_nodes)
     jac_prototype = vcat(jac_prototype_ode, jac_prototype_bc)
 
-    jac_fn = @closure (J,
-        u,
-        p) -> __multiple_shooting_mpoint_jacobian!(
+    jac_fn = @closure (J, u, p) -> __multiple_shooting_mpoint_jacobian!(
         J, u, p, similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
         ode_fn, bc_fn, nonbc_diffmode, bc_diffmode, N, M, __cache_trait(alg.jac_alg))
 
