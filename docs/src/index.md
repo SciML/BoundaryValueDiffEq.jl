@@ -1,4 +1,4 @@
-# BoundaryValueDiffEq.jl: High-Performance Bounday Value Problem Solvers
+# BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers
 
 BoundaryValueDiffEq.jl is a component package in the DifferentialEquations.jl ecosystem.
 The package includes its own high-performance BVP solvers which covers wide range of different kinds boundary value problems, includes the ability to swap out to fast direct and iterative nonlinear solvers, along with the ability to use sparse

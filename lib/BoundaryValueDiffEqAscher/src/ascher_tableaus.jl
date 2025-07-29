@@ -154,7 +154,7 @@ function vmonde!(rho, coef, k)
 end
 
 function rkbas!(s, coef, k::Integer, rkb, dm)
-    # for more guass collocation points per subinterval
+    # for more gauss collocation points per subinterval
     if k == 1
         rkb[1] = 1.0
         dm[1] = 1.0
@@ -178,7 +178,7 @@ function rkbas!(s, coef, k::Integer, rkb, dm)
 end
 
 function rkbas!(s, coef, k::Integer, rkb)
-    # for more guass collocation points per subinterval
+    # for more gauss collocation points per subinterval
     if k == 1
         rkb[1] = 1.0
         return

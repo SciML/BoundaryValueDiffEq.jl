@@ -306,7 +306,7 @@ end
 @inline __build_interpolation(cache::FIRKCacheNested,
     u::AbstractVector) = FIRKNestedInterpolation(cache.mesh, u, cache)
 
-# Intermidiate solution for evaluating boundry conditions
+# Intermediate solution for evaluating boundary conditions
 # basically simplified version of the interpolation for FIRK
 # Expanded FIRK
 function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
