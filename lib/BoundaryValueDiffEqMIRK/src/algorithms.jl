@@ -41,7 +41,7 @@ for order in (2, 3, 4, 5, 6)
         @article{Enright1996RungeKuttaSW,
             title={Runge-Kutta Software with Defect Control for Boundary Value ODEs},
             author={Wayne H. Enright and Paul H. Muir},
-            journal={SIAM J. Sci. Compute.},
+            journal={SIAM J. Sci. Comput.},
             year={1996},
             volume={17},
             pages={479-497}
