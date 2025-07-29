@@ -33,7 +33,7 @@ prob = BVProblem(f!, bc!, u0, tspan)
 sol = solve(prob, MIRK4(), dt = 0.01)
 ```
 
-Since this probe only has constraints at the start and end of the time span, we can directly use `TwoPointBVProblem`:
+Since this problem only has constraints at the start and end of the time span, we can directly use `TwoPointBVProblem`:
 
 ```@example getting_started
 function f!(du, u, p, t)
