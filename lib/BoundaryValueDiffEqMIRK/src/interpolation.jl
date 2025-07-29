@@ -142,7 +142,7 @@ end
 @inline __build_interpolation(
     cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
 
-# Intermidiate solution for evaluating boundry conditions
+# Intermediate solution for evaluating boundary conditions
 # basically simplified version of the interpolation for MIRK
 function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (; t, u, cache) = s
@@ -162,7 +162,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     return z
 end
 
-# Interpolate intermidiate solution at multiple points
+# Interpolate intermediate solution at multiple points
 function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     (; t, u, cache) = s
     (; alg, stage, k_discrete, mesh_dt) = cache
@@ -183,7 +183,7 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     return zvals
 end
 
-# Intermidiate derivative solution for evaluating boundry conditions
+# Intermediate derivative solution for evaluating boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     (; t, u, cache) = s
     (; alg, stage, k_discrete, mesh_dt) = cache

@@ -1,4 +1,4 @@
-# Intermidiate solution evaluation
+# Intermediate solution evaluation
 @concrete struct EvalSol{C}
     u
     t

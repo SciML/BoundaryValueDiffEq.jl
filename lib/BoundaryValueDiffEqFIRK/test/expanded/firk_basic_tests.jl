@@ -44,7 +44,7 @@ function boundary!(residual, u, p, t)
 end
 boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
 
-# Array indexing for boudnary conditions
+# Array indexing for boundary conditions
 function boundary_indexing!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
     residual[2] = u[:, end][1]
@@ -340,7 +340,7 @@ end
             @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
         end
 
-        @testset "Derivtive Interpolation tests for RadauIIa$stage" for stage in
+        @testset "Derivative Interpolation tests for RadauIIa$stage" for stage in
                                                                         (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
             sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
