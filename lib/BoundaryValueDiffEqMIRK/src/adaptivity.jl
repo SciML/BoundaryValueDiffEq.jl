@@ -340,7 +340,7 @@ the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant.
 
 ## Global Error Control
-error_estimate for the global error use the higher order or doubled mesh to estiamte the
+error_estimate for the global error use the higher order or doubled mesh to estimate the
 global error according to err = max(abs(Y_high - Y_low)) / (1 + abs(Y_low))
 
 ## Sequential Error Control
