@@ -17,7 +17,7 @@
     u0 = BigFloat.([pi / 2, pi / 2])
     multi_point_bvp = BVProblem(simplependulum!, bc!, u0, tspan)
 
-    @testset "BigFloat compatiability with Multi-point BVP" begin
+    @testset "BigFloat compatibility with Multi-point BVP" begin
         for solver in [MIRK4(), RadauIIa5(), LobattoIIIa4(nested_nlsolve = true)]
             sol = solve(multi_point_bvp, solver, dt = 0.05)
             @test SciMLBase.successful_retcode(sol.retcode)
@@ -39,7 +39,7 @@
     tspan = (0.0, 1.0)
     two_point_bvp = BVProblem(bvp_function, BigFloat.([1.0, 0.0]), tspan)
 
-    @testset "BigFloat compatiability with Two-point BVP" begin
+    @testset "BigFloat compatibility with Two-point BVP" begin
         for solver in [MIRK4(), RadauIIa5(), LobattoIIIa4(nested_nlsolve = true)]
             sol = solve(two_point_bvp, solver, dt = 0.05)
             @test SciMLBase.successful_retcode(sol.retcode)

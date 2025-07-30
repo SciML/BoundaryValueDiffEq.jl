@@ -172,7 +172,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
         elseif retcode == -5
             @warn "Given initial values inconsistent with separable linear bc"
         elseif retcode == -6
-            @warn "Iterative refinement faild to converge for `sol_method=0` \
+            @warn "Iterative refinement failed to converge for `sol_method=0` \
                    Termination since multiple shooting condition or \
                    condition of Jacobian is too bad for `sol_method=1`"
         elseif retcode == -8

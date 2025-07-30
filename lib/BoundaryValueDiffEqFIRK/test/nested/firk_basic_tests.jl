@@ -351,7 +351,7 @@ end
             @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
         end
 
-        @testset "Derivtive Interpolation tests for RadauIIa$stage" for stage in
+        @testset "Derivative Interpolation tests for RadauIIa$stage" for stage in
                                                                         (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
             sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)

@@ -1,6 +1,6 @@
 # Solve BVP with Extremum Boundary Conditions
 
-In many physical systems, boundary conditions are not always defined at fixed points such as intitial or terminal ends of the domain. Instead, we may encounter scenarios where constraints are imposed on the maximum or minimum values that the solution must attain somewhere within the domain. In such cases, we can use the `maxsol` and `minsol` functions provided by BoundaryValueDiffEq.jl to specify such extremum boundary conditions.
+In many physical systems, boundary conditions are not always defined at fixed points such as initial or terminal ends of the domain. Instead, we may encounter scenarios where constraints are imposed on the maximum or minimum values that the solution must attain somewhere within the domain. In such cases, we can use the `maxsol` and `minsol` functions provided by BoundaryValueDiffEq.jl to specify such extremum boundary conditions.
 
 Let's walk through this functionality with an intuitive example. We still revisit the simple pendulum example here, but this time, suppose we need to impose the maximum and minimum value to our boundary conditions, specified as:
 

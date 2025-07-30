@@ -76,7 +76,7 @@ For detailed documentation, see
         - `1`: Nonlinear with good initial data.
         - `2`: Highly Nonlinear with bad initial data.
         - `3`: Highly nonlinear with bad initial data and initial rank reduction to
-          seperable linear boundary conditions.
+          separable linear boundary conditions.
     - `sol_method`: Switch for solution methods, default as local linear solver with
       condensing algorithm, available choices:
         - `0`: Use local linear solver with condensing algorithm.

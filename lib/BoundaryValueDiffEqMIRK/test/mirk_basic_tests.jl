@@ -27,7 +27,7 @@ function boundary!(residual, u, p, t)
 end
 boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
 
-# Array indexing for boudnary conditions
+# Array indexing for boundary conditions
 function boundary_indexing!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
     residual[2] = u[:, end][1]

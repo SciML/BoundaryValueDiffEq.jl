@@ -167,7 +167,7 @@ function __maybe_allocate_diffcache(x, chunksize, jac_alg)
 end
 __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(zero(x.du), chunksize)
 
-## get_tmp shows a warning as it should on cache exapansion, this behavior however is
+## get_tmp shows a warning as it should on cache expansion, this behavior however is
 ## expected for adaptive BVP solvers so we write our own `get_tmp` and drop the warning logs
 
 @inline function get_tmp(dc, u)

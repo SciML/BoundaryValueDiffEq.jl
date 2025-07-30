@@ -76,7 +76,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
 
     # assembly process completed
     # solve the linear system
-    # ABD matrix decomposition
+    # AND matrix decomposition
     @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
 
     # perform forward and backward substitution.
@@ -733,7 +733,7 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
 end
 
 # construct a group of ncomp rows of the matrices wi and
-# corrsponding to an interior collocation point
+# corresponding to an interior collocation point
 # jj=1...k
 function vwblok(cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
         vi, ipvtw, zyval, df, acol, dmzo) where {iip, T}

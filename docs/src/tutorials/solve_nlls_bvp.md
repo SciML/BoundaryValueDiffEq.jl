@@ -39,7 +39,7 @@ sol = solve(prob, MIRK4(), dt = 0.01, abstol = 1e-3)
 plot(sol)
 ```
 
-Since this BVP imposes constaints only at the two endpoints, we can use `TwoPointBVProlem` to handle such cases.
+Since this BVP imposes constraints only at the two endpoints, we can use `TwoPointBVProlem` to handle such cases.
 
 ```@example nlls_overdetermined
 function f!(du, u, p, t)
