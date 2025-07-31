@@ -83,8 +83,7 @@ end
         @testset "MIRKN$order" for order in (4, 6)
             solver = mirkn_solver(Val(order); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_call target_modules=(BoundaryValueDiffEqMIRKN,) solve(
-                prob, solver; dt = 0.2)
+            @test_call target_modules=(BoundaryValueDiffEqMIRKN,) solve(prob, solver; dt = 0.2)
         end
     end
 end

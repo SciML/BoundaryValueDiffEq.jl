@@ -49,11 +49,11 @@ boundary_two_point_b(ub, p) = [ub[1]]
 odef1! = ODEFunction(f1!, analytic = (u0, p, t) -> [5 - t, -1])
 odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
-odef2! = ODEFunction(f2!,
-    analytic = (
+odef2! = ODEFunction(
+    f2!, analytic = (
         u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
-odef2 = ODEFunction(f2,
-    analytic = (
+odef2 = ODEFunction(
+    f2, analytic = (
         u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
@@ -109,19 +109,15 @@ end
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
             solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(
-                prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(
-                prob, solver; dt = 0.2)
+            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
         end
 
         @testset "MIRK$(order)I" for order in (6,)
             solver = MIRK6I(; nlsolve = NewtonRaphson(),
                 jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(
-                prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(
-                prob, solver; dt = 0.2)
+            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
         end
     end
 end
@@ -200,8 +196,7 @@ end
         res[2] = u(1.0)[1]
     end
 
-    prob_bvp_linear_function = ODEFunction(
-        prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
+    prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
     prob_bvp_linear_tspan = (0.0, 1.0)
     prob_bvp_linear = BVProblem(
         prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ)

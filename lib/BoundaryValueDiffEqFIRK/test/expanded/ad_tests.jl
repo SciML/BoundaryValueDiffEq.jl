@@ -21,15 +21,12 @@
         jac_alg_enzyme = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoEnzyme(
                 mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated)),
-            nonbc_diffmode = AutoEnzyme(
-                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
         jac_alg_mooncake = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-            nonbc_diffmode = AutoEnzyme(
-                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            sol = solve(
-                prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.05)
+            sol = solve(prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.05)
             @test SciMLBase.successful_retcode(sol)
         end
     end
@@ -53,12 +50,10 @@
         jac_alg_enzyme = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoEnzyme(
                 mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated)),
-            nonbc_diffmode = AutoEnzyme(
-                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
         jac_alg_mooncake = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-            nonbc_diffmode = AutoEnzyme(
-                mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
             sol = solve(prob, RadauIIa5(; jac_alg = jac_alg), dt = 0.05)
             @test SciMLBase.successful_retcode(sol)
@@ -89,8 +84,7 @@
         jac_alg_mooncake = BVPJacobianAlgorithm(AutoSparse(AutoMooncake(;
             config = nothing)))
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            sol = solve(
-                prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.01)
+            sol = solve(prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
         end
     end

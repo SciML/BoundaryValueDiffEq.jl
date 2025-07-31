@@ -34,8 +34,7 @@
     function bcb!(resid_b, u_b, p)
         resid_b[1] = u_b[1]
     end
-    bvp_function = BVPFunction(
-        f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
+    bvp_function = BVPFunction(f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
     tspan = (0.0, 1.0)
     two_point_bvp = BVProblem(bvp_function, BigFloat.([1.0, 0.0]), tspan)
 

@@ -100,8 +100,7 @@ end
         resid_b[1] = u_b[1]
     end
 
-    fun = BVPFunction(
-        f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
+    fun = BVPFunction(f!, (bca!, bcb!), bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true))
     tspan = (0.0, 1.0)
 
     prob = TwoPointBVProblem(fun, [1.0, 0.0], tspan)

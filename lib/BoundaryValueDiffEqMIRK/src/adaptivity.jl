@@ -20,8 +20,8 @@ end
 
 Generate new mesh based on the defect or the global error.
 """
-@views function mesh_selector!(
-        cache::MIRKCache{iip, T}, controller::DefectControl) where {iip, T}
+@views function mesh_selector!(cache::MIRKCache{iip, T}, controller::DefectControl) where {
+        iip, T}
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -73,8 +73,8 @@ Generate new mesh based on the defect or the global error.
     return meshₒ, mesh_dt₀, Nsub_star, info
 end
 
-@views function mesh_selector!(
-        cache::MIRKCache{iip, T}, controller::GlobalErrorControl) where {iip, T}
+@views function mesh_selector!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl) where {
+        iip, T}
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -127,8 +127,8 @@ end
     return meshₒ, mesh_dt₀, Nsub_star, info
 end
 
-@views function mesh_selector!(
-        cache::MIRKCache{iip, T}, controller::SequentialErrorControl) where {iip, T}
+@views function mesh_selector!(cache::MIRKCache{iip, T}, controller::SequentialErrorControl) where {
+        iip, T}
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -182,8 +182,8 @@ end
     return meshₒ, mesh_dt₀, Nsub_star, info
 end
 
-@views function mesh_selector!(
-        cache::MIRKCache{iip, T}, controller::HybridErrorControl) where {iip, T}
+@views function mesh_selector!(cache::MIRKCache{iip, T}, controller::HybridErrorControl) where {
+        iip, T}
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -401,8 +401,7 @@ end
     defect_norm = maximum(Base.Fix1(maximum, abs), errors.u)
 
     # The defect is greater than 10%, the solution is not acceptable
-    info = ifelse(
-        defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
+    info = ifelse(defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
     return defect_norm, info
 end
 @views function error_estimate!(
@@ -447,8 +446,7 @@ end
     defect_norm = maximum(Base.Fix1(maximum, abs), errors.u)
 
     # The defect is greater than 10%, the solution is not acceptable
-    info = ifelse(
-        defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
+    info = ifelse(defect_norm > controller.defect_threshold, ReturnCode.Failure, ReturnCode.Success)
     return defect_norm, info
 end
 
@@ -498,13 +496,10 @@ end
     new_prob = remake(prob, u0 = high_sol)
     high_cache = SciMLBase.__init(new_prob, alg, adaptive = false)
 
-    high_nlprob = __construct_nlproblem(
-        high_cache, vec(high_sol), VectorOfArray(high_sol.u))
-    high_sol_original = __solve(
-        high_nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
+    high_nlprob = __construct_nlproblem(high_cache, vec(high_sol), VectorOfArray(high_sol.u))
+    high_sol_original = __solve(high_nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(high_sol, high_sol_original.u)
-    error_norm = global_error(
-        VectorOfArray(copy(high_sol.u[1:2:end])), copy(cache.y₀), errors)
+    error_norm = global_error(VectorOfArray(copy(high_sol.u[1:2:end])), copy(cache.y₀), errors)
     return error_norm * 2^cache.order / (2^cache.order - 1), ReturnCode.Success
 end
 
@@ -519,8 +514,7 @@ end
     high_cache = SciMLBase.__init(new_prob, __high_order_method(alg), adaptive = false)
 
     high_nlprob = __construct_nlproblem(high_cache, sol.u, high_sol)
-    high_sol_nlprob = __solve(
-        high_nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
+    high_sol_nlprob = __solve(high_nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(high_sol, high_sol_nlprob)
     error_norm = global_error(VectorOfArray(high_sol.u), cache.y₀, errors)
     return error_norm, ReturnCode.Success
@@ -541,8 +535,8 @@ end
 # Basically shrink Nig+1 error estimates to Nig error estimates
 @views function GE_subinterval!(errors, err)
     copyto!(errors.u,
-        [ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])),
-             err.u[i], err.u[i + 1]) for i in 1:(length(err) - 1)])
+        [ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])), err.u[i], err.u[i + 1])
+         for i in 1:(length(err) - 1)])
 end
 
 """
@@ -574,8 +568,8 @@ Here, the ki_interp is the stages in one subinterval.
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][
-                    :, r] .= f(new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] +
+                                                             c_star[r] * mesh_dt[i])
             end
         end
     end
@@ -604,8 +598,8 @@ end
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][
-                    :, r] .= f(new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] +
+                                                             c_star[r] * mesh_dt[i])
             end
         end
     end

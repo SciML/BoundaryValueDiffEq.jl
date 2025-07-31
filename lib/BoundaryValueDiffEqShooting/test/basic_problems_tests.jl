@@ -5,8 +5,8 @@
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5()),
         MultipleShooting(10, Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(
-            10, Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), NewtonRaphson(;
+            autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5())]
     # JET_SKIP = [false, false, true, false, false, true]
     JET_SKIP = [true, true, true, true, true, true]
@@ -197,8 +197,8 @@ end
     flow_bvp = BVProblem{true}(flow_in_a_channel!, bc_flow!, u0, tspan, p)
 
     for solver in [
-        Shooting(AutoTsit5(Rodas4P()),
-            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))),
+        Shooting(AutoTsit5(Rodas4P()), NewtonRaphson(;
+            autodiff = AutoForwardDiff(; chunksize = 8))),
         MultipleShooting(10, AutoTsit5(Rodas4P()),
             NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8)))]
         sol = solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
@@ -328,8 +328,7 @@ end
     prob_iip = BVProblem(
         BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p; nlls = Val(true))
     prob_tp_oop = BVProblem(
-        BVPFunction{false}(
-            ray_tracing, (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)),
+        BVPFunction{false}(ray_tracing, (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)),
         u0,
         tspan,
         p;
@@ -354,8 +353,7 @@ end
         nlsolve = TrustRegion(),
         jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
             nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
-    alg_default = MultipleShooting(
-        10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
+    alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
     for (prob, alg) in
         Iterators.product((prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))

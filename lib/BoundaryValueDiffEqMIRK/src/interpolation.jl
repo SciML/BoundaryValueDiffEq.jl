@@ -139,8 +139,7 @@ end
     return nothing
 end
 
-@inline __build_interpolation(
-    cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
+@inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
 
 # Intermediate solution for evaluating boundary conditions
 # basically simplified version of the interpolation for MIRK
@@ -199,8 +198,8 @@ end
 """
 Construct n root-finding problems and solve them to find the critical points with continuous derivative polynomials
 """
-function __construct_then_solve_root_problem(
-        sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) where {C <:
+                                                                                   MIRKCache}
     (; alg) = sol.cache
     n = first(size(sol))
     nlprobs = Vector{SciMLBase.NonlinearProblem}(undef, n)
@@ -251,8 +250,10 @@ end
     return T.(w), T.(wp)
 end
 @inline function evalsol_interp_weights(τ::T, ::MIRK3) where {T}
-    w = [τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0),
-        -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0), τ^2 * (τ - 1.0)]
+    w = [
+        τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0), -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0), τ^2 *
+                                                                                   (τ -
+                                                                                    1.0)]
 
     #     Derivative polynomials.
 

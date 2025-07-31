@@ -188,8 +188,7 @@ end
     p = vcat(p0, R0, pL, RL)
     prob_tp = TwoPointBVProblem(
         rod_ode!, (bc_a!, bc_b!), y0, tspan, p, bcresid_prototype = (zeros(6), zeros(6)))
-    prob = BVProblem(
-        BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, tspan, p)
+    prob = BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, tspan, p)
 
     for solver in SOLVERS
         sol = solve(
