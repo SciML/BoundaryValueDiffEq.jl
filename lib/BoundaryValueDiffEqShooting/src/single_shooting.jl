@@ -82,8 +82,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache
-    internal_prob_final = ODEProblem{iip}(
-        prob.f, reshape(nlsol.u, u0_size), prob.tspan, prob.p)
+    internal_prob_final = ODEProblem{iip}(prob.f, reshape(nlsol.u, u0_size), prob.tspan, prob.p)
     odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     return __build_solution(prob, odesol, nlsol)
@@ -140,7 +139,6 @@ function __single_shooting_jacobian_ode_cache(
         prob, jac_cache, ::DiffCacheNeeded, diffmode, u0, ode_alg; kwargs...)
     T_dual = eltype(overloaded_input_type(jac_cache))
     xduals = zeros(T_dual, size(u0))
-    prob_ = remake(
-        prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))
+    prob_ = remake(prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))
     return SciMLBase.__init(prob_, ode_alg; kwargs...)
 end

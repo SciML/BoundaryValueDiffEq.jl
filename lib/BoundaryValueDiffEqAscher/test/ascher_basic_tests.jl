@@ -40,10 +40,10 @@
     u01 = [0.0, 0.0, 0.0, 0.0]
     tspan1 = (0.0, 1.0)
     zeta1 = [0.0, 0.0, 1.0]
-    fun_iip = ODEFunction(
-        f1!, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
-    fun_oop = ODEFunction(
-        f1, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
+    fun_iip = ODEFunction(f1!, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0;
+                                                                      0 0 1 0; 0 0 0 0])
+    fun_oop = ODEFunction(f1, analytic = f1_analytic, mass_matrix = [1 0 0 0; 0 1 0 0;
+                                                                     0 0 1 0; 0 0 0 0])
     prob_iip = BVProblem(fun_iip, bc1!, u01, tspan1)
     prob_oop = BVProblem(fun_oop, bc1, u01, tspan1)
     tpprob_iip = TwoPointBVProblem(
@@ -92,10 +92,10 @@ end
     u02 = [0.0, 0.0, 0.0, 0.0, 0.0]
     tspan2 = (0.0, 1.0)
     zeta2 = [0.0, 1.0, 1.0]
-    fun2_iip = BVPFunction(
-        f2!, bc2!, mass_matrix = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0; 0 0 0 0 0])
-    fun2_oop = BVPFunction(
-        f2, bc2, mass_matrix = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0; 0 0 0 0 0])
+    fun2_iip = BVPFunction(f2!, bc2!, mass_matrix = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0;
+                                                     0 0 0 0 0; 0 0 0 0 0])
+    fun2_oop = BVPFunction(f2, bc2, mass_matrix = [1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0;
+                                                   0 0 0 0 0; 0 0 0 0 0])
     prob2_iip = BVProblem(fun2_iip, u02, tspan2)
     prob2_oop = BVProblem(fun2_oop, u02, tspan2)
     prob2Arr = [prob2_iip, prob2_oop]
@@ -170,8 +170,7 @@ end
     SOLVERS = [alg(zeta = zeta1)
                for alg in (Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7)]
     for stage in (1, 2, 3, 4, 5, 6, 7)
-        @test_call target_modules=(BoundaryValueDiffEqAscher,) solve(
-            prob1, SOLVERS[stage], dt = 0.01)
+        @test_call target_modules=(BoundaryValueDiffEqAscher,) solve(prob1, SOLVERS[stage], dt = 0.01)
     end
     #@test_opt target_modules=(BoundaryValueDiffEqAscher,) solve(prob1, Ascher4(zeta = zeta1), dt = 0.01)
 end

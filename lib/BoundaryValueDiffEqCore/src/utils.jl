@@ -15,8 +15,7 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(
-        y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
@@ -525,8 +524,7 @@ guess is supplied, it returns `-1`.
 Flattens the initial guess into a matrix. For a function `u₀`, it returns `nothing`. For no
 initial guess, it returns `vec(u₀)`.
 """
-@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(
-    vec, hcat, u₀)
+@inline __flatten_initial_guess(u₀::AbstractVector{<:AbstractArray}) = mapreduce(vec, hcat, u₀)
 @inline __flatten_initial_guess(u₀::VectorOfArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::DiffEqArray) = mapreduce(vec, hcat, u₀.u)
 @inline __flatten_initial_guess(u₀::SciMLBase.ODESolution) = mapreduce(vec, hcat, u₀.u)
@@ -557,8 +555,7 @@ end
 @inline function __initial_guess_on_mesh(u₀::F, mesh, p) where {F}
     return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
 end
-@inline function __initial_guess_on_mesh(
-        prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p)
+@inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p)
     return VectorOfArray([copy(vec(u₀)) for _ in 1:(2 * (Nig + 1))])
 end
 
