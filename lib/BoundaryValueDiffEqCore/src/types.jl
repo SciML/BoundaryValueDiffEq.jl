@@ -6,8 +6,7 @@
 end
 
 @inline __materialize_jacobian_algorithm(_, alg::BVPJacobianAlgorithm) = alg
-@inline __materialize_jacobian_algorithm(
-    _, alg::ADTypes.AbstractADType) = BVPJacobianAlgorithm(alg)
+@inline __materialize_jacobian_algorithm(_, alg::ADTypes.AbstractADType) = BVPJacobianAlgorithm(alg)
 @inline __materialize_jacobian_algorithm(::Nothing, ::Nothing) = BVPJacobianAlgorithm()
 @inline function __materialize_jacobian_algorithm(nlsolve::N, ::Nothing) where {N}
     ad = hasfield(N, :jacobian_ad) ? nlsolve.jacobian_ad : missing
@@ -39,8 +38,7 @@ end
 end
 @inline __any_sparse_ad(_) = false
 
-function BVPJacobianAlgorithm(
-        diffmode = missing; nonbc_diffmode = missing, bc_diffmode = missing)
+function BVPJacobianAlgorithm(diffmode = missing; nonbc_diffmode = missing, bc_diffmode = missing)
     if diffmode !== missing
         bc_diffmode = bc_diffmode === missing ? diffmode : bc_diffmode
         nonbc_diffmode = nonbc_diffmode === missing ? diffmode : nonbc_diffmode
@@ -64,8 +62,7 @@ For example, for `TwoPointBVProblem`, the `bc_diffmode` is set to
 `AutoSparse(AutoForwardDiff())` while for `StandardBVProblem`, the `bc_diffmode` is set to
 `AutoForwardDiff()`.
 """
-function concrete_jacobian_algorithm(
-        jac_alg::BVPJacobianAlgorithm, prob::AbstractBVProblem, alg)
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob::AbstractBVProblem, alg)
     return concrete_jacobian_algorithm(jac_alg, prob.problem_type, prob, alg)
 end
 
@@ -91,8 +88,7 @@ function concrete_jacobian_algorithm(
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
-function concrete_jacobian_algorithm(
-        jac_alg::BVPJacobianAlgorithm, prob_type, prob::SecondOrderBVProblem, alg)
+function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type, prob::SecondOrderBVProblem, alg)
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?

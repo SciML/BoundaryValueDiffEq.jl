@@ -118,8 +118,7 @@ function init_nested(
     ig, T,
     M,
     Nig,
-    X = __extract_problem_details(
-        prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
+    X = __extract_problem_details(prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -136,8 +135,8 @@ function init_nested(
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(
-                      safe_similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
+    k_discrete = [__maybe_allocate_diffcache(safe_similar(X, M, stage), chunksize, alg.jac_alg)
+                  for _ in 1:Nig]
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -199,11 +198,9 @@ function init_nested(
     nestprob_p = zeros(T, M + 2)
 
     if iip
-        nestprob = NonlinearProblem(
-            (res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p), K0, nestprob_p)
+        nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p), K0, nestprob_p)
     else
-        nestprob = NonlinearProblem(
-            (K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
+        nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
     end
 
     return FIRKCacheNested{iip, T, typeof(diffcache), fit_parameters}(
@@ -230,8 +227,7 @@ function init_expanded(
     ig, T,
     M,
     Nig,
-    X = __extract_problem_details(
-        prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
+    X = __extract_problem_details(prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -249,8 +245,8 @@ function init_expanded(
     y₀ = extend_y(_y₀, Nig + 1, stage)
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
-    k_discrete = [__maybe_allocate_diffcache(
-                      safe_similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig] # Runtime dispatch
+    k_discrete = [__maybe_allocate_diffcache(safe_similar(X, M, stage), chunksize, alg.jac_alg)
+                  for _ in 1:Nig] # Runtime dispatch
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
@@ -408,13 +404,10 @@ function SciMLBase.solve!(cache::FIRKCacheNested{
     return __build_solution(prob, odesol, sol_nlprob)
 end
 
-function __perform_firk_iteration(
-        cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
-    solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
-    kwargs = __concrete_kwargs(
-        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
-    sol_nlprob = solve(nlprob, solve_alg, kwargs...)
+function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
+    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
+    sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     defect_norm = 2 * abstol
@@ -604,8 +597,9 @@ function __construct_problem(
     diffmode = if jac_alg.diffmode isa AutoSparse
         block_size = cache.M * (stage + 2)
         J_full_band = BandedMatrix(
-            Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1),
-                cache.M * (stage + 1) * (N - 1) + cache.M),
+            Ones{eltype(y)}(L + cache.M * (stage + 1) * (N - 1), cache.M *
+                                                                 (stage + 1) *
+                                                                 (N - 1) + cache.M),
             (block_size, block_size))
         sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
             cache, cache.problem_type,

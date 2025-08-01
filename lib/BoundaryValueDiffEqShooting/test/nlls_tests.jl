@@ -4,8 +4,8 @@
     SOLVERS = [
         Shooting(Tsit5(), NewtonRaphson(),
             jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
-        Shooting(
-            Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        Shooting(Tsit5(), LevenbergMarquardt(;
+            autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
@@ -13,14 +13,14 @@
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
         MultipleShooting(10, Tsit5(), NewtonRaphson(),
             jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
-        MultipleShooting(
-            10, Tsit5(), LevenbergMarquardt(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), LevenbergMarquardt(;
+            autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(
-            10, Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), GaussNewton(;
+            autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(
-            10, Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(10, Tsit5(), TrustRegion(;
+            autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff()))]
     # JET_SKIP = fill(false, length(SOLVERS))
     JET_SKIP = fill(true, length(SOLVERS))
@@ -42,8 +42,7 @@
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
 
-    bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)),
-        u0, tspan; nlls = Val(true))
+    bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)), u0, tspan; nlls = Val(true))
 
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
@@ -79,8 +78,7 @@
         return nothing
     end
 
-    bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)),
-        u0, tspan; nlls = Val(true))
+    bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)), u0, tspan; nlls = Val(true))
 
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,

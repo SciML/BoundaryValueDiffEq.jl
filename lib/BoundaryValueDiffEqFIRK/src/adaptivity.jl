@@ -226,8 +226,8 @@ function s_constraints(M, h)
         row_start = (i - 1) * M + 1
         for k in 0:(M - 1)
             for j in 1:6
-                A[row_start + k,
-                    j + k * 6] = j == 1.0 ? 0.0 : (j - 1) * t[i + k * 6]^(j - 2)
+                A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
+                                              (j - 1) * t[i + k * 6]^(j - 2)
             end
         end
     end

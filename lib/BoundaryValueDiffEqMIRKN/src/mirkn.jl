@@ -51,8 +51,8 @@ function SciMLBase.__init(prob::SecondOrderBVProblem, alg::AbstractMIRKN;
     fᵢ₂_cache = __alloc(zero(X))
     stage = alg_stage(alg)
     bcresid_prototype = zero(vcat(X, X))
-    k_discrete = [__maybe_allocate_diffcache(
-                      safe_similar(X, M, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
+    k_discrete = [__maybe_allocate_diffcache(safe_similar(X, M, stage), chunksize, alg.jac_alg)
+                  for _ in 1:Nig]
 
     residual = if iip
         __alloc.(copy.(@view(y₀.u[1:end])))
@@ -108,8 +108,7 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
 
     sol_nlprob, info = __perform_mirkn_iteration(cache)
 
-    solu = ArrayPartition.(
-        cache.y₀.u[1:length(cache.mesh)], cache.y₀.u[(length(cache.mesh) + 1):end])
+    solu = ArrayPartition.(cache.y₀.u[1:length(cache.mesh)], cache.y₀.u[(length(cache.mesh) + 1):end])
     odesol = SciMLBase.build_solution(
         cache.prob, cache.alg, cache.mesh, solu; retcode = info)
     return __build_solution(cache.prob, odesol, sol_nlprob)
@@ -127,14 +126,12 @@ function __perform_mirkn_iteration(cache::MIRKNCache)
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(
-        cache::MIRKNCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
+function __construct_nlproblem(cache::MIRKNCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
     L = length(cache.mesh)
 
     eval_sol = EvalSol(__restructure_sol(y₀.u[1:L], cache.in_size), cache.mesh, cache)
-    eval_dsol = EvalSol(
-        __restructure_sol(y₀.u[(L + 1):end], cache.in_size), cache.mesh, cache)
+    eval_dsol = EvalSol(__restructure_sol(y₀.u[(L + 1):end], cache.in_size), cache.mesh, cache)
 
     loss_bc = if iip
         @closure (du, u,
@@ -338,8 +335,7 @@ end
         resid, u, p, pt, bc!::BC, y, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = EvalSol(__restructure_sol(y_[1:length(cache.mesh)], cache.in_size), mesh, cache)
-    dsoly_ = EvalSol(__restructure_sol(y_[(length(cache.mesh) + 1):end], cache.in_size),
-        cache.mesh, cache)
+    dsoly_ = EvalSol(__restructure_sol(y_[(length(cache.mesh) + 1):end], cache.in_size), cache.mesh, cache)
     eval_bc_residual!(resid, pt, bc!, soly_, dsoly_, p, mesh)
     return nothing
 end
@@ -347,8 +343,7 @@ end
 @views function __mirkn_loss_bc(u, p, pt, bc!::BC, y, mesh, cache::MIRKNCache) where {BC}
     y_ = recursive_unflatten!(y, u)
     soly_ = EvalSol(__restructure_sol(y_[1:length(cache.mesh)], cache.in_size), mesh, cache)
-    dsoly_ = EvalSol(__restructure_sol(y_[(length(cache.mesh) + 1):end], cache.in_size),
-        cache.mesh, cache)
+    dsoly_ = EvalSol(__restructure_sol(y_[(length(cache.mesh) + 1):end], cache.in_size), cache.mesh, cache)
     return eval_bc_residual(pt, bc!, soly_, dsoly_, p, mesh)
 end
 

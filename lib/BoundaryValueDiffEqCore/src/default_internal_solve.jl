@@ -8,13 +8,11 @@ function __FastShortcutBVPCompatibleNLLSPolyalg(::Type{T} = Float64; concrete_ja
         linsolve = nothing, autodiff = nothing, kwargs...) where {T}
     if T <: Complex
         algs = (GaussNewton(; concrete_jac, linsolve, autodiff, kwargs...),
-            LevenbergMarquardt(;
-                linsolve, autodiff, disable_geodesic = Val(true), kwargs...),
+            LevenbergMarquardt(; linsolve, autodiff, disable_geodesic = Val(true), kwargs...),
             LevenbergMarquardt(; linsolve, autodiff, kwargs...))
     else
         algs = (GaussNewton(; concrete_jac, linsolve, autodiff, kwargs...),
-            LevenbergMarquardt(;
-                linsolve, disable_geodesic = Val(true), autodiff, kwargs...),
+            LevenbergMarquardt(; linsolve, disable_geodesic = Val(true), autodiff, kwargs...),
             TrustRegion(; concrete_jac, linsolve, autodiff, kwargs...),
             GaussNewton(;
                 concrete_jac, linsolve, linesearch = BackTracking(), autodiff, kwargs...),

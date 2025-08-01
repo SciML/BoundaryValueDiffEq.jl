@@ -32,10 +32,8 @@ Single shooting method, reduces BVP to an initial value problem and solves the I
     jac_alg::J
 end
 
-function Shooting(;
-        ode_alg = nothing, nlsolve = nothing, optimize = nothing, jac_alg = nothing)
-    return Shooting(
-        ode_alg, nlsolve, optimize, __materialize_jacobian_algorithm(nlsolve, jac_alg))
+function Shooting(; ode_alg = nothing, nlsolve = nothing, optimize = nothing, jac_alg = nothing)
+    return Shooting(ode_alg, nlsolve, optimize, __materialize_jacobian_algorithm(nlsolve, jac_alg))
 end
 @inline Shooting(ode_alg; kwargs...) = Shooting(; ode_alg, kwargs...)
 @inline Shooting(ode_alg, nlsolve; kwargs...) = Shooting(; ode_alg, nlsolve, kwargs...)
@@ -126,7 +124,6 @@ function MultipleShooting(; nshoots::Int,
         __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening)
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
-@inline MultipleShooting(
-    nshoots::Int, ode_alg; kwargs...) = MultipleShooting(; nshoots, ode_alg, kwargs...)
+@inline MultipleShooting(nshoots::Int, ode_alg; kwargs...) = MultipleShooting(; nshoots, ode_alg, kwargs...)
 @inline MultipleShooting(nshoots::Int, ode_alg, nlsolve;
     kwargs...) = MultipleShooting(; nshoots, ode_alg, nlsolve, kwargs...)

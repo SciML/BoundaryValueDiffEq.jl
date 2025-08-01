@@ -56,8 +56,7 @@ struct SequentialErrorControl <: AbstractErrorControl
     defect::DefectControl
     global_error::GlobalErrorControl
 
-    function SequentialErrorControl(;
-            defect = DefectControl(), global_error = GlobalErrorControl())
+    function SequentialErrorControl(; defect = DefectControl(), global_error = GlobalErrorControl())
         return new(defect, global_error)
     end
 end

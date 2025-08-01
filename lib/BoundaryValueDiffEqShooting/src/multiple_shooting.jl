@@ -83,8 +83,8 @@ function SciMLBase.__solve(
     else
         diffmode_shooting = __get_non_sparse_ad(alg.jac_alg.bc_diffmode)
     end
-    shooting_alg = Shooting(
-        alg.ode_alg, alg.nlsolve, alg.optimize, BVPJacobianAlgorithm(diffmode_shooting))
+
+    shooting_alg = Shooting(alg.ode_alg, alg.nlsolve, alg.optimize, BVPJacobianAlgorithm(diffmode_shooting))
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
     return __solve(single_shooting_prob, shooting_alg; odesolve_kwargs,
@@ -101,8 +101,7 @@ function __solve_nlproblem!(
         nodes, cur_nshoot::Int, M::Int, N::Int, resida_len::Int, residb_len::Int,
         solve_internal_odes!::S, bca::B1, bcb::B2, prob, u0, ode_cache_loss_fn,
         ensemblealg, internal_ode_kwargs; kwargs...) where {B1, B2, S}
-    resid_prototype = vcat(
-        bcresid_prototype[1], similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
+    resid_prototype = vcat(bcresid_prototype[1], similar(u_at_nodes, cur_nshoot * N), bcresid_prototype[2])
 
     loss_fn = @closure (du,
         u,

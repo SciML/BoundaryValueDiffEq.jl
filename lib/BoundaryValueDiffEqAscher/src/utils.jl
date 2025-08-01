@@ -1,5 +1,5 @@
-function build_almost_block_diagonals(
-        zeta::Vector{T}, ncomp::I, mesh, ::Type{T}) where {T, I}
+function build_almost_block_diagonals(zeta::Vector{T}, ncomp::I, mesh, ::Type{T}) where {
+        T, I}
     lside = 0
     ncol = 2 * ncomp
     n = length(mesh) - 1
@@ -56,8 +56,8 @@ function __factorize!(a::Matrix{T}, ipvt::Vector) where {T}
     ipvt[n] = n
 end
 
-function __substitute!(
-        a::Matrix{T1}, ipvt::Vector{I}, vb::Vector{Vector{T2}}) where {T1, T2, I}
+function __substitute!(a::Matrix{T1}, ipvt::Vector{I}, vb::Vector{Vector{T2}}) where {
+        T1, T2, I}
     n = size(a, 1)
     b = reduce(vcat, vb)
     if n - 1 >= 1
@@ -77,8 +77,8 @@ function __substitute!(
     end
     recursive_unflatten!(vb, b)
 end
-function __substitute!(
-        a::Matrix{T1}, ipvt::Vector{I}, b::AbstractVector{T2}) where {T1, T2 <: Real, I}
+function __substitute!(a::Matrix{T1}, ipvt::Vector{I}, b::AbstractVector{T2}) where {
+        T1, T2 <: Real, I}
     n = size(a, 1)
     if n - 1 >= 1
         for k in 1:(n - 1)
@@ -121,8 +121,8 @@ end
     return nothing
 end
 
-@views function recursive_flatten!(
-        y::Vector, x::Vector{Vector{T}}) where {T <: ForwardDiff.Dual}
+@views function recursive_flatten!(y::Vector, x::Vector{Vector{T}}) where {T <:
+                                                                           ForwardDiff.Dual}
     i = 0
     for xᵢ in x
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)

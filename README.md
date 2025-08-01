@@ -56,8 +56,7 @@ To set these preferences before loading the package, do the following (replacing
 
 ```julia
 using Preferences, UUIDs
-Preferences.set_preferences!(
-    UUID("764a87c0-6b3e-53db-9096-fe964310641d"), "PrecompileShooting" => false)
+Preferences.set_preferences!(UUID("764a87c0-6b3e-53db-9096-fe964310641d"), "PrecompileShooting" => false)
 ```
 
 ## Running Benchmarks Locally

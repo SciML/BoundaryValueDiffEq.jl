@@ -48,8 +48,7 @@ function SciMLBase.__init(
     ig, T,
     N,
     Nig,
-    X = __extract_problem_details(
-        prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
+    X = __extract_problem_details(prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -66,8 +65,8 @@ function SciMLBase.__init(
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
 
-    k_discrete = [__maybe_allocate_diffcache(
-                      safe_similar(X, N, stage), chunksize, alg.jac_alg) for _ in 1:Nig]
+    k_discrete = [__maybe_allocate_diffcache(safe_similar(X, N, stage), chunksize, alg.jac_alg)
+                  for _ in 1:Nig]
     k_interp = VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -188,8 +187,7 @@ function SciMLBase.solve!(cache::MIRKCache{iip, T, use_both, diffcache,
     return __build_solution(prob, odesol, sol_nlprob)
 end
 
-function __perform_mirk_iteration(
-        cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
+function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
     nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
@@ -240,8 +238,7 @@ function __perform_mirk_iteration(
 end
 
 # Constructing the Nonlinear Problem
-function __construct_problem(
-        cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
+function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
     (; jac_alg) = cache.alg
 

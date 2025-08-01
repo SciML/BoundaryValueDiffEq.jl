@@ -174,8 +174,8 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
         cache.prob, cache.alg, cache.original_mesh, u; retcode = info)
 end
 
-function __perform_ascher_iteration(
-        cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {iip, T}
+function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {
+        iip, T}
     info::ReturnCode.T = ReturnCode.Success
     nlprob = __construct_nlproblem(cache)
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
@@ -266,8 +266,8 @@ function __append_similar!(x::AbstractVector{T}, n) where {T}
     return x
 end
 
-function __append_similar!(
-        x::AbstractVector{<:AbstractArray{T}}, n) where {T <: AbstractArray}
+function __append_similar!(x::AbstractVector{<:AbstractArray{T}}, n) where {T <:
+                                                                            AbstractArray}
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
@@ -291,8 +291,8 @@ function __append_similar(x::AbstractVector{T}, n) where {T}
     return deepcopy(x)
 end
 
-function __append_similar(
-        x::AbstractVector{<:AbstractArray{T}}, n) where {T <: AbstractArray}
+function __append_similar(x::AbstractVector{<:AbstractArray{T}}, n) where {T <:
+                                                                           AbstractArray}
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
