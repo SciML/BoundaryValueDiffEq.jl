@@ -405,8 +405,8 @@ function SciMLBase.solve!(cache::FIRKCacheNested{
 end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
+    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlsolve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve)
     sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
