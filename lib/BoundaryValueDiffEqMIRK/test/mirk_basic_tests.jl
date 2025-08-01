@@ -457,3 +457,24 @@ end
 
     @test sol.prob.p≈[17.09658] atol=1e-5
 end
+
+@testitem "Convergence with optimization based solver" setup=[MIRKConvergenceTests] begin
+    using LinearAlgebra, DiffEqDevTools, OptimizationMOI, Ipopt
+
+    # Only test on inplace problems
+    @testset "Problem: $i" for i in (3, 5, 9)
+        prob = probArr[i]
+        @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
+            sim = test_convergence(
+                dts, prob, mirk_solver(Val(order), optimize = Ipopt.Optimizer());
+                abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
+
+        @testset "MIRK$(order)I" for (_, order) in enumerate((6,))
+            sim = test_convergence(dts, prob, MIRK6I(; optimize = Ipopt.Optimizer());
+                abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
+    end
+end

@@ -14,6 +14,9 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
           - `zeta`: side condition points, should always be provided.
 
@@ -46,8 +49,9 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
         }
         ```
         """
-        @kwdef struct $(alg){N, J <: BVPJacobianAlgorithm} <: AbstractAscher
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm} <: AbstractAscher
             nlsolve::N = nothing
+            optimize::O = nothing
             zeta::Vector{Float64} = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             max_num_subintervals::Int = 3000
