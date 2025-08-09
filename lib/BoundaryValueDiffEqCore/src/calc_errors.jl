@@ -35,7 +35,7 @@ struct DefectControl{T} <: AbstractErrorControl
 end
 
 """
-    GlobalErrorControl(; method = HOErorControl())
+    GlobalErrorControl(; method = HOErrorControl())
 
 Global error controller, use high order global error estimation method `HOErrorControl` as default.
 """

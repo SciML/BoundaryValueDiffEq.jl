@@ -106,7 +106,7 @@ end
     end
     τ = (t - mesh[j])
 
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
     yᵢ = copy(cache.y[j].du)
@@ -152,7 +152,7 @@ end
     end
     τ = (t - mesh[j])
 
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
     yᵢ = copy(cache.y[j])
@@ -457,7 +457,7 @@ end
     (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
+    nlsolve_alg = __concrete_solve_algorithm(nest_prob, cache.alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
     for i in 1:(length(mesh) - 1)
@@ -509,7 +509,7 @@ end
     (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
+    nlsolve_alg = __concrete_solve_algorithm(nest_prob, cache.alg.nlsolve)
     nestprob_p = zeros(T, cache.M + 2)
 
     for i in 1:(length(mesh) - 1)

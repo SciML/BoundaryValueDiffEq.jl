@@ -1,6 +1,6 @@
 # [BoundaryValueDiffEqShooting](@id shooting)
 
-Single shooting method and multiple shooting method. To only use the Shooting methods form BoundaryVaueDiffEq.jl, you need to install them use the Julia package manager:
+Single shooting method and multiple shooting method. To only use the Shooting methods form BoundaryValueDiffEq.jl, you need to install them use the Julia package manager:
 
 ```julia
 using Pkg

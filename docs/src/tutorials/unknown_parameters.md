@@ -54,7 +54,7 @@ sol = solve(bvp, MIRK4(), dt = 0.05)
 plot(sol)
 ```
 
-after solving the boundary value problem, the estimated unknown parameters can be accessed with
+after solving the boundary value problem, the estimated unknown parameters can be accessed in the solution
 
 ```@example unknown
 sol.prob.p

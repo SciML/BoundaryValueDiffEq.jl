@@ -121,7 +121,7 @@ end
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
 
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
@@ -151,7 +151,7 @@ end
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, cache.alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, cache.alg.nlsolve)
 
     for i in eachindex(k_discrete)
         residᵢ = residual[i]
@@ -265,7 +265,7 @@ end
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
 
     for i in eachindex(k_discrete)
         residᵢ = residuals[i]
@@ -296,7 +296,7 @@ end
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])
-    nest_nlsolve_alg = __concrete_nonlinearsolve_algorithm(nest_prob, alg.nlsolve)
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
 
     for i in eachindex(k_discrete)
         residᵢ = residuals[i]

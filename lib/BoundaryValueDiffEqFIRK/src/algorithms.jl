@@ -17,6 +17,9 @@ for stage in (1, 2, 3, 5, 7)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -87,23 +90,15 @@ for stage in (1, 2, 3, 5, 7)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            jac_alg::J;
-            nested = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            J,
-            T} = $(alg){N, J, T}(nlsolve, jac_alg, nested, nested_nlsolve_kwargs,
-            defect_threshold, max_num_subintervals)
     end
 end
 
@@ -122,6 +117,10 @@ for stage in (2, 3, 4, 5)
             - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
               the solver will be ignored and a custom jacobian algorithm will be used.
+
+            - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
 
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
@@ -192,23 +191,15 @@ for stage in (2, 3, 4, 5)
               }
               ```
         """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            jac_alg::J;
-            nested = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            J,
-            T} = $(alg){N, J, T}(nlsolve, jac_alg, nested, nested_nlsolve_kwargs,
-            defect_threshold, max_num_subintervals)
     end
 end
 
@@ -228,6 +219,9 @@ for stage in (2, 3, 4, 5)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -299,23 +293,15 @@ for stage in (2, 3, 4, 5)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            jac_alg::J;
-            nested = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            J,
-            T} = $(alg){N, J, T}(nlsolve, jac_alg, nested, nested_nlsolve_kwargs,
-            defect_threshold, max_num_subintervals)
     end
 end
 
@@ -335,6 +321,9 @@ for stage in (2, 3, 4, 5)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -406,23 +395,15 @@ for stage in (2, 3, 4, 5)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
-        $(alg)(nlsolve::N,
-            jac_alg::J;
-            nested = false,
-            nested_nlsolve_kwargs::NamedTuple = (;),
-            defect_threshold::T = 0.1,
-            max_num_subintervals::Int = 3000) where {N,
-            J,
-            T} = $(alg){N, J, T}(nlsolve, jac_alg, nested, nested_nlsolve_kwargs,
-            defect_threshold, max_num_subintervals)
     end
 end
 

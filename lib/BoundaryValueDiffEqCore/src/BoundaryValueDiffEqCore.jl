@@ -29,7 +29,7 @@ include("utils.jl")
 include("algorithms.jl")
 include("abstract_types.jl")
 include("alg_utils.jl")
-include("default_nlsolve.jl")
+include("default_internal_solve.jl")
 include("calc_errors.jl")
 
 function SciMLBase.__solve(prob::AbstractBVProblem,

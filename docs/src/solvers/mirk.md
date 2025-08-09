@@ -1,6 +1,6 @@
 # [BoundaryValueDiffEqMIRK](@id mirk)
 
-Monotonic Implicit Runge Kutta(MIRK) Methods. To only use the MIRK methods form BoundaryVaueDiffEq.jl, you need to install them use the Julia package manager:
+Monotonic Implicit Runge Kutta(MIRK) Methods. To only use the MIRK methods form BoundaryValueDiffEq.jl, you need to install them use the Julia package manager:
 
 ```julia
 using Pkg
