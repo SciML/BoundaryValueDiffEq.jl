@@ -406,8 +406,10 @@ end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
     nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
-    nlsolve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
+    solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
+    kwargs = __concrete_kwargs(
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
+    sol_nlprob = __solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     defect_norm = 2 * abstol
