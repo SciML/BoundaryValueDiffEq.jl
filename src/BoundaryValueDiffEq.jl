@@ -13,6 +13,14 @@ using SciMLBase
 
 @reexport using ADTypes, SciMLBase
 
+function SciMLBase.__init(prob::BVProblem; kwargs...)
+    SciMLBase.__init(prob, Shooting(Tsit5()); kwargs...)
+end
+
+function SciMLBase.__solve(prob::BVProblem; kwargs...)
+    SciMLBase.__solve(prob, Shooting(Tsit5()); kwargs...)
+end
+
 include("extension_algs.jl")
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
