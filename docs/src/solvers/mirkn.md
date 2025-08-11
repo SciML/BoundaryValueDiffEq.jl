@@ -1,6 +1,6 @@
 # [BoundaryValueDiffEqMIRKN](@id mirkn)
 
-Monotonic Implicit Runge Kutta Nyström(MIRKN) Methods. To only use the MIRKN methods form BoundaryVaueDiffEq.jl, you need to install them use the Julia package manager:
+Monotonic Implicit Runge Kutta Nyström(MIRKN) Methods. To only use the MIRKN methods form BoundaryValueDiffEq.jl, you need to install them use the Julia package manager:
 
 ```julia
 using Pkg
