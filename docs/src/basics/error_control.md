@@ -4,7 +4,7 @@ Adaptivity helps ensure the quality of the our numerical solution, and when our 
 
 When comes to solving ill-conditioned BVP, for example the singular perturbation problem where the small parameters become extremely small leading to the layers phonemona, the error control adaptivity becomes even more critical, because the minor perturbations can lead to large deviation in the solution. In such cases, adaptivity automatically figure out where to use refined mesh and where to use coarse mesh to achieve the balance of computational efficiency and accuracy.
 
-BoundaryValuDiffEq.jl support error control adaptivity for collocation methods, and the adaptivity is default as defect control adaptivity when using adaptive collocation solvers:
+BoundaryValueDiffEq.jl support error control adaptivity for collocation methods, and the adaptivity is default as defect control adaptivity when using adaptive collocation solvers:
 
 ```julia
 sol = solve(prob, MIRK4(), dt = 0.01, adaptive = true)
