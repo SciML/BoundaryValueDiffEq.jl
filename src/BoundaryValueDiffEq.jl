@@ -8,10 +8,19 @@ using BoundaryValueDiffEqMIRK
 using BoundaryValueDiffEqMIRKN
 using BoundaryValueDiffEqShooting
 using DiffEqBase: DiffEqBase, solve
+using OrdinaryDiffEqTsit5: Tsit5
 using Reexport: @reexport
 using SciMLBase
 
 @reexport using ADTypes, SciMLBase
+
+function SciMLBase.__init(prob::BVProblem; kwargs...)
+    SciMLBase.__init(prob, Shooting(Tsit5()); kwargs...)
+end
+
+function SciMLBase.__solve(prob::BVProblem; kwargs...)
+    SciMLBase.__solve(prob, Shooting(Tsit5()); kwargs...)
+end
 
 include("extension_algs.jl")
 
