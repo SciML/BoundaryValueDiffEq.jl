@@ -192,7 +192,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
-    sol_nlprob = solve(nlprob, solve_alg; kwargs...)
+    sol_nlprob = __solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     error_norm = 2 * abstol

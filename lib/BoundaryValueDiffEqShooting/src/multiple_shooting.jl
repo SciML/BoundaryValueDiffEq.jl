@@ -148,7 +148,7 @@ function __solve_nlproblem!(
         u_at_nodes, prob.p, M, length(nodes), nothing)
 
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    solve(nlprob, nlsolve_alg; kwargs...)
+    __solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
 end
@@ -223,7 +223,7 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         prob, alg, loss_fn, jac_fn, jac_prototype, resid_prototype,
         u_at_nodes, prob.p, M, length(nodes), nothing)
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    solve(nlprob, nlsolve_alg; kwargs...)
+    __solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
 end

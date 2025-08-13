@@ -80,7 +80,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
     solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
     kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
     #TODO: add verbose kwarg
-    nlsol = solve(nlprob, solve_alg; kwargs...)
+    nlsol = __solve(nlprob, solve_alg; kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache

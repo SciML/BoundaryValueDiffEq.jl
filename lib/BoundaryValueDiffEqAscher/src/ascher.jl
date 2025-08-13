@@ -181,7 +181,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
-    nlsol = solve(nlprob, solve_alg; kwargs...)
+    nlsol = __solve(nlprob, solve_alg; kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
