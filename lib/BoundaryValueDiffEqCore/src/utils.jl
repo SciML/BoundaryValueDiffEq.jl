@@ -711,3 +711,7 @@ function __construct_internal_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
 end
+
+# Some optimization algorithms (solvers from interfacing packages) don't support the __solve(prob) interface
+@inline __internal_solve(prob::SciMLBase.NonlinearProblem, alg; kwargs...) = __solve(prob, alg; kwargs...)
+@inline __internal_solve(prob::SciMLBase.OptimizationProblem, alg; kwargs...) = solve(prob, alg; kwargs...)
