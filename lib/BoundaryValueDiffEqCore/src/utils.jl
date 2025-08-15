@@ -627,6 +627,21 @@ end
 @inline __default_cost(f) = f
 @inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
 
+@inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
+    inequality_length = length(prob.f.lcons)
+    lcons = if isnothing(prob.f.lcons)
+        zeros(T, N*M)
+    else
+        vcat(prob.f.lcons, zeros(T, N*M - inequality_length))
+    end
+    ucons = if isnothing(prob.f.ucons)
+        zeros(T, N*M)
+    else
+        vcat(prob.f.ucons, zeros(T, N*M - inequality_length))
+    end
+    return lcons, ucons
+end
+
 """
     __construct_internal_problem
 
@@ -646,8 +661,7 @@ function __construct_internal_problem(prob::AbstractBVProblem, alg, loss, jac,
         optf = OptimizationFunction{true}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
             cons = loss,
             cons_j = jac, cons_jac_prototype = jac_prototype)
-        lcons = zeros(T, N*M)
-        ucons = zeros(T, N*M)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
@@ -665,8 +679,7 @@ function __construct_internal_problem(prob::TwoPointBVProblem, alg, loss, jac,
         optf = OptimizationFunction{true}(
             __default_cost(prob.f), get_dense_ad(alg.jac_alg.diffmode),
             cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
-        lcons = zeros(T, N*M)
-        ucons = zeros(T, N*M)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
 
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
@@ -684,8 +697,7 @@ function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
         optf = OptimizationFunction{true}(
             __default_cost(prob.f), get_dense_ad(alg.jac_alg.diffmode),
             cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
-        lcons = zeros(T, N*M)
-        ucons = zeros(T, N*M)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
 
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
@@ -704,8 +716,7 @@ function __construct_internal_problem(
         optf = OptimizationFunction{true}(
             __default_cost(prob.f), get_dense_ad(alg.jac_alg.nonbc_diffmode),
             cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
-        lcons = zeros(T, N*M)
-        ucons = zeros(T, N*M)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
 
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
