@@ -628,16 +628,17 @@ end
 @inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
 
 @inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
-    inequality_length = length(prob.f.lcons)
-    lcons = if isnothing(prob.f.lcons)
+    lcons = if isnothing(prob.lcons)
         zeros(T, N*M)
     else
-        vcat(prob.f.lcons, zeros(T, N*M - inequality_length))
+        lcons_length = length(prob.lcons)
+        vcat(prob.lcons, zeros(T, N*M - lcons_length))
     end
-    ucons = if isnothing(prob.f.ucons)
+    ucons = if isnothing(prob.ucons)
         zeros(T, N*M)
     else
-        vcat(prob.f.ucons, zeros(T, N*M - inequality_length))
+        ucons_length = length(prob.ucons)
+        vcat(prob.ucons, zeros(T, N*M - ucons_length))
     end
     return lcons, ucons
 end
