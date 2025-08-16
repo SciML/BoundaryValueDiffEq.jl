@@ -28,6 +28,7 @@
     new_stages
     resid_size
     nlsolve_kwargs
+    optimize_kwargs
     kwargs
 end
 
@@ -35,10 +36,12 @@ Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
+    @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     t₀, t₁ = prob.tspan
@@ -126,9 +129,9 @@ function SciMLBase.__init(
 
     return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size,
-        nlsolve_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
+        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
+        residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, nlsolve_kwargs,
+        optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
 end
 
 """
@@ -185,9 +188,11 @@ function SciMLBase.solve!(cache::MIRKCache{iip, T, use_both, diffcache,
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
+    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
+    kwargs = __concrete_kwargs(
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
+    sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     error_norm = 2 * abstol
@@ -200,7 +205,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
     if info == ReturnCode.Success # Nonlinear Solve was successful
         error_norm,
         info = error_estimate!(
-            cache, controller, cache.errors, sol_nlprob, nlsolve_alg, abstol)
+            cache, controller, cache.errors, sol_nlprob, solve_alg, abstol)
     end
 
     if info == ReturnCode.Success # Nonlinear Solve Successful and defect norm is acceptable
@@ -233,7 +238,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
+function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
     (; jac_alg) = cache.alg
 
@@ -272,7 +277,7 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y::AbstractVector, y₀::A
             u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol, trait)
     end
 
-    return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
+    return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt)
 end
 
 @views function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
@@ -378,7 +383,7 @@ end
     return mapreduce(vec, vcat, resids)
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
+function __construct_problem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bc_diffmode) = jac_alg
@@ -454,10 +459,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-
-    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, y, cache.p, cache.M, N)
 end
 
 function __mirk_mpoint_jacobian!(
@@ -502,9 +505,9 @@ function __mirk_mpoint_jacobian(
     return J
 end
 
-function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
+function __construct_problem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
-    (; nlsolve, jac_alg) = cache.alg
+    (; jac_alg) = cache.alg
     N = length(cache.mesh)
 
     resid = vcat(@view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
@@ -545,9 +548,8 @@ function __construct_nlproblem(cache::MIRKCache{iip}, y, loss_bc::BC, loss_collo
     end
 
     resid_prototype = copy(resid)
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, y, cache.p, cache.M, N)
 end
 
 function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}

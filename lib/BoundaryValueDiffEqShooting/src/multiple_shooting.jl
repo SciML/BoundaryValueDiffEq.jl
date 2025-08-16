@@ -1,5 +1,7 @@
-function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwargs = (;),
-        nlsolve_kwargs = (;), ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
+function SciMLBase.__solve(
+        prob::BVProblem, _alg::MultipleShooting; abstol = 1e-6, odesolve_kwargs = (;),
+        nlsolve_kwargs = (; abstol = abstol), optimize_kwargs = (; abstol = abstol),
+        ensemblealg = EnsembleThreads(), verbose = true, kwargs...)
     (; f, tspan) = prob
 
     if !(ensemblealg isa EnsembleSerial) && !(ensemblealg isa EnsembleThreads)
@@ -14,6 +16,7 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
+    @assert (iip || isnothing(_alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
 
     __alg = concretize_jacobian_algorithm(_alg, prob)
     alg = if has_initial_guess && Nig != __alg.nshoots
@@ -64,14 +67,14 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
 
         if prob.problem_type isa TwoPointBVProblem
             __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
-                cur_nshoot, M, N, resida_len, residb_len, solve_internal_odes!,
-                bc[1], bc[2], prob, u0, ode_cache_loss_fn, ensemblealg,
-                internal_ode_kwargs; verbose, kwargs..., nlsolve_kwargs...)
+                cur_nshoot, M, N, resida_len, residb_len, solve_internal_odes!, bc[1],
+                bc[2], prob, u0, ode_cache_loss_fn, ensemblealg, internal_ode_kwargs;
+                verbose, kwargs..., nlsolve_kwargs, optimize_kwargs...)
         else
             __solve_nlproblem!(prob.problem_type, alg, bcresid_prototype, u_at_nodes, nodes,
-                cur_nshoot, M, N, prod(resid_size), solve_internal_odes!,
-                bc, prob, f, u0_size, u0, ode_cache_loss_fn, ensemblealg,
-                internal_ode_kwargs; verbose, kwargs..., nlsolve_kwargs...)
+                cur_nshoot, M, N, prod(resid_size), solve_internal_odes!, bc, prob,
+                f, u0_size, u0, ode_cache_loss_fn, ensemblealg, internal_ode_kwargs;
+                verbose, kwargs..., nlsolve_kwargs, optimize_kwargs...)
         end
     end
 
@@ -80,11 +83,12 @@ function SciMLBase.__solve(prob::BVProblem, _alg::MultipleShooting; odesolve_kwa
     else
         diffmode_shooting = __get_non_sparse_ad(alg.jac_alg.bc_diffmode)
     end
-    shooting_alg = Shooting(alg.ode_alg, alg.nlsolve, BVPJacobianAlgorithm(diffmode_shooting))
+
+    shooting_alg = Shooting(alg.ode_alg, alg.nlsolve, alg.optimize, BVPJacobianAlgorithm(diffmode_shooting))
 
     single_shooting_prob = remake(prob; u0 = reshape(u_at_nodes[1:N], u0_size))
     return __solve(single_shooting_prob, shooting_alg; odesolve_kwargs,
-        nlsolve_kwargs, verbose, kwargs...)
+        nlsolve_kwargs, optimize_kwargs, verbose, kwargs...)
 end
 
 # TODO: We can save even more memory by hoisting the preallocated caches for the ODEs
@@ -139,9 +143,12 @@ function __solve_nlproblem!(
         jac_prototype = jac_prototype)
 
     # NOTE: u_at_nodes is updated inplace
-    nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
-    __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
+    nlprob = __construct_internal_problem(
+        prob, alg, loss_fn, jac_fn, jac_prototype, resid_prototype,
+        u_at_nodes, prob.p, M, length(nodes), nothing)
+
+    nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
+    __solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
 end
@@ -211,13 +218,12 @@ function __solve_nlproblem!(::StandardBVProblem, alg::MultipleShooting, bcresid_
         J, u, p, similar(bcresid_prototype), resid_nodes, ode_jac_cache, bc_jac_cache,
         ode_fn, bc_fn, nonbc_diffmode, bc_diffmode, N, M, __cache_trait(alg.jac_alg))
 
-    loss_function! = NonlinearFunction{true}(loss_fn; resid_prototype = resid_prototype,
-        jac_prototype = jac_prototype, jac = jac_fn)
-
     # NOTE: u_at_nodes is updated inplace
-    nlprob = __internal_nlsolve_problem(prob, M, N, loss_function!, u_at_nodes, prob.p)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
-    __solve(nlprob, nlsolve_alg; kwargs..., alias_u0 = true)
+    nlprob = __construct_internal_problem(
+        prob, alg, loss_fn, jac_fn, jac_prototype, resid_prototype,
+        u_at_nodes, prob.p, M, length(nodes), nothing)
+    nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
+    __solve(nlprob, nlsolve_alg; kwargs...)
 
     return nothing
 end

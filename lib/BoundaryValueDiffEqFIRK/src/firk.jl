@@ -27,6 +27,7 @@
     nest_prob
     resid_size
     nlsolve_kwargs
+    optimize_kwargs
     kwargs
 end
 
@@ -60,6 +61,7 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     defect
     resid_size
     nlsolve_kwargs
+    optimize_kwargs
     kwargs
 end
 
@@ -85,22 +87,27 @@ end
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), kwargs...)
     if alg.nested_nlsolve
         return init_nested(prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
-            controller = controller, nlsolve_kwargs = nlsolve_kwargs, kwargs...)
+            controller = controller, nlsolve_kwargs = nlsolve_kwargs,
+            optimize_kwargs = optimize_kwargs, kwargs...)
     else
         return init_expanded(prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
-            controller = controller, nlsolve_kwargs = nlsolve_kwargs, kwargs...)
+            controller = controller, nlsolve_kwargs = nlsolve_kwargs,
+            optimize_kwargs = optimize_kwargs, kwargs...)
     end
 end
 
 function init_nested(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
+    @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
@@ -197,24 +204,24 @@ function init_nested(
     end
 
     return FIRKCacheNested{iip, T, typeof(diffcache), fit_parameters}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size,
-        nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
+        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
+        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y, y₀, residual,
+        fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, nlsolve_kwargs,
+        optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 function init_expanded(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol), kwargs...)
+        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), kwargs...)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
-
+    iip = isinplace(prob)
+    @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
     diffcache = __cache_trait(alg.jac_alg)
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
-
-    iip = isinplace(prob)
 
     t₀, t₁ = prob.tspan
     ig, T,
@@ -297,9 +304,9 @@ function init_expanded(
 
     return FIRKCacheExpand{iip, T, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
-        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size,
-        nlsolve_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, y,
+        y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, nlsolve_kwargs,
+        optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
 end
 
 """
@@ -398,9 +405,11 @@ function SciMLBase.solve!(cache::FIRKCacheNested{
 end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, cache.alg.nlsolve)
-    sol_nlprob = __solve(nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
+    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
+    kwargs = __concrete_kwargs(
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
+    sol_nlprob = __solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     defect_norm = 2 * abstol
@@ -445,7 +454,7 @@ function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}
 end
 
 # Constructing the Nonlinear Problem
-function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
+function __construct_problem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
         y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     pt = cache.problem_type
     (; jac_alg) = cache.alg
@@ -485,10 +494,10 @@ function __construct_nlproblem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpan
             u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol, trait)
     end
 
-    return __construct_nlproblem(cache, y, loss_bc, loss_collocation, loss, pt)
+    return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt)
 end
 
-function __construct_nlproblem(
+function __construct_problem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; alg, stage) = cache
@@ -569,13 +578,11 @@ function __construct_nlproblem(
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-
-    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
 end
 
-function __construct_nlproblem(
+function __construct_problem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
@@ -630,12 +637,11 @@ function __construct_nlproblem(
     end
 
     resid_prototype = copy(resid)
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
 end
 
-function __construct_nlproblem(
+function __construct_problem(
         cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
@@ -710,13 +716,11 @@ function __construct_nlproblem(
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-
-    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, y, cache.p, cache.M, N)
 end
 
-function __construct_nlproblem(
+function __construct_problem(
         cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
@@ -761,9 +765,8 @@ function __construct_nlproblem(
     end
 
     resid_prototype = copy(resid)
-    nlf = NonlinearFunction{iip}(
-        loss; jac = jac, resid_prototype = resid_prototype, jac_prototype = jac_prototype)
-    return __internal_nlsolve_problem(cache.prob, resid_prototype, y, nlf, y, cache.p)
+    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, y, cache.p, cache.M, N)
 end
 
 @views function __firk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
@@ -825,7 +828,6 @@ end
 @views function __firk_loss(u, p, y::AbstractVector, pt::TwoPointBVProblem,
         bc::Tuple{BC1, BC2}, mesh, cache, _, trait) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
     resid_bca, resid_bcb = eval_bc_residual(pt, bc, y_, p, mesh)
     resid_co = Φ(cache, y_, u, trait)
     return vcat(resid_bca, mapreduce(vec, vcat, resid_co), resid_bcb)
