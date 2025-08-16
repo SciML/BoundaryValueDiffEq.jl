@@ -479,8 +479,8 @@ end
     end
 end
 
-@testitem "BVP with inequality constraints" setup=[MIRKConvergenceTests] begin
-    using LinearAlgebra, DiffEqDevTools, OptimizationMOI, Ipopt
+@testitem "BVP with inequality constraints" begin
+    using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt
 
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)

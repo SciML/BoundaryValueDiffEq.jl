@@ -655,6 +655,9 @@ function __construct_internal_problem(prob::AbstractBVProblem, alg, loss, jac,
     # multiple shooting always use iip
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        !isnothing(prob.lcons) ||
+            !isnothing(prob.ucons) &&
+            throw(ArgumentError("Inequality constraints can only be handled by optimization solvers, please specify e.g. `MIRK4(; optimize = Ipopt.Optimizer())`."))
         nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
@@ -673,6 +676,9 @@ function __construct_internal_problem(prob::TwoPointBVProblem, alg, loss, jac,
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        !isnothing(prob.lcons) ||
+            !isnothing(prob.ucons) &&
+            throw(ArgumentError("Inequality constraints can only be handled by optimization solvers, please specify e.g. `MIRK4(; optimize = Ipopt.Optimizer())`."))
         nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
@@ -691,6 +697,9 @@ function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
         resid_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        !isnothing(prob.lcons) ||
+            !isnothing(prob.ucons) &&
+            throw(ArgumentError("Inequality constraints can only be handled by optimization solvers, please specify e.g. `MIRK4(; optimize = Ipopt.Optimizer())`."))
         nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
@@ -710,6 +719,9 @@ function __construct_internal_problem(
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        !isnothing(prob.lcons) ||
+            !isnothing(prob.ucons) &&
+            throw(ArgumentError("Inequality constraints can only be handled by optimization solvers, please specify e.g. `MIRK4(; optimize = Ipopt.Optimizer())`."))
         nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
