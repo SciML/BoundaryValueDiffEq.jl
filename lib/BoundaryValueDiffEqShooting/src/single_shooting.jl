@@ -1,5 +1,6 @@
-function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;),
-        nlsolve_kwargs = (;), verbose = true, kwargs...)
+function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
+        odesolve_kwargs = (;), nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), verbose = true, kwargs...)
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
@@ -13,6 +14,7 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
     iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
+    @assert (iip || isnothing(alg_.optimize)) "Out-of-place constraints don't allow optimization solvers "
     resid_prototype = __vec(bcresid_prototype)
 
     # Construct the residual function
@@ -73,12 +75,12 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; odesolve_kwargs = (;
             jac_prototype, u, jac_cache, diffmode, loss_fnₚ)
     end
 
-    nlf = NonlinearFunction{iip}(loss_fn; jac_prototype = jac_prototype,
-        resid_prototype = resid_prototype, jac = jac_fn)
-    nlprob = __internal_nlsolve_problem(prob, resid_prototype, u0, nlf, vec(u0), prob.p)
-    nlsolve_alg = __concrete_nonlinearsolve_algorithm(nlprob, alg.nlsolve)
-    nlsol::SciMLBase.NonlinearSolution = __solve(
-        nlprob, nlsolve_alg; nlsolve_kwargs..., verbose, kwargs...)
+    nlprob = __construct_internal_problem(prob, alg, loss_fn, jac_fn, jac_prototype,
+        resid_prototype, u0, prob.p, length(u0), 1)
+    solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
+    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
+    #TODO: add verbose kwarg
+    nlsol = __solve(nlprob, solve_alg; kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache

@@ -457,3 +457,43 @@ end
 
     @test sol.prob.p≈[17.09658] atol=1e-5
 end
+
+@testitem "Convergence with optimization based solver" setup=[MIRKConvergenceTests] begin
+    using LinearAlgebra, DiffEqDevTools, OptimizationMOI, Ipopt
+
+    # Only test on inplace problems
+    @testset "Problem: $i" for i in (3, 5, 9)
+        prob = probArr[i]
+        @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
+            sim = test_convergence(
+                dts, prob, mirk_solver(Val(order), optimize = Ipopt.Optimizer());
+                abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
+
+        @testset "MIRK$(order)I" for (_, order) in enumerate((6,))
+            sim = test_convergence(dts, prob, MIRK6I(; optimize = Ipopt.Optimizer());
+                abstol = 1e-8, reltol = 1e-8)
+            @test sim.𝒪est[:final]≈order atol=testTol
+        end
+    end
+end
+
+@testitem "BVP with inequality constraints" begin
+    using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt
+
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        θ = u[1]
+        dθ = u[2]
+        du[1] = dθ
+        du[2] = -9.81 * sin(θ)
+    end
+    function bc!(residual, u, p, t)
+        residual[1] = u(pi / 4)[1] + pi / 2
+        residual[2] = u(pi / 2)[1] - pi / 2
+    end
+    prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan,
+        lcons = [0.0, 0.0], ucons = [Inf, Inf])
+    @test_nowarn sol = solve(prob, MIRK4(; optimize = Ipopt.Optimizer()), dt = 0.05)
+end
