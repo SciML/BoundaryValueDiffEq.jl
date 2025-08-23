@@ -652,7 +652,6 @@ algorithm used. It returns either a `NonlinearProblem` or an `OptimizationProble
 function __construct_internal_problem(prob::AbstractBVProblem, alg, loss, jac,
         jac_prototype, resid_prototype, y, p, M::Int, N::Int)
     T = eltype(y)
-    # multiple shooting always use iip
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,

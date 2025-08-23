@@ -37,21 +37,6 @@ prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
 sol = solve(prob, MIRK4(), dt = 0.05)
 ```
 
-```julia
-tspan = (0.0, 1.0)
-function lotka_volterra!(du, u, p, t)
-    du[1] = 1.5 * u[1] - 1.0 * u[1] * u[2]
-    du[2] = -3.0 * u[2] + 1.0 * u[1] * u[2]
-end
-function bc!(residual, u, p, t)
-    residual[1] = u[1] - 1.0
-    residual[2] = u[2] - 1.0
-end
-prob = BVProblem(
-    lotka_volterra!, bc!, [4.0, 2.0], tspan, lcons = [0.0, 0.0], ucons = [Inf, Inf])
-sol = solve(prob, MIRK4(; optimizer = Ipopt.Optimizer()), dt = 0.05)
-```
-
 ## Available Solvers
 
 For the list of available solvers, please refer to the [DifferentialEquations.jl BVP Solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/bvp_solve/). For options for the `solve` command, see the [common solver options page](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/).
