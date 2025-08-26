@@ -685,7 +685,7 @@ function __construct_internal_problem(prob::TwoPointBVProblem, alg, loss, jac,
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
 end
-# Multiple shooting only use inplace version internal problem constructor
+# Multiple shooting always use inplace version internal problem constructor
 function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
         resid_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
