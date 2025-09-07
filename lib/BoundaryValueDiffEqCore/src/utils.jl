@@ -467,6 +467,19 @@ end
     return NonlinearProblem(args...; kwargs...)
 end
 
+# Construct the internal OptimizationProblem
+@inline function __internal_optimization_problem(
+        ::BVProblem{uType, tType, iip}, args...; kwargs...) where {uType, tType, iip}
+    prob = OptimizationProblem(args...; kwargs...)
+    return prob
+end
+
+@inline function __internal_optimization_problem(::SecondOrderBVProblem{uType, tType, iip},
+        args...; kwargs...) where {uType, tType, iip}
+    prob = OptimizationProblem(args...; kwargs...)
+    return prob
+end
+
 # Handling Initial Guesses
 """
     __extract_u0(u₀, t₀)
@@ -560,9 +573,13 @@ end
 end
 
 # Construct BVP Solution
-function __build_solution(prob::AbstractBVProblem, odesol, nlsol)
+function __build_solution(prob::AbstractBVProblem, odesol, nlsol::SciMLBase.NonlinearSolution)
     retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
     return SciMLBase.solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
+end
+function __build_solution(prob::AbstractBVProblem, odesol, optsol::SciMLBase.OptimizationSolution)
+    retcode = ifelse(SciMLBase.successful_retcode(optsol), odesol.retcode, optsol.retcode)
+    return SciMLBase.solution_new_original_retcode(odesol, optsol, retcode, zeros(length(first(odesol)))) # Need a patch in SciMLBase
 end
 
 # Fix3
@@ -596,4 +613,112 @@ end
 
 function __split_kwargs(; abstol, adaptive, controller, kwargs...)
     return ((abstol, adaptive, controller), (; abstol, adaptive, kwargs...))
+end
+
+@inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
+    nlsolve_kwargs...)
+@inline __concrete_kwargs(::Nothing, optimize, nlsolve_kwargs, optimize_kwargs) = (;) # Doesn't support for now
+@inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
+    nlsolve_kwargs...)
+
+## Optimization solver related utils ##
+
+@inline __default_cost(::Nothing) = (x, p) -> 0.0
+@inline __default_cost(f) = f
+@inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
+
+@inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
+    lcons = if isnothing(prob.lcons)
+        zeros(T, N*M)
+    else
+        lcons_length = length(prob.lcons)
+        vcat(prob.lcons, zeros(T, N*M - lcons_length))
+    end
+    ucons = if isnothing(prob.ucons)
+        zeros(T, N*M)
+    else
+        ucons_length = length(prob.ucons)
+        vcat(prob.ucons, zeros(T, N*M - ucons_length))
+    end
+    return lcons, ucons
+end
+
+"""
+    __construct_internal_problem
+
+Constructs the internal problem based on the type of the boundary value problem and the
+algorithm used. It returns either a `NonlinearProblem` or an `OptimizationProblem`.
+"""
+function __construct_internal_problem(prob::AbstractBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int)
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
+            cons = loss,
+            cons_j = jac, cons_jac_prototype = jac_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons = lcons, ucons = ucons)
+    end
+end
+
+function __construct_internal_problem(prob::TwoPointBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int)
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            __default_cost(prob.f), get_dense_ad(alg.jac_alg.diffmode),
+            cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons = lcons, ucons = ucons)
+    end
+end
+# Multiple shooting always use inplace version internal problem constructor
+function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
+        resid_prototype, y, p, M::Int, N::Int, ::Nothing)
+    T = eltype(y)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            __default_cost(prob.f), get_dense_ad(alg.jac_alg.diffmode),
+            cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons = lcons, ucons = ucons)
+    end
+end
+function __construct_internal_problem(
+        prob::TwoPointBVProblem, alg, loss, jac, jac_prototype,
+        resid_prototype, y, p, M::Int, N::Int, ::Nothing)
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            __default_cost(prob.f), get_dense_ad(alg.jac_alg.nonbc_diffmode),
+            cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons = lcons, ucons = ucons)
+    end
 end

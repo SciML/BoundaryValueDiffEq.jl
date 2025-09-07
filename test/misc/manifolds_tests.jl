@@ -65,7 +65,7 @@
 
         for alg in algs
             if alg isa Shooting || alg isa MultipleShooting
-                sol = solve(bvp, alg)
+                sol = solve(bvp, alg; abstol = 1e-8)
             else
                 sol = solve(bvp, alg; dt, abstol = 1e-8)
             end

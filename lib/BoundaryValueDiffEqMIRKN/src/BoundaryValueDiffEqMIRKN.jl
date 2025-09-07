@@ -6,9 +6,9 @@ using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
-                               eval_bc_residual, eval_bc_residual!, get_tmp,
-                               __maybe_matmul!, __extract_problem_details, __initial_guess,
+                               __concrete_solve_algorithm, diff!, EvalSol, eval_bc_residual,
+                               eval_bc_residual!, get_tmp, __maybe_matmul!,
+                               __extract_problem_details, __initial_guess,
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, safe_similar, __vec, __vec_f,
                                __vec_f!, __vec_bc, __vec_bc!, __vec_so_bc!, __vec_so_bc,
@@ -19,7 +19,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __default_sparse_ad, __default_nonsparse_ad, get_dense_ad,
                                concrete_jacobian_algorithm, __default_coloring_algorithm,
                                __default_sparsity_detector, interval, __split_kwargs,
-                               NoErrorControl
+                               NoErrorControl, __construct_internal_problem,
+                               __concrete_kwargs
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

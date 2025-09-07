@@ -112,7 +112,7 @@ end
     return nothing
 end
 
-@views function recursive_flatten!(y::Vector, x::Vector{Vector{T}}) where {T}
+@views function recursive_flatten!(y::AbstractArray, x::Vector{Vector{T}}) where {T}
     i = 0
     for xᵢ in x
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)

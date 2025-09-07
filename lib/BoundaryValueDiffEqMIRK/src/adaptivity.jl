@@ -496,7 +496,7 @@ end
     new_prob = remake(prob, u0 = high_sol)
     high_cache = SciMLBase.__init(new_prob, alg, adaptive = false)
 
-    high_nlprob = __construct_nlproblem(high_cache, vec(high_sol), VectorOfArray(high_sol.u))
+    high_nlprob = __construct_problem(high_cache, vec(high_sol), VectorOfArray(high_sol.u))
     high_sol_original = __solve(high_nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(high_sol, high_sol_original.u)
     error_norm = global_error(VectorOfArray(copy(high_sol.u[1:2:end])), copy(cache.y₀), errors)
@@ -513,7 +513,7 @@ end
     new_prob = remake(prob, u0 = high_sol)
     high_cache = SciMLBase.__init(new_prob, __high_order_method(alg), adaptive = false)
 
-    high_nlprob = __construct_nlproblem(high_cache, sol.u, high_sol)
+    high_nlprob = __construct_problem(high_cache, sol.u, high_sol)
     high_sol_nlprob = __solve(high_nlprob, nlsolve_alg; cache.nlsolve_kwargs..., alias_u0 = true)
     recursive_unflatten!(high_sol, high_sol_nlprob)
     error_norm = global_error(VectorOfArray(high_sol.u), cache.y₀, errors)

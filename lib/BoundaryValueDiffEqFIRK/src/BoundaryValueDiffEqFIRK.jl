@@ -6,13 +6,13 @@ using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
                                recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_nonlinearsolve_algorithm, diff!, EvalSol,
+                               __concrete_solve_algorithm, diff!, EvalSol,
                                concrete_jacobian_algorithm, eval_bc_residual, interval,
                                eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
                                __extract_problem_details, __initial_guess, nodual_value,
                                __maybe_allocate_diffcache, __restructure_sol,
                                __get_bcresid_prototype, __vec, __vec_f, __vec_f!, __vec_bc,
-                               __vec_bc!, recursive_flatten_twopoint!,
+                               __vec_bc!, recursive_flatten_twopoint!, __concrete_kwargs,
                                __internal_nlsolve_problem, __extract_mesh, __extract_u0,
                                __default_coloring_algorithm, __maybe_allocate_diffcache,
                                __restructure_sol, __get_bcresid_prototype, safe_similar,
@@ -20,9 +20,10 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                recursive_flatten_twopoint!, __internal_nlsolve_problem,
                                __extract_mesh, __extract_u0, DiffCacheNeeded,
                                NoDiffCacheNeeded, __has_initial_guess,
-                               __initial_guess_length, __initial_guess_on_mesh,
-                               __flatten_initial_guess, __build_solution, __Fix3,
-                               __split_kwargs, _sparse_like, get_dense_ad
+                               __construct_internal_problem, __initial_guess_length,
+                               __initial_guess_on_mesh, __flatten_initial_guess,
+                               __build_solution, __Fix3, __split_kwargs, _sparse_like,
+                               get_dense_ad, __internal_optimization_problem
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

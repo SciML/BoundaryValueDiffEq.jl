@@ -26,3 +26,12 @@ function Base.show(io::IO, alg::AbstractBoundaryValueDiffEqAlgorithm)
     print(io, join(modifiers, ", "))
     print(io, ")")
 end
+
+# Check what's the internal solver, nonlinear or optimization?
+function __internal_solver(alg::AbstractBoundaryValueDiffEqAlgorithm)
+    # We don't allow both `nlsolve` and `optimize` to be specified at the same time
+    (isnothing(alg.nlsolve) && isnothing(alg.optimize)) &&
+        error("Either `nlsolve` or `optimize` must be specified in the algorithm, but not both.")
+    isnothing(alg.nlsolve) && return alg.optimize
+    isnothing(alg.optimize) && return alg.nlsolve
+end

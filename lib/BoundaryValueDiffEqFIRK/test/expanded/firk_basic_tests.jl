@@ -232,33 +232,36 @@ end
 
     jac_alg = BVPJacobianAlgorithm(;
         bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff()))
-    nl_solve = NewtonRaphson()
+    nlsolve = NewtonRaphson()
     nested = false
 
     # Using ForwardDiff might lead to Cache expansion warnings
-    @test_nowarn solve(bvp1, LobattoIIIa2(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIa3(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIa4(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIa5(nl_solve, jac_alg; nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIa2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIa3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIa4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
 
-    @test_nowarn solve(bvp1, LobattoIIIb2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIb3(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIb4(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIb5(nl_solve, jac_alg; nested); dt = 0.005)
+    @test_nowarn solve(
+        bvp1, LobattoIIIb2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(bvp1, LobattoIIIb3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIb4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIb5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
 
-    @test_nowarn solve(bvp1, LobattoIIIc2(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, LobattoIIIc3(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIc4(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, LobattoIIIc5(nl_solve, jac_alg; nested); dt = 0.005)
+    @test_nowarn solve(
+        bvp1, LobattoIIIc2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(bvp1, LobattoIIIc3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIc4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, LobattoIIIc5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
 
-    @test_nowarn solve(bvp1, RadauIIa1(nl_solve, jac_alg; nested); dt = 0.005, adaptive = false)
-    @test_nowarn solve(bvp1, RadauIIa2(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, RadauIIa3(nl_solve, jac_alg; nested); dt = 0.005)
-    @test_nowarn solve(bvp1, RadauIIa5(nl_solve, jac_alg; nested); dt = 0.05)
-    @test_nowarn solve(bvp1, RadauIIa7(nl_solve, jac_alg; nested); dt = 0.05)
+    @test_nowarn solve(
+        bvp1, RadauIIa1(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false)
+    @test_nowarn solve(bvp1, RadauIIa2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, RadauIIa3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+    @test_nowarn solve(bvp1, RadauIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
+    @test_nowarn solve(bvp1, RadauIIa7(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
 end
 
-@testitem "Interpolation" begin
+@testitem "Interpolation" setup=[FIRKExpandedConvergenceTests] begin
     using LinearAlgebra
 
     λ = 1
@@ -291,26 +294,6 @@ end
     testTol = 1e-6
     nested = false
 
-    for stage in (2, 3, 5, 7)
-        s = Symbol("RadauIIa$(stage)")
-        @eval radau_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(); nested)
-    end
-
-    for stage in (3, 4, 5)
-        s = Symbol("LobattoIIIa$(stage)")
-        @eval lobattoIIIa_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(); nested)
-    end
-
-    for stage in (3, 4, 5)
-        s = Symbol("LobattoIIIb$(stage)")
-        @eval lobattoIIIb_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(); nested)
-    end
-
-    for stage in (3, 4, 5)
-        s = Symbol("LobattoIIIc$(stage)")
-        @eval lobattoIIIc_solver(::Val{$stage}) = $(s)(NewtonRaphson(), BVPJacobianAlgorithm(); nested)
-    end
-
     @testset "Radau interpolations" begin
         @testset "Interpolation tests for RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
@@ -336,9 +319,11 @@ end
             for (id, lobatto_solver) in zip(("a", "b", "c"), (
                 lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
                 begin
-                    @testset "Interpolation tests for LobattoIII$(id)$stage" for stage in
-                                                                                 (3, 4, 5)
-                        @time sol = solve(prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
+                    @testset "Interpolation tests for LobattoIII$(id)$stage" for stage in (
+                        2, 3, 4, 5)
+                        adaptive = ifelse(stage == 2, false, true) # LobattoIIIa2 is not adaptive
+                        @time sol = solve(
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive)
                         @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
                         @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
                         @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
@@ -347,8 +332,10 @@ end
 
                     @testset "Derivative Interpolation tests for lobatto$(id)$stage" for stage in
                                                                                          (
-                        3, 4, 5)
-                        @time sol = solve(prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001)
+                        2, 3, 4, 5)
+                        adaptive = ifelse(stage == 2, false, true) # LobattoIIIa2 is not adaptive
+                        @time sol = solve(
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive)
                         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
                         dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
 
