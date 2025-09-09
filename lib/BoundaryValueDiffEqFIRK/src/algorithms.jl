@@ -6,7 +6,7 @@ for stage in (1, 2, 3, 5, 7)
 
     @eval begin
         """
-              $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
                       defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($stage)th stage RadauIIa method.
@@ -107,18 +107,18 @@ for stage in (2, 3, 4, 5)
 
     @eval begin
         """
-              $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
                       defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($stage)th stage LobattoIIIa method.
 
         ## Keyword Arguments
 
-            - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+          - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
-              the solver will be ignored and a custom jacobian algorithm will be used.
+            the solver will be ignored and a custom jacobian algorithm will be used.
 
-            - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
             `OptimizationProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
@@ -149,47 +149,46 @@ for stage in (2, 3, 4, 5)
 
         ## References
 
-              Reference for Lobatto and Radau methods:
-              ```bibtex
-                  @Inbook{Jay2015,
-                  author="Jay, Laurent O.",
-                  editor="Engquist, Bj{\"o}rn",
-                  title="Lobatto Methods",
-                  booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
-                  year="2015",
-                  publisher="Springer Berlin Heidelberg",
-                  }
-                  @incollection{engquist_radau_2015,
-                  author = {Hairer, Ernst and Wanner, Gerhard},
-                  title = {Radau {Methods}},
-                  booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
-                  publisher = {Springer Berlin Heidelberg},
-                  editor="Engquist, Bj{\"o}rn",
-                  year = {2015},
-              }
-              ```
-              References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
-              ```bibtex
-              @article{shampine_solving_nodate,
-              title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
-              author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
-              year = {2000},
-              }
+        Reference for Lobatto and Radau methods:
+        ```bibtex
+        @Inbook{Jay2015,
+            author="Jay, Laurent O.",
+            editor="Engquist, Bj{\"o}rn",
+            title="Lobatto Methods",
+            booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+            year="2015",
+            publisher="Springer Berlin Heidelberg",
+        }
+        @incollection{engquist_radau_2015,
+            author = {Hairer, Ernst and Wanner, Gerhard},
+            title = {Radau {Methods}},
+            booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+            publisher = {Springer Berlin Heidelberg},
+            editor="Engquist, Bj{\"o}rn",
+            year = {2015},
+        }
+        ```
+        References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+        ```bibtex
+        @article{shampine_solving_nodate,
+            title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+            author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+            year = {2000},
+        }
 
-              @article{kierzenka_bvp_2008,
-                  title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
-                  author = {Kierzenka, J and Shampine, L F},
-                  year = {2008},
-              }
+        @article{kierzenka_bvp_2008,
+            title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+            author = {Kierzenka, J and Shampine, L F},
+            year = {2008},
+        }
 
-              @article{russell_adaptive_1978,
-                  title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
-                  journal = {SIAM Journal on Numerical Analysis},
-                  author = {Russell, R. D. and Christiansen, J.},
-                  year = {1978},
-                  file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
-              }
-              ```
+        @article{russell_adaptive_1978,
+            title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+            journal = {SIAM Journal on Numerical Analysis},
+            author = {Russell, R. D. and Christiansen, J.},
+            year = {1978},
+        }
+        ```
         """
         Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
             nlsolve::N = nothing
@@ -208,7 +207,7 @@ for stage in (2, 3, 4, 5)
 
     @eval begin
         """
-              $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
                       defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($stage)th stage LobattoIIIb method.
@@ -310,7 +309,7 @@ for stage in (2, 3, 4, 5)
 
     @eval begin
         """
-              $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
                       defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($stage)th stage LobattoIIIc method.
