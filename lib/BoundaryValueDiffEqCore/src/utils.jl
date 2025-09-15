@@ -629,16 +629,26 @@ end
 
 @inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
     lcons = if isnothing(prob.lcons)
-        zeros(T, N*M)
+        zeros(T, N*M) #TODO: handle carefully when NLLS
     else
-        lcons_length = length(prob.lcons)
-        vcat(prob.lcons, zeros(T, N*M - lcons_length))
+        if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
+            # When there are additional equality or inequality constraints
+            vcat(zeros(T, N*M), repeat(prob.lcons, N))
+        else
+            lcons_length = length(prob.lcons)
+            vcat(prob.lcons, zeros(T, N*M - lcons_length))
+        end
     end
     ucons = if isnothing(prob.ucons)
-        zeros(T, N*M)
+        zeros(T, N*M) #TODO: handle carefully when NLLS
     else
-        ucons_length = length(prob.ucons)
-        vcat(prob.ucons, zeros(T, N*M - ucons_length))
+        if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
+            # When there are additional equality or inequality constraints
+            vcat(zeros(T, N*M), repeat(prob.ucons, N))
+        else
+            ucons_length = length(prob.ucons)
+            vcat(prob.ucons, zeros(T, N*M - ucons_length))
+        end
     end
     return lcons, ucons
 end
