@@ -81,8 +81,10 @@ cost_fun(u, p) = -u[end - 2] # To minimize, only temporary, need to use temporar
 #cost_fun(sol, p) = -sol(0.2)[2]
 u0 = [v_0, h_0, m_0, 0.0]
 rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun,
-    inequality = constraints!, bcresid_prototype = zeros(4))
+    inequality = constraints!, f_prototype = zeros(3))
 rocket_launch_prob = BVProblem(rocket_launch_fun, u0, tspan; lcons = [0.0, 0.0, m_T, 0.0],
     ucons = [Inf, Inf, m_0, u_t_max])
 sol = solve(rocket_launch_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = 0.002)
 ```
+
+Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.
