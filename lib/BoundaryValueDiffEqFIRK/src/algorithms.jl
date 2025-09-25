@@ -121,7 +121,6 @@ for stage in (2, 3, 4, 5)
           - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
             `OptimizationProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
-
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -132,7 +131,6 @@ for stage in (2, 3, 4, 5)
                 `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff)` if possible else
                 `AutoSparse(AutoFiniteDiff)`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
-
           - `nested_nlsolve`: Whether or not to use a nested nonlinear solve for the
             implicit FIRK step. Defaults to `false`. If set to `false`, the FIRK stages are
             solved as a part of the global residual. The general recommendation is to choose
@@ -150,6 +148,7 @@ for stage in (2, 3, 4, 5)
         ## References
 
         Reference for Lobatto and Radau methods:
+
         ```bibtex
         @Inbook{Jay2015,
             author="Jay, Laurent O.",
@@ -168,7 +167,9 @@ for stage in (2, 3, 4, 5)
             year = {2015},
         }
         ```
+
         References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+
         ```bibtex
         @article{shampine_solving_nodate,
             title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
