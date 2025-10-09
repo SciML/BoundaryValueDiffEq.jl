@@ -272,10 +272,6 @@ function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
         new_u = vcat(u0, prob.p)
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
-    if !isnothing(prob.f.f_prototype)
-        length_f_prototype = length(prob.f.f_prototype)
-        return Val(false), eltype(u0), length_f_prototype, Int(cld(t₁ - t₀, dt)), prob.u0
-    end
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
 function __extract_problem_details(prob, f::F; dt = 0.0, check_positive_dt::Bool = false,
