@@ -631,9 +631,10 @@ end
     lcons = if isnothing(prob.lcons)
         zeros(T, N*M) #TODO: handle carefully when NLLS
     else
+        length_f_prototype = length(prob.f.f_prototype)
         if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
             # When there are additional equality or inequality constraints
-            vcat(repeat(prob.lcons, N), zeros(T, M + (N - 1)*3))
+            vcat(repeat(prob.lcons, N), zeros(T, M + (N - 1)*length_f_prototype))
         else
             lcons_length = length(prob.lcons)
             vcat(prob.lcons, zeros(T, N*M - lcons_length))
@@ -642,9 +643,10 @@ end
     ucons = if isnothing(prob.ucons)
         zeros(T, N*M) #TODO: handle carefully when NLLS
     else
+        length_f_prototype = length(prob.f.f_prototype)
         if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
             # When there are additional equality or inequality constraints
-            vcat(repeat(prob.ucons, N), zeros(T, M + (N - 1)*3))
+            vcat(repeat(prob.ucons, N), zeros(T, M + (N - 1)*length_f_prototype))
         else
             ucons_length = length(prob.ucons)
             vcat(prob.ucons, zeros(T, N*M - ucons_length))
