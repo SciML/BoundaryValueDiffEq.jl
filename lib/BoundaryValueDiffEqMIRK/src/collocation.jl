@@ -1,10 +1,43 @@
-function Φ!(residual, cache::MIRKCache, y, u, trait)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-        y, u, cache.p, cache.mesh, cache.mesh_dt, cache.stage, trait)
+function Φ!(residual, cache::MIRKCache, y, u, trait, constraint)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
+        cache.p, cache.mesh, cache.mesh_dt, cache.stage, trait, constraint)
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau,
-        y, u, p, mesh, mesh_dt, stage::Int, ::DiffCacheNeeded)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, ::DiffCacheNeeded, constraint::Val{true})
+    (; c, v, x, b) = TU
+
+    ttt = get_tmp(fᵢ_cache, u)
+    tmp = copy(ttt[1:3])
+
+    length_control = length(last(residual))
+
+    T = eltype(u)
+    for i in eachindex(k_discrete)
+        K = get_tmp(k_discrete[i], u)
+        residᵢ = residual[i]
+        h = mesh_dt[i]
+
+        yᵢ = get_tmp(y[i], u)
+        yᵢ₊₁ = get_tmp(y[i + 1], u)
+
+        yᵢ, uᵢ = yᵢ[1:(end - length_control)], yᵢ[(end - length_control + 1):end]
+        yᵢ₊₁, uᵢ₊₁ = yᵢ₊₁[1:(end - length_control)], yᵢ₊₁[(end - length_control + 1):end]
+
+        for r in 1:stage
+            @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
+            __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            f!(K[:, r], vcat(tmp, uᵢ), p, mesh[i] + c[r] * h)
+        end
+
+        # Update residual
+        @. residᵢ = yᵢ₊₁ - yᵢ
+        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+    end
+end
+
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, ::DiffCacheNeeded, constraint::Val{false})
     (; c, v, x, b) = TU
 
     tmp = get_tmp(fᵢ_cache, u)
@@ -29,8 +62,8 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y,
-        u, p, mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, ::NoDiffCacheNeeded, constraint::Val{false})
     (; c, v, x, b) = TU
 
     tmp = similar(fᵢ_cache)

@@ -41,7 +41,7 @@ $$
 Similar solving for such optimal control problem can be found on JuMP.jl and InfiniteOpt.jl. The detailed parameters are taken from [COPS](https://www.mcs.anl.gov/%7Emore/cops/cops3.pdf).
 
 ```julia
-using BoundaryValueDiffEqMIRK, OptimizationIpopt
+using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt
 h_0 = 1                      # Initial height
 v_0 = 0                      # Initial velocity
 m_0 = 1.0                    # Initial mass
@@ -68,7 +68,7 @@ end
 function rocket_launch_bc!(res, u, p, t)
     res[1] = u(0.0)[1] - v_0
     res[2] = u(0.0)[2] - h_0
-    res[3] = u(0.0)[3] - m_0
+    res[3] = u(0.2)[3] - m_T
     res[4] = u(0.2)[4] - 0.0
 end
 function constraints!(res, u, p)
@@ -77,14 +77,14 @@ function constraints!(res, u, p)
     res[3] = u[3]
     res[4] = u[4]
 end
-cost_fun(u, p) = -u[end - 2] # To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
+cost_fun(u, p) = -u[end - 2] #Altitute x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
 #cost_fun(sol, p) = -sol(0.2)[2]
 u0 = [v_0, h_0, m_0, 0.0]
 rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun,
     inequality = constraints!, f_prototype = zeros(3))
-rocket_launch_prob = BVProblem(rocket_launch_fun, u0, tspan; lcons = [0.0, 0.0, m_T, 0.0],
+rocket_launch_prob = BVProblem(rocket_launch_fun, u0, tspan; lcons = [0.0, h_0, m_T, 0.0],
     ucons = [Inf, Inf, m_0, u_t_max])
-sol = solve(rocket_launch_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.002)
+sol = solve(rocket_launch_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = 0.002)
 ```
 
 Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.

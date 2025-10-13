@@ -633,7 +633,7 @@ end
     else
         if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
             # When there are additional equality or inequality constraints
-            vcat(zeros(T, N*M), repeat(prob.lcons, N))
+            vcat(repeat(prob.lcons, N), zeros(T, M + (N - 1)*3))
         else
             lcons_length = length(prob.lcons)
             vcat(prob.lcons, zeros(T, N*M - lcons_length))
@@ -644,7 +644,7 @@ end
     else
         if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
             # When there are additional equality or inequality constraints
-            vcat(zeros(T, N*M), repeat(prob.ucons, N))
+            vcat(repeat(prob.ucons, N), zeros(T, M + (N - 1)*3))
         else
             ucons_length = length(prob.ucons)
             vcat(prob.ucons, zeros(T, N*M - ucons_length))
