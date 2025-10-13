@@ -116,18 +116,23 @@ function SciMLBase.__init(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
     bc = if X isa AbstractVector
-        #TODO: Simplify the logic by wrapping the functions
-        if fit_parameters == true
+        f_wrapped = prob.f
+        bc_wrapped = prob.f.bc
+        if fit_parameters
             l_parameters = length(prob.p)
-            vecf! = function (du, u, p, t)
-                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
-                du[(end - l_parameters + 1):end] .= 0
+            base_f = f_wrapped
+            f_wrapped = @closure (du,
+                u,
+                p,
+                t) -> begin
+                @inbounds @views begin
+                    base_f(du, u, u[(end - l_parameters + 1):end], t)
+                    fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
+                end
+                return nothing
             end
-            vecbc! = prob.f.bc
-            vecf!, vecbc!
-        else
-            prob.f, prob.f.bc
         end
+        f_wrapped, bc_wrapped
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)

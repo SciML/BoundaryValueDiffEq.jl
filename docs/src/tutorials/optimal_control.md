@@ -38,6 +38,17 @@ $$
 \max x_h(T)
 $$
 
+The inequality constraints for the state variables and control variables are:
+
+$$
+\left\{\begin{aligned}
+&x_v>0\\
+&x_h>0\\
+&m_T<x_m<m_0\\
+&0<u_t<u_{t\text{max}}
+\end{aligned}\right.
+$$
+
 Similar solving for such optimal control problem can be found on JuMP.jl and InfiniteOpt.jl. The detailed parameters are taken from [COPS](https://www.mcs.anl.gov/%7Emore/cops/cops3.pdf).
 
 ```julia
@@ -77,7 +88,7 @@ function constraints!(res, u, p)
     res[3] = u[3]
     res[4] = u[4]
 end
-cost_fun(u, p) = -u[end - 2] #Altitute x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
+cost_fun(u, p) = -u[end - 2] #Final altitude x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
 #cost_fun(sol, p) = -sol(0.2)[2]
 u0 = [v_0, h_0, m_0, 0.0]
 rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun,
