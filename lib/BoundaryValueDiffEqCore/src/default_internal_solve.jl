@@ -79,4 +79,5 @@ end
 @inline __internal_solve(
     prob::Union{SciMLBase.NonlinearProblem, SciMLBase.NonlinearLeastSquaresProblem},
     alg; kwargs...) = __solve(prob, alg; kwargs...)
-@inline __internal_solve(prob::SciMLBase.OptimizationProblem, alg; kwargs...) = solve(prob, alg; kwargs...)
+@inline __internal_solve(prob::SciMLBase.OptimizationProblem, alg;
+    kwargs...) = OptimizationBase.solve(prob, alg; kwargs...)
