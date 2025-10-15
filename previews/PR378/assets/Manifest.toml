@@ -1419,9 +1419,9 @@ version = "0.5.6+0"
 
 [[deps.OptimizationBase]]
 deps = ["ADTypes", "ArrayInterface", "DifferentiationInterface", "DocStringExtensions", "FastClosures", "LinearAlgebra", "PDMats", "Reexport", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "SparseMatrixColorings"]
-git-tree-sha1 = "bd64cb79e5ea2bac8de67c172fc01ec9ac1abe04"
+git-tree-sha1 = "23afe72b5e5a6b57132895fd5bdedcf83dede91c"
 uuid = "bca83a33-5cc9-4baa-983d-23429ab6bcbb"
-version = "3.2.0"
+version = "3.3.0"
 
     [deps.OptimizationBase.extensions]
     OptimizationEnzymeExt = "Enzyme"
