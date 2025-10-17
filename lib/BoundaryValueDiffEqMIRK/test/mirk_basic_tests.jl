@@ -494,6 +494,6 @@ end
         residual[2] = u(pi / 2)[1] - pi / 2
     end
     prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan,
-        lcons = [0.0, 0.0], ucons = [Inf, Inf])
+        lcons = [-10.0, -10.0], ucons = [10.0, 10.0])
     @test_nowarn sol = solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 end
