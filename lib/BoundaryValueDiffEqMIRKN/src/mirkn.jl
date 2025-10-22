@@ -230,8 +230,9 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_coll
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
     resid_prototype = vcat(resid_bc, resid_collocation)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, 2 * N)
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac,
+        jac_prototype, resid_prototype, y, cache.p, cache.M, 2 * N)
 end
 
 function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_collocation::C,
@@ -272,8 +273,9 @@ function __construct_nlproblem(cache::MIRKNCache{iip}, y, loss_bc::BC, loss_coll
     end
 
     resid_prototype = copy(resid)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, 2 * N)
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac,
+        jac_prototype, resid_prototype, y, cache.p, cache.M, 2 * N)
 end
 
 function __mirkn_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}

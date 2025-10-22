@@ -691,16 +691,18 @@ function __construct_internal_problem(prob, pt::TwoPointBVProblem, alg, loss, ja
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
 end
-# Multiple shooting always use inplace version internal problem constructor
+
+# Single shooting use diffmode for StandardBVProblem and TwoPointBVProblem
 function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
         resid_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
-        nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(__default_cost(prob.f),
+        optf = OptimizationFunction{iip}(__default_cost(prob.f),
             AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
                 sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
             cons = loss,
@@ -712,8 +714,31 @@ function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
 end
+
+# Multiple shooting always use inplace version internal problem constructor
 function __construct_internal_problem(
-        prob::TwoPointBVProblem, alg, loss, jac, jac_prototype,
+        prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype,
+        resid_prototype, y, p, M::Int, N::Int, ::Nothing)
+    T = eltype(y)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
+            jac_prototype = jac_prototype)
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(__default_cost(prob.f),
+            AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
+                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = jac_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons = lcons, ucons = ucons)
+    end
+end
+function __construct_internal_problem(
+        prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype,
         resid_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)

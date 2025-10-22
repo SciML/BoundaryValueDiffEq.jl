@@ -126,11 +126,11 @@ end
         coloring_algorithm = GreedyColoringAlgorithm())
 end
 
-@inline __default_coloring_algorithm(::Nothing) = GreedyColoringAlgorithm()
+@inline __default_coloring_algorithm(_) = GreedyColoringAlgorithm()
 @inline __default_coloring_algorithm(diffmode::AutoSparse) = isnothing(diffmode) ?
                                                              GreedyColoringAlgorithm() :
                                                              diffmode.coloring_algorithm
-@inline __default_sparsity_detector(::Nothing) = TracerLocalSparsityDetector()
+@inline __default_sparsity_detector(_) = TracerLocalSparsityDetector()
 @inline __default_sparsity_detector(diffmode::AutoSparse) = isnothing(diffmode) ?
                                                             TracerLocalSparsityDetector() :
                                                             diffmode.sparsity_detector
