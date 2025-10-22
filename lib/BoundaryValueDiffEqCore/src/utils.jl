@@ -649,7 +649,7 @@ end
 Constructs the internal problem based on the type of the boundary value problem and the
 algorithm used. It returns either a `NonlinearProblem` or an `OptimizationProblem`.
 """
-function __construct_internal_problem(prob::AbstractBVProblem, alg, loss, jac,
+function __construct_internal_problem(prob, pt::StandardBVProblem, alg, loss, jac,
         jac_prototype, resid_prototype, y, p, M::Int, N::Int)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
@@ -658,16 +658,19 @@ function __construct_internal_problem(prob::AbstractBVProblem, alg, loss, jac,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(__default_cost(prob.f), AutoFiniteDiff(), # Need to investigate the ForwardDiff dual problem
+        optf = OptimizationFunction{true}(__default_cost(prob.f),
+            AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
+                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
             cons = loss,
-            cons_j = jac, cons_jac_prototype = jac_prototype)
+            cons_j = jac,
+            cons_jac_prototype = jac_prototype)
         lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
 end
 
-function __construct_internal_problem(prob::TwoPointBVProblem, alg, loss, jac,
+function __construct_internal_problem(prob, pt::TwoPointBVProblem, alg, loss, jac,
         jac_prototype, resid_prototype, y, p, M::Int, N::Int)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
@@ -676,9 +679,12 @@ function __construct_internal_problem(prob::TwoPointBVProblem, alg, loss, jac,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(
-            __default_cost(prob.f), get_dense_ad(alg.jac_alg.diffmode),
-            cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
+        optf = OptimizationFunction{true}(__default_cost(prob.f),
+            AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
+                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = jac_prototype)
         lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -694,9 +700,12 @@ function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(
-            __default_cost(prob.f), get_dense_ad(alg.jac_alg.diffmode),
-            cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
+        optf = OptimizationFunction{true}(__default_cost(prob.f),
+            AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
+                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = jac_prototype)
         lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -713,9 +722,12 @@ function __construct_internal_problem(
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(
-            __default_cost(prob.f), get_dense_ad(alg.jac_alg.nonbc_diffmode),
-            cons = loss, cons_j = jac, cons_jac_prototype = jac_prototype)
+        optf = OptimizationFunction{true}(__default_cost(prob.f),
+            AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
+                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = jac_prototype)
         lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
 
         return __internal_optimization_problem(
