@@ -409,7 +409,7 @@ function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
-    sol_nlprob = __solve(nlprob, solve_alg; kwargs...)
+    sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     defect_norm = 2 * abstol
@@ -492,6 +492,13 @@ function __construct_problem(cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{
         @closure (u,
             p) -> __firk_loss(
             u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol, trait)
+    end
+
+    if !isnothing(cache.alg.optimize)
+        loss = @closure (du,
+            u,
+            p) -> __firk_loss!(
+            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, trait)
     end
 
     return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt)
@@ -578,7 +585,8 @@ function __construct_problem(
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
         resid_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
 end
 
@@ -637,7 +645,8 @@ function __construct_problem(
     end
 
     resid_prototype = copy(resid)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
         resid_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
 end
 
@@ -716,8 +725,9 @@ function __construct_problem(
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, N)
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac,
+        jac_prototype, resid_prototype, y, cache.p, cache.M, N)
 end
 
 function __construct_problem(
@@ -765,8 +775,9 @@ function __construct_problem(
     end
 
     resid_prototype = copy(resid)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, N)
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac,
+        jac_prototype, resid_prototype, y, cache.p, cache.M, N)
 end
 
 @views function __firk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
@@ -788,6 +799,16 @@ end
     eval_sol.u[1:end] .= y_
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
+    return nothing
+end
+
+# loss function for optimization based solvers
+@views function __firk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC,
+        residual, mesh, cache, trait) where {BC}
+    bcresid = length(cache.bcresid_prototype)
+    __firk_loss_bc!(resid[1:bcresid], u, p, pt, bc!, y, mesh, cache, trait)
+    __firk_loss_collocation!(
+        resid[(bcresid + 1):end], u, p, y, mesh, residual, cache, trait)
     return nothing
 end
 
@@ -813,6 +834,13 @@ end
     eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
     Φ!(residual[2:end], cache, y_, u, trait)
     recursive_flatten_twopoint!(resid, residual, cache.resid_size)
+    return nothing
+end
+
+# loss function for optimization based solvers
+@views function __firk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
+        residual, mesh, cache, trait) where {BC1, BC2}
+    __firk_loss!(resid, u, p, y, pt, bc!, residual, mesh, cache, nothing, trait)
     return nothing
 end
 
