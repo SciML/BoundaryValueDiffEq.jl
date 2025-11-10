@@ -11,6 +11,7 @@ using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
+using OptimizationBase: OptimizationBase
 using PreallocationTools: PreallocationTools, DiffCache
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
 using Reexport: @reexport

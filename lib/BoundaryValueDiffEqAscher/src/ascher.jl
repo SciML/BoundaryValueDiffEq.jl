@@ -181,7 +181,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
-    nlsol = __solve(nlprob, solve_alg; kwargs...)
+    nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
@@ -351,8 +351,8 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     end
 
     return __construct_internal_problem(
-        cache.prob, alg, loss, jac, jac_prototype, resid_prototype,
-        lz, cache.p, cache.ncomp, length(cache.mesh))
+        cache.prob, cache.prob.problem_type, alg, loss, jac, jac_prototype,
+        resid_prototype, lz, cache.p, cache.ncomp, length(cache.mesh))
 end
 
 function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)

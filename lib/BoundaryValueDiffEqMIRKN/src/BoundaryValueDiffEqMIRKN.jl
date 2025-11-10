@@ -20,7 +20,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                concrete_jacobian_algorithm, __default_coloring_algorithm,
                                __default_sparsity_detector, interval, __split_kwargs,
                                NoErrorControl, __construct_internal_problem,
-                               __concrete_kwargs
+                               __concrete_kwargs, __internal_solve
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

@@ -315,6 +315,13 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector,
             u, p, cache.y, pt, cache.bc, cache.mesh, cache, eval_sol, trait)
     end
 
+    if !isnothing(cache.alg.optimize)
+        loss = @closure (du,
+            u,
+            p) -> __mirk_loss!(
+            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, trait)
+    end
+
     return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt, constraint)
 end
 
@@ -399,9 +406,18 @@ end
     return nothing
 end
 
-@views function __mirk_loss!(
-        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual, mesh,
-        cache, _, trait::DiffCacheNeeded, constraint::Val{false}) where {BC1, BC2}
+# loss function for optimization based solvers
+@views function __mirk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC,
+        residual, mesh, cache, trait) where {BC}
+    bcresid = length(cache.bcresid_prototype)
+    __mirk_loss_bc!(resid[1:bcresid], u, p, pt, bc!, y, mesh, cache, trait)
+    __mirk_loss_collocation!(
+        resid[(bcresid + 1):end], u, p, y, mesh, residual, cache, trait)
+    return nothing
+end
+
+@views function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
+        residual, mesh, cache, _, trait::DiffCacheNeeded, constraint::Val{false}) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
@@ -438,6 +454,13 @@ end
     eval_bc_residual!(resids[L + 1], pt, bc!, EvalSol, p, mesh)
 
     recursive_flatten!(resid, resids)
+    return nothing
+end
+
+# loss function for optimization based solvers
+@views function __mirk_loss!(resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
+        residual, mesh, cache, trait, constraint::Val{true}) where {BC1, BC2}
+    __mirk_loss!(resid, u, p, y, pt, bc!, residual, mesh, cache, nothing, trait, constraint)
     return nothing
 end
 
@@ -619,8 +642,9 @@ function __construct_problem(
     end
 
     resid_prototype = vcat(resid_bc, resid_collocation)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, N)
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac,
+        jac_prototype, resid_prototype, y, cache.p, cache.M, N)
 end
 
 # Dispatch for problems with constraints
@@ -826,8 +850,9 @@ function __construct_problem(
     end
 
     resid_prototype = copy(resid)
-    return __construct_internal_problem(cache.prob, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, y, cache.p, cache.M, N)
+    return __construct_internal_problem(
+        cache.prob, cache.problem_type, cache.alg, loss, jac,
+        jac_prototype, resid_prototype, y, cache.p, cache.M, N)
 end
 
 function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}

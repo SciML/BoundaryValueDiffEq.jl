@@ -23,7 +23,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __construct_internal_problem, __initial_guess_length,
                                __initial_guess_on_mesh, __flatten_initial_guess,
                                __build_solution, __Fix3, __split_kwargs, _sparse_like,
-                               get_dense_ad, __internal_optimization_problem
+                               get_dense_ad, __internal_optimization_problem,
+                               __internal_solve
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
