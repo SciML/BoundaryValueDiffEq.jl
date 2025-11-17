@@ -27,6 +27,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm
 include("types.jl")
 include("solution_utils.jl")
 include("utils.jl")
+include("internal_problems.jl")
 include("algorithms.jl")
 include("abstract_types.jl")
 include("alg_utils.jl")
