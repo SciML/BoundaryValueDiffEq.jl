@@ -627,32 +627,37 @@ end
 @inline __default_cost(f) = f
 @inline __default_cost(fun::BVPFunction) = __default_cost(fun.cost)
 
-@inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
+@inline function __extract_lcons_ucons(
+        prob::AbstractBVProblem, ::Type{T}, M, N, bcresid_prototype, f_prototype) where {T}
+    L_f_prototype = length(f_prototype)
+    L_bcresid_prototype = length(bcresid_prototype)
     lcons = if isnothing(prob.lcons)
-        zeros(T, N*M) #TODO: handle carefully when NLLS
+        zeros(T, L_bcresid_prototype + (N - 1)*L_f_prototype)
     else
-        length_f_prototype = length(prob.f.f_prototype)
-        if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
-            # When there are additional equality or inequality constraints
-            vcat(repeat(prob.lcons, N), zeros(T, M + (N - 1)*length_f_prototype))
-        else
-            lcons_length = length(prob.lcons)
-            vcat(prob.lcons, zeros(T, N*M - lcons_length))
-        end
+        lcons_length = length(prob.lcons)
+        vcat(prob.lcons, zeros(T, N*M - lcons_length))
     end
     ucons = if isnothing(prob.ucons)
-        zeros(T, N*M) #TODO: handle carefully when NLLS
+        zeros(T, L_bcresid_prototype + (N - 1)*L_f_prototype)
     else
-        length_f_prototype = length(prob.f.f_prototype)
-        if !(isnothing(prob.f.equality) && isnothing(prob.f.inequality))
-            # When there are additional equality or inequality constraints
-            vcat(repeat(prob.ucons, N), zeros(T, M + (N - 1)*length_f_prototype))
-        else
-            ucons_length = length(prob.ucons)
-            vcat(prob.ucons, zeros(T, N*M - ucons_length))
-        end
+        ucons_length = length(prob.ucons)
+        vcat(prob.ucons, zeros(T, N*M - ucons_length))
     end
     return lcons, ucons
+end
+
+@inline function __extract_lb_ub(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
+    lb = if isnothing(prob.lb)
+        nothing
+    else
+        repeat(prob.lb, N)
+    end
+    ub = if isnothing(prob.ub)
+        nothing
+    else
+        repeat(prob.ub, N)
+    end
+    return lb, ub
 end
 
 """
@@ -661,8 +666,9 @@ end
 Constructs the internal problem based on the type of the boundary value problem and the
 algorithm used. It returns either a `NonlinearProblem` or an `OptimizationProblem`.
 """
-function __construct_internal_problem(prob, pt::StandardBVProblem, alg, loss, jac,
-        jac_prototype, resid_prototype, y, p, M::Int, N::Int)
+function __construct_internal_problem(
+        prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype,
+        resid_prototype, bcresid_prototype, f_prototype, y, p, M::Int, N::Int)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
@@ -675,15 +681,18 @@ function __construct_internal_problem(prob, pt::StandardBVProblem, alg, loss, ja
                 sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
             cons = loss,
             cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+            cons_jac_prototype = sparse(jac_prototype))
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
+            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub)
     end
 end
 
-function __construct_internal_problem(prob, pt::TwoPointBVProblem, alg, loss, jac,
-        jac_prototype, resid_prototype, y, p, M::Int, N::Int)
+function __construct_internal_problem(
+        prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype,
+        resid_prototype, bcresid_prototype, f_prototype, y, p, M::Int, N::Int)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
@@ -696,17 +705,18 @@ function __construct_internal_problem(prob, pt::TwoPointBVProblem, alg, loss, ja
                 sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
             cons = loss,
             cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+            cons_jac_prototype = sparse(jac_prototype))
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
+            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub)
     end
 end
 
 # Single shooting use diffmode for StandardBVProblem and TwoPointBVProblem
-function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
-        resid_prototype, y, p, M::Int, N::Int, ::Nothing)
+function __construct_internal_problem(prob, alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
@@ -719,18 +729,19 @@ function __construct_internal_problem(prob, alg, loss, jac, jac_prototype,
                 sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
             cons = loss,
             cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+            cons_jac_prototype = sparse(jac_prototype))
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
+            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub)
     end
 end
 
 # Multiple shooting always use inplace version internal problem constructor
 function __construct_internal_problem(
-        prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype,
-        resid_prototype, y, p, M::Int, N::Int, ::Nothing)
+        prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
@@ -742,19 +753,21 @@ function __construct_internal_problem(
                 sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)),
             cons = loss,
             cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+            cons_jac_prototype = sparse(jac_prototype))
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
+            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub)
     end
 end
 function __construct_internal_problem(
-        prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype,
-        resid_prototype, y, p, M::Int, N::Int, ::Nothing)
+        prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing)
     T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
-        nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
+        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype)
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
@@ -763,57 +776,11 @@ function __construct_internal_problem(
                 sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)),
             cons = loss,
             cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+            cons_jac_prototype = sparse(jac_prototype))
+        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
-    end
-end
-
-# Second order BVProblem
-function __construct_internal_problem(
-        prob, pt::StandardSecondOrderBVProblem, alg, loss, jac,
-        jac_prototype, resid_prototype, y, p, M::Int, N::Int)
-    T = eltype(y)
-    iip = SciMLBase.isinplace(prob)
-    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
-        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype)
-        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
-    else
-        optf = OptimizationFunction{iip}(__default_cost(prob.f.f),
-            AutoSparse(get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
-        return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
-    end
-end
-
-# Two point BVProblem
-function __construct_internal_problem(
-        prob, pt::TwoPointSecondOrderBVProblem, alg, loss, jac,
-        jac_prototype, resid_prototype, y, p, M::Int, N::Int)
-    T = eltype(y)
-    iip = SciMLBase.isinplace(prob)
-    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
-        nlf = NonlinearFunction{iip}(loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype)
-        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
-    else
-        optf = OptimizationFunction{iip}(__default_cost(prob.f.f),
-            AutoSparse(get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = jac_prototype)
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
-
-        return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons)
+            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub)
     end
 end

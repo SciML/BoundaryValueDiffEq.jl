@@ -52,7 +52,7 @@ $$
 Similar solving for such optimal control problem can be found on JuMP.jl and InfiniteOpt.jl. The detailed parameters are taken from [COPS](https://www.mcs.anl.gov/%7Emore/cops/cops3.pdf).
 
 ```julia
-using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt
+using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
 h_0 = 1                      # Initial height
 v_0 = 0                      # Initial velocity
 m_0 = 1.0                    # Initial mass
@@ -79,23 +79,26 @@ end
 function rocket_launch_bc!(res, u, p, t)
     res[1] = u(0.0)[1] - v_0
     res[2] = u(0.0)[2] - h_0
-    res[3] = u(0.2)[3] - m_T
+    res[3] = u(0.0)[3] - m_0
     res[4] = u(0.2)[4] - 0.0
 end
-function constraints!(res, u, p)
-    res[1] = u[1]
-    res[2] = u[2]
-    res[3] = u[3]
-    res[4] = u[4]
-end
 cost_fun(u, p) = -u[end - 2] #Final altitude x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
-#cost_fun(sol, p) = -sol(0.2)[2]
-u0 = [v_0, h_0, m_0, 0.0]
-rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun,
-    inequality = constraints!, f_prototype = zeros(3))
-rocket_launch_prob = BVProblem(rocket_launch_fun, u0, tspan; lcons = [0.0, h_0, m_T, 0.0],
-    ucons = [Inf, Inf, m_0, u_t_max])
-sol = solve(rocket_launch_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = 0.002)
+u0 = [v_0, h_0, m_T, 3.0]
+rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun, f_prototype = zeros(3))
+rocket_launch_prob = BVProblem(
+    rocket_launch_fun, u0, tspan; lb = [0.0, h_0, m_T, 0.0], ub = [Inf, Inf, m_0, u_t_max])
+sol = solve(rocket_launch_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = Δt, adaptive = false)
+
+u = reduce(hcat, sol.u)
+v, h, m, c = u[1, :], u[2, :], u[3, :], u[4, :]
+
+# Plot the solution
+p1 = plot(sol.t, v, xlabel = "Time", ylabel = "Velocity", legend = false)
+p2 = plot(sol.t, h, xlabel = "Time", ylabel = "Altitude", legend = false)
+p3 = plot(sol.t, m, xlabel = "Time", ylabel = "Mass", legend = false)
+p4 = plot(sol.t, c, xlabel = "Time", ylabel = "Thrust", legend = false)
+
+plot(p1, p2, p3, p4, layout = (2, 2))
 ```
 
 Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.
