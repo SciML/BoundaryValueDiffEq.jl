@@ -109,7 +109,7 @@ The dynamic equation of the motion of cart-pole swing-up problem are given by:
 
 $$
 
-# \begin{bmatrix}
+\begin{bmatrix}
 \ddot{x} \\
 \ddot{\theta}
 \end{bmatrix}
@@ -129,7 +129,7 @@ where $x$ is the location of the cart, $\theta$ is the pole angle, $m_1$ is the 
 
 By converting the dynamics to first order equations, we can get the formulation:
 
-# $$
+$$
 \begin{bmatrix}
 \dot{x} \\
 \dot{\theta} \\
@@ -138,7 +138,7 @@ By converting the dynamics to first order equations, we can get the formulation:
 \dot{e}
 \end{bmatrix}
 
-# f\!\left(
+f\!\left(
 \begin{bmatrix}
 x \\ \theta \\ \dot{x} \\ \dot{\theta} \\ e
 \end{bmatrix}
