@@ -102,3 +102,146 @@ plot(p1, p2, p3, p4, layout = (2, 2))
 ```
 
 Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.
+
+## Cart-Pole Optimal Control
+
+The dynamic equation of the motion of cart-pole swing-up problem are given by:
+
+$$
+
+
+\begin{bmatrix}
+\ddot{x} \\
+\ddot{\theta}
+\end{bmatrix}
+=
+\begin{bmatrix}
+\cos\theta & \ell \\
+m_1 + m_2 & m_2 \ell \cos\theta
+\end{bmatrix}^{-1}
+\begin{bmatrix}
+- g \sin\theta \\
+F + m_2 \ell \dot{\theta}^2 \sin\theta
+\end{bmatrix}
+$$
+
+where $x$ is the location of the cart, $\theta$ is the pole angle, $m_1$ is the cart mass, $m_2$ is the pole mass, $l$ is the pole length.
+
+By converting the dynamics to first order equations, we can get the formulation:
+
+$$
+\begin{bmatrix}
+\dot{x} \\
+\dot{\theta} \\
+\ddot{x} \\
+\ddot{\theta} \\
+\dot{e}
+\end{bmatrix}
+= 
+f\!\left(
+\begin{bmatrix}
+x \\ \theta \\ \dot{x} \\ \dot{\theta} \\ e
+\end{bmatrix}
+\right)
+=
+\begin{bmatrix}
+\dot{x} \\
+\dot{\theta} \\
+\dfrac{-m_2 g \sin\theta \cos\theta - \left(F + m_2 \ell \dot{\theta}^2 \sin\theta\right)}
+{m_2 \cos^2\theta - (m_1 + m_2)} \\
+\dfrac{(m_1 + m_2) g \sin\theta + \cos\theta \left(F + m_2 \ell \dot{\theta}^2 \sin\theta\right)}
+{m_2 \ell \cos^2\theta - (m_1 + m_2)\ell} \\
+F^2
+\end{bmatrix}
+$$
+
+and the initial conditions of all states at $t=0$ are all zero, the boundary conditions at time $t_f$ are:
+
+$$
+x_f=d, \dot{x_f}=0, \theta_f=\pi, \dot{\theta_f}=0
+$$
+
+The target cost function is defined as the "energy" 
+
+```julia
+using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt, Plots
+m_1 = 1.0                      # Cart mass
+m_2 = 0.3                      # Pole mass
+l = 0.5                        # Pole length
+d = 2.0                        # Cart target location
+t_0 = 0.0                      # Start time
+t_f = 2.0                      # Final time
+g = 9.81                       # Gravity constant
+tspan = (0.0, t_f)
+function cart_pole!(du, u, p, t)
+	x, θ, dx, dθ, f = u[1], u[2], u[3], u[4], u[5]
+	du[1] = dx
+	du[2] = dθ
+	du[3] = (- m_2*g*sin(θ)*cos(θ) - (f + m_2*l*θ^2*sin(θ))) / (m_2*l*cos(θ)^2 - m_1 - m_2)
+	du[4] = ((m_1 + m_2)*g*sin(θ) + cos(θ)*(f + m_1*l*dθ^2*sin(θ))) / (m_2*l*cos(θ)^2 - (m_1 + m_2)*l)
+end
+
+function cart_pole_bc!(du, u, p, t)
+	du[1] = u(t_f)[1] - d
+	du[2] = u(t_f)[2] - π
+	du[3] = u(t_0)[2] - 0.0
+	du[4] = u(t_0)[3] - 0.0
+	du[5] = u(t_0)[4] - 0.0
+	du[6] = u(t_f)[3] - 0.0
+	du[7] = u(t_f)[4] - 0.0
+end
+cost_fun(u, p) = u[end]
+u0 = [0.0, 0.0, 0.0, 0.0, 10.0]
+cart_pole_fun = BVPFunction(cart_pole!, cart_pole_bc!; cost = cost_fun, bcresid_prototype = zeros(7), f_prototype = zeros(4))
+cart_pole_prob = BVProblem(cart_pole_fun, u0, tspan; lb = [-2.0, -Inf, -Inf, -Inf, -20.0], ub = [2.0, Inf, Inf, Inf, 20.0])
+sol = solve(cart_pole_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = 0.01, adaptive = false)
+
+t = sol.t
+x, theta, dx, dtheta, f = sol[1, :], sol[2, :], sol[3, :], sol[4, :], sol[5, :]
+
+L      = 1.0    # pole length (visual)
+cart_w = 0.4    # cart width
+cart_h = 0.2    # cart height
+
+# Precompute pole tip coordinates
+px = x .+ L .* sin.(theta)
+py = cart_h/2 .- L .* cos.(theta)
+
+# Axis limits (a bit margin around the cart trajectory)
+xmin = minimum(x) - 2L
+xmax = maximum(x) + 2L
+ymin = -2.0
+ymax = 2.0
+
+anim = @animate for k in eachindex(t)
+    cart_x = x[k]
+    pole_x = px[k]
+    pole_y = py[k]
+
+    # Base plot / axis
+    plot(; xlim=(xmin, xmax), ylim=(ymin, ymax),
+         aspect_ratio=:equal, legend=false,
+         title = "Cart–Pole (t = $(round(t[k], digits=2)) s)")
+
+    # Draw ground
+    plot!([xmin, xmax], [0, 0], lw=2, color=:black)
+
+    # Draw cart as a rectangle
+    rect = Shape(
+        [cart_x - cart_w/2, cart_x + cart_w/2, cart_x + cart_w/2, cart_x - cart_w/2],
+        [0, 0, cart_h, cart_h]
+    )
+    plot!(rect, color=:gray)
+
+    # Draw pole as a line from cart center to tip
+    plot!([cart_x, pole_x], [cart_h/2, pole_y], lw=3, color=:red)
+
+    # Draw pivot point
+    scatter!([cart_x], [cart_h/2], ms=4, color=:black)
+end
+
+# Save GIF
+gif(anim, "./cart_pole.gif", fps=40)
+```
+
+![cart_pole](./cart_pole.gif)
