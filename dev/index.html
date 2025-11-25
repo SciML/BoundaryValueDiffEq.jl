@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers · BoundaryValueDiffEq.jl</title><meta name="title" content="BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers · BoundaryValueDiffEq.jl"/><meta property="og:title" content="BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers · BoundaryValueDiffEq.jl"/><meta property="twitter:title" content="BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers · BoundaryValueDiffEq.jl"/><meta name="description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="twitter:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/"/><meta property="twitter:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/"/><link rel="canonical" href="https://docs.sciml.ai/BoundaryValueDiffEq/stable/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="BoundaryValueDiffEq.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>BoundaryValueDiffEq.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Contributing"><span>Contributing</span></a></li><li><a class="tocitem" href="#Reproducibility"><span>Reproducibility</span></a></li></ul></li><li><a class="tocitem" href="tutorials/getting_started/">Getting Started with BVP solving in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="tutorials/continuation/">Solve BVP with Continuation</a></li><li><a class="tocitem" href="tutorials/solve_nlls_bvp/">Solve Overdetermined and Underdetermined BVP</a></li><li><a class="tocitem" href="tutorials/unknown_parameters/">Estimate Unknown Parameters in BVP</a></li><li><a class="tocitem" href="tutorials/extremum/">Solve BVP with Extremum Boundary Conditions</a></li></ul></li><li><span class="tocitem">Basics</span><ul><li><a class="tocitem" href="basics/bvp_problem/">Boundary Value Problems</a></li><li><a class="tocitem" href="basics/bvp_functions/">BVP Functions and Jacobian Types</a></li><li><a class="tocitem" href="basics/solve/">Common Solver Options (Solve Keyword Arguments)</a></li><li><a class="tocitem" href="basics/autodiff/">Automatic Differentiation Backends</a></li><li><a class="tocitem" href="basics/error_control/">Error Control Adaptivity</a></li></ul></li><li><span class="tocitem">Solver Summaries and Recommendations</span><ul><li><a class="tocitem" href="solvers/mirk/">BoundaryValueDiffEqMIRK</a></li><li><a class="tocitem" href="solvers/firk/">BoundaryValueDiffEqFIRK</a></li><li><a class="tocitem" href="solvers/shooting/">BoundaryValueDiffEqShooting</a></li><li><a class="tocitem" href="solvers/mirkn/">BoundaryValueDiffEqMIRKN</a></li><li><a class="tocitem" href="solvers/ascher/">BoundaryValueDiffEqAscher</a></li><li><a class="tocitem" href="solvers/simple_solvers/">SimpleBoundaryValueDiffEq</a></li><li><a class="tocitem" href="solvers/wrappers/">Wrapper Methods</a></li></ul></li><li><span class="tocitem">Wrapped Solver APIs</span><ul><li><a class="tocitem" href="api/odeinterface/">ODEInterface.jl</a></li></ul></li><li><span class="tocitem">Development Documentation</span><ul><li><a class="tocitem" href="devdocs/internal_interfaces/">Internal Abstract Types</a></li></ul></li><li><a class="tocitem" href="references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/master/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="BoundaryValueDiffEq.jl:-High-Performance-Boundary-Value-Problem-Solvers"><a class="docs-heading-anchor" href="#BoundaryValueDiffEq.jl:-High-Performance-Boundary-Value-Problem-Solvers">BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a><a id="BoundaryValueDiffEq.jl:-High-Performance-Boundary-Value-Problem-Solvers-1"></a><a class="docs-heading-anchor-permalink" href="#BoundaryValueDiffEq.jl:-High-Performance-Boundary-Value-Problem-Solvers" title="Permalink"></a></h1><p>BoundaryValueDiffEq.jl is a component package in the DifferentialEquations.jl ecosystem. The package includes its own high-performance BVP solvers which covers wide range of different kinds boundary value problems, includes the ability to swap out to fast direct and iterative nonlinear solvers, along with the ability to use sparse automatic differentiation for Jacobian construction and Jacobian-vector products.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>To install BoundaryValueDiffEq.jl, use the Julia package manager:</p><pre><code class="language-julia hljs">using Pkg
 Pkg.add(&quot;BoundaryValueDiffEq&quot;)</code></pre><h2 id="Contributing"><a class="docs-heading-anchor" href="#Contributing">Contributing</a><a id="Contributing-1"></a><a class="docs-heading-anchor-permalink" href="#Contributing" title="Permalink"></a></h2><ul><li><p>Please refer to the <a href="https://github.com/SciML/ColPrac/blob/master/README.md">SciML ColPrac: Contributor&#39;s Guide on Collaborative Practices for Community Packages</a> for guidance on PRs, issues, and other matters relating to contributing to SciML.</p></li><li><p>See the <a href="https://github.com/SciML/SciMLStyle">SciML Style Guide</a> for common coding practices and other style decisions.</p></li><li><p>There are a few community forums:</p><ul><li>The #diffeq-bridged and #sciml-bridged channels in the <a href="https://julialang.org/slack/">Julia Slack</a></li><li>The #diffeq-bridged and #sciml-bridged channels in the <a href="https://julialang.zulipchat.com/#narrow/stream/279055-sciml-bridged">Julia Zulip</a></li><li>On the <a href="https://discourse.julialang.org">Julia Discourse forums</a></li><li>See also <a href="https://sciml.ai/community/">SciML Community page</a></li></ul></li></ul><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `~/work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl/docs/Project.toml`
-  <span class="sgr90">[47edcb42] </span>ADTypes v1.18.0
+  <span class="sgr90">[47edcb42] </span>ADTypes v1.19.0
   <span class="sgr90">[764a87c0] </span>BoundaryValueDiffEq v5.18.0 `..`
   <span class="sgr90">[7227322d] </span>BoundaryValueDiffEqAscher v1.8.0 `../lib/BoundaryValueDiffEqAscher`
   <span class="sgr90">[56b672f2] </span>BoundaryValueDiffEqCore v1.11.1 `../lib/BoundaryValueDiffEqCore`
@@ -9,15 +9,15 @@ Pkg.add(&quot;BoundaryValueDiffEq&quot;)</code></pre><h2 id="Contributing"><a cl
   <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.9.0 `../lib/BoundaryValueDiffEqMIRK`
   <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.8.0 `../lib/BoundaryValueDiffEqMIRKN`
   <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.9.0 `../lib/BoundaryValueDiffEqShooting`
-  <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.190.2
-  <span class="sgr90">[e30172f5] </span>Documenter v1.15.0
+  <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.192.0
+  <span class="sgr90">[e30172f5] </span>Documenter v1.16.1
   <span class="sgr90">[daee34ce] </span>DocumenterCitations v1.4.1
   <span class="sgr90">[d12716ef] </span>DocumenterInterLinks v1.1.0
   <span class="sgr90">[87fe0de2] </span>LineSearch v0.1.4
-  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.46.1
+  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.47.0
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.103.0
   <span class="sgr90">[91a5bcdd] </span>Plots v1.41.1
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.124.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.127.0
   <span class="sgr90">[be0294bd] </span>SimpleBoundaryValueDiffEq v1.2.0
   <span class="sgr90">[37e2e46d] </span>LinearAlgebra</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.10.10
 Commit 95f30e51f41 (2025-06-27 09:51 UTC)
@@ -32,7 +32,7 @@ Platform Info:
 Threads: 1 default, 0 interactive, 1 GC (on 4 virtual cores)
 Environment:
   JULIA_DEBUG = Documenter</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `~/work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl/docs/Manifest.toml`
-  <span class="sgr90">[47edcb42] </span>ADTypes v1.18.0
+  <span class="sgr90">[47edcb42] </span>ADTypes v1.19.0
   <span class="sgr90">[a4c015fc] </span>ANSIColoredPrinters v0.0.1
   <span class="sgr90">[1520ce14] </span>AbstractTrees v0.4.5
   <span class="sgr90">[7d9f7c33] </span>Accessors v0.1.42
@@ -40,8 +40,8 @@ Environment:
   <span class="sgr90">[66dad0bd] </span>AliasTables v1.1.3
   <span class="sgr90">[a95523ee] </span>AlmostBlockDiagonals v0.1.10
   <span class="sgr90">[4fba245c] </span>ArrayInterface v7.22.0
-  <span class="sgr90">[4c555306] </span>ArrayLayouts v1.12.0
-  <span class="sgr90">[aae01518] </span>BandedMatrices v1.10.1
+  <span class="sgr90">[4c555306] </span>ArrayLayouts v1.12.1
+  <span class="sgr90">[aae01518] </span>BandedMatrices v1.10.2
   <span class="sgr90">[2027ae74] </span>BibInternal v0.3.7
   <span class="sgr90">[13533e5b] </span>BibParser v0.2.2
   <span class="sgr90">[f1be7e48] </span>Bibliography v0.3.0
@@ -55,7 +55,7 @@ Environment:
   <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.9.0 `../lib/BoundaryValueDiffEqMIRK`
   <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.8.0 `../lib/BoundaryValueDiffEqMIRKN`
   <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.9.0 `../lib/BoundaryValueDiffEqShooting`
-  <span class="sgr90">[70df07ce] </span>BracketingNonlinearSolve v1.5.0
+  <span class="sgr90">[70df07ce] </span>BracketingNonlinearSolve v1.6.0
   <span class="sgr90">[2a0fbf3d] </span>CPUSummary v0.2.7
   <span class="sgr90">[d360d2e6] </span>ChainRulesCore v1.26.0
   <span class="sgr90">[fb6a15b2] </span>CloseOpenIntervals v0.1.13
@@ -77,19 +77,19 @@ Environment:
   <span class="sgr90">[9a962f9c] </span>DataAPI v1.16.0
 <span class="sgr33">⌅</span> <span class="sgr90">[864edb3b] </span>DataStructures v0.18.22
   <span class="sgr90">[8bb1440f] </span>DelimitedFiles v1.9.1
-  <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.190.2
+  <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.192.0
   <span class="sgr90">[163ba53b] </span>DiffResults v1.1.0
   <span class="sgr90">[b552c78f] </span>DiffRules v1.15.1
-  <span class="sgr90">[a0c0ee7d] </span>DifferentiationInterface v0.7.10
+  <span class="sgr90">[a0c0ee7d] </span>DifferentiationInterface v0.7.12
   <span class="sgr90">[43dc2714] </span>DocInventories v1.0.0
   <span class="sgr90">[ffbed154] </span>DocStringExtensions v0.9.5
-  <span class="sgr90">[e30172f5] </span>Documenter v1.15.0
+  <span class="sgr90">[e30172f5] </span>Documenter v1.16.1
   <span class="sgr90">[daee34ce] </span>DocumenterCitations v1.4.1
   <span class="sgr90">[d12716ef] </span>DocumenterInterLinks v1.1.0
   <span class="sgr90">[4e289a0a] </span>EnumX v1.0.5
-  <span class="sgr90">[f151be2c] </span>EnzymeCore v0.8.15
+  <span class="sgr90">[f151be2c] </span>EnzymeCore v0.8.17
   <span class="sgr90">[460bff9d] </span>ExceptionUnwrapping v0.1.11
-  <span class="sgr90">[d4d017d3] </span>ExponentialUtilities v1.27.0
+  <span class="sgr90">[d4d017d3] </span>ExponentialUtilities v1.28.0
   <span class="sgr90">[e2ba6199] </span>ExprTools v0.1.10
   <span class="sgr90">[55351af7] </span>ExproniconLite v0.10.14
   <span class="sgr90">[c87230d0] </span>FFMPEG v0.4.5
@@ -99,38 +99,38 @@ Environment:
   <span class="sgr90">[442a2c76] </span>FastGaussQuadrature v1.1.0
   <span class="sgr90">[a4df4552] </span>FastPower v1.2.0
   <span class="sgr90">[5789e2e9] </span>FileIO v1.17.1
-  <span class="sgr90">[1a297f60] </span>FillArrays v1.14.0
+  <span class="sgr90">[1a297f60] </span>FillArrays v1.15.0
   <span class="sgr90">[6a86dc24] </span>FiniteDiff v2.29.0
   <span class="sgr90">[53c48c17] </span>FixedPointNumbers v0.8.5
   <span class="sgr90">[1fa38f19] </span>Format v1.3.7
-  <span class="sgr90">[f6369f11] </span>ForwardDiff v1.2.2
+  <span class="sgr90">[f6369f11] </span>ForwardDiff v1.3.0
   <span class="sgr90">[069b7b12] </span>FunctionWrappers v1.1.3
   <span class="sgr90">[77dc65aa] </span>FunctionWrappersWrappers v0.1.3
   <span class="sgr90">[46192b85] </span>GPUArraysCore v0.2.0
-  <span class="sgr90">[28b8d3ca] </span>GR v0.73.18
+  <span class="sgr90">[28b8d3ca] </span>GR v0.73.19
   <span class="sgr90">[c145ed77] </span>GenericSchur v0.5.6
   <span class="sgr90">[d7ba0133] </span>Git v1.5.0
   <span class="sgr90">[42e2da0e] </span>Grisu v1.0.2
   <span class="sgr90">[cd3eb016] </span>HTTP v1.10.19
-<span class="sgr33">⌅</span> <span class="sgr90">[b5f81e59] </span>IOCapture v0.2.5
+  <span class="sgr90">[b5f81e59] </span>IOCapture v1.0.0
   <span class="sgr90">[615f187c] </span>IfElse v0.1.1
   <span class="sgr90">[3587e190] </span>InverseFunctions v0.1.17
   <span class="sgr90">[92d709cd] </span>IrrationalConstants v0.2.6
   <span class="sgr90">[82899510] </span>IteratorInterfaceExtensions v1.0.0
   <span class="sgr90">[1019f520] </span>JLFzf v0.1.11
   <span class="sgr90">[692b3bcd] </span>JLLWrappers v1.7.1
-  <span class="sgr90">[682c06a0] </span>JSON v1.2.0
+  <span class="sgr90">[682c06a0] </span>JSON v1.3.0
   <span class="sgr90">[7d188eb4] </span>JSONSchema v1.5.0
   <span class="sgr90">[ae98c720] </span>Jieko v0.2.1
-  <span class="sgr90">[ba0b0d4f] </span>Krylov v0.10.2
+  <span class="sgr90">[ba0b0d4f] </span>Krylov v0.10.3
   <span class="sgr90">[b964fa9f] </span>LaTeXStrings v1.4.0
   <span class="sgr90">[23fbe1c1] </span>Latexify v0.16.10
   <span class="sgr90">[10f19ff3] </span>LayoutPointers v0.1.17
   <span class="sgr90">[0e77f7df] </span>LazilyInitializedFields v1.3.0
-  <span class="sgr90">[5078a376] </span>LazyArrays v2.8.0
+  <span class="sgr90">[5078a376] </span>LazyArrays v2.9.1
   <span class="sgr90">[87fe0de2] </span>LineSearch v0.1.4
-  <span class="sgr90">[d3d80556] </span>LineSearches v7.4.0
-  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.46.1
+  <span class="sgr90">[d3d80556] </span>LineSearches v7.4.1
+  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.47.0
   <span class="sgr90">[2ab3a3ac] </span>LogExpFunctions v0.3.29
   <span class="sgr90">[e6f89c97] </span>LoggingExtras v1.2.0
   <span class="sgr90">[1914dd2f] </span>MacroTools v0.5.16
@@ -139,19 +139,19 @@ Environment:
   <span class="sgr90">[a3b82374] </span>MatrixFactorizations v3.1.3
   <span class="sgr90">[bb5d69b7] </span>MaybeInplace v0.1.4
   <span class="sgr90">[739be429] </span>MbedTLS v1.1.9
-  <span class="sgr90">[442fdcdd] </span>Measures v0.3.2
+  <span class="sgr90">[442fdcdd] </span>Measures v0.3.3
   <span class="sgr90">[e1d29d7a] </span>Missings v1.2.0
   <span class="sgr90">[2e0e35c7] </span>Moshi v0.3.7
   <span class="sgr90">[46d2c3a1] </span>MuladdMacro v0.2.4
   <span class="sgr90">[d41bc354] </span>NLSolversBase v7.10.0
   <span class="sgr90">[77ba4419] </span>NaNMath v1.1.3
   <span class="sgr90">[8913a72c] </span>NonlinearSolve v4.12.0
-  <span class="sgr90">[be0214bd] </span>NonlinearSolveBase v2.0.0
-  <span class="sgr90">[5959db7a] </span>NonlinearSolveFirstOrder v1.9.0
-  <span class="sgr90">[9a2c21bd] </span>NonlinearSolveQuasiNewton v1.10.0
-  <span class="sgr90">[26075421] </span>NonlinearSolveSpectralMethods v1.5.0
+  <span class="sgr90">[be0214bd] </span>NonlinearSolveBase v2.4.0
+  <span class="sgr90">[5959db7a] </span>NonlinearSolveFirstOrder v1.10.0
+  <span class="sgr90">[9a2c21bd] </span>NonlinearSolveQuasiNewton v1.11.0
+  <span class="sgr90">[26075421] </span>NonlinearSolveSpectralMethods v1.6.0
   <span class="sgr90">[4d8831e6] </span>OpenSSL v1.6.0
-  <span class="sgr90">[bca83a33] </span>OptimizationBase v4.0.1
+  <span class="sgr90">[bca83a33] </span>OptimizationBase v4.0.2
   <span class="sgr90">[bac558e1] </span>OrderedCollections v1.8.1
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.103.0
   <span class="sgr90">[89bda076] </span>OrdinaryDiffEqAdamsBashforthMoulton v1.5.0
@@ -188,7 +188,7 @@ Environment:
   <span class="sgr90">[d96e819e] </span>Parameters v0.12.3
   <span class="sgr90">[69de0a69] </span>Parsers v2.8.3
   <span class="sgr90">[ccf2f8ad] </span>PlotThemes v3.3.0
-  <span class="sgr90">[995b91a9] </span>PlotUtils v1.4.3
+  <span class="sgr90">[995b91a9] </span>PlotUtils v1.4.4
   <span class="sgr90">[91a5bcdd] </span>Plots v1.41.1
   <span class="sgr90">[f517fe37] </span>Polyester v0.7.18
   <span class="sgr90">[1d0040c9] </span>PolyesterWeave v0.2.2
@@ -205,10 +205,10 @@ Environment:
   <span class="sgr90">[ae029012] </span>Requires v1.3.1
   <span class="sgr90">[7e49a35a] </span>RuntimeGeneratedFunctions v0.5.16
   <span class="sgr90">[94e857df] </span>SIMDTypes v0.1.0
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.124.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.127.0
   <span class="sgr90">[19f34311] </span>SciMLJacobianOperators v0.1.11
-  <span class="sgr90">[a6db7da4] </span>SciMLLogging v1.3.1
-  <span class="sgr90">[c0aeaf25] </span>SciMLOperators v1.9.0
+  <span class="sgr90">[a6db7da4] </span>SciMLLogging v1.5.0
+  <span class="sgr90">[c0aeaf25] </span>SciMLOperators v1.13.0
   <span class="sgr90">[431bcebd] </span>SciMLPublic v1.0.0
   <span class="sgr90">[53ae85a6] </span>SciMLStructures v1.7.0
   <span class="sgr90">[6c6a2e73] </span>Scratch v1.3.0
@@ -219,19 +219,19 @@ Environment:
   <span class="sgr90">[727e6d20] </span>SimpleNonlinearSolve v2.9.0
   <span class="sgr90">[ce78b400] </span>SimpleUnPack v1.1.0
   <span class="sgr90">[a2af1166] </span>SortingAlgorithms v1.2.2
-  <span class="sgr90">[9f842d2f] </span>SparseConnectivityTracer v1.1.2
+  <span class="sgr90">[9f842d2f] </span>SparseConnectivityTracer v1.1.3
   <span class="sgr90">[0a514795] </span>SparseMatrixColorings v0.4.23
   <span class="sgr90">[276daf66] </span>SpecialFunctions v2.6.1
-  <span class="sgr90">[860ef19b] </span>StableRNGs v1.0.3
+  <span class="sgr90">[860ef19b] </span>StableRNGs v1.0.4
   <span class="sgr90">[aedffcd0] </span>Static v1.3.1
   <span class="sgr90">[0d7ed370] </span>StaticArrayInterface v1.8.0
   <span class="sgr90">[90137ffa] </span>StaticArrays v1.9.15
   <span class="sgr90">[1e83bf80] </span>StaticArraysCore v1.4.4
   <span class="sgr90">[82ae8749] </span>StatsAPI v1.7.1
-  <span class="sgr90">[2913bbd2] </span>StatsBase v0.34.7
+  <span class="sgr90">[2913bbd2] </span>StatsBase v0.34.8
   <span class="sgr90">[7792a7ef] </span>StrideArraysCore v0.5.8
   <span class="sgr90">[69024149] </span>StringEncodings v0.3.7
-  <span class="sgr90">[ec057cc2] </span>StructUtils v2.5.1
+  <span class="sgr90">[ec057cc2] </span>StructUtils v2.6.0
   <span class="sgr90">[2efcf032] </span>SymbolicIndexingInterface v0.3.46
   <span class="sgr90">[62fd8b95] </span>TensorCore v0.1.1
   <span class="sgr90">[1c621080] </span>TestItems v1.0.0
@@ -243,7 +243,7 @@ Environment:
   <span class="sgr90">[3a884ed6] </span>UnPack v1.0.2
   <span class="sgr90">[1cfade01] </span>UnicodeFun v0.4.1
   <span class="sgr90">[41fe7b60] </span>Unzip v0.2.0
-  <span class="sgr90">[ddb6d928] </span>YAML v0.4.14
+  <span class="sgr90">[ddb6d928] </span>YAML v0.4.16
   <span class="sgr90">[6e34b625] </span>Bzip2_jll v1.0.9+0
   <span class="sgr90">[83423d85] </span>Cairo_jll v1.18.5+0
   <span class="sgr90">[ee1fde0b] </span>Dbus_jll v1.16.2+0
@@ -254,7 +254,7 @@ Environment:
   <span class="sgr90">[d7e528f0] </span>FreeType2_jll v2.13.4+0
   <span class="sgr90">[559328eb] </span>FriBidi_jll v1.0.17+0
   <span class="sgr90">[0656b61e] </span>GLFW_jll v3.4.0+2
-  <span class="sgr90">[d2c73de3] </span>GR_jll v0.73.18+0
+  <span class="sgr90">[d2c73de3] </span>GR_jll v0.73.19+1
   <span class="sgr90">[b0724c58] </span>GettextRuntime_jll v0.22.4+0
   <span class="sgr90">[61579ee1] </span>Ghostscript_jll v9.55.1+0
   <span class="sgr90">[020c3dae] </span>Git_LFS_jll v3.7.0+0
@@ -268,7 +268,7 @@ Environment:
   <span class="sgr90">[88015f11] </span>LERC_jll v4.0.1+0
   <span class="sgr90">[1d63c593] </span>LLVMOpenMP_jll v18.1.8+0
   <span class="sgr90">[dd4b983a] </span>LZO_jll v2.10.3+0
-  <span class="sgr90">[e9f186c6] </span>Libffi_jll v3.4.7+0
+<span class="sgr33">⌅</span> <span class="sgr90">[e9f186c6] </span>Libffi_jll v3.4.7+0
   <span class="sgr90">[7e76a0d4] </span>Libglvnd_jll v1.7.1+1
   <span class="sgr90">[94ce4f54] </span>Libiconv_jll v1.18.0+0
   <span class="sgr90">[4b2f31a3] </span>Libmount_jll v2.41.2+0
@@ -280,7 +280,7 @@ Environment:
   <span class="sgr90">[458c3c95] </span>OpenSSL_jll v3.5.4+0
   <span class="sgr90">[efe28fd5] </span>OpenSpecFun_jll v0.5.6+0
   <span class="sgr90">[91d4177d] </span>Opus_jll v1.5.2+0
-  <span class="sgr90">[36c8627f] </span>Pango_jll v1.56.4+0
+  <span class="sgr90">[36c8627f] </span>Pango_jll v1.57.0+0
 <span class="sgr33">⌅</span> <span class="sgr90">[30392449] </span>Pixman_jll v0.44.2+0
   <span class="sgr90">[c0090381] </span>Qt6Base_jll v6.8.2+2
   <span class="sgr90">[629bc702] </span>Qt6Declarative_jll v6.8.2+1
@@ -321,7 +321,7 @@ Environment:
   <span class="sgr90">[2db6ffa8] </span>libevdev_jll v1.13.4+0
   <span class="sgr90">[f638f0a6] </span>libfdk_aac_jll v2.0.4+0
   <span class="sgr90">[36db933b] </span>libinput_jll v1.28.1+0
-  <span class="sgr90">[b53b4c65] </span>libpng_jll v1.6.50+0
+  <span class="sgr90">[b53b4c65] </span>libpng_jll v1.6.51+0
   <span class="sgr90">[f27f6e37] </span>libvorbis_jll v1.3.8+0
   <span class="sgr90">[009596ad] </span>mtdev_jll v1.1.7+0
   <span class="sgr90">[1317d2d5] </span>oneTBB_jll v2022.0.0+1
@@ -375,4 +375,4 @@ Environment:
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.11.0+0
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.52.0+1
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.4.0+2
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr33">⌅</span> have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Monday 3 November 2025 19:16">Monday 3 November 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr33">⌅</span> have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.18.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 25 November 2025 01:53">Tuesday 25 November 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
