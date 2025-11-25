@@ -23,7 +23,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __use_both_error_control, __default_coloring_algorithm,
                                DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
                                __concrete_kwargs, __FastShortcutNonlinearPolyalg,
-                               __construct_internal_problem, __internal_solve
+                               __construct_internal_problem, __internal_solve,
+                               __default_sparsity_detector
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
