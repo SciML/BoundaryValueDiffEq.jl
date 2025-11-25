@@ -161,7 +161,11 @@ $$
 x_f=d, \dot{x_f}=0, \theta_f=\pi, \dot{\theta_f}=0
 $$
 
-The target cost function is defined as the "energy"
+The target cost function is defined as the "energy" so the target cost function is:
+
+$$
+\min J=\int\dot{e}dt=F
+$$
 
 ```julia
 using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt, Plots
@@ -172,7 +176,7 @@ d = 2.0                        # Cart target location
 t_0 = 0.0                      # Start time
 t_f = 2.0                      # Final time
 g = 9.81                       # Gravity constant
-tspan = (0.0, t_f)
+tspan = (t_0, t_f)
 function cart_pole!(du, u, p, t)
     x, θ, dx, dθ, f = u[1], u[2], u[3], u[4], u[5]
     du[1] = dx
@@ -244,5 +248,7 @@ end
 # Save GIF
 gif(anim, "./cart_pole.gif", fps = 40)
 ```
+
+After we plot the final solution:
 
 ![cart_pole](./cart_pole.gif)

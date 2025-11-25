@@ -21,6 +21,13 @@
     return lcons, ucons
 end
 
+@inline function __extract_lcons_ucons(
+        prob::AbstractBVProblem, ::Type{T}, M, N, bcresid_prototype, ::Nothing) where {T}
+    lcons = zeros(T, N*M)
+    ucons = zeros(T, N*M)
+    return lcons, ucons
+end
+
 @inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
     lcons = if isnothing(prob.lcons)
         zeros(T, N*M)
