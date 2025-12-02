@@ -14,7 +14,7 @@ end
     L_f_prototype = length(f_prototype)
     tmp1,
     tmpu = get_tmp(fᵢ_cache, u)[1:L_f_prototype],
-    get_tmp(fᵢ_cache, u)[(f_prototype + 1):end]
+    get_tmp(fᵢ_cache, u)[(L_f_prototype + 1):end]
 
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
     T = eltype(u)
@@ -31,7 +31,7 @@ end
         # Load interpolation residual
         for j in 1:stage
             tmp = get_tmp(y[ctr + j], u)
-            K[:, j] = tmp[1:3]
+            K[:, j] = tmp[1:L_f_prototype]
         end
 
         # Update interpolation residual
