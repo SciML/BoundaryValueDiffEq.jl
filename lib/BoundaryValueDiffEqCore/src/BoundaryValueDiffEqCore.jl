@@ -7,6 +7,7 @@ using ArrayInterface: parameterless_type, fast_scalar_indexing
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using ForwardDiff: ForwardDiff, pickchunksize
+using Integrals: Integrals, IntegralProblem
 using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
@@ -44,5 +45,6 @@ export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
        NoErrorControl
 export HOErrorControl, REErrorControl
+export integral
 
 end

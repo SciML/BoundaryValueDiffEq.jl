@@ -463,7 +463,7 @@ function __construct_problem(
         cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::StandardBVProblem, constraint::Val{true}) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
-    (; f_prototype, bcresid_prototype) = cache
+    (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
     N = length(cache.mesh)
 
@@ -515,10 +515,12 @@ function __construct_problem(
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
-        cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun)
 end
 
 # Dispatch for problems with constraints

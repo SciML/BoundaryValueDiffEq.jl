@@ -1,6 +1,57 @@
 # Solve Optimal Control problem
 
-A classical optimal control problem is the rocket launching problem(aka [Goddard Rocket problem](https://en.wikipedia.org/wiki/Goddard_problem)). Say we have a rocket with limited fuel and is launched vertically. And we want to control the final altitude of this rocket so that we can make the best of the limited fuel in rocket to get to the highest altitude. In this optimal control problem, the state variables are:
+The cost function for the optimal problem should be used in the interpolation way, for example,
+
+## Block Move Optimal Control
+
+Block move optimal control problem is an easy example of optimal control problem[kelly2017introduction](@Citet). Suppose we apply the external force $f$ on a block which can slide without friction in one dimension, its position $x$ and velocity $v$ can be described using:
+
+$$
+\left\{\begin{aligned}
+&\frac{dx}{dt}=v\\
+&\frac{dv}{dt}=f
+\end{aligned}\right.
+$$
+
+we constrain the block to move from $x = 0$ at time $t = 0$ to $x = 1$ at time $t = 1$. Both the initial and final velocities are constrained to be zero:
+
+$$
+x(0)=0, v(0)=0, x(1)=1, v(1)=0
+$$
+
+we want to minimize the total energy during the whole process, so the cost functional is:
+
+$$
+\min_{x(t),v(t),f(t)} \int_0^1 u^2(\tau)d\tau
+$$
+
+```julia
+using BoundaryValueDiffEqMIRK, Ipopt, OptimizationMOI
+#cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
+cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
+function block_move!(du, u, p, t)
+    x, v, f = u[1], u[2], u[3]
+    du[1] = v
+    du[2] = f
+end
+function block_move_bc!(res, u, p, t)
+    res[1] = u(0.0)[1] + 1.0
+    res[2] = u(0.0)[2]
+    res[3] = u(1.0)[1]
+    res[4] = u(1.0)[2]
+end
+tspan = (0.0, 1.0)
+u0 = [-1.0, 0.0, 0.0]
+block_move_fun = BVPFunction(block_move!, block_move_bc!; cost = cost_fun,
+    f_prototype = zeros(2), bcresid_prototype = zeros(4))
+block_move_prob = BVProblem(
+    block_move_fun, u0, tspan; lb = [-1.0, 0.0, -8.0], ub = [0.0, 2.0, 8.0])
+sol = solve(block_move_prob, MIRK4(; optimize = Ipopt.Optimizer()), dt = 0.005, adaptive = false)
+```
+
+## Rocket Launching Optimal Control
+
+Another classical optimal control problem is the rocket launching problem(aka [Goddard Rocket problem](https://en.wikipedia.org/wiki/Goddard_problem)). Say we have a rocket with limited fuel and is launched vertically. And we want to control the final altitude of this rocket so that we can make the best of the limited fuel in rocket to get to the highest altitude. In this optimal control problem, the state variables are:
 
   - Velocity of the rocket: $x_v(t)$
   - Altitude of the rocket: $x_h(t)$
@@ -82,7 +133,7 @@ function rocket_launch_bc!(res, u, p, t)
     res[3] = u(0.0)[3] - m_0
     res[4] = u(0.2)[4] - 0.0
 end
-cost_fun(u, p) = -u[end - 2] #Final altitude x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
+cost_fun(u, p) = -u(0.2)[2]
 u0 = [v_0, h_0, m_T, 3.0]
 rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun, f_prototype = zeros(3))
 rocket_launch_prob = BVProblem(
@@ -195,7 +246,7 @@ function cart_pole_bc!(du, u, p, t)
     du[6] = u(t_f)[3] - 0.0
     du[7] = u(t_f)[4] - 0.0
 end
-cost_fun(u, p) = u[end]
+cost_fun(u, p) = u(t_f)[5]
 u0 = [0.0, 0.0, 0.0, 0.0, 10.0]
 cart_pole_fun = BVPFunction(cart_pole!, cart_pole_bc!; cost = cost_fun,
     bcresid_prototype = zeros(7), f_prototype = zeros(4))
