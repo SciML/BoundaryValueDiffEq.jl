@@ -64,7 +64,7 @@ The cost functional should be defined following the interpolating style in bound
 cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
 ```
 
-As for other cost functional which need the interpolation of some exact points of the solution(Mayer form), we only need to define an OOP cost function that interpolating the soluton at the specific point, for example:
+As for other cost functional which need the interpolation of some exact points of the solution(Mayer form), we only need to define an OOP cost function that interpolating the solution at the specific point, for example:
 
 ```julia
 cost_fun(sol, p) = sol(1.0)[3]
@@ -76,10 +76,10 @@ Block move optimal control problem with minimized energy desn't require lower an
 
 ### Initial guess
 
-The initial guess of the dynamical optimization prolem must be provided, either as the initial guess of the first state, `u0 = [-1.0, 0.0, 6.0]` or initial guess function of the whole solution `u0(t, p) = [sin(t), cos(t), sin(t)]`.
+The initial guess of the dynamical optimization problem must be provided, either as the initial guess of the first state, `u0 = [-1.0, 0.0, 6.0]` or initial guess function of the whole solution such as `u0(t, p) = [sin(t), cos(t), sin(t)]`.
 
-With all the above parts, we can build the model for our blocok move optimal control example:
-So the copy-and-paste code for the block move optimal contorl problem is:
+With all the above parts, we can build the model for our block move optimal control example:
+So the copy-and-paste code for the block move optimal control problem is:
 
 ```julia
 using BoundaryValueDiffEqMIRK, Ipopt, OptimizationMOI
