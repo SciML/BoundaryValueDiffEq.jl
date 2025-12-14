@@ -10,26 +10,25 @@ Fortran code for solving two-point boundary value problems. For detailed documen
 
 ## Keyword Arguments:
 
-    - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
-    - `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4,
-      available choices:
-        - `2`: Runge-Kutta method of order 2.
-        - `4`: Runge-Kutta method of order 4.
-        - `6`: Runge-Kutta method of order 6.
-    - `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available
-      choices:
-        - `-1`: Full diagnostic printout.
-        - `0`: Selected printout.
-        - `1`: No printout.
-    - `error_control`: Determines the error-estimation for which RTOL is used, default as
-      defect control, available choices:
-        - `1`: Defect control.
-        - `2`: Global error control.
-        - `3`: Defect and then global error control.
-        - `4`: Linear combination of defect and global error control.
-    - `singular_term`: either nothing if the ODEs have no singular terms at the left
-      boundary or a constant (d,d) matrix for the
-        singular term.
+- `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+- `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4,
+  available choices:
+    - `2`: Runge-Kutta method of order 2.
+    - `4`: Runge-Kutta method of order 4.
+    - `6`: Runge-Kutta method of order 6.
+- `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available
+  choices:
+    - `-1`: Full diagnostic printout.
+    - `0`: Selected printout.
+    - `1`: No printout.
+- `error_control`: Determines the error-estimation for which RTOL is used, default as
+  defect control, available choices:
+    - `1`: Defect control.
+    - `2`: Global error control.
+    - `3`: Defect and then global error control.
+    - `4`: Linear combination of defect and global error control.
+- `singular_term`: either nothing if the ODEs have no singular terms at the left
+  boundary or a constant (d,d) matrix for the singular term.
 
 !!! note
 
@@ -70,18 +69,18 @@ For detailed documentation, see
 
 ## Keyword Arguments
 
-    - `bvpclass`: Boundary value problem classification, default as highly nonlinear with
-      bad initial data, available choices:
-        - `0`: Linear boundary value problem.
-        - `1`: Nonlinear with good initial data.
-        - `2`: Highly Nonlinear with bad initial data.
-        - `3`: Highly nonlinear with bad initial data and initial rank reduction to
-          separable linear boundary conditions.
-    - `sol_method`: Switch for solution methods, default as local linear solver with
-      condensing algorithm, available choices:
-        - `0`: Use local linear solver with condensing algorithm.
-        - `1`: Use global sparse linear solver.
-    - `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
+- `bvpclass`: Boundary value problem classification, default as highly nonlinear with
+  bad initial data, available choices:
+    - `0`: Linear boundary value problem.
+    - `1`: Nonlinear with good initial data.
+    - `2`: Highly Nonlinear with bad initial data.
+    - `3`: Highly nonlinear with bad initial data and initial rank reduction to
+      separable linear boundary conditions.
+- `sol_method`: Switch for solution methods, default as local linear solver with
+  condensing algorithm, available choices:
+    - `0`: Use local linear solver with condensing algorithm.
+    - `1`: Use global sparse linear solver.
+- `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
 
 !!! note
 
