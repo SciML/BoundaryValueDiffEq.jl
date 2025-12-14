@@ -98,7 +98,7 @@ end
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* (id.u[i + 1] .- id.u[i])
+        inc = τ / dt .* (id.u[i + 1] .- id.u[i])
         copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
     end
     z .= z .* dt .+ id.u[i]
@@ -122,7 +122,7 @@ end
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* (id.u[i + 1] .- id.u[i])
+        inc = τ / dt .* (id.u[i + 1] .- id.u[i])
         copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
     end
 
@@ -197,8 +197,8 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* (u[ii + 1] .- u[ii])
-        copyto!(z, length_z+1, inc, length_z+1)
+        inc = τ / dt .* (u[ii + 1] .- u[ii])
+        copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
     end
 
     z .= z .* dt .+ u[ii]
@@ -227,7 +227,7 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
 
         # control variable just use linear interpolation
         if has_control
-            inc = τ .* (u[ii + 1] .- u[ii])
+            inc = τ / dt .* (u[ii + 1] .- u[ii])
             copyto!(zvals[i], (length_z + 1):M, inc, (length_z + 1):M)
         end
         zvals[i] .= zvals[i] .* dt .+ u[ii]

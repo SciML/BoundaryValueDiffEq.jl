@@ -561,7 +561,7 @@ end
 function __construct_problem(
         cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{true}) where {iip, BC, C, LF}
-    (; alg, stage, bcresid_prototype, f_prototype) = cache
+    (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
     (; bc_diffmode) = jac_alg
     N = length(cache.mesh)
@@ -615,11 +615,13 @@ function __construct_problem(
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac,
-        jac_prototype, resid_prototype, bcresid_prototype,
-        f_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
+        jac_prototype, resid_prototype, bcresid_prototype, f_prototype,
+        y, cache.p, cache.M, (N - 1) * (stage + 1) + 1, cost_fun)
 end
 
 function __construct_problem(
@@ -705,8 +707,8 @@ function __construct_problem(
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac,
-        jac_prototype, resid_prototype, bcresid_prototype,
-        f_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
+        jac_prototype, resid_prototype, bcresid_prototype, f_prototype,
+        y, cache.p, cache.M, (N - 1) * (stage + 1) + 1, nothing)
 end
 
 function __construct_problem(
@@ -752,11 +754,13 @@ function __construct_problem(
             u, jac_prototype, diffmode, diffcache, loss, cache.p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = copy(resid)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac,
-        jac_prototype, resid_prototype, bcresid_prototype,
-        f_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
+        jac_prototype, resid_prototype, bcresid_prototype, f_prototype,
+        y, cache.p, cache.M, (N - 1) * (stage + 1) + 1, cost_fun)
 end
 
 function __construct_problem(
@@ -816,8 +820,8 @@ function __construct_problem(
     resid_prototype = copy(resid)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac,
-        jac_prototype, resid_prototype, bcresid_prototype,
-        f_prototype, y, cache.p, cache.M, (N - 1) * (stage + 1) + 1)
+        jac_prototype, resid_prototype, bcresid_prototype, f_prototype,
+        y, cache.p, cache.M, (N - 1) * (stage + 1) + 1, nothing)
 end
 
 function __construct_problem(
@@ -874,10 +878,12 @@ function __construct_problem(
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun)
 end
 
 function __construct_problem(
@@ -958,7 +964,7 @@ function __construct_problem(
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N, nothing)
 end
 
 function __construct_problem(
@@ -1001,10 +1007,12 @@ function __construct_problem(
             u, jac_prototype, diffmode, diffcache, loss, cache.p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = copy(resid)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun)
 end
 
 function __construct_problem(
@@ -1055,7 +1063,7 @@ function __construct_problem(
     resid_prototype = copy(resid)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N, nothing)
 end
 
 @views function __firk_loss!(resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,

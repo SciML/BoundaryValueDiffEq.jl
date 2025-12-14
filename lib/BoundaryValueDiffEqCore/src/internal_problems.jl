@@ -154,7 +154,7 @@ end
 # Multiple shooting always use inplace version internal problem constructor
 function __construct_internal_problem(
         prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype, resid_prototype,
-        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing)
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing, ::Nothing)
     T = eltype(y)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{true}(loss; jac = jac, resid_prototype = resid_prototype,
@@ -176,7 +176,7 @@ function __construct_internal_problem(
 end
 function __construct_internal_problem(
         prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype, resid_prototype,
-        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing)
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, ::Nothing, ::Nothing)
     T = eltype(y)
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))

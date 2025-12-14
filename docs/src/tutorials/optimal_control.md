@@ -1,10 +1,16 @@
-# Solve Optimal Control problem
+# Solve Dynamical Optimization problem
 
-The cost function for the optimal problem should be used in the interpolation way, for example,
+BoundaryValueDiffEq.jl is capable of solving dynamical optimization problems via collocation solvers. The syntax for solving with BoundaryValueDiffEq.jl is quite different from JuMP-style optimization modeling DSL.
+
+To model such optimal control problem is more similar to solve an boundary value problem, we only need to further provide the cost functional within `BVPFunction`. In the following content, we will explain the detailed usage of BoundaryValueDiffEq.jl in dynamical optimization with some hands-on examples.
 
 ## Block Move Optimal Control
 
-Block move optimal control problem is an easy example of optimal control problem[kelly2017introduction](@Citet). Suppose we apply the external force $f$ on a block which can slide without friction in one dimension, its position $x$ and velocity $v$ can be described using:
+Block move optimal control problem is an easy example of optimal control problem [kelly2017introduction](@Citet), this problem models moving a small block between two points, starting and finishing at rest, in a fixed amount of time.
+
+### System dynamics
+
+Suppose we apply the external force $f$ on a block which can slide without friction in one dimension, its position $x$ and velocity $v$ can be described using:
 
 $$
 \left\{\begin{aligned}
@@ -13,22 +19,72 @@ $$
 \end{aligned}\right.
 $$
 
-we constrain the block to move from $x = 0$ at time $t = 0$ to $x = 1$ at time $t = 1$. Both the initial and final velocities are constrained to be zero:
+Since the presence of control variables $f$, we can pass our state variables and control variables together as `[state variables, control variables]`, which is `u = [x, v, f]` in the system dynamics:
+
+```julia
+function block_move!(du, u, p, t)
+    x, v, f = u[1], u[2], u[3]
+    du[1] = v
+    du[2] = f
+end
+```
+
+To tell solvers the difference between state variables and control variables, `f_prototype` must be explicitly specified in `BVPFunction`, for example, we have 2 state variables and 1 control variable, so `f_prototype = zeros(2)`.
+
+### Boundary Constraints
+
+The block moves from $x = -1$ at time $t = 0$ to $x = 0$ at time $t = 1$, starting and finishing at rest:
 
 $$
-x(0)=0, v(0)=0, x(1)=1, v(1)=0
+x(0)=-1.0, v(0)=0, x(1)=0, v(1)=0
 $$
 
-we want to minimize the total energy during the whole process, so the cost functional is:
+So the boundary conditions are:
+
+```julia
+function block_move_bc!(res, u, p, t)
+    res[1] = u(0.0)[1] + 1.0
+    res[2] = u(0.0)[2]
+    res[3] = u(1.0)[1]
+    res[4] = u(1.0)[2]
+end
+```
+
+### Cost functional
+
+We want to minimize the total energy during the whole process, so the cost functional is an integral of the applied force(Lagrange form):
 
 $$
-\min_{x(t),v(t),f(t)} \int_0^1 u^2(\tau)d\tau
+\min_{x(t),v(t),f(t)} \frac{1}{2}\int_0^1 u^2(\tau)d\tau
 $$
+
+The cost functional should be defined following the interpolating style in boundary conditions, for example, use `sol(t₁)` to interpolate at `t=t₁`. Here, to express the integral cost function, we can directly use `integral(f, domain)` to integrate the integrand:
+
+```julia
+cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
+```
+
+As for other cost functional which need the interpolation of some exact points of the solution(Mayer form), we only need to define an OOP cost function that interpolating the soluton at the specific point, for example:
+
+```julia
+cost_fun(sol, p) = sol(1.0)[3]
+```
+
+### State and Control bounds
+
+Block move optimal control problem with minimized energy desn't require lower and upper bounds, so we can just specify `lb = [-Inf, -Inf, -Inf]` and `ub = [Inf, Inf, Inf]`.
+
+### Initial guess
+
+The initial guess of the dynamical optimization prolem must be provided, either as the initial guess of the first state, `u0 = [-1.0, 0.0, 6.0]` or initial guess function of the whole solution `u0(t, p) = [sin(t), cos(t), sin(t)]`.
+
+With all the above parts, we can build the model for our blocok move optimal control example:
+So the copy-and-paste code for the block move optimal contorl problem is:
 
 ```julia
 using BoundaryValueDiffEqMIRK, Ipopt, OptimizationMOI
-#cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
-cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
+#cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
+cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
 function block_move!(du, u, p, t)
     x, v, f = u[1], u[2], u[3]
     du[1] = v
@@ -41,12 +97,12 @@ function block_move_bc!(res, u, p, t)
     res[4] = u(1.0)[2]
 end
 tspan = (0.0, 1.0)
-u0 = [-1.0, 0.0, 0.0]
+u0 = [-1.0, 0.0, 6.0]
 block_move_fun = BVPFunction(block_move!, block_move_bc!; cost = cost_fun,
     f_prototype = zeros(2), bcresid_prototype = zeros(4))
 block_move_prob = BVProblem(
-    block_move_fun, u0, tspan; lb = [-1.0, 0.0, -8.0], ub = [0.0, 2.0, 8.0])
-sol = solve(block_move_prob, MIRK4(; optimize = Ipopt.Optimizer()), dt = 0.005, adaptive = false)
+    block_move_fun, u0, tspan; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf])
+sol = solve(block_move_prob, MIRK4(; optimize = Ipopt.Optimizer()), dt = 0.002, adaptive = false)
 ```
 
 ## Rocket Launching Optimal Control
