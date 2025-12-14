@@ -6,31 +6,31 @@ for order in (4, 6)
 
     @eval begin
         """
-              $($alg)(; nlsolve = NewtonRaphson(), optimize = nothing, jac_alg = BVPJacobianAlgorithm(),
-                      defect_threshold = 0.1, max_num_subintervals = 3000)
+            $($alg)(; nlsolve = NewtonRaphson(), optimize = nothing, jac_alg = BVPJacobianAlgorithm(),
+                    defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta Nyström method.
 
         ## Keyword Arguments
 
-            - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-              `NonlinearProblem` interface can be used. Note that any autodiff argument for
-              the solver will be ignored and a custom jacobian algorithm will be used.
-            - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
-              `OptimizationProblem` interface can be used. Note that any autodiff argument for
-              the solver will be ignored and a custom jacobian algorithm will be used. Optimization
-              solvers should first be loaded to allow this functionality.
-            - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
-              `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
-              use based on the input types and problem type.
-              - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
-                `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
-              - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
-                `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
-                `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
-                possible else `AutoFiniteDiff`.
-            - `defect_threshold`: Threshold for defect control.
-            - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+        - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+          `NonlinearProblem` interface can be used. Note that any autodiff argument for
+          the solver will be ignored and a custom jacobian algorithm will be used.
+        - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+          `OptimizationProblem` interface can be used. Note that any autodiff argument for
+          the solver will be ignored and a custom jacobian algorithm will be used. Optimization
+          solvers should first be loaded to allow this functionality.
+        - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
+          `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
+          use based on the input types and problem type.
+          - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+            `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
+          - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+            `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
+            `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
+            possible else `AutoFiniteDiff`.
+        - `defect_threshold`: Threshold for defect control.
+        - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
         !!! note
 
