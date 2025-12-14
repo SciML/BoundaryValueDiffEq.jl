@@ -528,7 +528,7 @@ function __construct_problem(
         cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::StandardBVProblem, constraint::Val{false}) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
-    (; f_prototype, bcresid_prototype) = cache
+    (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
     N = length(cache.mesh)
 
@@ -602,9 +602,11 @@ function __construct_problem(
             cache_collocation, loss_bc, loss_collocation, L, cache.p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     return __construct_internal_problem(
-        cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun)
 end
 
 function __mirk_mpoint_jacobian!(
@@ -653,7 +655,7 @@ function __construct_problem(
         cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::TwoPointBVProblem, constraint::Val{true}) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
-    (; f_prototype, bcresid_prototype) = cache
+    (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
     L_f_prototype = length(f_prototype)
 
@@ -689,17 +691,19 @@ function __construct_problem(
             u, p) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = copy(resid)
     return __construct_internal_problem(
-        cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun)
 end
 
 function __construct_problem(
         cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::TwoPointBVProblem, constraint::Val{false}) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
-    (; f_prototype, bcresid_prototype) = cache
+    (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
 
     resid = vcat(@view(bcresid_prototype[1:prod(cache.resid_size[1])]),
@@ -738,10 +742,12 @@ function __construct_problem(
             u, p) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = copy(resid)
     return __construct_internal_problem(
         cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N)
+        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun)
 end
 
 function __mirk_2point_jacobian!(J, x, diffmode, diffcache, loss_fn::L, resid, p) where {L}
