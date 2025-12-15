@@ -108,7 +108,7 @@ end
 @views function sum_stages!(z::AbstractArray, id::MIRKInterpolation,
         cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
         w, i::Int, τ, ::Type{Val{0}}) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
 
@@ -134,7 +134,7 @@ end
 @views function sum_stages!(
         z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
         w′, i::Int, τ, ::Type{Val{1}}) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     has_control = !isnothing(cache.prob.f.f_prototype)
     length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
@@ -155,7 +155,7 @@ end
 @views function sum_stages!(
         z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
         w′, i::Int, τ, ::Type{Val{1}}) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     has_control = !isnothing(cache.prob.f.f_prototype)
     length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)

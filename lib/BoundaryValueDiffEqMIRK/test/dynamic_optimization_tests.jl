@@ -37,7 +37,7 @@
     function rocket_launch_bc_b!(res, ub, p)
         res[1] = ub[4] - 0.0
     end
-    cost_fun(u, p) = -u[end - 2] #Final altitude x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
+    cost_fun(u, p) = -u(0.2)[2] #Final altitude x_h. To minimize, only temporary, need to use temporary solution interpolation here similar to what we do in boundary condition evaluations.
     u0 = [v_0, h_0, m_T, 3.0]
     rocket_launch_fun_mp = BVPFunction(
         rocket_launch!, rocket_launch_bc!; cost = cost_fun, f_prototype = zeros(3))
