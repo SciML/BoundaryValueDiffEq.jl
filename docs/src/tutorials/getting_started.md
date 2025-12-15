@@ -78,10 +78,10 @@ y_3(1) &=1
 ```@example getting_started
 using BoundaryValueDiffEqMIRKN
 function f!(ddu, du, u, p, t)
-    ϵ = 0.1
+    ε = 0.1
     ddu[1] = u[2]
-    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ϵ
-    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ϵ
+    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ε
+    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ε
 end
 function bc!(res, du, u, p, t)
     res[1] = u(0.0)[1]
