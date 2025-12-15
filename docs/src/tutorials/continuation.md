@@ -23,7 +23,7 @@ Since this BVP would become difficult to solve when ``0<ε\ll 1``, we start the 
 using BoundaryValueDiffEq, Plots
 function f!(du, u, p, t)
     du[1] = u[2]
-    du[2] = -t / p * u[2] - pi^2 * cos(pi * t) - pi * t / p * sin(pi * t)
+    du[2] = -t / p * u[2] - pi^2 * cospi(t) - pi * t / p * sinpi(t)
 end
 function bc!(res, u, p, t)
     res[1] = u[1][1] + 2

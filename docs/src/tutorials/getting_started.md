@@ -123,11 +123,10 @@ x_2(1) &= \sin(1)
 ```@example getting_started
 using BoundaryValueDiffEqAscher
 function f!(du, u, p, t)
-    e = 2.7
     du[1] = (1 + u[2] - sin(t)) * u[4] + cos(t)
     du[2] = cos(t)
     du[3] = u[4]
-    du[4] = (u[1] - sin(t)) * (u[4] - e^t)
+    du[4] = (u[1] - sin(t)) * (u[4] - exp(t))
 end
 function bc!(res, u, p, t)
     res[1] = u[1]
