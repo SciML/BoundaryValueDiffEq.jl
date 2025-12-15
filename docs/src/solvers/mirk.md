@@ -4,7 +4,7 @@ Monotonic Implicit Runge Kutta(MIRK) Methods. To only use the MIRK methods form 
 
 ```julia
 using Pkg
-Pkg.add("BoundaryValueDiffEqFIRK")
+Pkg.add("BoundaryValueDiffEqMIRK")
 ```
 
 ```julia
