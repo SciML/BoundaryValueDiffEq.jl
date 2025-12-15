@@ -7,14 +7,20 @@ When there are more or less boundary conditions than the states in a boundary va
 For example, consider an overdetermined BVP given by the system of differential equations
 
 ```math
-y_1'=y_2\\
-y_2'=-y_1
+\begin{align*}
+y_1' &=  y_2 \\
+y_2' &= -y_1
+\end{align*}
 ```
 
 with boundary conditions of
 
 ```math
-y_1(0)=0, y_1(100)=1, y_2(100) = -1.729109
+\begin{align*}
+y_1(0) &= 0, \\
+y_1(100) &= 1, \\
+y_2(100) &= -1.729109
+\end{align*}
 ```
 
 The test BVP has two state variables but three boundary conditions, which means there are additional constraints on the solution.
@@ -48,11 +54,9 @@ function f!(du, u, p, t)
 end
 bca!(resid, ua, p) = (resid[1] = ua[1])
 bcb!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
-prob = TwoPointBVProblem(
-    BVPFunction(f!, (bca!, bcb!); twopoint = Val(true), bcresid_prototype = (
-        zeros(1), zeros(2))),
-    u0,
-    tspan)
+bvpfun = BVPFunction(f!, (bca!, bcb!); twopoint = Val(true),
+    bcresid_prototype = (zeros(1), zeros(2)))
+prob = TwoPointBVProblem(bvpfun, u0, tspan)
 ```
 
 ## Solve Underdetermined BVP
@@ -66,10 +70,12 @@ EIy'(x)=q(x)
 with boundary condition $y(0)=y(L)=0$, $E$ is the Young's modulus and $I$ is the moment of inertia of the beam's cross section. Here we consider the simplified version and transform this BVP into a first order BVP system:
 
 ```math
-y_1'=y_2\\
-y_2'=y_3\\
-y_3'=y_4\\
-y_4'=0
+\begin{align*}
+y_1' &= y_2\\
+y_2' &= y_3\\
+y_3' &= y_4\\
+y_4' &= 0
+\end{align*}
 ```
 
 ```@example nlls_underdetermined
@@ -108,9 +114,7 @@ bca!(resid, ua, p) = (resid[1] = ua[1])
 bcb!(resid, ub, p) = (resid[1] = ub[1])
 xspan = (0.0, 1.0)
 u0 = [0.0, 1.0, 0.0, 1.0]
-prob = TwoPointBVProblem(
-    BVPFunction(f!, (bca!, bcb!); twopoint = Val(true), bcresid_prototype = (
-        zeros(1), zeros(1))),
-    u0,
-    xspan)
+bvpfun = BVPFunction(f!, (bca!, bcb!); twopoint = Val(true),
+    bcresid_prototype = ( zeros(1), zeros(1)))
+prob = TwoPointBVProblem(bvpfun, u0, xspan)
 ```

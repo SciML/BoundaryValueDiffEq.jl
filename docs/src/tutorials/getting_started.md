@@ -59,26 +59,29 @@ Consirder the test problem from example problems in MIRKN paper [Muir2001MonoImp
 
 ```math
 \begin{cases}
-y_1'(x)= y_2(x),\\
-\epsilon y_2'(x)=-y_1(x)y_2'(x)- y_3(x)y_3'(x),\\
-\epsilon y_3'(x)=y_1'(x) y_3(x)- y_1(x) y_3 '(x)
+y_1'(x) = y_2(x),\\
+ε y_2'(x) = -y_1(x) y_2'(x) - y_3(x) y_3'(x),\\
+ε y_3'(x) =  y_1'(x) y_3(x) - y_1(x) y_3 '(x)
 \end{cases}
 ```
 
 with initial conditions:
 
 ```math
-y_1(0) = y_1'(0)= y_1(1)=y_1'(1)=0,y_3(0)=
--1, y_3(1)=1
+\begin{align*}
+y_1(0) &= y_1'(0) = y_1(1)=y_1'(1)=0, \\
+y_3(0) &= -1, \\
+y_3(1) &=1
+\end{align*}
 ```
 
 ```@example getting_started
 using BoundaryValueDiffEqMIRKN
 function f!(ddu, du, u, p, t)
-    ϵ = 0.1
+    ε = 0.1
     ddu[1] = u[2]
-    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ϵ
-    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ϵ
+    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ε
+    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ε
 end
 function bc!(res, du, u, p, t)
     res[1] = u(0.0)[1]
@@ -100,27 +103,30 @@ Consider the nonlinear semi-explicit DAE of index at most 2 in COLDAE paper [asc
 
 ```math
 \begin{cases}
-x_1'=(\epsilon+x_2-p_2(t))y+p_1'(t) \\
-x_2'=p_2'(t) \\
-x_3'=y \\
-0=(x_1-p_1(t))(y-e^t)
+x_1' = (ε+ x_2 - \sin(t)) y + \cos(t) \\
+x_2' = \cos(t) \\
+x_3' = y \\
+0 = (x_1-p_1(t)) (y-e^t)
 \end{cases}
 ```
 
 with boundary conditions
 
 ```math
-x_1(0)=0,x_3(0)=1,x_2(1)=\sin(1)
+\begin{align*}
+x_1(0) &= 0, \\
+x_3(0) &= 1, \\
+x_2(1) &= \sin(1)
+\end{align*}
 ```
 
 ```@example getting_started
 using BoundaryValueDiffEqAscher
 function f!(du, u, p, t)
-    e = 2.7
     du[1] = (1 + u[2] - sin(t)) * u[4] + cos(t)
     du[2] = cos(t)
     du[3] = u[4]
-    du[4] = (u[1] - sin(t)) * (u[4] - e^t)
+    du[4] = (u[1] - sin(t)) * (u[4] - exp(t))
 end
 function bc!(res, u, p, t)
     res[1] = u[1]
