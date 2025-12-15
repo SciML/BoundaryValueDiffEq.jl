@@ -54,11 +54,9 @@ function f!(du, u, p, t)
 end
 bca!(resid, ua, p) = (resid[1] = ua[1])
 bcb!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
-prob = TwoPointBVProblem(
-    BVPFunction(f!, (bca!, bcb!); twopoint = Val(true), bcresid_prototype = (
-        zeros(1), zeros(2))),
-    u0,
-    tspan)
+bvpfun = BVPFunction(f!, (bca!, bcb!); twopoint = Val(true),
+    bcresid_prototype = (zeros(1), zeros(2)))
+prob = TwoPointBVProblem(bvpfun, u0, tspan)
 ```
 
 ## Solve Underdetermined BVP
@@ -116,9 +114,7 @@ bca!(resid, ua, p) = (resid[1] = ua[1])
 bcb!(resid, ub, p) = (resid[1] = ub[1])
 xspan = (0.0, 1.0)
 u0 = [0.0, 1.0, 0.0, 1.0]
-prob = TwoPointBVProblem(
-    BVPFunction(f!, (bca!, bcb!); twopoint = Val(true), bcresid_prototype = (
-        zeros(1), zeros(1))),
-    u0,
-    xspan)
+bvpfun = BVPFunction(f!, (bca!, bcb!); twopoint = Val(true),
+    bcresid_prototype = ( zeros(1), zeros(1)))
+prob = TwoPointBVProblem(bvpfun, u0, xspan)
 ```
