@@ -10,7 +10,7 @@
     D_c = 0.5 * 620 * m_0 / g_0  # Drag scaling
     u_t_max = 3.5 * g_0 * m_0    # Maximum thrust
     T_max = 0.2                  # Number of seconds
-    T = 1_000                    # Number of time steps
+    T = 200                      # Number of time steps
     Δt = 0.2 / T;                # Time per discretized step
 
     tspan = (0.0, 0.2)
