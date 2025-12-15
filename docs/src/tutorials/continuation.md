@@ -11,8 +11,10 @@ for $\epsilon=10^{-4}$, on $t\in[-1,1]$ with two point boundary conditions $y(-1
 We use the substitution to transform this problem into a first order BVP system:
 
 ```math
-y_1'=y_2\\
-y_2'= -\frac{x}{e}y_2 - \pi^2\cos(\pi x) - \frac{\pi x}{e}\sin(\pi x)
+\begin{align*}
+y_1'&= y_2 \\
+y_2'&= -\frac{x}{ε} y_2 - \pi^2\cos(\pi x) - \frac{\pi x}{ε} \sin(\pi x)
+\end{align*}
 ```
 
 Since this BVP would become difficult to solve when $0<\epsilon\ll 1$, we start the continuation with relatively bigger $\epsilon$ to first obtain a good initial guess for cases when $\epsilon$ are becoming extremely small. We can just use the previous solution from BVP solving as the initial guess `u0` when constructing a new `BVProblem`.

@@ -7,14 +7,20 @@ When there are more or less boundary conditions than the states in a boundary va
 For example, consider an overdetermined BVP given by the system of differential equations
 
 ```math
-y_1'=y_2\\
-y_2'=-y_1
+\begin{align*}
+y_1' &=  y_2 \\
+y_2' &= -y_1
+\end{align*}
 ```
 
 with boundary conditions of
 
 ```math
-y_1(0)=0, y_1(100)=1, y_2(100) = -1.729109
+\begin{align*}
+y_1(0) &= 0, \\
+y_1(100) &= 1, \\
+y_2(100) &= -1.729109
+\end{align*}
 ```
 
 The test BVP has two state variables but three boundary conditions, which means there are additional constraints on the solution.
@@ -66,10 +72,12 @@ EIy'(x)=q(x)
 with boundary condition $y(0)=y(L)=0$, $E$ is the Young's modulus and $I$ is the moment of inertia of the beam's cross section. Here we consider the simplified version and transform this BVP into a first order BVP system:
 
 ```math
-y_1'=y_2\\
-y_2'=y_3\\
-y_3'=y_4\\
-y_4'=0
+\begin{align*}
+y_1' &= y_2\\
+y_2' &= y_3\\
+y_3' &= y_4\\
+y_4' &= 0
+\end{align*}
 ```
 
 ```@example nlls_underdetermined
