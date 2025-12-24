@@ -11,7 +11,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __vec_bc, __vec_bc!, __extract_mesh, get_dense_ad,
                                __get_bcresid_prototype, __split_kwargs, __concrete_kwargs,
                                __default_nonsparse_ad, __construct_internal_problem,
-                               __internal_solve
+                               __internal_solve, __build_cost
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
