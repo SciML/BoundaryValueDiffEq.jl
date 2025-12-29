@@ -500,7 +500,12 @@ Takes the input initial guess and returns the value at the starting mesh point.
 Takes the input initial guess and returns the mesh.
 """
 @inline __extract_mesh(u₀, t₀, t₁, n::Int) = collect(range(t₀; stop = t₁, length = n + 1))
-@inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
+@inline function __extract_mesh(u₀, t₀, t₁, dt::Number)
+    # Use range with specified endpoints to ensure mesh includes exactly t₀ and t₁
+    # This fixes issues where t₀:dt:t₁ may not include t₁ due to floating point precision
+    n = Int(cld(t₁ - t₀, dt))
+    return collect(range(t₀; stop = t₁, length = n + 1))
+end
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = copy(u₀.t)
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = copy(u₀.t)
 @inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Int) = copy(u₀.t)

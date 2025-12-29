@@ -186,10 +186,31 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
         end
     end
 
+    # Determine the return code for SciMLBase
+    # For retcode -5 (initial values inconsistent with separable linear bc),
+    # the solver may still produce a valid solution. Check the BC residuals
+    # to determine if the solution is acceptable.
+    sciml_retcode = if retcode ≥ 0
+        ReturnCode.Success
+    elseif retcode == -5
+        # Check if the solution satisfies the boundary conditions within tolerance
+        ya = sol_x[:, 1]
+        yb = sol_x[:, end]
+        bc_resid = zeros(eltype(sol_x), length(ya))
+        bvpsol_bc(ya, yb, bc_resid)
+        # Use the same tolerance as the solver
+        if maximum(abs, bc_resid) ≤ reltol
+            ReturnCode.Success
+        else
+            ReturnCode.Failure
+        end
+    else
+        ReturnCode.Failure
+    end
+
     ivpsol = SciMLBase.build_solution(prob, alg, sol_t,
         map(x -> reshape(convert(Vector{eltype(u0_)}, x), u0_size), eachcol(sol_x));
-        retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure,
-        stats, original = (sol_t, sol_x, retcode, stats))
+        retcode = sciml_retcode, stats, original = (sol_t, sol_x, retcode, stats))
 
     return ivpsol
 end
