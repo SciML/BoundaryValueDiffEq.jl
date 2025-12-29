@@ -7,7 +7,8 @@ for order in (2, 3, 4, 5, 6)
     @eval begin
         """
             $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
-                    defect_threshold = 0.1, max_num_subintervals = 3000)
+                    defect_threshold = 0.1, max_num_subintervals = 3000,
+                    singular_term = nothing)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
 
@@ -33,6 +34,11 @@ for order in (2, 3, 4, 5, 6)
                 possible else `AutoFiniteDiff`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+          - `singular_term`: Either `nothing` if the ODE has no singular terms at the left
+            boundary, or a constant `(d, d)` matrix `S` for the singular term. When specified,
+            the ODE is assumed to have the form `y' = S * y / t + f(t, y)` where the
+            singularity is at `t = 0`. The solver handles this by using limiting values
+            at `t = 0` and adding the singular term contribution at other points.
 
         !!! note
 
@@ -52,12 +58,13 @@ for order in (2, 3, 4, 5, 6)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T, S} <: AbstractMIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
+            singular_term::S = nothing
         end
     end
 end
@@ -68,7 +75,8 @@ for order in (6)
     @eval begin
         """
             $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
-                    defect_threshold = 0.1, max_num_subintervals = 3000)
+                    defect_threshold = 0.1, max_num_subintervals = 3000,
+                    singular_term = nothing)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
 
@@ -93,6 +101,11 @@ for order in (6)
                 possible else `AutoFiniteDiff`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+          - `singular_term`: Either `nothing` if the ODE has no singular terms at the left
+            boundary, or a constant `(d, d)` matrix `S` for the singular term. When specified,
+            the ODE is assumed to have the form `y' = S * y / t + f(t, y)` where the
+            singularity is at `t = 0`. The solver handles this by using limiting values
+            at `t = 0` and adding the singular term contribution at other points.
 
         !!! note
 
@@ -112,12 +125,13 @@ for order in (6)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T, S} <: AbstractMIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
+            singular_term::S = nothing
         end
     end
 end

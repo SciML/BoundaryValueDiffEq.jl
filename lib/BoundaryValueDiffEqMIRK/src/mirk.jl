@@ -1,3 +1,20 @@
+"""
+    __add_singular_term!(K, singular_term, y, t)
+
+Helper function to add the singular term contribution S * y / t to K for t > 0.
+Used in collocation residual computation for singular BVPs of the form y' = S*y/t + f(t,y).
+"""
+@inline function __add_singular_term!(K, singular_term::Nothing, y, t)
+    return nothing
+end
+
+@inline function __add_singular_term!(K, singular_term::AbstractMatrix, y, t)
+    if t > 0
+        mul!(K, singular_term, y, one(t) / t, one(t))
+    end
+    return nothing
+end
+
 @concrete struct MIRKCache{iip, T, use_both, diffcache, fit_parameters} <:
                  AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
@@ -27,6 +44,8 @@
     errors
     new_stages
     resid_size
+    # Singular term for singular BVPs of the form y' = S*y/t + f(t,y)
+    singular_term
     nlsolve_kwargs
     optimize_kwargs
     kwargs
@@ -128,10 +147,11 @@ function SciMLBase.__init(
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
-        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
-        residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, nlsolve_kwargs,
-        optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
+        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type,
+        prob.p, alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete,
+        k_interp, y, y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages,
+        resid₁_size, alg.singular_term, nlsolve_kwargs, optimize_kwargs,
+        (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
 end
 
 """

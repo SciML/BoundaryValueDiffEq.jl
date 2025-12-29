@@ -1,10 +1,10 @@
 function Φ!(residual, cache::MIRKCache, y, u, trait)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU,
-        y, u, cache.p, cache.mesh, cache.mesh_dt, cache.stage, trait)
+    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
+        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait)
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau,
-        y, u, p, mesh, mesh_dt, stage::Int, ::DiffCacheNeeded)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
+        mesh, mesh_dt, stage::Int, singular_term, ::DiffCacheNeeded)
     (; c, v, x, b) = TU
 
     tmp = get_tmp(fᵢ_cache, u)
@@ -20,7 +20,9 @@ end
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
             __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
-            f!(K[:, r], tmp, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            f!(K[:, r], tmp, p, t)
+            __add_singular_term!(K[:, r], singular_term, tmp, t)
         end
 
         # Update residual
@@ -29,8 +31,8 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y,
-        u, p, mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded)
+@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
+        mesh, mesh_dt, stage::Int, singular_term, ::NoDiffCacheNeeded)
     (; c, v, x, b) = TU
 
     tmp = similar(fᵢ_cache)
@@ -46,7 +48,9 @@ end
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
             __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
-            f!(K[:, r], tmp, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            f!(K[:, r], tmp, p, t)
+            __add_singular_term!(K[:, r], singular_term, tmp, t)
         end
 
         # Update residual
@@ -56,12 +60,12 @@ end
 end
 
 function Φ(cache::MIRKCache, y, u, trait)
-    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, trait)
+    return Φ(cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
+        cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait)
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u,
-        p, mesh, mesh_dt, stage::Int, ::DiffCacheNeeded)
+@views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, singular_term, ::DiffCacheNeeded)
     (; c, v, x, b) = TU
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp = get_tmp(fᵢ_cache, u)
@@ -77,7 +81,9 @@ end
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
             __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
-            K[:, r] .= f(tmp, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            K[:, r] .= f(tmp, p, t)
+            __add_singular_term!(K[:, r], singular_term, tmp, t)
         end
 
         # Update residual
@@ -88,8 +94,8 @@ end
     return residuals
 end
 
-@views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded)
+@views function Φ(fᵢ_cache, k_discrete, f, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, singular_term, ::NoDiffCacheNeeded)
     (; c, v, x, b) = TU
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp = similar(fᵢ_cache)
@@ -105,7 +111,9 @@ end
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
             __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
-            K[:, r] .= f(tmp, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            K[:, r] .= f(tmp, p, t)
+            __add_singular_term!(K[:, r], singular_term, tmp, t)
         end
 
         # Update residual

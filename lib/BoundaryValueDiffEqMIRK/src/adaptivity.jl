@@ -362,7 +362,7 @@ end
 @views function error_estimate!(
         cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, controller::DefectControl,
         errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
-    (; f, alg, mesh, mesh_dt) = cache
+    (; f, alg, mesh, mesh_dt, singular_term) = cache
     (; τ_star) = cache.ITU
 
     # Evaluate at the first sample point
@@ -376,21 +376,31 @@ end
         dt = mesh_dt[i]
 
         z, z′ = sum_stages!(cache, w₁, w₁′, i)
+        t₁ = mesh[i] + τ_star * dt
         if iip
             yᵢ₁ = cache.y[i].du
-            f(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
+            f(yᵢ₁, z, cache.p, t₁)
+            __add_singular_term!(yᵢ₁, singular_term, z, t₁)
         else
-            yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
+            yᵢ₁ = f(z, cache.p, t₁)
+            if singular_term !== nothing && t₁ > 0
+                yᵢ₁ = yᵢ₁ .+ singular_term * z / t₁
+            end
         end
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
+        t₂ = mesh[i] + (T(1) - τ_star) * dt
         if iip
             yᵢ₂ = cache.y[i + 1].du
-            f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+            f(yᵢ₂, z, cache.p, t₂)
+            __add_singular_term!(yᵢ₂, singular_term, z, t₂)
         else
-            yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+            yᵢ₂ = f(z, cache.p, t₂)
+            if singular_term !== nothing && t₂ > 0
+                yᵢ₂ = yᵢ₂ .+ singular_term * z / t₂
+            end
         end
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
@@ -407,7 +417,7 @@ end
 @views function error_estimate!(
         cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, controller::DefectControl,
         errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
-    (; f, alg, mesh, mesh_dt) = cache
+    (; f, alg, mesh, mesh_dt, singular_term) = cache
     (; τ_star) = cache.ITU
 
     # Evaluate at the first sample point
@@ -421,21 +431,31 @@ end
         dt = mesh_dt[i]
 
         z, z′ = sum_stages!(cache, w₁, w₁′, i)
+        t₁ = mesh[i] + τ_star * dt
         if iip
             yᵢ₁ = cache.y[i]
-            f(yᵢ₁, z, cache.p, mesh[i] + τ_star * dt)
+            f(yᵢ₁, z, cache.p, t₁)
+            __add_singular_term!(yᵢ₁, singular_term, z, t₁)
         else
-            yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
+            yᵢ₁ = f(z, cache.p, t₁)
+            if singular_term !== nothing && t₁ > 0
+                yᵢ₁ = yᵢ₁ .+ singular_term * z / t₁
+            end
         end
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
         z, z′ = sum_stages!(cache, w₂, w₂′, i)
+        t₂ = mesh[i] + (T(1) - τ_star) * dt
         if iip
             yᵢ₂ = cache.y[i + 1]
-            f(yᵢ₂, z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+            f(yᵢ₂, z, cache.p, t₂)
+            __add_singular_term!(yᵢ₂, singular_term, z, t₂)
         else
-            yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
+            yᵢ₂ = f(z, cache.p, t₂)
+            if singular_term !== nothing && t₂ > 0
+                yᵢ₂ = yᵢ₂ .+ singular_term * z / t₂
+            end
         end
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
@@ -548,7 +568,8 @@ Here, the ki_interp is the stages in one subinterval.
 @views function interp_setup!(cache::MIRKCache{
         iip, T, use_both, DiffCacheNeeded}) where {iip, T, use_both}
     (; x_star, s_star, c_star, v_star) = cache.ITU
-    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
+    (; k_interp, k_discrete, f, stage, new_stages,
+        y, p, mesh, mesh_dt, singular_term) = cache
     for r in 1:(s_star - stage)
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
@@ -565,11 +586,15 @@ Here, the ki_interp is the stages in one subinterval.
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                                (1 - v_star[r]) .* vec(y[i].du) .+
                                v_star[r] .* vec(y[i + 1].du)
+            t = mesh[i] + c_star[r] * mesh_dt[i]
             if iip
-                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                f(k_interp.u[i][:, r], new_stages.u[i], p, t)
+                __add_singular_term!(k_interp.u[i][:, r], singular_term, new_stages.u[i], t)
             else
-                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] +
-                                                             c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(new_stages.u[i], p, t)
+                if singular_term !== nothing && t > 0
+                    k_interp.u[i][:, r] .+= singular_term * new_stages.u[i] / t
+                end
             end
         end
     end
@@ -579,7 +604,8 @@ end
 @views function interp_setup!(cache::MIRKCache{
         iip, T, use_both, NoDiffCacheNeeded}) where {iip, T, use_both}
     (; x_star, s_star, c_star, v_star) = cache.ITU
-    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
+    (; k_interp, k_discrete, f, stage, new_stages,
+        y, p, mesh, mesh_dt, singular_term) = cache
     for r in 1:(s_star - stage)
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
@@ -595,11 +621,15 @@ end
         for i in eachindex(new_stages)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                                (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
+            t = mesh[i] + c_star[r] * mesh_dt[i]
             if iip
-                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+                f(k_interp.u[i][:, r], new_stages.u[i], p, t)
+                __add_singular_term!(k_interp.u[i][:, r], singular_term, new_stages.u[i], t)
             else
-                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] +
-                                                             c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(new_stages.u[i], p, t)
+                if singular_term !== nothing && t > 0
+                    k_interp.u[i][:, r] .+= singular_term * new_stages.u[i] / t
+                end
             end
         end
     end
