@@ -292,6 +292,7 @@ function __extract_problem_details(prob, u0::SciMLBase.ODESolution; dt = 0.0,
     if fit_parameters
         prob.p isa SciMLBase.NullParameters &&
             throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
+        t₀, t₁ = prob.tspan
         new_u = vcat(_u0, prob.p)
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end

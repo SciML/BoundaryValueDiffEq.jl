@@ -29,6 +29,8 @@ function SciMLBase.__solve(
 
     nshoots = alg.nshoots
 
+    resida_len = 0
+    residb_len = 0
     if prob.problem_type isa TwoPointBVProblem
         resida_len = prod(resid_size[1])
         residb_len = prod(resid_size[2])
