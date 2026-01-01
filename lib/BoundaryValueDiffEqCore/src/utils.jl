@@ -266,13 +266,20 @@ function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
+    # Handle infinite time spans by computing intervals in transformed domain
+    Nig = if isinf(t₀) || isinf(t₁)
+        # For infinite time spans, use dt to determine number of intervals in [0, 1]
+        Int(cld(one(eltype(prob.tspan)), dt))
+    else
+        Int(cld(t₁ - t₀, dt))
+    end
     if fit_parameters
         prob.p isa SciMLBase.NullParameters &&
             throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
         new_u = vcat(u0, prob.p)
-        return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
+        return Val(false), eltype(new_u), length(new_u), Nig, new_u
     end
-    return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
+    return Val(false), eltype(u0), length(u0), Nig, prob.u0
 end
 function __extract_problem_details(prob, f::F; dt = 0.0, check_positive_dt::Bool = false,
         fit_parameters::Bool = false) where {F <: Function}
@@ -281,7 +288,13 @@ function __extract_problem_details(prob, f::F; dt = 0.0, check_positive_dt::Bool
 
     u0 = __initial_guess(f, prob.p, prob.tspan[1]; fit_parameters = fit_parameters)
     t₀, t₁ = prob.tspan
-    return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
+    # Handle infinite time spans
+    Nig = if isinf(t₀) || isinf(t₁)
+        Int(cld(one(eltype(prob.tspan)), dt))
+    else
+        Int(cld(t₁ - t₀, dt))
+    end
+    return Val(true), eltype(u0), length(u0), Nig, u0
 end
 
 function __extract_problem_details(prob, u0::SciMLBase.ODESolution; dt = 0.0,
@@ -809,4 +822,113 @@ function __construct_internal_problem(
         return __internal_optimization_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons)
     end
+end
+
+# ============================================================================
+# Functions for Infinite Time BVP Support
+# ============================================================================
+
+"""
+    __extract_mesh_with_transform(u₀, t₀, t₁, n)
+
+Extract mesh with automatic transformation detection for infinite time spans.
+Returns `(mesh, transform)` where mesh is in transformed coordinates if needed.
+
+For semi-infinite intervals [t₀, ∞), returns a mesh in [0, 1] along with the
+appropriate `SemiInfiniteTransform`.
+"""
+function __extract_mesh_with_transform(u₀, t₀::T, t₁::T, n::Int) where {T}
+    transform, τ₀, τ₁ = select_transform(t₀, t₁)
+    mesh = collect(range(τ₀; stop = τ₁, length = n + 1))
+    return mesh, transform
+end
+
+function __extract_mesh_with_transform(u₀, t₀::T, t₁::T, dt::Number) where {T}
+    transform, τ₀, τ₁ = select_transform(t₀, t₁)
+    if is_identity_transform(transform)
+        n = Int(cld(t₁ - t₀, dt))
+    else
+        # For transformed domain, use dt as a guide for number of points
+        # but create uniform mesh in transformed space
+        n = Int(cld(one(T), dt))
+    end
+    mesh = collect(range(τ₀; stop = τ₁, length = n + 1))
+    return mesh, transform
+end
+
+# For special initial guess types, don't apply transformation
+function __extract_mesh_with_transform(u₀::DiffEqArray, t₀, t₁, n)
+    mesh = copy(u₀.t)
+    transform = IdentityTransform()
+    return mesh, transform
+end
+
+function __extract_mesh_with_transform(u₀::SciMLBase.ODESolution, t₀, t₁, n)
+    mesh = copy(u₀.t)
+    transform = IdentityTransform()
+    return mesh, transform
+end
+
+"""
+    __wrap_f_with_transform(f, transform)
+
+Wrap the ODE function to work with transformed time coordinates.
+For a transformed ODE, we have: du/dτ = f(t(τ), u) * dt/dτ
+
+Returns a wrapped function that takes τ as the time argument.
+"""
+function __wrap_f_with_transform(f!, ::IdentityTransform, iip::Val{true})
+    return f!
+end
+
+function __wrap_f_with_transform(f, ::IdentityTransform, iip::Val{false})
+    return f
+end
+
+function __wrap_f_with_transform(f!, transform::TimeDomainTransform, ::Val{true})
+    return function (du, u, p, τ)
+        t = τ_to_t(transform, τ)
+        scale = dtdτ(transform, τ)
+        f!(du, u, p, t)
+        du .*= scale
+        return nothing
+    end
+end
+
+function __wrap_f_with_transform(f, transform::TimeDomainTransform, ::Val{false})
+    return function (u, p, τ)
+        t = τ_to_t(transform, τ)
+        scale = dtdτ(transform, τ)
+        return f(u, p, t) .* scale
+    end
+end
+
+"""
+    __transform_initial_guess_on_mesh(u₀, mesh, p, transform)
+
+Generate initial guess on the transformed mesh.
+"""
+function __transform_initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, mesh, p, transform)
+    return VectorOfArray([copy(vec(u)) for u in u₀])
+end
+
+function __transform_initial_guess_on_mesh(u₀::VectorOfArray, mesh, p, transform)
+    return copy(u₀)
+end
+
+function __transform_initial_guess_on_mesh(u₀::DiffEqArray, mesh, p, transform)
+    return copy(u₀)
+end
+
+function __transform_initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p, transform)
+    return copy(VectorOfArray(u₀.u))
+end
+
+function __transform_initial_guess_on_mesh(u₀::AbstractArray, mesh, p, transform)
+    return VectorOfArray([copy(vec(u₀)) for _ in mesh])
+end
+
+function __transform_initial_guess_on_mesh(u₀::F, mesh, p, transform) where {F <: Function}
+    # For function initial guess, evaluate at original time points
+    return VectorOfArray([vec(__initial_guess(u₀, p, τ_to_t(transform, τ))) for τ in mesh])
 end

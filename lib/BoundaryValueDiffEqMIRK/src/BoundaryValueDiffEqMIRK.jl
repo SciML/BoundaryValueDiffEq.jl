@@ -23,7 +23,13 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
                                __use_both_error_control, __default_coloring_algorithm,
                                DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
                                __concrete_kwargs, __FastShortcutNonlinearPolyalg,
-                               __construct_internal_problem, __internal_solve
+                               __construct_internal_problem, __internal_solve,
+                               # Infinite time BVP support
+                               TimeDomainTransform, IdentityTransform, SemiInfiniteTransform,
+                               NegativeSemiInfiniteTransform, τ_to_t, t_to_τ, dtdτ,
+                               is_identity_transform, select_transform,
+                               __extract_mesh_with_transform, __wrap_f_with_transform,
+                               __transform_initial_guess_on_mesh
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

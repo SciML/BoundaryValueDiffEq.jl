@@ -1,8 +1,9 @@
 # MIRK Interpolation
 @concrete struct MIRKInterpolation <: AbstractDiffEqInterpolation
-    t
+    t                # Time values in original domain
     u
     cache
+    transform        # Time domain transformation
 end
 
 function DiffEqBase.interp_summary(interp::MIRKInterpolation)
@@ -20,7 +21,7 @@ end
 
 @inline function interpolation(tvals, id::MIRKInterpolation, idxs, deriv::D,
         p, continuity::Symbol = :left) where {D}
-    (; t, u, cache) = id
+    (; t, u, cache, transform) = id
     (; mesh, mesh_dt) = cache
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -35,7 +36,9 @@ end
 
     for j in idx
         z = similar(cache.fᵢ₂_cache)
-        interpolant!(z, id, cache, tvals[j], mesh, mesh_dt, deriv)
+        # Convert to transformed time for interpolation
+        τ_val = t_to_τ(transform, tvals[j])
+        interpolant!(z, id, cache, τ_val, mesh, mesh_dt, deriv)
         vals[j] = idxs !== nothing ? z[idxs] : z
     end
     return DiffEqArray(vals, tvals)
@@ -43,14 +46,16 @@ end
 
 @inline function interpolation!(vals, tvals, id::MIRKInterpolation, idxs,
         deriv::D, p, continuity::Symbol = :left) where {D}
-    (; t, cache) = id
+    (; t, cache, transform) = id
     (; mesh, mesh_dt) = cache
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
 
     for j in idx
         z = similar(id.u[1])
-        interpolant!(z, id, cache, tvals[j], mesh, mesh_dt, deriv)
+        # Convert to transformed time for interpolation
+        τ_val = t_to_τ(transform, tvals[j])
+        interpolant!(z, id, cache, τ_val, mesh, mesh_dt, deriv)
         vals[j] = z
     end
 end
@@ -58,7 +63,9 @@ end
 @inline function interpolation(tval::Number, id::MIRKInterpolation, idxs,
         deriv::D, p, continuity::Symbol = :left) where {D}
     z = similar(id.u[1])
-    interpolant!(z, id, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
+    # Convert to transformed time for interpolation
+    τ_val = t_to_τ(id.transform, tval)
+    interpolant!(z, id, id.cache, τ_val, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
 end
 
@@ -139,7 +146,15 @@ end
     return nothing
 end
 
-@inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
+@inline function __build_interpolation(cache::MIRKCache, u::AbstractVector)
+    # Store the output mesh (original time domain) for interpolation reference
+    output_t = if is_identity_transform(cache.transform)
+        cache.mesh
+    else
+        [τ_to_t(cache.transform, τ) for τ in cache.mesh]
+    end
+    return MIRKInterpolation(output_t, u, cache, cache.transform)
+end
 
 # Intermediate solution for evaluating boundary conditions
 # basically simplified version of the interpolation for MIRK

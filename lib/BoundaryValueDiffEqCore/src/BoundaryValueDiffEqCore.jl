@@ -26,6 +26,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm
 
 include("types.jl")
 include("solution_utils.jl")
+include("transforms.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("abstract_types.jl")
@@ -43,5 +44,9 @@ export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
        NoErrorControl
 export HOErrorControl, REErrorControl
+# Time domain transformations for infinite time BVPs
+export TimeDomainTransform, IdentityTransform, SemiInfiniteTransform,
+       NegativeSemiInfiniteTransform
+export τ_to_t, t_to_τ, dtdτ, is_identity_transform, select_transform
 
 end

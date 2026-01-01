@@ -14,8 +14,8 @@
     ITU                        # MIRK Interpolation Tableau
     bcresid_prototype
     # Everything below gets resized in adaptive methods
-    mesh                       # Discrete mesh
-    mesh_dt                    # Step size
+    mesh                       # Discrete mesh (in transformed coordinates for infinite tspan)
+    mesh_dt                    # Step size (in transformed coordinates)
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
     k_interp                   # Stage information associated with the discrete Runge-Kutta method
     y
@@ -30,6 +30,9 @@
     nlsolve_kwargs
     optimize_kwargs
     kwargs
+    # Time domain transformation for infinite time BVPs
+    transform                  # TimeDomainTransform
+    original_tspan             # Original (t₀, t₁) for output
 end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
@@ -45,11 +48,18 @@ function SciMLBase.__init(
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
 
     t₀, t₁ = prob.tspan
+    original_tspan = prob.tspan
+
+    # Handle infinite time spans with transformation
+    has_infinite_tspan = isinf(t₀) || isinf(t₁)
+
     ig, T,
     N,
     Nig,
-    X = __extract_problem_details(prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
-    mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
+    X = __extract_problem_details(prob; dt, check_positive_dt = !has_infinite_tspan, fit_parameters = fit_parameters)
+
+    # Extract mesh with appropriate transformation for infinite domains
+    mesh, transform = __extract_mesh_with_transform(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(N * (Nig - 1))
@@ -59,7 +69,8 @@ function SciMLBase.__init(
     fᵢ₂_cache = vec(zero(X))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
+    # Use transformed initial guess for infinite time spans
+    y₀ = __transform_initial_guess_on_mesh(prob.u0, mesh, prob.p, transform)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)
@@ -127,11 +138,15 @@ function SciMLBase.__init(
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
+    # Wrap the ODE function with transformation for infinite time spans
+    f_transformed = __wrap_f_with_transform(f, transform, Val(iip))
+
     return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
-        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, N, size(X), f_transformed, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
         residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, nlsolve_kwargs,
-        optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...))
+        optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...),
+        transform, original_tspan)
 end
 
 """
@@ -182,8 +197,16 @@ function SciMLBase.solve!(cache::MIRKCache{iip, T, use_both, diffcache,
 
     interpolation = __build_interpolation(cache, u.u)
 
+    # Transform mesh back to original time domain for the solution
+    # The mesh is in transformed coordinates if we have a non-identity transform
+    output_mesh = if is_identity_transform(cache.transform)
+        cache.mesh
+    else
+        [τ_to_t(cache.transform, τ) for τ in cache.mesh]
+    end
+
     odesol = DiffEqBase.build_solution(
-        prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info)
+        prob, cache.alg, output_mesh, u.u; interp = interpolation, retcode = info)
     return __build_solution(prob, odesol, sol_nlprob)
 end
 
