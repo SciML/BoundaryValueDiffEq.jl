@@ -148,15 +148,15 @@ version = "0.3.7"
 
 [[deps.BibParser]]
 deps = ["BibInternal", "DataStructures", "Dates", "JSONSchema", "TestItems", "YAML"]
-git-tree-sha1 = "33478bed83bd124ea8ecd9161b3918fb4c70e529"
+git-tree-sha1 = "2c9ed5108e3317571ef92c1cb0766fdd38c7d459"
 uuid = "13533e5b-e1c2-4e57-8cef-cac5e52f6474"
-version = "0.2.2"
+version = "0.2.3"
 
 [[deps.Bibliography]]
 deps = ["BibInternal", "BibParser", "DataStructures", "Dates", "FileIO", "TestItems", "YAML"]
-git-tree-sha1 = "0f25be9708ae20d7b94d3bf9d0a91defcca4c884"
+git-tree-sha1 = "0b3e1837077d570bb0c231b9548093de4fa46629"
 uuid = "f1be7e48-bf82-45af-a471-ae754a193061"
-version = "0.3.0"
+version = "0.3.1"
 
 [[deps.Bijections]]
 git-tree-sha1 = "a2d308fcd4c2fb90e943cf9cd2fbfa9c32b69733"
@@ -390,10 +390,10 @@ uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
 
 [[deps.DataStructures]]
-deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "4e1fe97fdaed23e9dc21d4d664bea76b65fc50a0"
+deps = ["OrderedCollections"]
+git-tree-sha1 = "e357641bb3e0638d353c4b29ea0e40ea644066a6"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.18.22"
+version = "0.19.3"
 
 [[deps.Dates]]
 deps = ["Printf"]
