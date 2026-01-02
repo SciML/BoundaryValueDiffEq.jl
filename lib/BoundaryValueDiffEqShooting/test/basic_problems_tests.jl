@@ -8,9 +8,10 @@
         MultipleShooting(10, Tsit5(), NewtonRaphson(;
             autodiff = AutoForwardDiff(; chunksize = 2))),
         MultipleShooting(10, Tsit5())]
-    # JET_SKIP = [false, false, true, false, false, true]
-    JET_SKIP = [true, true, true, true, true, true]
-    JET_BROKEN = [false, false, false, false, false, false]
+    # Runtime dispatches exist due to DifferentiationInterface and dual solver support
+    # @test_call passes (no type errors), but @test_opt has expected runtime dispatches
+    JET_SKIP = [false, false, false, false, false, false]
+    JET_BROKEN = [true, true, true, true, true, true]
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
@@ -44,7 +45,7 @@
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp1, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
     end
 
     # Out of Place
@@ -74,7 +75,7 @@
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp2, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
     end
 
     # Inplace
@@ -98,7 +99,7 @@
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp3, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
     end
 
     # Out of Place
@@ -121,7 +122,7 @@
             odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
         @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
             bvp4, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3))
     end
 end
 
