@@ -36,12 +36,16 @@
 
     tspan = (0.0, 5.0)
     u0 = [5.0 -3.5]
-    probs = [BVProblem(f1!, boundary!, u0, tspan; nlls = Val(false)),
-        TwoPointBVProblem(f1!, (boundary_a!, boundary_b!), u0, tspan;
+    probs = [
+        BVProblem(f1!, boundary!, u0, tspan; nlls = Val(false)),
+        TwoPointBVProblem(
+            f1!, (boundary_a!, boundary_b!), u0, tspan;
             bcresid_prototype = (Array{Float64}(undef, 1, 1), Array{Float64}(undef, 1, 1)),
-            nlls = Val(false)),
+            nlls = Val(false)
+        ),
         BVProblem(f1, boundary, u0, tspan; nlls = Val(false)),
-        TwoPointBVProblem(f1, (boundary_a, boundary_b), u0, tspan; nlls = Val(false))]
+        TwoPointBVProblem(f1, (boundary_a, boundary_b), u0, tspan; nlls = Val(false)),
+    ]
 
     @testset "Affineness" begin
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)

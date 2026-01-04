@@ -60,6 +60,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
 end
 
 function BoundaryValueDiffEqCore.concrete_jacobian_algorithm(
-        jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg::AbstractAscher)
+        jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg::AbstractAscher
+    )
     return BVPJacobianAlgorithm(__default_nonsparse_ad(prob.u0))
 end

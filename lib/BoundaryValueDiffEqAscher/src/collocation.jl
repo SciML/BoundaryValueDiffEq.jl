@@ -1,6 +1,8 @@
 function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval,
-        yval, gval, delz, dmz, deldmz, g, w, v, ipvtg, ipvtw, TU) = cache
+    (;
+        f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval,
+        yval, gval, delz, dmz, deldmz, g, w, v, ipvtg, ipvtw, TU,
+    ) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
     n = length(mesh) - 1
@@ -52,7 +54,8 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
 
             # fill in ncy rows of  w and v
             @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
+                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i]
+            )
         end
 
         @views gblock!(cache, h, g[i], izeta, w[i], v[i])
@@ -153,12 +156,14 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
     copyto!(cache.z, new_z)
-    copyto!(cache.dmz, dmz)
+    return copyto!(cache.dmz, dmz)
 end
 
 function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, bcresid_prototype, residual,
-        zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
+    (;
+        f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, bcresid_prototype, residual,
+        zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU,
+    ) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
     n = length(mesh) - 1
@@ -211,7 +216,8 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
 
             # fill in ncy rows of  w and v
             @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
+                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i]
+            )
         end
 
         @views gblock!(cache, h, g[i], izeta, w[i], v[i])
@@ -313,16 +319,18 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
     copyto!(cache.z, new_z)
-    copyto!(cache.dmz, dmz)
+    return copyto!(cache.dmz, dmz)
 end
 
 @inline __get_value(z::Vector{<:AbstractArray}) = eltype(first(z)) <: ForwardDiff.Dual ?
-                                                  [map(x -> x.value, a) for a in z] : z
+    [map(x -> x.value, a) for a in z] : z
 @inline __get_value(z) = isa(z, ForwardDiff.Dual) ? z.value : z
 
 function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval,
-        gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
+    (;
+        f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval,
+        gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU,
+    ) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
     n = length(mesh) - 1
@@ -373,7 +381,8 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
 
             # fill in ncy rows of  w and v
             @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
+                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i]
+            )
         end
 
         @views gblock!(cache, h, g[i], izeta, w[i], v[i])
@@ -479,8 +488,10 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
 end
 
 function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval,
-        gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
+    (;
+        f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval,
+        gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU,
+    ) = cache
     (; acol, rho) = TU
     ncy = ncomp + ny
     n = length(mesh) - 1
@@ -533,7 +544,8 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
 
             # fill in ncy rows of  w and v
             @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
+                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i]
+            )
         end
 
         @views gblock!(cache, h, g[i], izeta, w[i], v[i])
@@ -657,7 +669,7 @@ function approx(cache::AscherCache{iip, T}, x, zval) where {iip, T}
     zsum = [sum(a[j] * dmz[i][j][jj] for j in 1:k) for jj in 1:ncomp]
     zᵢ = __get_value.(z[i])
     zsum .= zsum .* bm .+ zᵢ
-    zval .= zsum
+    return zval .= zsum
 end
 
 function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
@@ -689,6 +701,7 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
     for j in 1:k
         yval .= yval .+ dm[j] * dmz[i][j][(ncomp + 1):end]
     end
+    return
 end
 
 function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
@@ -730,13 +743,16 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
     for j in 1:k
         @. dmval = dmval + dm[j] * dmz[i][j][1:ncomp]
     end
+    return
 end
 
 # construct a group of ncomp rows of the matrices wi and
 # corresponding to an interior collocation point
 # jj=1...k
-function vwblok(cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
-        vi, ipvtw, zyval, df, acol, dmzo) where {iip, T}
+function vwblok(
+        cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
+        vi, ipvtw, zyval, df, acol, dmzo
+    ) where {iip, T}
     (; jac, k, p, ncomp, ny) = cache
     ncy = ncomp + ny
     kdy = k * ncy
@@ -804,7 +820,7 @@ function gblock!(cache::AscherCache, h, irow, wi, vrhsz, rhsdmz, ipvtw)
     for jcomp in 1:ncomp
         rhsz[irow + jcomp - 1] = sum(hb[j] * rhsdmz[j][jcomp] for j in 1:k)
     end
-    recursive_unflatten!(vrhsz, rhsz)
+    return recursive_unflatten!(vrhsz, rhsz)
 end
 
 function gblock!(cache::AscherCache{iip, T}, h, gi, irow, wi, vi) where {iip, T}
@@ -838,6 +854,7 @@ function gblock!(cache::AscherCache{iip, T}, h, gi, irow, wi, vi) where {iip, T}
         end
         gi[id, icomp] = gi[id, icomp] - T(1)
     end
+    return
 end
 
 function dmzsol!(cache::AscherCache{iip, T}, v, z, dmz) where {iip, T}
@@ -864,11 +881,13 @@ end
     (3 * ncy + 1 ≤ l ≤ 4 * ncy) && (return 4, l - 3 * ncy)
     (4 * ncy + 1 ≤ l ≤ 5 * ncy) && (return 5, l - 4 * ncy)
     (5 * ncy + 1 ≤ l ≤ 6 * ncy) && (return 6, l - 5 * ncy)
-    (6 * ncy + 1 ≤ l ≤ 7 * ncy) && (return 7, l - 6 * ncy)
+    return (6 * ncy + 1 ≤ l ≤ 7 * ncy) && (return 7, l - 6 * ncy)
 end
 
-function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
-        mode::Integer, izeta, pt::StandardBVProblem) where {iip, T}
+function gderiv(
+        cache::AscherCache{iip, T}, gi, irow, zval, dgz,
+        mode::Integer, izeta, pt::StandardBVProblem
+    ) where {iip, T}
     (; ncomp, bcjac) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
@@ -883,7 +902,7 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
     dgz[izeta] = sum(dg .* zval)
 
     # branch according to mode
-    if mode !== 2
+    return if mode !== 2
         # provide coefficients of the j-th linearized side condition.
         # specifically, at x=zeta(j) the j-th side condition reads
         # dg(1)*z(1) + ... +dg(ncomp)*z(ncomp) + g = 0
@@ -898,8 +917,10 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
     end
 end
 
-function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
-        mode::Integer, izeta, pt::TwoPointBVProblem) where {iip, T}
+function gderiv(
+        cache::AscherCache{iip, T}, gi, irow, zval, dgz,
+        mode::Integer, izeta, pt::TwoPointBVProblem
+    ) where {iip, T}
     (; ncomp, bcjac) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
@@ -914,7 +935,7 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
     dgz[izeta] = sum(dg .* zval)
 
     # branch according to mode
-    if mode !== 2
+    return if mode !== 2
         # provide coefficients of the j-th linearized side condition.
         # specifically, at x=zeta(j) the j-th side condition reads
         # dg(1)*z(1) + ... +dg(ncomp)*z(ncomp) + g = 0
@@ -934,5 +955,5 @@ function interval(mesh, t)
     # CODLAE actually evaluate the value at final mesh point at mesh[n]
     (a == length(mesh)) && (return length(mesh) - 1)
     n = length(mesh)
-    a === nothing ? (return clamp(searchsortedfirst(mesh, t) - 1, 1, n)) : a
+    return a === nothing ? (return clamp(searchsortedfirst(mesh, t) - 1, 1, n)) : a
 end

@@ -17,14 +17,20 @@
         tspan = (0.0, pi / 2)
         prob = BVProblem(simplependulum!, bc!, u0, tspan)
         jac_alg_forwarddiff = BVPJacobianAlgorithm(
-            bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff())
+            bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
+        )
         jac_alg_enzyme = BVPJacobianAlgorithm(
-            bc_diffmode = AutoSparse(AutoEnzyme(
-                mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated)),
-            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            bc_diffmode = AutoSparse(
+                AutoEnzyme(
+                    mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated
+                )
+            ),
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
+        )
         jac_alg_mooncake = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
+        )
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
             sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
             @test SciMLBase.successful_retcode(sol)
@@ -46,14 +52,20 @@
         tspan = (0.0, pi / 2)
         prob = BVProblem(simplependulum!, bc!, u0, tspan)
         jac_alg_forwarddiff = BVPJacobianAlgorithm(
-            bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff())
+            bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
+        )
         jac_alg_enzyme = BVPJacobianAlgorithm(
-            bc_diffmode = AutoSparse(AutoEnzyme(
-                mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated)),
-            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            bc_diffmode = AutoSparse(
+                AutoEnzyme(
+                    mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated
+                )
+            ),
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
+        )
         jac_alg_mooncake = BVPJacobianAlgorithm(
             bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated))
+            nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
+        )
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
             sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
             @test SciMLBase.successful_retcode(sol)
@@ -76,13 +88,25 @@
         bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
         tspan = (0.0, 5.0)
         u0 = [5.0, -3.5]
-        prob = TwoPointBVProblem(odef!, (boundary_two_point_a!, boundary_two_point_b!),
-            u0, tspan; bcresid_prototype, nlls = Val(false))
+        prob = TwoPointBVProblem(
+            odef!, (boundary_two_point_a!, boundary_two_point_b!),
+            u0, tspan; bcresid_prototype, nlls = Val(false)
+        )
         jac_alg_forwarddiff = BVPJacobianAlgorithm(AutoSparse(AutoForwardDiff()))
-        jac_alg_enzyme = BVPJacobianAlgorithm(AutoSparse(AutoEnzyme(
-            mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)))
-        jac_alg_mooncake = BVPJacobianAlgorithm(AutoSparse(AutoMooncake(;
-            config = nothing)))
+        jac_alg_enzyme = BVPJacobianAlgorithm(
+            AutoSparse(
+                AutoEnzyme(
+                    mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
+                )
+            )
+        )
+        jac_alg_mooncake = BVPJacobianAlgorithm(
+            AutoSparse(
+                AutoMooncake(;
+                    config = nothing
+                )
+            )
+        )
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
             sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)

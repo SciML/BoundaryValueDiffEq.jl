@@ -51,40 +51,54 @@ odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
 odef2! = ODEFunction(
     f2!, analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+        u0, p, t,
+    ) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))]
+)
 odef2 = ODEFunction(
     f2, analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+        u0, p, t,
+    ) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))]
+)
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
 
-probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
+probArr = [
+    BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary_indexing!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary_indexing, u0, tspan, nlls = Val(false)),
-    TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype, nlls = Val(false)),
-    TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b),
-        u0, tspan; bcresid_prototype, nlls = Val(false)),
-    TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype, nlls = Val(false)),
-    TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
-        u0, tspan; bcresid_prototype, nlls = Val(false))]
+    TwoPointBVProblem(
+        odef1!, (boundary_two_point_a!, boundary_two_point_b!),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+    TwoPointBVProblem(
+        odef1, (boundary_two_point_a, boundary_two_point_b),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+    TwoPointBVProblem(
+        odef2!, (boundary_two_point_a!, boundary_two_point_b!),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+    TwoPointBVProblem(
+        odef2, (boundary_two_point_a, boundary_two_point_b),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+]
 
 testTol = 0.4
-affineTol = 1e-2
+affineTol = 1.0e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
 export probArr, testTol, affineTol, dts, mirk_solver
 
 end
 
-@testitem "Affineness" setup=[MIRKConvergenceTests] begin
+@testitem "Affineness" setup = [MIRKConvergenceTests] begin
     using LinearAlgebra
 
     @testset "Problem: $i" for i in (1, 2, 7, 8)
@@ -101,41 +115,46 @@ end
     end
 end
 
-@testitem "JET: Runtime Dispatches" setup=[MIRKConvergenceTests] begin
+@testitem "JET: Runtime Dispatches" setup = [MIRKConvergenceTests] begin
     using JET
 
     @testset "Problem: $i" for i in 1:10
         prob = probArr[i]
         @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
-            solver = mirk_solver(Val(order); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
+            solver = mirk_solver(
+                Val(order); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+            )
+            @test_opt target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
         end
 
         @testset "MIRK$(order)I" for order in (6,)
-            solver = MIRK6I(; nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
+            solver = MIRK6I(;
+                nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+            )
+            @test_opt target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
         end
     end
 end
 
-@testitem "Convergence on Linear" setup=[MIRKConvergenceTests] begin
+@testitem "Convergence on Linear" setup = [MIRKConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
 
     @testset "Problem: $i" for i in (3, 4, 5, 6, 9, 10)
         prob = probArr[i]
         @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
             sim = test_convergence(
-                dts, prob, mirk_solver(Val(order)); abstol = 1e-8, reltol = 1e-8)
-            @test sim.𝒪est[:final]≈order atol=testTol
+                dts, prob, mirk_solver(Val(order)); abstol = 1.0e-8, reltol = 1.0e-8
+            )
+            @test sim.𝒪est[:final] ≈ order atol = testTol
         end
 
         @testset "MIRK$(order)I" for (_, order) in enumerate((6,))
-            sim = test_convergence(dts, prob, MIRK6I(); abstol = 1e-8, reltol = 1e-8)
-            @test sim.𝒪est[:final]≈order atol=testTol
+            sim = test_convergence(dts, prob, MIRK6I(); abstol = 1.0e-8, reltol = 1.0e-8)
+            @test sim.𝒪est[:final] ≈ order atol = testTol
         end
     end
 end
@@ -160,7 +179,8 @@ end
     bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
     jac_alg = BVPJacobianAlgorithm(;
-        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff()))
+        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff())
+    )
 
     # Using ForwardDiff might lead to Cache expansion warnings
     @test_nowarn solve(bvp1, MIRK2(; jac_alg); dt = 0.005)
@@ -177,14 +197,18 @@ end
     λ = 1
     function prob_bvp_linear_analytic(u, λ, t)
         a = 1 / sqrt(λ)
-        return [(exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
-            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a))]
+        return [
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+        ]
     end
 
     function prob_bvp_linear_analytic_derivative(u, λ, t)
         a = 1 / sqrt(λ)
-        return [(-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
-            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a))]
+        return [
+            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
+        ]
     end
 
     function prob_bvp_linear_f!(du, u, p, t)
@@ -199,8 +223,9 @@ end
     prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
     prob_bvp_linear_tspan = (0.0, 1.0)
     prob_bvp_linear = BVProblem(
-        prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ)
-    testTol = 1e-6
+        prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ
+    )
+    testTol = 1.0e-6
 
     for order in (2, 3, 4, 5, 6)
         s = Symbol("MIRK$(order)")
@@ -211,10 +236,10 @@ end
         sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
 
-        @test sol(0.001)≈sol_analytic atol=testTol
-        @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
-        @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
-        @test sol(0.001; idxs = 2)≈sol_analytic[2] atol=testTol
+        @test sol(0.001) ≈ sol_analytic atol = testTol
+        @test sol(0.001; idxs = [1, 2]) ≈ sol_analytic atol = testTol
+        @test sol(0.001; idxs = 1) ≈ sol_analytic[1] atol = testTol
+        @test sol(0.001; idxs = 2) ≈ sol_analytic[2] atol = testTol
     end
 
     @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
@@ -231,18 +256,18 @@ end
         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
         dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
 
-        @test sol(0.04, Val{0})≈sol_analytic atol=testTol
-        @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+        @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
+        @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
     end
 
     @testset "Interpolation for adaptive MIRK$(order)I" for order in (6,)
         sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001)
         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
 
-        @test sol(0.001)≈sol_analytic atol=testTol
-        @test sol(0.001; idxs = [1, 2])≈sol_analytic atol=testTol
-        @test sol(0.001; idxs = 1)≈sol_analytic[1] atol=testTol
-        @test sol(0.001; idxs = 2)≈sol_analytic[2] atol=testTol
+        @test sol(0.001) ≈ sol_analytic atol = testTol
+        @test sol(0.001; idxs = [1, 2]) ≈ sol_analytic atol = testTol
+        @test sol(0.001; idxs = 1) ≈ sol_analytic[1] atol = testTol
+        @test sol(0.001; idxs = 2) ≈ sol_analytic[2] atol = testTol
     end
 
     @testset "Interpolation for non-adaptive MIRK$(order)I" for order in (6,)
@@ -259,8 +284,8 @@ end
         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
         dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
 
-        @test sol(0.04, Val{0})≈sol_analytic atol=testTol
-        @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+        @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
+        @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
     end
 end
 
@@ -292,7 +317,7 @@ end
     u0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prob = BVProblem(swirling_flow!, swirling_flow_bc!, u0, tspan, eps)
 
-    @test_nowarn solve(prob, MIRK4(); dt = 0.01, abstol = 1e-4)
+    @test_nowarn solve(prob, MIRK4(); dt = 0.01, abstol = 1.0e-4)
 end
 
 @testitem "Solve using Continuation" begin
@@ -319,15 +344,20 @@ end
 
     bvp3 = TwoPointBVProblem(
         simplependulum!, (bc2a!, bc2b!), [pi / 2, pi / 2], (pi / 4, pi / 2),
-        -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+        -pi / 2; bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol3 = solve(bvp3, MIRK4(), dt = 0.05)
 
-    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
-        pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    bvp4 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
+        pi / 2; bcresid_prototype = (zeros(1), zeros(1))
+    )
     @test SciMLBase.successful_retcode(solve(bvp4, MIRK4(), dt = 0.05))
 
-    bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
-        (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    bvp5 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
+        (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1))
+    )
     @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05))
 end
 
@@ -352,7 +382,8 @@ end
 
     bvp_SA = TwoPointBVProblem(
         simplependulum!, (bc2a!, bc2b!), MVector{2}([pi / 2, pi / 2]),
-        tspan; bcresid_prototype = (zeros(1), zeros(1)))
+        tspan; bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol_SA = solve(bvp_SA, MIRK4(), dt = 0.05)
     @test SciMLBase.successful_retcode(sol_SA.retcode)
 end
@@ -370,15 +401,18 @@ end
         residual[2] = u(pi / 2)[1] - pi / 2
     end
     prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
-    for error_control in (DefectControl(), GlobalErrorControl(),
-        SequentialErrorControl(), HybridErrorControl())
+    for error_control in (
+            DefectControl(), GlobalErrorControl(),
+            SequentialErrorControl(), HybridErrorControl(),
+        )
         @test_nowarn sol = solve(
-            prob, MIRK4(), dt = 0.05, abstol = 1e-5, controller = error_control)
+            prob, MIRK4(), dt = 0.05, abstol = 1.0e-5, controller = error_control
+        )
     end
 end
 
 # https://github.com/SciML/BoundaryValueDiffEq.jl/issues/319
-@testitem "Test interpolant evaluation with big defect" setup=[MIRKConvergenceTests] begin
+@testitem "Test interpolant evaluation with big defect" setup = [MIRKConvergenceTests] begin
     function lotka!(du, u, p, t)
         x = u[1]
         y = u[2]
@@ -397,7 +431,7 @@ end
     end
 end
 
-@testitem "Test maxsol and minsol" setup=[MIRKConvergenceTests] begin
+@testitem "Test maxsol and minsol" setup = [MIRKConvergenceTests] begin
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)
         θ = u[1]
@@ -416,7 +450,7 @@ end
     end
 end
 
-@testitem "Test unknown parameters estimation" setup=[MIRKConvergenceTests] begin
+@testitem "Test unknown parameters estimation" setup = [MIRKConvergenceTests] begin
     tspan = (0.0, pi)
     function f!(du, u, p, t)
         du[1] = u[2]
@@ -432,11 +466,13 @@ end
     function guess(p, t)
         return [cos(4t); -4sin(4t)]
     end
-    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    bvp = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+    )
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
-    @test sol.prob.p≈[17.09658] atol=1e-5
+    @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 
     tspan = (0.0, pi)
     function f!(du, u, p, t)
@@ -451,14 +487,16 @@ end
     function guess(p, t)
         return [cos(4t); -4sin(4t)]
     end
-    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    bvp = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+    )
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
-    @test sol.prob.p≈[17.09658] atol=1e-5
+    @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 end
 
-@testitem "Convergence with optimization based solver" setup=[MIRKConvergenceTests] begin
+@testitem "Convergence with optimization based solver" setup = [MIRKConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools, OptimizationIpopt
 
     # Only test on inplace problems
@@ -467,14 +505,17 @@ end
         @testset "MIRK$order" for (_, order) in enumerate((2, 3, 4, 5, 6))
             sim = test_convergence(
                 dts, prob, mirk_solver(Val(order), optimize = IpoptOptimizer());
-                abstol = 1e-8, reltol = 1e-8)
-            @test sim.𝒪est[:final]≈order atol=testTol
+                abstol = 1.0e-8, reltol = 1.0e-8
+            )
+            @test sim.𝒪est[:final] ≈ order atol = testTol
         end
 
         @testset "MIRK$(order)I" for (_, order) in enumerate((6,))
-            sim = test_convergence(dts, prob, MIRK6I(; optimize = IpoptOptimizer());
-                abstol = 1e-8, reltol = 1e-8)
-            @test sim.𝒪est[:final]≈order atol=testTol
+            sim = test_convergence(
+                dts, prob, MIRK6I(; optimize = IpoptOptimizer());
+                abstol = 1.0e-8, reltol = 1.0e-8
+            )
+            @test sim.𝒪est[:final] ≈ order atol = testTol
         end
     end
 end
@@ -493,7 +534,9 @@ end
         residual[1] = u(pi / 4)[1] + pi / 2
         residual[2] = u(pi / 2)[1] - pi / 2
     end
-    prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan,
-        lcons = [-10.0, -10.0], ucons = [10.0, 10.0])
+    prob = BVProblem(
+        simplependulum!, bc!, [pi / 2, pi / 2], tspan,
+        lcons = [-10.0, -10.0], ucons = [10.0, 10.0]
+    )
     @test_nowarn sol = solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 end

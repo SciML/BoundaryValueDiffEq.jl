@@ -2,26 +2,43 @@
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, LinearAlgebra, JET
 
     SOLVERS = [
-        Shooting(Tsit5(), NewtonRaphson(),
-            jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
-        Shooting(Tsit5(), LevenbergMarquardt(;
-            autodiff = AutoForwardDiff(; chunksize = 2))),
+        Shooting(
+            Tsit5(), NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+        ),
+        Shooting(
+            Tsit5(), LevenbergMarquardt(;
+                autodiff = AutoForwardDiff(; chunksize = 2)
+            )
+        ),
         Shooting(Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Tsit5(), NewtonRaphson(),
-            jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))),
-        MultipleShooting(10, Tsit5(), LevenbergMarquardt(;
-            autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(
+            10, Tsit5(), NewtonRaphson(),
+            jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+        ),
+        MultipleShooting(
+            10, Tsit5(), LevenbergMarquardt(;
+                autodiff = AutoForwardDiff(; chunksize = 2)
+            )
+        ),
         MultipleShooting(10, Tsit5(), LevenbergMarquardt(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Tsit5(), GaussNewton(;
-            autodiff = AutoForwardDiff(; chunksize = 2))),
+        MultipleShooting(
+            10, Tsit5(), GaussNewton(;
+                autodiff = AutoForwardDiff(; chunksize = 2)
+            )
+        ),
         MultipleShooting(10, Tsit5(), GaussNewton(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Tsit5(), TrustRegion(;
-            autodiff = AutoForwardDiff(; chunksize = 2))),
-        MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff()))]
+        MultipleShooting(
+            10, Tsit5(), TrustRegion(;
+                autodiff = AutoForwardDiff(; chunksize = 2)
+            )
+        ),
+        MultipleShooting(10, Tsit5(), TrustRegion(; autodiff = AutoFiniteDiff())),
+    ]
     # JET_SKIP = fill(false, length(SOLVERS))
     JET_SKIP = fill(true, length(SOLVERS))
     JET_OPT_BROKEN = fill(false, length(SOLVERS))
@@ -45,17 +62,21 @@
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(4)), u0, tspan; nlls = Val(true))
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        sol = solve(
+            bvp1, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        )
         @test norm(sol.resid, Inf) < 0.005
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp1, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp1, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_OPT_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp1, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_CALL_BROKEN[i]
     end
 
     # IIP MP-BVP
@@ -81,17 +102,21 @@
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(4)), u0, tspan; nlls = Val(true))
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        sol = solve(
+            bvp2, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        )
         @test norm(sol.resid, Inf) < 0.005
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp2, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp2, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_OPT_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp2, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_CALL_BROKEN[i]
     end
 
     # OOP TP-BVP
@@ -99,24 +124,31 @@
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
     bvp3 = BVProblem(
-        BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))),
+        BVPFunction{false}(
+            f1, (bc1a, bc1b); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))
+        ),
         u0,
         tspan;
-        nlls = Val(true))
+        nlls = Val(true)
+    )
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        sol = solve(
+            bvp3, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        )
         @test norm(sol.resid, Inf) < 0.009
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp3, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp3, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_OPT_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp3, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_CALL_BROKEN[i]
     end
 
     # IIP TP-BVP
@@ -124,23 +156,30 @@
     bc1b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
     bvp4 = BVProblem(
-        BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))),
+        BVPFunction{true}(
+            f1!, (bc1a!, bc1b!); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))
+        ),
         u0,
         tspan;
-        nlls = Val(true))
+        nlls = Val(true)
+    )
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))
+        sol = solve(
+            bvp4, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        )
         @test norm(sol.resid, Inf) < 0.009
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_OPT_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp4, solver; verbose = false, abstol = 1e-6, reltol = 1e-6,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-6)) broken=JET_CALL_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp4, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_OPT_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp4, solver; verbose = false, abstol = 1.0e-6, reltol = 1.0e-6,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6)
+        ) broken = JET_CALL_BROKEN[i]
     end
 end

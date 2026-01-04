@@ -27,12 +27,12 @@ function Base.show(io::IO, alg::BVPJacobianAlgorithm)
         end
     end
     print(io, join(modifiers, ", "))
-    print(io, ")")
+    return print(io, ")")
 end
 
 @inline __any_sparse_ad(::AutoSparse) = true
 @inline function __any_sparse_ad(jac_alg::BVPJacobianAlgorithm)
-    __any_sparse_ad(jac_alg.bc_diffmode) ||
+    return __any_sparse_ad(jac_alg.bc_diffmode) ||
         __any_sparse_ad(jac_alg.nonbc_diffmode) ||
         __any_sparse_ad(jac_alg.diffmode)
 end
@@ -68,19 +68,21 @@ end
 
 # For multi-point BVP, we only care about bc_diffmode and nonbc_diffmode
 function concrete_jacobian_algorithm(
-        jac_alg::BVPJacobianAlgorithm, prob_type::StandardBVProblem, prob::BVProblem, alg)
+        jac_alg::BVPJacobianAlgorithm, prob_type::StandardBVProblem, prob::BVProblem, alg
+    )
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     bc_diffmode = jac_alg.bc_diffmode === nothing ? __default_bc_sparse_ad(u0) :
-                  jac_alg.bc_diffmode
+        jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
-                     jac_alg.nonbc_diffmode
+        jac_alg.nonbc_diffmode
     diffmode = jac_alg.diffmode === nothing ? nothing : jac_alg.diffmode
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
 
 # For two-point BVP, we only care about diffmode
 function concrete_jacobian_algorithm(
-        jac_alg::BVPJacobianAlgorithm, prob_type::TwoPointBVProblem, prob::BVProblem, alg)
+        jac_alg::BVPJacobianAlgorithm, prob_type::TwoPointBVProblem, prob::BVProblem, alg
+    )
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ? nothing : jac_alg.bc_diffmode
@@ -92,10 +94,12 @@ function concrete_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm, prob_type, p
     u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     diffmode = jac_alg.diffmode === nothing ? __default_sparse_ad(u0) : jac_alg.diffmode
     bc_diffmode = jac_alg.bc_diffmode === nothing ?
-                  (prob_type isa TwoPointSecondOrderBVProblem ? __default_bc_sparse_ad :
-                   __default_nonsparse_ad)(u0) : jac_alg.bc_diffmode
+        (
+            prob_type isa TwoPointSecondOrderBVProblem ? __default_bc_sparse_ad :
+            __default_nonsparse_ad
+        )(u0) : jac_alg.bc_diffmode
     nonbc_diffmode = jac_alg.nonbc_diffmode === nothing ? __default_sparse_ad(u0) :
-                     jac_alg.nonbc_diffmode
+        jac_alg.nonbc_diffmode
 
     return BVPJacobianAlgorithm(bc_diffmode, nonbc_diffmode, diffmode)
 end
@@ -106,11 +110,14 @@ end
 @inline __default_sparse_ad(x::T) where {T} = __default_sparse_ad(T)
 @inline __default_sparse_ad(::Type{<:Complex}) = AutoSparse(
     AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector(),
-    coloring_algorithm = GreedyColoringAlgorithm())
+    coloring_algorithm = GreedyColoringAlgorithm()
+)
 @inline function __default_sparse_ad(::Type{T}) where {T}
-    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
+    return AutoSparse(
+        ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
         sparsity_detector = TracerLocalSparsityDetector(),
-        coloring_algorithm = GreedyColoringAlgorithm())
+        coloring_algorithm = GreedyColoringAlgorithm()
+    )
 end
 
 @inline function __default_bc_sparse_ad(x::AbstractArray{T}) where {T}
@@ -119,21 +126,24 @@ end
 @inline __default_bc_sparse_ad(x::T) where {T} = __default_bc_sparse_ad(T)
 @inline __default_bc_sparse_ad(::Type{<:Complex}) = AutoSparse(
     AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector(),
-    coloring_algorithm = GreedyColoringAlgorithm())
+    coloring_algorithm = GreedyColoringAlgorithm()
+)
 @inline function __default_bc_sparse_ad(::Type{T}) where {T}
-    return AutoSparse(ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
+    return AutoSparse(
+        ifelse(ForwardDiff.can_dual(T), AutoForwardDiff(), AutoFiniteDiff()),
         sparsity_detector = TracerLocalSparsityDetector(),
-        coloring_algorithm = GreedyColoringAlgorithm())
+        coloring_algorithm = GreedyColoringAlgorithm()
+    )
 end
 
 @inline __default_coloring_algorithm(_) = GreedyColoringAlgorithm()
 @inline __default_coloring_algorithm(diffmode::AutoSparse) = isnothing(diffmode) ?
-                                                             GreedyColoringAlgorithm() :
-                                                             diffmode.coloring_algorithm
+    GreedyColoringAlgorithm() :
+    diffmode.coloring_algorithm
 @inline __default_sparsity_detector(_) = TracerLocalSparsityDetector()
 @inline __default_sparsity_detector(diffmode::AutoSparse) = isnothing(diffmode) ?
-                                                            TracerLocalSparsityDetector() :
-                                                            diffmode.sparsity_detector
+    TracerLocalSparsityDetector() :
+    diffmode.sparsity_detector
 
 @inline function __default_nonsparse_ad(x::AbstractArray{T}) where {T}
     return isbitstype(T) ? __default_nonsparse_ad(T) : __default_nonsparse_ad(first(x))
@@ -156,8 +166,8 @@ end
 @inline __needs_diffcache(_) = false
 @inline function __needs_diffcache(jac_alg::BVPJacobianAlgorithm)
     return __needs_diffcache(jac_alg.diffmode) ||
-           __needs_diffcache(jac_alg.bc_diffmode) ||
-           __needs_diffcache(jac_alg.nonbc_diffmode)
+        __needs_diffcache(jac_alg.bc_diffmode) ||
+        __needs_diffcache(jac_alg.nonbc_diffmode)
 end
 
 function __maybe_allocate_diffcache(x, chunksize, jac_alg)
@@ -181,7 +191,7 @@ struct NoDiffCacheNeeded end
 @inline __cache_trait(::AutoForwardDiff) = DiffCacheNeeded()
 @inline __cache_trait(ad::AutoSparse) = __cache_trait(ADTypes.dense_ad(ad))
 @inline function __cache_trait(jac_alg::BVPJacobianAlgorithm)
-    isnothing(jac_alg.diffmode) ? __cache_trait(jac_alg.nonbc_diffmode) :
-    __cache_trait(jac_alg.diffmode)
+    return isnothing(jac_alg.diffmode) ? __cache_trait(jac_alg.nonbc_diffmode) :
+        __cache_trait(jac_alg.diffmode)
 end
 @inline __cache_trait(_) = NoDiffCacheNeeded()

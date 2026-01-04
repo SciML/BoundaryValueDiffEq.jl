@@ -37,8 +37,10 @@
         end
 
         @testset "MIRK Methods" begin
-            for solver in (MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
-                MIRK5(; jac_alg), MIRK6(; jac_alg))
+            for solver in (
+                    MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
+                    MIRK5(; jac_alg), MIRK6(; jac_alg),
+                )
                 @inferred solve(mpbvp_iip, solver; dt = 0.2)
                 @inferred solve(mpbvp_oop, solver; dt = 0.2)
             end
@@ -48,9 +50,11 @@
     # Two-Point BVP
     @testset "Two-Point BVP" begin
         tpbvp_iip = TwoPointBVProblem(
-            f!, (twobc_a!, twobc_b!), u0, tspan, p; bcresid_prototype, nlls = Val(false))
+            f!, (twobc_a!, twobc_b!), u0, tspan, p; bcresid_prototype, nlls = Val(false)
+        )
         tpbvp_oop = TwoPointBVProblem(
-            f, (twobc_a, twobc_b), u0, tspan, p; nlls = Val(false))
+            f, (twobc_a, twobc_b), u0, tspan, p; nlls = Val(false)
+        )
 
         @testset "Shooting Methods" begin
             @inferred solve(tpbvp_iip, Shooting(Tsit5(); jac_alg))
@@ -60,8 +64,10 @@
         end
 
         @testset "MIRK Methods" begin
-            for solver in (MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
-                MIRK5(; jac_alg), MIRK6(; jac_alg))
+            for solver in (
+                    MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
+                    MIRK5(; jac_alg), MIRK6(; jac_alg),
+                )
                 @inferred solve(tpbvp_iip, solver; dt = 0.2)
                 @inferred solve(tpbvp_oop, solver; dt = 0.2)
             end

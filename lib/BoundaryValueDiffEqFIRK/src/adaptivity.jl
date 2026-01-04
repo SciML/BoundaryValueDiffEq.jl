@@ -6,7 +6,8 @@ After we construct an interpolant, we use interp_eval to evaluate it.
 """
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheExpand{iip, T, DiffCacheNeeded},
-        t, mesh, mesh_dt) where {iip, T}
+        t, mesh, mesh_dt
+    ) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -50,7 +51,8 @@ end
 
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheExpand{iip, T, NoDiffCacheNeeded},
-        t, mesh, mesh_dt) where {iip, T}
+        t, mesh, mesh_dt
+    ) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
     lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
@@ -94,7 +96,8 @@ end
 
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheNested{iip, T, DiffCacheNeeded},
-        t, mesh, mesh_dt) where {iip, T}
+        t, mesh, mesh_dt
+    ) where {iip, T}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -140,7 +143,8 @@ end
 
 @views function interp_eval!(
         y::AbstractArray, cache::FIRKCacheNested{iip, T, NoDiffCacheNeeded},
-        t, mesh, mesh_dt) where {iip, T}
+        t, mesh, mesh_dt
+    ) where {iip, T}
     (; f, ITU, nest_prob, alg) = cache
     (; q_coeff) = ITU
 
@@ -195,7 +199,7 @@ end
 # S forward Interpolation
 function S_interpolate!(y::AbstractArray, t, coeffs)
     ts = [t^(i - 1) for i in axes(coeffs, 2)]
-    y .= coeffs * ts
+    return y .= coeffs * ts
 end
 
 function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
@@ -203,7 +207,7 @@ function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
     for i in 2:size(S_coeffs, 2)
         ts[i] = (i - 1) * t^(i - 2)
     end
-    dy .= S_coeffs * ts
+    return dy .= S_coeffs * ts
 end
 
 """
@@ -227,7 +231,7 @@ function s_constraints(M, h)
         for k in 0:(M - 1)
             for j in 1:6
                 A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
-                                              (j - 1) * t[i + k * 6]^(j - 2)
+                    (j - 1) * t[i + k * 6]^(j - 2)
             end
         end
     end
@@ -240,8 +244,11 @@ end
 
 Generate new mesh based on the defect.
 """
-@views function mesh_selector!(cache::Union{
-        FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}}) where {iip, T}
+@views function mesh_selector!(
+        cache::Union{
+            FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T},
+        }
+    ) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -300,8 +307,10 @@ end
 
 Generate a new mesh based on the `ŝ`.
 """
-function redistribute!(cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}},
-        Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
+function redistribute!(
+        cache::Union{FIRKCacheExpand{iip, T}, FIRKCacheNested{iip, T}},
+        Nsub_star, ŝ, mesh, mesh_dt
+    ) where {iip, T}
     N = length(mesh) - 1
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
@@ -353,7 +362,7 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
     return mesh, mesh_dt
 end
 function half_mesh!(cache::Union{FIRKCacheNested, FIRKCacheExpand})
-    half_mesh!(cache.mesh, cache.mesh_dt)
+    return half_mesh!(cache.mesh, cache.mesh_dt)
 end
 
 """
@@ -364,8 +373,11 @@ defect_estimate use the discrete solution approximation Y, plus stages of
 the RK method in 'k_discrete', plus some new stages in 'k_interp' to construct
 an interpolant
 """
-@views function defect_estimate!(cache::FIRKCacheExpand{
-        iip, T, DiffCacheNeeded}) where {iip, T}
+@views function defect_estimate!(
+        cache::FIRKCacheExpand{
+            iip, T, DiffCacheNeeded,
+        }
+    ) where {iip, T}
     (; f, M, stage, mesh, mesh_dt, defect, ITU) = cache
     (; q_coeff, τ_star) = ITU
 
@@ -408,8 +420,11 @@ an interpolant
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::FIRKCacheExpand{
-        iip, T, NoDiffCacheNeeded}) where {iip, T}
+@views function defect_estimate!(
+        cache::FIRKCacheExpand{
+            iip, T, NoDiffCacheNeeded,
+        }
+    ) where {iip, T}
     (; f, M, stage, mesh, mesh_dt, defect, ITU) = cache
     (; q_coeff, τ_star) = ITU
 
@@ -452,8 +467,11 @@ end
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::FIRKCacheNested{
-        iip, T, DiffCacheNeeded}) where {iip, T}
+@views function defect_estimate!(
+        cache::FIRKCacheNested{
+            iip, T, DiffCacheNeeded,
+        }
+    ) where {iip, T}
     (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 
@@ -467,7 +485,7 @@ end
 
         K = copy(cache.k_discrete[i].du)
 
-        if minimum(abs.(K)) < 1e-2
+        if minimum(abs.(K)) < 1.0e-2
             K = fill(one(eltype(K)), size(K))
         end
 
@@ -504,8 +522,11 @@ end
     return maximum(Base.Fix1(maximum, abs), defect)
 end
 
-@views function defect_estimate!(cache::FIRKCacheNested{
-        iip, T, NoDiffCacheNeeded}) where {iip, T}
+@views function defect_estimate!(
+        cache::FIRKCacheNested{
+            iip, T, NoDiffCacheNeeded,
+        }
+    ) where {iip, T}
     (; f, mesh, mesh_dt, defect, ITU, nest_prob, alg) = cache
     (; q_coeff, τ_star) = ITU
 
@@ -519,7 +540,7 @@ end
 
         K = copy(cache.k_discrete[i])
 
-        if minimum(abs.(K)) < 1e-2
+        if minimum(abs.(K)) < 1.0e-2
             K = fill(one(eltype(K)), size(K))
         end
 

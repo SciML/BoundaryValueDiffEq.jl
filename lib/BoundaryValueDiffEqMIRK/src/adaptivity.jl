@@ -21,7 +21,8 @@ end
 Generate new mesh based on the defect or the global error.
 """
 @views function mesh_selector!(cache::MIRKCache{iip, T}, controller::DefectControl) where {
-        iip, T}
+        iip, T,
+    }
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -74,7 +75,8 @@ Generate new mesh based on the defect or the global error.
 end
 
 @views function mesh_selector!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl) where {
-        iip, T}
+        iip, T,
+    }
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -128,7 +130,8 @@ end
 end
 
 @views function mesh_selector!(cache::MIRKCache{iip, T}, controller::SequentialErrorControl) where {
-        iip, T}
+        iip, T,
+    }
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -183,7 +186,8 @@ end
 end
 
 @views function mesh_selector!(cache::MIRKCache{iip, T}, controller::HybridErrorControl) where {
-        iip, T}
+        iip, T,
+    }
     (; order, errors, mesh, mesh_dt) = cache
     (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
@@ -244,7 +248,8 @@ end
 Generate a new mesh based on the `ŝ`.
 """
 function redistribute!(
-        cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh, mesh_dt) where {iip, T}
+        cache::MIRKCache{iip, T}, Nsub_star, ŝ, mesh, mesh_dt
+    ) where {iip, T}
     N = length(mesh) - 1
     ζ = sum(ŝ .* mesh_dt) / Nsub_star
     k, i = 1, 0
@@ -295,7 +300,7 @@ function half_mesh!(mesh::Vector{T}, mesh_dt::Vector{T}) where {T}
     return mesh, mesh_dt
 end
 function half_mesh!(cache::MIRKCache)
-    half_mesh!(cache.mesh, cache.mesh_dt)
+    return half_mesh!(cache.mesh, cache.mesh_dt)
 end
 
 """
@@ -352,16 +357,20 @@ error_estimate for the hybrid error control uses the linear combination of defec
 error to estimate the error norm.
 """
 # Defect control
-@views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
-        errors, sol, nlsolve_alg, abstol) where {iip, T}
+@views function error_estimate!(
+        cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
+        errors, sol, nlsolve_alg, abstol
+    ) where {iip, T}
     return error_estimate!(
-        cache, controller, controller.method, errors, sol, nlsolve_alg, abstol)
+        cache, controller, controller.method, errors, sol, nlsolve_alg, abstol
+    )
 end
 
 # Global error control
 @views function error_estimate!(
         cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, controller::DefectControl,
-        errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
+        errors, sol, nlsolve_alg, abstol
+    ) where {iip, T, use_both}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
@@ -406,7 +415,8 @@ end
 end
 @views function error_estimate!(
         cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, controller::DefectControl,
-        errors, sol, nlsolve_alg, abstol) where {iip, T, use_both}
+        errors, sol, nlsolve_alg, abstol
+    ) where {iip, T, use_both}
     (; f, alg, mesh, mesh_dt) = cache
     (; τ_star) = cache.ITU
 
@@ -453,15 +463,19 @@ end
 # Sequential error control
 @views function error_estimate!(
         cache::MIRKCache{iip, T}, controller::SequentialErrorControl,
-        errors, sol, nlsolve_alg, abstol) where {iip, T}
+        errors, sol, nlsolve_alg, abstol
+    ) where {iip, T}
     defect_norm,
-    info = error_estimate!(
-        cache::MIRKCache{iip, T}, controller.defect, errors, sol, nlsolve_alg, abstol)
+        info = error_estimate!(
+        cache::MIRKCache{iip, T}, controller.defect, errors, sol, nlsolve_alg, abstol
+    )
     error_norm = defect_norm
     if defect_norm <= abstol
         global_error_norm,
-        info = error_estimate!(cache::MIRKCache{iip, T}, controller.global_error,
-            controller.global_error.method, errors, sol, nlsolve_alg, abstol)
+            info = error_estimate!(
+            cache::MIRKCache{iip, T}, controller.global_error,
+            controller.global_error.method, errors, sol, nlsolve_alg, abstol
+        )
         error_norm = global_error_norm
         return error_norm, info
     end
@@ -469,26 +483,33 @@ end
 end
 
 # Hybrid error control
-function error_estimate!(cache::MIRKCache{iip, T}, controller::HybridErrorControl,
-        errors, sol, nlsolve_alg, abstol) where {iip, T}
+function error_estimate!(
+        cache::MIRKCache{iip, T}, controller::HybridErrorControl,
+        errors, sol, nlsolve_alg, abstol
+    ) where {iip, T}
     L = length(cache.mesh) - 1
     defect = errors[:, 1:L]
     global_error = errors[:, (L + 1):end]
     defect_norm,
-    _ = error_estimate!(
-        cache::MIRKCache{iip, T}, controller.defect, defect, sol, nlsolve_alg, abstol)
+        _ = error_estimate!(
+        cache::MIRKCache{iip, T}, controller.defect, defect, sol, nlsolve_alg, abstol
+    )
     global_error_norm,
-    _ = error_estimate!(cache, controller.global_error, controller.global_error.method,
-        global_error, sol, nlsolve_alg, abstol)
+        _ = error_estimate!(
+        cache, controller.global_error, controller.global_error.method,
+        global_error, sol, nlsolve_alg, abstol
+    )
 
     error_norm = controller.DE * defect_norm + controller.GE * global_error_norm
     copyto!(errors, VectorOfArray(vcat(defect.u, global_error.u)))
     return error_norm, ReturnCode.Success
 end
 
-@views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
+@views function error_estimate!(
+        cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
         global_error_control::REErrorControl, errors,
-        sol, nlsolve_alg, abstol) where {iip, T}
+        sol, nlsolve_alg, abstol
+    ) where {iip, T}
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
@@ -503,9 +524,11 @@ end
     return error_norm * 2^cache.order / (2^cache.order - 1), ReturnCode.Success
 end
 
-@views function error_estimate!(cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
+@views function error_estimate!(
+        cache::MIRKCache{iip, T}, controller::GlobalErrorControl,
         global_error_control::HOErrorControl, errors,
-        sol, nlsolve_alg, abstol) where {iip, T}
+        sol, nlsolve_alg, abstol
+    ) where {iip, T}
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
@@ -534,9 +557,13 @@ end
 # Assigns the global error estimate for each subinterval
 # Basically shrink Nig+1 error estimates to Nig error estimates
 @views function GE_subinterval!(errors, err)
-    copyto!(errors.u,
-        [ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])), err.u[i], err.u[i + 1])
-         for i in 1:(length(err) - 1)])
+    copyto!(
+        errors.u,
+        [
+            ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])), err.u[i], err.u[i + 1])
+                for i in 1:(length(err) - 1)
+        ]
+    )
 end
 
 """
@@ -545,8 +572,11 @@ end
 `interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
 Here, the ki_interp is the stages in one subinterval.
 """
-@views function interp_setup!(cache::MIRKCache{
-        iip, T, use_both, DiffCacheNeeded}) where {iip, T, use_both}
+@views function interp_setup!(
+        cache::MIRKCache{
+            iip, T, use_both, DiffCacheNeeded,
+        }
+    ) where {iip, T, use_both}
     (; x_star, s_star, c_star, v_star) = cache.ITU
     (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
     for r in 1:(s_star - stage)
@@ -558,26 +588,32 @@ Here, the ki_interp is the stages in one subinterval.
         if r > 1
             for j in eachindex(k_interp)
                 __maybe_matmul!(
-                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1))
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
+                )
             end
         end
         for i in eachindex(new_stages)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
-                               (1 - v_star[r]) .* vec(y[i].du) .+
-                               v_star[r] .* vec(y[i + 1].du)
+                (1 - v_star[r]) .* vec(y[i].du) .+
+                v_star[r] .* vec(y[i + 1].du)
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] +
-                                                             c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] +
+                        c_star[r] * mesh_dt[i]
+                )
             end
         end
     end
 
     return k_interp
 end
-@views function interp_setup!(cache::MIRKCache{
-        iip, T, use_both, NoDiffCacheNeeded}) where {iip, T, use_both}
+@views function interp_setup!(
+        cache::MIRKCache{
+            iip, T, use_both, NoDiffCacheNeeded,
+        }
+    ) where {iip, T, use_both}
     (; x_star, s_star, c_star, v_star) = cache.ITU
     (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
     for r in 1:(s_star - stage)
@@ -589,17 +625,20 @@ end
         if r > 1
             for j in eachindex(k_interp)
                 __maybe_matmul!(
-                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1))
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
+                )
             end
         end
         for i in eachindex(new_stages)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
-                               (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
+                (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
             if iip
                 f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
             else
-                k_interp.u[i][:, r] .= f(new_stages.u[i], p, mesh[i] +
-                                                             c_star[r] * mesh_dt[i])
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] +
+                        c_star[r] * mesh_dt[i]
+                )
             end
         end
     end
@@ -612,13 +651,17 @@ end
 
 sum_stages add the discrete solution, RK method stages and extra stages to construct interpolant.
 """
-function sum_stages!(cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w, w′,
-        i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
-    sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
+function sum_stages!(
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w, w′,
+        i::Int, dt = cache.mesh_dt[i]
+    ) where {iip, T, use_both}
+    return sum_stages!(cache.fᵢ_cache.du, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
-function sum_stages!(cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, w,
-        w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
-    sum_stages!(cache.fᵢ_cache, cache.fᵢ₂_cache, cache, w, w′, i, dt)
+function sum_stages!(
+        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, w,
+        w′, i::Int, dt = cache.mesh_dt[i]
+    ) where {iip, T, use_both}
+    return sum_stages!(cache.fᵢ_cache, cache.fᵢ₂_cache, cache, w, w′, i, dt)
 end
 
 # Here we should not directly in-place change z in several steps
@@ -626,63 +669,75 @@ end
 # we use fᵢ₂_cache to avoid additional allocations.
 @views function sum_stages!(
         z::AbstractArray, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
-        w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+        w, i::Int, dt = cache.mesh_dt[i]
+    ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, fᵢ₂_cache) = cache
     (; s_star) = cache.ITU
 
     fᵢ₂_cache .= zero(z)
     __maybe_matmul!(fᵢ₂_cache, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
+    )
     z .= fᵢ₂_cache .* dt .+ cache.y₀.u[i]
 
     return nothing
 end
 @views function sum_stages!(
         z::AbstractArray, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+        w, i::Int, dt = cache.mesh_dt[i]
+    ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, fᵢ₂_cache) = cache
     (; s_star) = cache.ITU
 
     fᵢ₂_cache .= zero(z)
     __maybe_matmul!(fᵢ₂_cache, k_discrete[i][:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
+    )
     z .= fᵢ₂_cache .* dt .+ cache.y₀.u[i]
 
     return nothing
 end
 
-@views function sum_stages!(z, z′, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w,
-        w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+@views function sum_stages!(
+        z, z′, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, w,
+        w′, i::Int, dt = cache.mesh_dt[i]
+    ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
+    )
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
     __maybe_matmul!(
-        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true
+    )
     z .= z .* dt .+ cache.y₀.u[i]
 
     return z, z′
 end
-@views function sum_stages!(z, z′, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w, w′, i::Int, dt = cache.mesh_dt[i]) where {iip, T, use_both}
+@views function sum_stages!(
+        z, z′, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
+        w, w′, i::Int, dt = cache.mesh_dt[i]
+    ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
     z .= zero(z)
     __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true)
+        z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
+    )
     z′ .= zero(z′)
     __maybe_matmul!(z′, k_discrete[i][:, 1:stage], w′[1:stage])
     __maybe_matmul!(
-        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true)
+        z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true
+    )
     z .= z .* dt .+ cache.y₀.u[i]
 
     return z, z′
@@ -706,98 +761,112 @@ for order in (2, 3, 4, 5, 6)
 
                 wp = [0, 1 - τ, τ]
             elseif $(order == 3)
-                w = [τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0),
-                    -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0), τ^2 * (τ - 1.0)]
+                w = [
+                    τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0),
+                    -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0), τ^2 * (τ - 1.0),
+                ]
 
                 #     Derivative polynomials.
 
-                wp = [3.0 / 2.0 * (τ - 2.0 / 3.0) * (τ - 1.0),
-                    -9.0 / 2.0 * τ * (τ - 1.0), 3.0 * τ * (τ - 2.0 / 3.0)]
+                wp = [
+                    3.0 / 2.0 * (τ - 2.0 / 3.0) * (τ - 1.0),
+                    -9.0 / 2.0 * τ * (τ - 1.0), 3.0 * τ * (τ - 2.0 / 3.0),
+                ]
             elseif $(order == 4)
                 t2 = τ * τ
                 tm1 = τ - 1.0
                 t4m3 = τ * 4.0 - 3.0
                 t2m1 = τ * 2.0 - 1.0
 
-                w = [-τ * (2.0 * τ - 3.0) * (2.0 * t2 - 3.0 * τ + 2.0) / 6.0,
+                w = [
+                    -τ * (2.0 * τ - 3.0) * (2.0 * t2 - 3.0 * τ + 2.0) / 6.0,
                     t2 * (12.0 * t2 - 20.0 * τ + 9.0) / 6.0,
                     2.0 * t2 * (6.0 * t2 - 14.0 * τ + 9.0) / 3.0,
-                    -16.0 * t2 * tm1 * tm1 / 3.0]
+                    -16.0 * t2 * tm1 * tm1 / 3.0,
+                ]
 
                 #   Derivative polynomials
 
-                wp = [-tm1 * t4m3 * t2m1 / 3.0, τ * t2m1 * t4m3,
-                    4.0 * τ * t4m3 * tm1, -32.0 * τ * t2m1 * tm1 / 3.0]
+                wp = [
+                    -tm1 * t4m3 * t2m1 / 3.0, τ * t2m1 * t4m3,
+                    4.0 * τ * t4m3 * tm1, -32.0 * τ * t2m1 * tm1 / 3.0,
+                ]
             elseif $(order == 5)
                 w = [
-                    τ * (22464.0 - 83910.0 * τ + 143041.0 * τ^2 - 113808.0 * τ^3 +
-                     33256.0 * τ^4) / 22464.0,
+                    τ * (
+                        22464.0 - 83910.0 * τ + 143041.0 * τ^2 - 113808.0 * τ^3 +
+                            33256.0 * τ^4
+                    ) / 22464.0,
                     τ^2 * (-2418.0 + 12303.0 * τ - 19512.0 * τ^2 + 10904.0 * τ^3) / 3360.0,
                     -8 / 81 * τ^2 * (-78.0 + 209.0 * τ - 204.0 * τ^2 + 8.0 * τ^3),
                     -25 / 1134 * τ^2 * (-390.0 + 1045.0 * τ - 1020.0 * τ^2 + 328.0 * τ^3),
                     -25 / 5184 * τ^2 * (390.0 + 255.0 * τ - 1680.0 * τ^2 + 2072.0 * τ^3),
-                    279841 / 168480 * τ^2 * (-6.0 + 21.0 * τ - 24.0 * τ^2 + 8.0 * τ^3)]
+                    279841 / 168480 * τ^2 * (-6.0 + 21.0 * τ - 24.0 * τ^2 + 8.0 * τ^3),
+                ]
 
                 #   Derivative polynomials
 
                 wp = [
                     1.0 - 13985 // 1872 * τ + 143041 // 7488 * τ^2 - 2371 // 117 * τ^3 +
-                    20785 // 2808 * τ^4,
+                        20785 // 2808 * τ^4,
                     -403 // 280 * τ + 12303 // 1120 * τ^2 - 813 // 35 * τ^3 +
-                    1363 // 84 * τ^4,
+                        1363 // 84 * τ^4,
                     416 // 27 * τ - 1672 // 27 * τ^2 + 2176 // 27 * τ^3 - 320 // 81 * τ^4,
                     3250 // 189 * τ - 26125 // 378 * τ^2 + 17000 // 189 * τ^3 -
-                    20500 // 567 * τ^4,
+                        20500 // 567 * τ^4,
                     -1625 // 432 * τ - 2125 // 576 * τ^2 + 875 // 27 * τ^3 -
-                    32375 // 648 * τ^4,
+                        32375 // 648 * τ^4,
                     -279841 // 14040 * τ + 1958887 // 18720 * τ^2 - 279841 // 1755 * τ^3 +
-                    279841 // 4212 * τ^4]
+                        279841 // 4212 * τ^4,
+                ]
             elseif $(order == 6)
                 w = [
                     τ - 28607 // 7434 * τ^2 - 166210 // 33453 * τ^3 +
-                    334780 // 11151 * τ^4 - 1911296 // 55755 * τ^5 + 406528 // 33453 * τ^6,
+                        334780 // 11151 * τ^4 - 1911296 // 55755 * τ^5 + 406528 // 33453 * τ^6,
                     777 // 590 * τ^2 - 2534158 // 234171 * τ^3 + 2088580 // 78057 * τ^4 -
-                    10479104 // 390285 * τ^5 + 11328512 // 1170855 * τ^6,
+                        10479104 // 390285 * τ^5 + 11328512 // 1170855 * τ^6,
                     -1008 // 59 * τ^2 + 222176 // 1593 * τ^3 - 180032 // 531 * τ^4 +
-                    876544 // 2655 * τ^5 - 180224 // 1593 * τ^6,
+                        876544 // 2655 * τ^5 - 180224 // 1593 * τ^6,
                     -1008 // 59 * τ^2 + 222176 // 1593 * τ^3 - 180032 // 531 * τ^4 +
-                    876544 // 2655 * τ^5 - 180224 // 1593 * τ^6,
+                        876544 // 2655 * τ^5 - 180224 // 1593 * τ^6,
                     -378 // 59 * τ^2 + 27772 // 531 * τ^3 - 22504 // 177 * τ^4 +
-                    109568 // 885 * τ^5 - 22528 // 531 * τ^6,
+                        109568 // 885 * τ^5 - 22528 // 531 * τ^6,
                     -95232 // 413 * τ^2 + 62384128 // 33453 * τ^3 -
-                    49429504 // 11151 * τ^4 + 46759936 // 11151 * τ^5 -
-                    46661632 // 33453 * τ^6,
+                        49429504 // 11151 * τ^4 + 46759936 // 11151 * τ^5 -
+                        46661632 // 33453 * τ^6,
                     896 // 5 * τ^2 - 4352 // 3 * τ^3 + 3456 * τ^4 - 16384 // 5 * τ^5 +
-                    16384 // 15 * τ^6,
+                        16384 // 15 * τ^6,
                     50176 // 531 * τ^2 - 179554304 // 234171 * τ^3 +
-                    143363072 // 78057 * τ^4 - 136675328 // 78057 * τ^5 +
-                    137363456 // 234171 * τ^6,
+                        143363072 // 78057 * τ^4 - 136675328 // 78057 * τ^5 +
+                        137363456 // 234171 * τ^6,
                     16384 // 441 * τ^3 - 16384 // 147 * τ^4 + 16384 // 147 * τ^5 -
-                    16384 // 441 * τ^6]
+                        16384 // 441 * τ^6,
+                ]
 
                 #     Derivative polynomials.
 
                 wp = [
                     1 - 28607 // 3717 * τ - 166210 // 11151 * τ^2 + 1339120 // 11151 * τ^3 -
-                    1911296 // 11151 * τ^4 + 813056 // 11151 * τ^5,
+                        1911296 // 11151 * τ^4 + 813056 // 11151 * τ^5,
                     777 // 295 * τ - 2534158 // 78057 * τ^2 + 8354320 // 78057 * τ^3 -
-                    10479104 // 78057 * τ^4 + 22657024 // 390285 * τ^5,
+                        10479104 // 78057 * τ^4 + 22657024 // 390285 * τ^5,
                     -2016 // 59 * τ + 222176 // 531 * τ^2 - 720128 // 531 * τ^3 +
-                    876544 // 531 * τ^4 - 360448 // 531 * τ^5,
+                        876544 // 531 * τ^4 - 360448 // 531 * τ^5,
                     -2016 // 59 * τ + 222176 // 531 * τ^2 - 720128 // 531 * τ^3 +
-                    876544 // 531 * τ^4 - 360448 // 531 * τ^5,
+                        876544 // 531 * τ^4 - 360448 // 531 * τ^5,
                     -756 // 59 * τ + 27772 // 177 * τ^2 - 90016 // 177 * τ^3 +
-                    109568 // 177 * τ^4 - 45056 // 177 * τ^5,
+                        109568 // 177 * τ^4 - 45056 // 177 * τ^5,
                     -190464 // 413 * τ + 62384128 // 11151 * τ^2 -
-                    197718016 // 11151 * τ^3 + 233799680 // 11151 * τ^4 -
-                    93323264 // 11151 * τ^5,
+                        197718016 // 11151 * τ^3 + 233799680 // 11151 * τ^4 -
+                        93323264 // 11151 * τ^5,
                     1792 // 5 * τ - 4352 * τ^2 + 13824 * τ^3 - 16384 * τ^4 +
-                    32768 // 5 * τ^5,
+                        32768 // 5 * τ^5,
                     100352 // 531 * τ - 179554304 // 78057 * τ^2 +
-                    573452288 // 78057 * τ^3 - 683376640 // 78057 * τ^4 +
-                    274726912 // 78057 * τ^5,
+                        573452288 // 78057 * τ^3 - 683376640 // 78057 * τ^4 +
+                        274726912 // 78057 * τ^5,
                     16384 // 147 * τ^2 - 65536 // 147 * τ^3 + 81920 // 147 * τ^4 -
-                    32768 // 147 * τ^5]
+                        32768 // 147 * τ^5,
+                ]
             end
             return T.(w), T.(wp)
         end
@@ -811,109 +880,123 @@ for order in (6,)
             if $(order == 6)
                 w = [
                     -(12233 + 1450 * sqrt(7)) *
-                    (800086000 * τ^5 + 63579600 * sqrt(7) * τ^4 - 2936650584 * τ^4 +
-                     4235152620 * τ^3 - 201404565 * sqrt(7) * τ^3 +
-                     232506630 * sqrt(7) * τ^2 - 3033109390 * τ^2 + 1116511695 * τ -
-                     116253315 * sqrt(7) * τ + 22707000 * sqrt(7) - 191568780) *
-                    τ / 2112984835740,
+                        (
+                        800086000 * τ^5 + 63579600 * sqrt(7) * τ^4 - 2936650584 * τ^4 +
+                            4235152620 * τ^3 - 201404565 * sqrt(7) * τ^3 +
+                            232506630 * sqrt(7) * τ^2 - 3033109390 * τ^2 + 1116511695 * τ -
+                            116253315 * sqrt(7) * τ + 22707000 * sqrt(7) - 191568780
+                    ) *
+                        τ / 2112984835740,
                     -(-10799 + 650 * sqrt(7)) *
-                    (24962000 * τ^4 + 473200 * sqrt(7) * τ^3 - 67024328 * τ^3 -
-                     751855 * sqrt(7) * τ^2 + 66629600 * τ^2 - 29507250 * τ +
-                     236210 * sqrt(7) * τ +
-                     5080365 +
-                     50895 * sqrt(7)) *
-                    τ^2 / 29551834260,
+                        (
+                        24962000 * τ^4 + 473200 * sqrt(7) * τ^3 - 67024328 * τ^3 -
+                            751855 * sqrt(7) * τ^2 + 66629600 * τ^2 - 29507250 * τ +
+                            236210 * sqrt(7) * τ +
+                            5080365 +
+                            50895 * sqrt(7)
+                    ) *
+                        τ^2 / 29551834260,
                     7 / 1274940 *
-                    (259 + 50 * sqrt(7)) *
-                    (14000 * τ^4 - 48216 * τ^3 + 1200 * sqrt(7) * τ^3 -
-                     3555 * sqrt(7) * τ^2 +
-                     62790 * τ^2 +
-                     3610 * sqrt(7) * τ - 37450 * τ + 9135 - 1305 * sqrt(7)) *
-                    τ^2,
+                        (259 + 50 * sqrt(7)) *
+                        (
+                        14000 * τ^4 - 48216 * τ^3 + 1200 * sqrt(7) * τ^3 -
+                            3555 * sqrt(7) * τ^2 +
+                            62790 * τ^2 +
+                            3610 * sqrt(7) * τ - 37450 * τ + 9135 - 1305 * sqrt(7)
+                    ) *
+                        τ^2,
                     7 / 1274940 *
-                    (259 + 50 * sqrt(7)) *
-                    (14000 * τ^4 - 48216 * τ^3 + 1200 * sqrt(7) * τ^3 -
-                     3555 * sqrt(7) * τ^2 +
-                     62790 * τ^2 +
-                     3610 * sqrt(7) * τ - 37450 * τ + 9135 - 1305 * sqrt(7)) *
-                    τ^2,
+                        (259 + 50 * sqrt(7)) *
+                        (
+                        14000 * τ^4 - 48216 * τ^3 + 1200 * sqrt(7) * τ^3 -
+                            3555 * sqrt(7) * τ^2 +
+                            62790 * τ^2 +
+                            3610 * sqrt(7) * τ - 37450 * τ + 9135 - 1305 * sqrt(7)
+                    ) *
+                        τ^2,
                     16 / 2231145 *
-                    (259 + 50 * sqrt(7)) *
-                    (14000 * τ^4 - 48216 * τ^3 + 1200 * sqrt(7) * τ^3 -
-                     3555 * sqrt(7) * τ^2 +
-                     62790 * τ^2 +
-                     3610 * sqrt(7) * τ - 37450 * τ + 9135 - 1305 * sqrt(7)) *
-                    τ^2,
+                        (259 + 50 * sqrt(7)) *
+                        (
+                        14000 * τ^4 - 48216 * τ^3 + 1200 * sqrt(7) * τ^3 -
+                            3555 * sqrt(7) * τ^2 +
+                            62790 * τ^2 +
+                            3610 * sqrt(7) * τ - 37450 * τ + 9135 - 1305 * sqrt(7)
+                    ) *
+                        τ^2,
                     4 / 1227278493 *
-                    (740 * sqrt(7) - 6083) *
-                    (1561000 * τ^2 - 2461284 * τ - 109520 * sqrt(7) * τ +
-                     979272 +
-                     86913 * sqrt(7)) *
-                    (τ - 1)^2 *
-                    τ^2,
+                        (740 * sqrt(7) - 6083) *
+                        (
+                        1561000 * τ^2 - 2461284 * τ - 109520 * sqrt(7) * τ +
+                            979272 +
+                            86913 * sqrt(7)
+                    ) *
+                        (τ - 1)^2 *
+                        τ^2,
                     -49 / 63747 *
-                    sqrt(7) *
-                    (20000 * τ^2 - 20000 * τ + 3393) *
-                    (τ - 1)^2 *
-                    τ^2,
-                    -1250000000 / 889206903 * (28 * τ^2 - 28 * τ + 9) * (τ - 1)^2 * τ^2]
+                        sqrt(7) *
+                        (20000 * τ^2 - 20000 * τ + 3393) *
+                        (τ - 1)^2 *
+                        τ^2,
+                    -1250000000 / 889206903 * (28 * τ^2 - 28 * τ + 9) * (τ - 1)^2 * τ^2,
+                ]
 
                 #     Derivative polynomials.
 
                 wp = [
                     (1450 * sqrt(7) + 12233) *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (τ - 1) *
-                    (-400043 * τ + 75481 + 2083 * sqrt(7)) *
-                    (100 * τ - 87) *
-                    (2 * τ - 1) / 493029795006,
+                        (14 * τ - 7 + sqrt(7)) *
+                        (τ - 1) *
+                        (-400043 * τ + 75481 + 2083 * sqrt(7)) *
+                        (100 * τ - 87) *
+                        (2 * τ - 1) / 493029795006,
                     -(650 * sqrt(7) - 10799) *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (37443 * τ - 13762 - 2083 * sqrt(7)) *
-                    (100 * τ - 87) *
-                    (2 * τ - 1) *
-                    τ / 20686283982,
+                        (14 * τ - 7 + sqrt(7)) *
+                        (37443 * τ - 13762 - 2083 * sqrt(7)) *
+                        (100 * τ - 87) *
+                        (2 * τ - 1) *
+                        τ / 20686283982,
                     7 / 42498 *
-                    (259 + 50 * sqrt(7)) *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (τ - 1) *
-                    (100 * τ - 87) *
-                    (2 * τ - 1) *
-                    τ,
+                        (259 + 50 * sqrt(7)) *
+                        (14 * τ - 7 + sqrt(7)) *
+                        (τ - 1) *
+                        (100 * τ - 87) *
+                        (2 * τ - 1) *
+                        τ,
                     7 / 42498 *
-                    (259 + 50 * sqrt(7)) *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (τ - 1) *
-                    (100 * τ - 87) *
-                    (2 * τ - 1) *
-                    τ,
+                        (259 + 50 * sqrt(7)) *
+                        (14 * τ - 7 + sqrt(7)) *
+                        (τ - 1) *
+                        (100 * τ - 87) *
+                        (2 * τ - 1) *
+                        τ,
                     32 / 148743 *
-                    (259 + 50 * sqrt(7)) *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (τ - 1) *
-                    (100 * τ - 87) *
-                    (2 * τ - 1) *
-                    τ,
+                        (259 + 50 * sqrt(7)) *
+                        (14 * τ - 7 + sqrt(7)) *
+                        (τ - 1) *
+                        (100 * τ - 87) *
+                        (2 * τ - 1) *
+                        τ,
                     4 / 1227278493 *
-                    (740 * sqrt(7) - 6083) *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (τ - 1) *
-                    (100 * τ - 87) *
-                    (6690 * τ - 4085 - 869 * sqrt(7)) *
-                    τ,
+                        (740 * sqrt(7) - 6083) *
+                        (14 * τ - 7 + sqrt(7)) *
+                        (τ - 1) *
+                        (100 * τ - 87) *
+                        (6690 * τ - 4085 - 869 * sqrt(7)) *
+                        τ,
                     -98 / 21249 *
-                    sqrt(7) *
-                    (τ - 1) *
-                    (100 * τ - 13) *
-                    (100 * τ - 87) *
-                    (2 * τ - 1) *
-                    τ,
+                        sqrt(7) *
+                        (τ - 1) *
+                        (100 * τ - 13) *
+                        (100 * τ - 87) *
+                        (2 * τ - 1) *
+                        τ,
                     -1250000000 / 2074816107 *
-                    (14 * τ - 7 + sqrt(7)) *
-                    (τ - 1) *
-                    (14 * τ - 7 - sqrt(7)) *
-                    (2 * τ - 1) *
-                    τ]
+                        (14 * τ - 7 + sqrt(7)) *
+                        (τ - 1) *
+                        (14 * τ - 7 - sqrt(7)) *
+                        (2 * τ - 1) *
+                        τ,
+                ]
             end
             return T.(w), T.(wp)
         end
