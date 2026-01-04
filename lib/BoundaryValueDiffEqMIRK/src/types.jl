@@ -23,8 +23,11 @@ struct MIRKInterpTableau{s, c, v, x, τ, p}
 
     function MIRKInterpTableau(s_star, c_star, v_star, x_star, τ_star, p_star)
         @assert eltype(c_star) == eltype(v_star) == eltype(x_star)
-        return new{typeof(s_star), typeof(c_star), typeof(v_star),
-            typeof(x_star), typeof(τ_star), typeof(p_star)}(
-            s_star, c_star, v_star, x_star, τ_star, p_star)
+        return new{
+            typeof(s_star), typeof(c_star), typeof(v_star),
+            typeof(x_star), typeof(τ_star), typeof(p_star),
+        }(
+            s_star, c_star, v_star, x_star, τ_star, p_star
+        )
     end
 end

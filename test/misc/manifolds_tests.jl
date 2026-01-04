@@ -65,14 +65,14 @@
 
         for alg in algs
             if alg isa Shooting || alg isa MultipleShooting
-                sol = solve(bvp, alg; abstol = 1e-8)
+                sol = solve(bvp, alg; abstol = 1.0e-8)
             else
-                sol = solve(bvp, alg; dt, abstol = 1e-8)
+                sol = solve(bvp, alg; dt, abstol = 1.0e-8)
             end
             @test SciMLBase.successful_retcode(sol)
             resid = zeros(4)
             bc1!(resid, sol, (M, i, a1, a2), sol.t)
-            @test norm(resid, Inf) < 1e-10
+            @test norm(resid, Inf) < 1.0e-10
         end
     end
 end

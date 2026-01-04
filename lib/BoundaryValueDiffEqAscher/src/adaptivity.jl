@@ -1,12 +1,15 @@
 # mesh_selector refine nd redistribute according to the initial mesh
 function mesh_selector!(
-        cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt, abstol) where {iip, T}
+        cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt, abstol
+    ) where {iip, T}
     (; k, ncomp) = cache
     # weights for mesh selection
-    cnsts2 = [1.25e-1, 2.604e-3, 8.019e-3, 2.170e-5, 7.453e-5, 5.208e-4, 9.689e-8,
-        3.689e-7, 3.100e-6, 2.451e-5, 2.691e-10, 1.120e-9, 1.076e-8, 9.405e-8,
-        1.033e-6, 5.097e-13, 2.290e-12, 2.446e-11, 2.331e-10, 2.936e-9, 3.593e-8,
-        7.001e-16, 3.363e-15, 3.921e-14, 4.028e-13, 5.646e-12, 7.531e-11, 1.129e-9]
+    cnsts2 = [
+        1.25e-1, 2.604e-3, 8.019e-3, 2.17e-5, 7.453e-5, 5.208e-4, 9.689e-8,
+        3.689e-7, 3.1e-6, 2.451e-5, 2.691e-10, 1.12e-9, 1.076e-8, 9.405e-8,
+        1.033e-6, 5.097e-13, 2.29e-12, 2.446e-11, 2.331e-10, 2.936e-9, 3.593e-8,
+        7.001e-16, 3.363e-15, 3.921e-14, 4.028e-13, 5.646e-12, 7.531e-11, 1.129e-9,
+    ]
 
     koff = Int(k * (k + 1) / 2)
     wgtmsh = 10 * cnsts2[koff]
@@ -69,8 +72,10 @@ function mesh_selector!(
     end
 end
 
-function redistribute!(cache::AscherCache{iip, T}, nold::I, naccum::I,
-        slope::Vector{T}, accum::Vector{T}) where {iip, T, I <: Integer}
+function redistribute!(
+        cache::AscherCache{iip, T}, nold::I, naccum::I,
+        slope::Vector{T}, accum::Vector{T}
+    ) where {iip, T, I <: Integer}
     (; prob, fixpnt, mesh, mesh_dt) = cache
     n::Int = length(slope)
     nmax = copy(n)
@@ -135,7 +140,7 @@ function redistribute!(cache::AscherCache{iip, T}, nold::I, naccum::I,
         accl = accr
         lold = lnew
     end
-    mesh_dt = diff(mesh)
+    return mesh_dt = diff(mesh)
 end
 
 function halve_mesh!(cache::AscherCache)
@@ -162,7 +167,7 @@ function halve_mesh!(cache::AscherCache)
         mesh[2i] = (old_mesh[i] + old_mesh[i + 1]) / 2.0
         mesh[2i + 1] = old_mesh[i + 1]
     end
-    mesh_dt[1:end] = diff(mesh)[1:end]
+    return mesh_dt[1:end] = diff(mesh)[1:end]
 end
 
 # determine the error estimate and test to see if the
@@ -170,10 +175,12 @@ end
 function error_estimate!(cache::AscherCache)
     (; k, valstr, mesh, mesh_dt, error) = cache
     # weights for extrapolation error estimate
-    cnsts1 = [0.25e0, 0.625e-1, 7.2169e-2, 1.8342e-2, 1.9065e-2, 5.8190e-2, 5.4658e-3,
-        5.3370e-3, 1.8890e-2, 2.7792e-2, 1.6095e-3, 1.4964e-3, 7.5938e-3, 5.7573e-3,
-        1.8342e-2, 4.673e-3, 4.150e-4, 1.919e-3, 1.468e-3, 6.371e-3, 4.610e-3,
-        1.342e-4, 1.138e-4, 4.889e-4, 4.177e-4, 1.374e-3, 1.654e-3, 2.863e-3]
+    cnsts1 = [
+        0.25e0, 0.625e-1, 7.2169e-2, 1.8342e-2, 1.9065e-2, 5.819e-2, 5.4658e-3,
+        5.337e-3, 1.889e-2, 2.7792e-2, 1.6095e-3, 1.4964e-3, 7.5938e-3, 5.7573e-3,
+        1.8342e-2, 4.673e-3, 4.15e-4, 1.919e-3, 1.468e-3, 6.371e-3, 4.61e-3,
+        1.342e-4, 1.138e-4, 4.889e-4, 4.177e-4, 1.374e-3, 1.654e-3, 2.863e-3,
+    ]
     # assign weights for error estimate
     koff = Int(k * (k + 1) / 2)
     wgterr = cnsts1[koff]
@@ -188,14 +195,18 @@ function error_estimate!(cache::AscherCache)
         # in valstr in case they prove to be needed later for an error estimate.
         x = mesh[i] + (mesh_dt[i]) * 2.0 / 3.0
         @views approx(cache, x, valstr[i][3])
-        error[i] .= wgterr .* abs.(valstr[i][3] .-
-                         (isodd(i) ? valstr[Int((i + 1) / 2)][2] : valstr[Int(i / 2)][4]))
+        error[i] .= wgterr .* abs.(
+            valstr[i][3] .-
+                (isodd(i) ? valstr[Int((i + 1) / 2)][2] : valstr[Int(i / 2)][4])
+        )
 
         x = mesh[i] + (mesh_dt[i]) / 3.0
         @views approx(cache, x, valstr[i][2])
         error[i] .= error[i] .+
-                    wgterr .* abs.(valstr[i][2] .-
-                         (isodd(i) ? valstr[Int((i + 1) / 2)][1] : valstr[Int(i / 2)][3]))
+            wgterr .* abs.(
+            valstr[i][2] .-
+                (isodd(i) ? valstr[Int((i + 1) / 2)][1] : valstr[Int(i / 2)][3])
+        )
     end
     return maximum(reduce(hcat, error), dims = 2)
 end
@@ -217,4 +228,5 @@ function horder(cache::AscherCache, uhigh, hi, dmzi)
             idmz = idmz + 1
         end
     end
+    return
 end

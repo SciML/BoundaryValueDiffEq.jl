@@ -29,11 +29,13 @@ export ex7_f!, ex7_2pbc1!, ex7_2pbc2!, u0, p, tspan
 
 end
 
-@testitem "BVPM2" setup=[ODEInterfaceWrapperTestSetup] begin
+@testitem "BVPM2" setup = [ODEInterfaceWrapperTestSetup] begin
     using ODEInterface, RecursiveArrayTools, LinearAlgebra
 
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
-        p; bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(
+        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
+        p; bcresid_prototype = (zeros(1), zeros(1))
+    )
 
     #sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
     #@test SciMLBase.successful_retcode(sol_bvpm2)
@@ -44,27 +46,35 @@ end
 end
 
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
-@testitem "BVPSOL" setup=[ODEInterfaceWrapperTestSetup] begin
+@testitem "BVPSOL" setup = [ODEInterfaceWrapperTestSetup] begin
     using ODEInterface, OrdinaryDiffEqTsit5, RecursiveArrayTools, NonlinearSolveFirstOrder
 
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
-        p; bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(
+        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
+        p; bcresid_prototype = (zeros(1), zeros(1))
+    )
 
     # Just generate a solution for bvpsol
-    sol_ms = solve(tpprob, MultipleShooting(10, Tsit5(), NewtonRaphson());
-        dt = π / 20, abstol = 1e-5, maxiters = 1000, adaptive = false)
+    sol_ms = solve(
+        tpprob, MultipleShooting(10, Tsit5(), NewtonRaphson());
+        dt = π / 20, abstol = 1.0e-5, maxiters = 1000, adaptive = false
+    )
 
     initial_u0 = [sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]]
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
-        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(
+        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1))
+    )
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
     @test sol_bvpsol isa SciMLBase.ODESolution
 
     initial_u0 = VectorOfArray([sol_ms(t) .+ rand() for t in tspan[1]:(π / 20):tspan[2]])
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
-        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(
+        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1))
+    )
     # Just test that it runs. BVPSOL only works with linearly separable BCs.
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
@@ -72,21 +82,25 @@ end
 
     ts = collect(tspan[1]:(π / 20):tspan[2])
     initial_u0 = DiffEqArray([sol_ms(t) .+ rand() for t in ts], ts)
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
-        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(
+        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
     @test sol_bvpsol isa SciMLBase.ODESolution
 
     initial_u0 = (p, t) -> sol_ms(t) .+ rand()
-    tpprob = TwoPointBVProblem(ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
-        tspan, p; bcresid_prototype = (zeros(1), zeros(1)))
+    tpprob = TwoPointBVProblem(
+        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), initial_u0,
+        tspan, p; bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol_bvpsol = solve(tpprob, BVPSOL(); dt = π / 20)
 
     @test sol_bvpsol isa SciMLBase.ODESolution
 end
 
-@testitem "COLNEW" setup=[ODEInterfaceWrapperTestSetup] begin
+@testitem "COLNEW" setup = [ODEInterfaceWrapperTestSetup] begin
     using ODEInterface, RecursiveArrayTools
 
     function f!(du, u, p, t)
@@ -108,7 +122,7 @@ end
     @test SciMLBase.successful_retcode(sol_colnew)
 end
 
-@testitem "COLNEW for multi-points BVP" setup=[ODEInterfaceWrapperTestSetup] begin
+@testitem "COLNEW for multi-points BVP" setup = [ODEInterfaceWrapperTestSetup] begin
     using ODEInterface, RecursiveArrayTools
 
     function f!(du, u, p, t)

@@ -7,8 +7,10 @@
 
 Generate a prototype of the sparse Jacobian matrix for the BVP problem.
 """
-function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
-        bcresid_prototype, u0, N::Int, nshoots::Int)
+function __generate_sparse_jacobian_prototype(
+        ::MultipleShooting, ::StandardBVProblem,
+        bcresid_prototype, u0, N::Int, nshoots::Int
+    )
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = nshoots * N
@@ -18,8 +20,10 @@ function __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVPr
     return J
 end
 
-function __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
-        bcresid_prototype, u0, N::Int, nshoots::Int)
+function __generate_sparse_jacobian_prototype(
+        ::MultipleShooting, ::TwoPointBVProblem,
+        bcresid_prototype, u0, N::Int, nshoots::Int
+    )
     fast_scalar_indexing(u0) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
 

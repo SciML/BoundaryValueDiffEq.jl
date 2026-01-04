@@ -68,41 +68,55 @@ odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
 
 odef2! = ODEFunction(
     f2!, analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+        u0, p, t,
+    ) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))]
+)
 odef2 = ODEFunction(
     f2, analytic = (
-        u0, p, t) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))])
+        u0, p, t,
+    ) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))]
+)
 
 bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
 tspan = (0.0, 5.0)
 u0 = [5.0, -3.5]
 
-probArr = [BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
+probArr = [
+    BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
     BVProblem(odef2!, boundary_indexing!, u0, tspan, nlls = Val(false)),
     BVProblem(odef2, boundary_indexing, u0, tspan, nlls = Val(false)),
-    TwoPointBVProblem(odef1!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype, nlls = Val(false)),
-    TwoPointBVProblem(odef1, (boundary_two_point_a, boundary_two_point_b),
-        u0, tspan; bcresid_prototype, nlls = Val(false)),
-    TwoPointBVProblem(odef2!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype, nlls = Val(false)),
-    TwoPointBVProblem(odef2, (boundary_two_point_a, boundary_two_point_b),
-        u0, tspan; bcresid_prototype, nlls = Val(false))]
+    TwoPointBVProblem(
+        odef1!, (boundary_two_point_a!, boundary_two_point_b!),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+    TwoPointBVProblem(
+        odef1, (boundary_two_point_a, boundary_two_point_b),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+    TwoPointBVProblem(
+        odef2!, (boundary_two_point_a!, boundary_two_point_b!),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+    TwoPointBVProblem(
+        odef2, (boundary_two_point_a, boundary_two_point_b),
+        u0, tspan; bcresid_prototype, nlls = Val(false)
+    ),
+]
 
 testTol = 0.3
-affineTol = 1e-2
+affineTol = 1.0e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
 export probArr, testTol, affineTol, dts, lobattoIIIa_solver, lobattoIIIb_solver,
-       lobattoIIIc_solver, radau_solver
+    lobattoIIIc_solver, radau_solver
 
 end
 
-@testitem "Affineness" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "Affineness" setup = [FIRKExpandedConvergenceTests] begin
     using LinearAlgebra
 
     @testset "Problem: $i" for i in (1, 2, 7, 8)
@@ -128,84 +142,95 @@ end
     end
 end
 
-@testitem "JET: Runtime Dispatches" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "JET: Runtime Dispatches" setup = [FIRKExpandedConvergenceTests] begin
     using JET
 
     @testset "Problem: $i" for i in 1:10
         prob = probArr[i]
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-            solver = lobattoIIIa_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            solver = lobattoIIIa_solver(
+                Val(stage); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+            )
+            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
         end
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-            solver = lobattoIIIb_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            solver = lobattoIIIb_solver(
+                Val(stage); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+            )
+            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-            solver = lobattoIIIc_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            solver = lobattoIIIc_solver(
+                Val(stage); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+            )
+            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
         end
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-            solver = radau_solver(Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2)))
-            @test_opt broken=true target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules=(BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            solver = radau_solver(
+                Val(stage); nlsolve = NewtonRaphson(),
+                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+            )
+            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
+            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
         end
     end
 end
 
-@testitem "Convergence on Linear" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "Convergence on Linear" setup = [FIRKExpandedConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools
 
     @testset "Problem: $i" for i in (3, 4, 9, 10)
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1e-8)
+            @time sim = test_convergence(dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1.0e-8)
             if (stage == 5) || (((i == 9) || (i == 10)) && stage == 4)
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             else
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             end
         end
 
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
-                dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
+                dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
+            )
             if (stage == 5) || (stage == 4 && i == 10)
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             elseif stage == 4
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=0.6
+                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = 0.6
             else
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             end
         end
 
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             @time sim = test_convergence(
-                dts, prob, lobattoIIIc_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
+                dts, prob, lobattoIIIc_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
+            )
             if stage == 4
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
-            elseif first(sim.errors[:final]) < 1e-12
-                @test_broken sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
+            elseif first(sim.errors[:final]) < 1.0e-12
+                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             else
-                @test sim.𝒪est[:final]≈2 * stage - 2 atol=testTol
+                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             end
         end
 
         @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sim = test_convergence(
-                dts, prob, radau_solver(Val(stage)); abstol = 1e-8, reltol = 1e-8)
-            if first(sim.errors[:final]) < 1e-12
-                @test_broken sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
+                dts, prob, radau_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
+            )
+            if first(sim.errors[:final]) < 1.0e-12
+                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
             else
-                @test sim.𝒪est[:final]≈2 * stage - 1 atol=testTol
+                @test sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
             end
         end
     end
@@ -231,7 +256,8 @@ end
     bvp1 = BVProblem(simplependulum!, bc_pendulum!, u0, tspan)
 
     jac_alg = BVPJacobianAlgorithm(;
-        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff()))
+        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoSparse(AutoFiniteDiff())
+    )
     nlsolve = NewtonRaphson()
     nested = false
 
@@ -242,39 +268,46 @@ end
     @test_nowarn solve(bvp1, LobattoIIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
 
     @test_nowarn solve(
-        bvp1, LobattoIIIb2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIb2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false
+    )
     @test_nowarn solve(bvp1, LobattoIIIb3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
     @test_nowarn solve(bvp1, LobattoIIIb4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
     @test_nowarn solve(bvp1, LobattoIIIb5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
 
     @test_nowarn solve(
-        bvp1, LobattoIIIc2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false)
+        bvp1, LobattoIIIc2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false
+    )
     @test_nowarn solve(bvp1, LobattoIIIc3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
     @test_nowarn solve(bvp1, LobattoIIIc4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
     @test_nowarn solve(bvp1, LobattoIIIc5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
 
     @test_nowarn solve(
-        bvp1, RadauIIa1(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false)
+        bvp1, RadauIIa1(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false
+    )
     @test_nowarn solve(bvp1, RadauIIa2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
     @test_nowarn solve(bvp1, RadauIIa3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
     @test_nowarn solve(bvp1, RadauIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
     @test_nowarn solve(bvp1, RadauIIa7(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
 end
 
-@testitem "Interpolation" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "Interpolation" setup = [FIRKExpandedConvergenceTests] begin
     using LinearAlgebra
 
     λ = 1
     function prob_bvp_linear_analytic(u, λ, t)
         a = 1 / sqrt(λ)
-        return [(exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
-            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a))]
+        return [
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+        ]
     end
 
     function prob_bvp_linear_analytic_derivative(u, λ, t)
         a = 1 / sqrt(λ)
-        return [(-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
-            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a))]
+        return [
+            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
+        ]
     end
 
     function prob_bvp_linear_f!(du, u, p, t)
@@ -289,58 +322,66 @@ end
     prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
     prob_bvp_linear_tspan = (0.0, 1.0)
     prob_bvp_linear = BVProblem(
-        prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ)
+        prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ
+    )
 
-    testTol = 1e-6
+    testTol = 1.0e-6
     nested = false
 
     @testset "Radau interpolations" begin
         @testset "Interpolation tests for RadauIIa$stage" for stage in (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
-            @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-            @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-            @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-            @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+            @test sol(0.001) ≈ [0.998687464, -1.312035941] atol = testTol
+            @test sol(0.001; idxs = [1, 2]) ≈ [0.998687464, -1.312035941] atol = testTol
+            @test sol(0.001; idxs = 1) ≈ 0.998687464 atol = testTol
+            @test sol(0.001; idxs = 2) ≈ -1.312035941 atol = testTol
         end
 
         @testset "Derivative Interpolation tests for RadauIIa$stage" for stage in
-                                                                         (2, 3, 5, 7)
+            (2, 3, 5, 7)
             @time sol = solve(prob_bvp_linear, radau_solver(Val(stage)); dt = 0.001)
             sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
             dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
 
-            @test sol(0.04, Val{0})≈sol_analytic atol=testTol
-            @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+            @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
+            @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
         end
     end
 
     @testset "LobattoIII interpolations" begin
         @testset "Interpolation tests for Lobatto" begin
-            for (id, lobatto_solver) in zip(("a", "b", "c"), (
-                lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver))
+            for (id, lobatto_solver) in zip(
+                    ("a", "b", "c"), (
+                        lobattoIIIa_solver, lobattoIIIb_solver, lobattoIIIc_solver,
+                    )
+                )
                 begin
                     @testset "Interpolation tests for LobattoIII$(id)$stage" for stage in (
-                        2, 3, 4, 5)
+                            2, 3, 4, 5,
+                        )
                         adaptive = ifelse(stage == 2, false, true) # LobattoIIIa2 is not adaptive
                         @time sol = solve(
-                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive)
-                        @test sol(0.001)≈[0.998687464, -1.312035941] atol=testTol
-                        @test sol(0.001; idxs = [1, 2])≈[0.998687464, -1.312035941] atol=testTol
-                        @test sol(0.001; idxs = 1)≈0.998687464 atol=testTol
-                        @test sol(0.001; idxs = 2)≈-1.312035941 atol=testTol
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive
+                        )
+                        @test sol(0.001) ≈ [0.998687464, -1.312035941] atol = testTol
+                        @test sol(0.001; idxs = [1, 2]) ≈ [0.998687464, -1.312035941] atol = testTol
+                        @test sol(0.001; idxs = 1) ≈ 0.998687464 atol = testTol
+                        @test sol(0.001; idxs = 2) ≈ -1.312035941 atol = testTol
                     end
 
                     @testset "Derivative Interpolation tests for lobatto$(id)$stage" for stage in
-                                                                                         (
-                        2, 3, 4, 5)
+                        (
+                            2, 3, 4, 5,
+                        )
                         adaptive = ifelse(stage == 2, false, true) # LobattoIIIa2 is not adaptive
                         @time sol = solve(
-                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive)
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive
+                        )
                         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
                         dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
 
-                        @test sol(0.04, Val{0})≈sol_analytic atol=testTol
-                        @test sol(0.04, Val{1})≈dsol_analytic atol=testTol
+                        @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
+                        @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
                     end
                 end
             end
@@ -403,19 +444,24 @@ end
 
     bvp3 = TwoPointBVProblem(
         simplependulum!, (bc2a!, bc2b!), [pi / 2, pi / 2], (pi / 4, pi / 2),
-        -pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+        -pi / 2; bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol3 = solve(bvp3, RadauIIa5(), dt = 0.05)
 
-    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
-        pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    bvp4 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), sol3, (0, pi / 2),
+        pi / 2; bcresid_prototype = (zeros(1), zeros(1))
+    )
     @test SciMLBase.successful_retcode(solve(bvp4, RadauIIa5(), dt = 0.05))
 
-    bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
-        (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1)))
+    bvp5 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), DiffEqArray(sol3.u, sol3.t),
+        (0, pi / 2), pi / 2; bcresid_prototype = (zeros(1), zeros(1))
+    )
     @test SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(), dt = 0.05))
 end
 
-@testitem "Test unknown parameters estimation" setup=[FIRKExpandedConvergenceTests] begin
+@testitem "Test unknown parameters estimation" setup = [FIRKExpandedConvergenceTests] begin
     tspan = (0.0, pi)
     function f!(du, u, p, t)
         du[1] = u[2]
@@ -431,11 +477,13 @@ end
     function guess(p, t)
         return [cos(4t); -4sin(4t)]
     end
-    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    bvp = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+    )
     sol = solve(bvp, RadauIIa5(), dt = 0.05)
 
-    @test sol.prob.p≈[17.09658] atol=1e-5
+    @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 
     tspan = (0.0, pi)
     function f!(du, u, p, t)
@@ -450,9 +498,11 @@ end
     function guess(p, t)
         return [cos(4t); -4sin(4t)]
     end
-    bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    bvp = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+    )
     sol = solve(bvp, RadauIIa5(), dt = 0.05)
 
-    @test sol.prob.p≈[17.09658] atol=1e-5
+    @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 end

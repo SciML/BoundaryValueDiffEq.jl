@@ -100,30 +100,39 @@ end
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, alg.optimize, jac_alg, alg.nshoots, alg.grid_coarsening)
+        alg.ode_alg, alg.nlsolve, alg.optimize, jac_alg, alg.nshoots, alg.grid_coarsening
+    )
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
     return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, alg.optimize, alg.jac_alg, nshoots, alg.grid_coarsening)
+        alg.ode_alg, alg.nlsolve, alg.optimize, alg.jac_alg, nshoots, alg.grid_coarsening
+    )
 end
 
-function MultipleShooting(; nshoots::Int,
+function MultipleShooting(;
+        nshoots::Int,
         ode_alg = nothing,
         nlsolve = nothing,
         optimize = nothing,
         grid_coarsening::Union{
-            Bool, Function, <:AbstractVector{<:Integer}, Tuple{Vararg{Integer}}} = true,
-        jac_alg = nothing)
+            Bool, Function, <:AbstractVector{<:Integer}, Tuple{Vararg{Integer}},
+        } = true,
+        jac_alg = nothing
+    )
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
     end
-    return MultipleShooting(ode_alg, nlsolve, optimize,
-        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening)
+    return MultipleShooting(
+        ode_alg, nlsolve, optimize,
+        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening
+    )
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)
 @inline MultipleShooting(nshoots::Int, ode_alg; kwargs...) = MultipleShooting(; nshoots, ode_alg, kwargs...)
-@inline MultipleShooting(nshoots::Int, ode_alg, nlsolve;
-    kwargs...) = MultipleShooting(; nshoots, ode_alg, nlsolve, kwargs...)
+@inline MultipleShooting(
+    nshoots::Int, ode_alg, nlsolve;
+    kwargs...
+) = MultipleShooting(; nshoots, ode_alg, nlsolve, kwargs...)

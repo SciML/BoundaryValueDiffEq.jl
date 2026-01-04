@@ -61,8 +61,9 @@ end
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractAscher; dt = 0.0, controller = GlobalErrorControl(),
-        adaptive = true, abstol = 1e-4, nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...)
+        adaptive = true, abstol = 1.0e-4, nlsolve_kwargs = (; abstol = abstol),
+        optimize_kwargs = (; abstol = abstol), kwargs...
+    )
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -105,7 +106,7 @@ function SciMLBase.__init(
     iip = isinplace(prob)
 
     f,
-    bc = if prob.u0 isa AbstractVector
+        bc = if prob.u0 isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(u0))
@@ -151,7 +152,8 @@ function SciMLBase.__init(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
         fixpnt, alg, prob.problem_type, bcresid_prototype, residual, zval, yval, gval,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
-        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...))
+        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
+    )
     return cache
 end
 
@@ -171,16 +173,19 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
     u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
 
     return SciMLBase.build_solution(
-        cache.prob, cache.alg, cache.original_mesh, u; retcode = info)
+        cache.prob, cache.alg, cache.original_mesh, u; retcode = info
+    )
 end
 
 function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {
-        iip, T}
+        iip, T,
+    }
     info::ReturnCode.T = ReturnCode.Success
     nlprob = __construct_nlproblem(cache)
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
-        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs)
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs
+    )
     nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
     error_norm = 2 * abstol
     info = nlsol.retcode
@@ -266,8 +271,10 @@ function __append_similar!(x::AbstractVector{T}, n) where {T}
     return x
 end
 
-function __append_similar!(x::AbstractVector{<:AbstractArray{T}}, n) where {T <:
-                                                                            AbstractArray}
+function __append_similar!(x::AbstractVector{<:AbstractArray{T}}, n) where {
+        T <:
+        AbstractArray,
+    }
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
@@ -291,8 +298,10 @@ function __append_similar(x::AbstractVector{T}, n) where {T}
     return deepcopy(x)
 end
 
-function __append_similar(x::AbstractVector{<:AbstractArray{T}}, n) where {T <:
-                                                                           AbstractArray}
+function __append_similar(x::AbstractVector{<:AbstractArray{T}}, n) where {
+        T <:
+        AbstractArray,
+    }
     N = n - length(x)
     N == 0 && return x
     N < 0 && throw(ArgumentError("Cannot append a negative number of elements"))
@@ -342,17 +351,23 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     end
 
     jac = if iip
-        @closure (J, u,
-            p) -> __ascher_mpoint_jacobian!(J, u, diffmode, jac_cache, loss, lz, cache.p)
+        @closure (
+            J, u,
+            p,
+        ) -> __ascher_mpoint_jacobian!(J, u, diffmode, jac_cache, loss, lz, cache.p)
     else
-        @closure (u,
-            p) -> __ascher_mpoint_jacobian(
-            jac_prototype, u, diffmode, jac_cache, loss, cache.p)
+        @closure (
+            u,
+            p,
+        ) -> __ascher_mpoint_jacobian(
+            jac_prototype, u, diffmode, jac_cache, loss, cache.p
+        )
     end
 
     return __construct_internal_problem(
         cache.prob, cache.prob.problem_type, alg, loss, jac, jac_prototype,
-        resid_prototype, lz, cache.p, cache.ncomp, length(cache.mesh))
+        resid_prototype, lz, cache.p, cache.ncomp, length(cache.mesh)
+    )
 end
 
 function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
@@ -390,4 +405,5 @@ function __append_abd!(cache::AscherCache)
     for i in 1:n
         blocks[i] = zeros(T, rows[i], cols[i])
     end
+    return
 end

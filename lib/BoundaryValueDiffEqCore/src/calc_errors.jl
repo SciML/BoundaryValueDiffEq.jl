@@ -72,8 +72,10 @@ struct HybridErrorControl{T1, T2} <: AbstractErrorControl
     defect::DefectControl
     global_error::GlobalErrorControl
 
-    function HybridErrorControl(; DE = 1.0, GE = 1.0, defect = DefectControl(),
-            global_error = GlobalErrorControl())
+    function HybridErrorControl(;
+            DE = 1.0, GE = 1.0, defect = DefectControl(),
+            global_error = GlobalErrorControl()
+        )
         return new{typeof(DE), typeof(GE)}(DE, GE, defect, global_error)
     end
 end

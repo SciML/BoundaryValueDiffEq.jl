@@ -4,34 +4,34 @@ using ADTypes
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
-                               recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_solve_algorithm, diff!, __any_sparse_ad,
-                               __cache_trait, concrete_jacobian_algorithm, eval_bc_residual,
-                               eval_bc_residual!, get_tmp, __maybe_matmul!,
-                               __concrete_kwargs, __extract_problem_details,
-                               __initial_guess, __construct_internal_problem,
-                               __default_coloring_algorithm, __default_sparsity_detector,
-                               __maybe_allocate_diffcache, __get_bcresid_prototype,
-                               safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
-                               __materialize_jacobian_algorithm, __default_nonsparse_ad,
-                               recursive_flatten_twopoint!, __internal_nlsolve_problem,
-                               NoDiffCacheNeeded, DiffCacheNeeded, __extract_mesh,
-                               __extract_u0, __has_initial_guess, __initial_guess_length,
-                               __initial_guess_on_mesh, __flatten_initial_guess,
-                               __get_non_sparse_ad, __build_solution, __Fix3, get_dense_ad,
-                               __internal_solve
+    recursive_flatten, recursive_flatten!, recursive_unflatten!,
+    __concrete_solve_algorithm, diff!, __any_sparse_ad,
+    __cache_trait, concrete_jacobian_algorithm, eval_bc_residual,
+    eval_bc_residual!, get_tmp, __maybe_matmul!,
+    __concrete_kwargs, __extract_problem_details,
+    __initial_guess, __construct_internal_problem,
+    __default_coloring_algorithm, __default_sparsity_detector,
+    __maybe_allocate_diffcache, __get_bcresid_prototype,
+    safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+    __materialize_jacobian_algorithm, __default_nonsparse_ad,
+    recursive_flatten_twopoint!, __internal_nlsolve_problem,
+    NoDiffCacheNeeded, DiffCacheNeeded, __extract_mesh,
+    __extract_u0, __has_initial_guess, __initial_guess_length,
+    __initial_guess_on_mesh, __flatten_initial_guess,
+    __get_non_sparse_ad, __build_solution, __Fix3, get_dense_ad,
+    __internal_solve
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian,
-                                overloaded_input_type
+    overloaded_input_type
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
 using LinearAlgebra
 using Reexport: @reexport
 using RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
-                 _unwrap_val
+    _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using OrdinaryDiffEqTsit5: Tsit5
@@ -71,12 +71,16 @@ include("sparse_jacobians.jl")
     u0 = [5.0, -3.5]
     bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
-    probs = [BVProblem(f1!, bc1!, u0, tspan; nlls = Val(false)),
+    probs = [
+        BVProblem(f1!, bc1!, u0, tspan; nlls = Val(false)),
         BVProblem(f1, bc1, u0, tspan; nlls = Val(false)),
         TwoPointBVProblem(
-            f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype, nlls = Val(false)),
+            f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype, nlls = Val(false)
+        ),
         TwoPointBVProblem(
-            f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype, nlls = Val(false))]
+            f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype, nlls = Val(false)
+        ),
+    ]
 
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
 
