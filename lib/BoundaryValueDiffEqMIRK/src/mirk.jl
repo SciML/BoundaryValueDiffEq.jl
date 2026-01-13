@@ -157,7 +157,8 @@ function SciMLBase.__init(
         f_wrapped = prob.f
         bc_wrapped = prob.f.bc
         if fit_parameters
-            l_parameters = length(prob.p)
+            tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+            l_parameters = length(tunable_part)
             base_f = f_wrapped
             f_wrapped = @closure (
                 du,
@@ -258,8 +259,10 @@ function SciMLBase.solve!(
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
     if fit_parameters
-        length_u = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        length_u = cache.M - length(tunable_part)
+        new_p = SciMLStructures.replace(SciMLStructures.Tunable(), prob.p, first(cache.y₀)[(length_u + 1):end])
+        prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
     end

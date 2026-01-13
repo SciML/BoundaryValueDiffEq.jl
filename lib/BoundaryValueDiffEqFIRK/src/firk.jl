@@ -194,7 +194,8 @@ function init_nested(
     f,
         bc = if X isa AbstractVector
         if fit_parameters == true
-            l_parameters = length(prob.p)
+            tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+            l_parameters = length(tunable_part)
             vecf! = function (du, u, p, t)
                 prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
                 return du[(end - l_parameters + 1):end] .= 0
@@ -345,7 +346,7 @@ function init_expanded(
     f,
         bc = if X isa AbstractVector
         if fit_parameters == true
-            l_parameters = length(prob.p)
+            l_parameters = length(__tunable_part(p))
             vecf! = function (du, u, p, t)
                 prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
                 return du[(end - l_parameters + 1):end] .= 0
@@ -448,8 +449,10 @@ function SciMLBase.solve!(
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
     if fit_parameters
-        length_u = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        length_u = cache.M - length(tunable_part)
+        new_p = SciMLStructures.replace(SciMLStructures.Tunable(), prob.p, first(cache.y₀)[(length_u + 1):end])
+        prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
     end
@@ -486,8 +489,10 @@ function SciMLBase.solve!(
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
     if fit_parameters
-        length_u = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
+        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        length_u = cache.M - length(tunable_part)
+        new_p = SciMLStructures.replace(SciMLStructures.Tunable(), prob.p, first(cache.y₀)[(length_u + 1):end])
+        prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
     end

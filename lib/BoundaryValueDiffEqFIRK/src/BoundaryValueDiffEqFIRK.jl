@@ -24,7 +24,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     __initial_guess_on_mesh, __flatten_initial_guess,
     __build_solution, __Fix3, __split_kwargs, _sparse_like,
     get_dense_ad, __internal_optimization_problem,
-    __internal_solve, __default_sparsity_detector, __build_cost
+    __internal_solve, __default_sparsity_detector, __build_cost,
+    __tunable_part
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
@@ -44,6 +45,7 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __so
     _unwrap_val
 using Setfield: @set!, @set
 using SparseArrays: sparse
+using SciMLStructures: SciMLStructures
 
 const DI = DifferentiationInterface
 

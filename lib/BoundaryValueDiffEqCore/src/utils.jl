@@ -292,7 +292,7 @@ function __extract_problem_details(
     if fit_parameters
         prob.p isa SciMLBase.NullParameters &&
             throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-        new_u = vcat(u0, prob.p)
+        new_u = vcat(u0, __tunable_part(prob.p))
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
@@ -319,7 +319,7 @@ function __extract_problem_details(
     if fit_parameters
         prob.p isa SciMLBase.NullParameters &&
             throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-        new_u = vcat(_u0, prob.p)
+        new_u = vcat(u0, __tunable_part(prob.p))
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
@@ -330,7 +330,7 @@ function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, 
         if fit_parameters
             p isa SciMLBase.NullParameters &&
                 throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-            return vcat(f(p, t), p)
+            return vcat(f(p, t), __tunable_part(p))
         end
         return f(p, t)
     elseif hasmethod(f, Tuple{T})
@@ -343,12 +343,17 @@ function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, 
         if fit_parameters
             p isa SciMLBase.NullParameters &&
                 throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-            return vcat(f(t), p)
+            return vcat(f(t), __tunable_part(p))
         end
         return f(t)
     else
         throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))
     end
+end
+
+function __tunable_part(p)
+    part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+    return part
 end
 
 function __get_bcresid_prototype(prob::BVProblem, u)

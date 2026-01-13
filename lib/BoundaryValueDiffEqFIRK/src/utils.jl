@@ -47,24 +47,23 @@ end
     prob,
     u0::AbstractArray,
     stage;
-    fit_parameters = false
-) = ifelse(fit_parameters, repeat(vcat(u0, prob.p), 1, stage), repeat(u0, 1, stage))
+    fit_parameters = false) = ifelse(fit_parameters, repeat(vcat(u0, __tunable_part(prob.p)), 1, stage), repeat(u0, 1, stage))
 @inline function __K0_on_u0(prob, u0::AbstractVector{<:AbstractArray}, stage; fit_parameters = false)
     u0_mat = hcat(u0...)
     avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
-    fit_parameters && return repeat(vcat(avg_u0, prob.p), 1, stage)
+    fit_parameters && return repeat(vcat(avg_u0, __tunable_part(prob.p)), 1, stage)
     return repeat(avg_u0, 1, stage)
 end
 @inline function __K0_on_u0(prob, u0::AbstractVectorOfArray, stage; fit_parameters = false)
     u0_mat = hcat(u0.u...)
     avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
-    fit_parameters && return repeat(vcat(avg_u0, prob.p), 1, stage)
+    fit_parameters && return repeat(vcat(avg_u0, __tunable_part(prob.p)), 1, stage)
     return repeat(avg_u0, 1, stage)
 end
 @inline function __K0_on_u0(prob, u0::SciMLBase.ODESolution, stage; fit_parameters = false)
     u0_mat = hcat(u0.u...)
     avg_u0 = vec(sum(u0_mat, dims = 2)) / size(u0_mat, 2)
-    fit_parameters && return repeat(vcat(avg_u0, prob.p), 1, stage)
+    fit_parameters && return repeat(vcat(avg_u0, __tunable_part(prob.p)), 1, stage)
     return repeat(avg_u0, 1, stage)
 end
 @inline function __K0_on_u0(prob, u0::F, stage; fit_parameters = false) where {
@@ -72,6 +71,6 @@ end
         Function,
     }
     avg_u0 = u0(prob.p, first(prob.tspan))
-    fit_parameters && return repeat(vcat(avg_u0, prob.p), 1, stage)
+    fit_parameters && return repeat(vcat(avg_u0, __tunable_part(prob.p)), 1, stage)
     return repeat(avg_u0, 1, stage)
 end
