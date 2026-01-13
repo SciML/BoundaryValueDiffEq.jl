@@ -1,12 +1,28 @@
 @inline __default_cost(::Nothing) = (x, p) -> 0.0
 @inline __default_cost(f) = f
-@inline __build_cost(::Nothing, _, _, _) = (x, p) -> 0.0
-@inline function __build_cost(fun, cache, mesh, M)
-    cost_fun = function (u, p)
-        # simple recursive unflatten
-        newy = [u[i:(i + M - 1)] for i in 1:M:(length(u) - M + 1)]
-        eval_sol = EvalSol(newy, mesh, cache)
-        return fun(eval_sol, p)
+@inline __build_cost(::Nothing, cache, mesh, M; kwargs...) = (x, p) -> 0.0
+@inline function __build_cost(fun, cache, mesh, M; fit_parameters = false, p = nothing)
+    if fit_parameters && p !== nothing
+        # When fit_parameters=true, the state vector is augmented with tunable params
+        # Extract them and use SciMLStructures.replace to update p for the cost function
+        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        l_params = length(tunable_part)
+        length_u = M - l_params
+        cost_fun = @views function (u, p_orig)
+            newy = [u[i:(i + M - 1)] for i in 1:M:(length(u) - M + 1)]
+            # Extract tunable params from first mesh point (same at all points)
+            params_from_u = u[(length_u + 1):M]
+            new_p = SciMLStructures.replace(SciMLStructures.Tunable(), p_orig, params_from_u)
+            eval_sol = EvalSol(newy, mesh, cache)
+            return fun(eval_sol, new_p)
+        end
+    else
+        cost_fun = @views function (u, p)
+            # simple recursive unflatten
+            newy = [u[i:(i + M - 1)] for i in 1:M:(length(u) - M + 1)]
+            eval_sol = EvalSol(newy, mesh, cache)
+            return fun(eval_sol, p)
+        end
     end
     return cost_fun
 end
