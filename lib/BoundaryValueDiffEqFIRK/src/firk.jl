@@ -197,8 +197,9 @@ function init_nested(
             tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
             vecf! = function (du, u, p, t)
-                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
-                return du[(end - l_parameters + 1):end] .= 0
+                _p = SciMLStructures.replace(SciMLStructures.Tunable(), p, @view(u[(end - l_parameters + 1):end]))
+                prob.f(du, u, _p, t)
+                du[(end - l_parameters + 1):end] .= 0
             end
             vecbc! = prob.f.bc
             vecf!, vecbc!
@@ -346,10 +347,11 @@ function init_expanded(
     f,
         bc = if X isa AbstractVector
         if fit_parameters == true
-            l_parameters = length(__tunable_part(p))
+            l_parameters = length(__tunable_part(prob.p))
             vecf! = function (du, u, p, t)
-                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
-                return du[(end - l_parameters + 1):end] .= 0
+                _p = SciMLStructures.replace(SciMLStructures.Tunable(), p, @view(u[(end - l_parameters + 1):end]))
+                prob.f(du, u, _p, t)
+                du[(end - l_parameters + 1):end] .= 0
             end
             vecbc! = prob.f.bc
             vecf!, vecbc!

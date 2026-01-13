@@ -167,7 +167,8 @@ function SciMLBase.__init(
                 t,
             ) -> begin
                 @inbounds @views begin
-                    base_f(du, u, u[(end - l_parameters + 1):end], t)
+                    _p = SciMLStructures.replace(SciMLStructures.Tunable(), p, u[(end - l_parameters + 1):end])
+                    base_f(du, u, _p, t)
                     fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
                 end
                 return nothing
