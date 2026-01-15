@@ -1,6 +1,8 @@
-function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
+function SciMLBase.__solve(
+        prob::BVProblem, alg_::Shooting; abstol = 1.0e-6,
         odesolve_kwargs = (;), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = true, kwargs...)
+        optimize_kwargs = (; abstol = abstol), verbose = true, kwargs...
+    )
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
@@ -29,14 +31,20 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
     loss_fn = if iip
-        @closure (du,
+        @closure (
+            du,
             u,
-            p) -> __single_shooting_loss!(
-            du, u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type, resid_size)
+            p,
+        ) -> __single_shooting_loss!(
+            du, u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type, resid_size
+        )
     else
-        @closure (u,
-            p) -> __single_shooting_loss(
-            u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type)
+        @closure (
+            u,
+            p,
+        ) -> __single_shooting_loss(
+            u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type
+        )
     end
 
     y_ = similar(resid_prototype)
@@ -49,15 +57,20 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
         internal_prob, jac_cache, __cache_trait(diffmode),
-        diffmode, u0, alg.ode_alg; ode_kwargs...)
+        diffmode, u0, alg.ode_alg; ode_kwargs...
+    )
 
     loss_fnₚ = if iip
-        @closure (du,
-            u) -> __single_shooting_loss!(
-            du, u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size)
+        @closure (
+            du,
+            u,
+        ) -> __single_shooting_loss!(
+            du, u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size
+        )
     else
         @closure (u) -> __single_shooting_loss(
-            u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type)
+            u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type
+        )
     end
 
     jac_prototype = if iip
@@ -68,15 +81,21 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
 
     jac_fn = if iip
         @closure (
-            J, u, p) -> __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fnₚ, y_)
+            J, u, p,
+        ) -> __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fnₚ, y_)
     else
-        @closure (u,
-            p) -> __single_shooting_jacobian(
-            jac_prototype, u, jac_cache, diffmode, loss_fnₚ)
+        @closure (
+            u,
+            p,
+        ) -> __single_shooting_jacobian(
+            jac_prototype, u, jac_cache, diffmode, loss_fnₚ
+        )
     end
 
-    nlprob = __construct_internal_problem(prob, alg, loss_fn, jac_fn, jac_prototype,
-        resid_prototype, u0, prob.p, length(u0), 1, nothing)
+    nlprob = __construct_internal_problem(
+        prob, alg, loss_fn, jac_fn, jac_prototype,
+        resid_prototype, u0, prob.p, length(u0), 1, nothing
+    )
     solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
     kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
     nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
@@ -89,8 +108,10 @@ function SciMLBase.__solve(prob::BVProblem, alg_::Shooting; abstol = 1e-6,
     return __build_solution(prob, odesol, nlsol)
 end
 
-function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
-        pt::TwoPointBVProblem, (resida_size, residb_size)) where {BC}
+function __single_shooting_loss!(
+        resid_, u0_, p, cache, bc::BC, u0_size,
+        pt::TwoPointBVProblem, (resida_size, residb_size)
+    ) where {BC}
     resida = @view resid_[1:prod(resida_size)]
     residb = @view resid_[(prod(resida_size) + 1):end]
     resid = (reshape(resida, resida_size), reshape(residb, residb_size))
@@ -103,8 +124,10 @@ function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
     return nothing
 end
 
-function __single_shooting_loss!(resid_, u0_, p, cache, bc::BC, u0_size,
-        pt::StandardBVProblem, resid_size) where {BC}
+function __single_shooting_loss!(
+        resid_, u0_, p, cache, bc::BC, u0_size,
+        pt::StandardBVProblem, resid_size
+    ) where {BC}
     resid = reshape(resid_, resid_size)
 
     SciMLBase.reinit!(cache, reshape(u0_, u0_size))
@@ -132,12 +155,14 @@ function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where
 end
 
 function __single_shooting_jacobian_ode_cache(
-        prob, jac_cache, ::NoDiffCacheNeeded, diffmode, u0, ode_alg; kwargs...)
+        prob, jac_cache, ::NoDiffCacheNeeded, diffmode, u0, ode_alg; kwargs...
+    )
     return SciMLBase.__init(remake(prob; u0), ode_alg; kwargs...)
 end
 
 function __single_shooting_jacobian_ode_cache(
-        prob, jac_cache, ::DiffCacheNeeded, diffmode, u0, ode_alg; kwargs...)
+        prob, jac_cache, ::DiffCacheNeeded, diffmode, u0, ode_alg; kwargs...
+    )
     T_dual = eltype(overloaded_input_type(jac_cache))
     xduals = zeros(T_dual, size(u0))
     prob_ = remake(prob; u0 = reshape(xduals, size(u0)), tspan = eltype(xduals).(prob.tspan))

@@ -11,5 +11,5 @@ Abstract Type for all BoundaryValueDiffEqCore Caches.
 abstract type AbstractBoundaryValueDiffEqCache end
 
 function SciMLBase.isinplace(cache::AbstractBoundaryValueDiffEqCache)
-    SciMLBase.isinplace(cache.prob)
+    return SciMLBase.isinplace(cache.prob)
 end

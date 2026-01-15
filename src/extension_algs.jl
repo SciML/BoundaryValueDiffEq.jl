@@ -41,20 +41,28 @@ struct BVPM2{S} <: AbstractBoundaryValueDiffEqAlgorithm
     error_control::Int
     singular_term::S
 
-    function BVPM2(max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
-            error_control::Int, singular_term::Union{Nothing, AbstractMatrix})
+    function BVPM2(
+            max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
+            error_control::Int, singular_term::Union{Nothing, AbstractMatrix}
+        )
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`BVPM2` requires `ODEInterface.jl` to be loaded")
         end
-        return new{typeof(singular_term)}(max_num_subintervals, method_choice,
-            diagnostic_output, error_control, singular_term)
+        return new{typeof(singular_term)}(
+            max_num_subintervals, method_choice,
+            diagnostic_output, error_control, singular_term
+        )
     end
 end
 
-function BVPM2(; max_num_subintervals::Int = 3000, method_choice::Int = 4,
-        diagnostic_output::Int = -1, error_control::Int = 1, singular_term = nothing)
-    return BVPM2(max_num_subintervals, method_choice,
-        diagnostic_output, error_control, singular_term)
+function BVPM2(;
+        max_num_subintervals::Int = 3000, method_choice::Int = 4,
+        diagnostic_output::Int = -1, error_control::Int = 1, singular_term = nothing
+    )
+    return BVPM2(
+        max_num_subintervals, method_choice,
+        diagnostic_output, error_control, singular_term
+    )
 end
 
 """
@@ -156,21 +164,29 @@ struct COLNEW <: AbstractBoundaryValueDiffEqAlgorithm
     dbc_func::Union{Function, Nothing}
     zeta::Union{AbstractVector, Nothing}
 
-    function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+    function COLNEW(
+            bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
             max_num_subintervals::Int, bc_func::Union{Function, Nothing},
-            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
+            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing}
+        )
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`COLNEW` requires `ODEInterface.jl` to be loaded")
         end
-        return new(bvpclass, collocationpts, diagnostic_output,
-            max_num_subintervals, bc_func, dbc_func, zeta)
+        return new(
+            bvpclass, collocationpts, diagnostic_output,
+            max_num_subintervals, bc_func, dbc_func, zeta
+        )
     end
 end
 
-function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
+function COLNEW(;
+        bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
         max_num_subintervals::Int = 3000, bc_func::Union{Function, Nothing} = nothing,
         dbc_func::Union{Function, Nothing} = nothing,
-        zeta::Union{AbstractVector, Nothing} = nothing)
-    return COLNEW(bvpclass, collocationpts, diagnostic_output,
-        max_num_subintervals, bc_func, dbc_func, zeta)
+        zeta::Union{AbstractVector, Nothing} = nothing
+    )
+    return COLNEW(
+        bvpclass, collocationpts, diagnostic_output,
+        max_num_subintervals, bc_func, dbc_func, zeta
+    )
 end

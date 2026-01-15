@@ -1,13 +1,18 @@
 @testitem "Basic Shooting" begin
     using BoundaryValueDiffEqShooting, LinearAlgebra, OrdinaryDiffEqTsit5, JET
 
-    SOLVERS = [Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
+    SOLVERS = [
+        Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 2))),
         Shooting(Tsit5()),
         MultipleShooting(10, Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Tsit5(), NewtonRaphson(;
-            autodiff = AutoForwardDiff(; chunksize = 2))),
-        MultipleShooting(10, Tsit5())]
+        MultipleShooting(
+            10, Tsit5(), NewtonRaphson(;
+                autodiff = AutoForwardDiff(; chunksize = 2)
+            )
+        ),
+        MultipleShooting(10, Tsit5()),
+    ]
     # JET_SKIP = [false, false, true, false, false, true]
     JET_SKIP = [true, true, true, true, true, true]
     JET_BROKEN = [false, false, false, false, false, false]
@@ -32,19 +37,23 @@
     @test SciMLBase.isinplace(bvp1)
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp1, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3), maxiters = 10000)
+        sol = solve(
+            bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+        )
 
         @test SciMLBase.successful_retcode(sol)
-        @test norm(sol.resid, Inf) < 1e-8
+        @test norm(sol.resid, Inf) < 1.0e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp1, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp1, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
     end
 
     # Out of Place
@@ -62,43 +71,53 @@
     @test !SciMLBase.isinplace(bvp2)
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp2, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3), maxiters = 10000)
+        sol = solve(
+            bvp2, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+        )
 
         @test SciMLBase.successful_retcode(sol)
-        @test norm(sol.resid, Inf) < 1e-8
+        @test norm(sol.resid, Inf) < 1.0e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp2, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp2, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp2, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp2, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
     end
 
     # Inplace
     bc2a!(resid, ua, p) = (resid[1] = ua[1])
     bc2b!(resid, ub, p) = (resid[1] = ub[1] - 1)
 
-    bvp3 = TwoPointBVProblem(f1!, (bc2a!, bc2b!), u0, tspan;
-        bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1)))
+    bvp3 = TwoPointBVProblem(
+        f1!, (bc2a!, bc2b!), u0, tspan;
+        bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
+    )
     @test SciMLBase.isinplace(bvp3)
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp3, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3), maxiters = 10000)
+        sol = solve(
+            bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+        )
 
         @test SciMLBase.successful_retcode(sol)
-        @test norm(sol.resid, Inf) < 1e-8
+        @test norm(sol.resid, Inf) < 1.0e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp3, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp3, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
     end
 
     # Out of Place
@@ -109,19 +128,23 @@
     @test !SciMLBase.isinplace(bvp4)
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp4, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3), maxiters = 10000)
+        sol = solve(
+            bvp4, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+        )
 
         @test SciMLBase.successful_retcode(sol)
-        @test norm(sol.resid, Inf) < 1e-8
+        @test norm(sol.resid, Inf) < 1.0e-8
 
         JET_SKIP[i] && continue
-        @test_opt target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp4, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
-        @test_call target_modules=(BoundaryValueDiffEqShooting,) solve(
-            bvp4, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3)) broken=JET_BROKEN[i]
+        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp4, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
+        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
+            bvp4, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
+        ) broken = JET_BROKEN[i]
     end
 end
 
@@ -131,7 +154,8 @@ end
     SOLVERS = [
         Shooting(Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())), Shooting(Vern7()),
         MultipleShooting(10, Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
-        MultipleShooting(10, Vern7())]
+        MultipleShooting(10, Vern7()),
+    ]
 
     function f1!(du, u, p, t)
         du[1] = u[2]
@@ -151,17 +175,19 @@ end
     bvp = BVProblem(f1!, bc1!, u0, tspan)
 
     for (i, solver) in enumerate(SOLVERS)
-        sol = solve(bvp, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-6, reltol = 1e-3), maxiters = 10000)
+        sol = solve(
+            bvp, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+        )
 
         @test SciMLBase.successful_retcode(sol)
-        @test norm(sol.resid, Inf) < 1e-8
+        @test norm(sol.resid, Inf) < 1.0e-8
     end
 end
 
 @testitem "Flow in a Channel" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock,
-          LinearAlgebra
+        LinearAlgebra
 
     function flow_in_a_channel!(du, u, p, t)
         R, P = p
@@ -197,21 +223,29 @@ end
     flow_bvp = BVProblem{true}(flow_in_a_channel!, bc_flow!, u0, tspan, p)
 
     for solver in [
-        Shooting(AutoTsit5(Rodas4P()), NewtonRaphson(;
-            autodiff = AutoForwardDiff(; chunksize = 8))),
-        MultipleShooting(10, AutoTsit5(Rodas4P()),
-            NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8)))]
-        sol = solve(flow_bvp, solver; abstol = 1e-8, reltol = 1e-8,
-            odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-8))
+            Shooting(
+                AutoTsit5(Rodas4P()), NewtonRaphson(;
+                    autodiff = AutoForwardDiff(; chunksize = 8)
+                )
+            ),
+            MultipleShooting(
+                10, AutoTsit5(Rodas4P()),
+                NewtonRaphson(; autodiff = AutoForwardDiff(; chunksize = 8))
+            ),
+        ]
+        sol = solve(
+            flow_bvp, solver; abstol = 1.0e-8, reltol = 1.0e-8,
+            odesolve_kwargs = (; abstol = 1.0e-8, reltol = 1.0e-8)
+        )
 
         @test SciMLBase.successful_retcode(sol)
-        @test norm(sol.resid, Inf) < 1e-8
+        @test norm(sol.resid, Inf) < 1.0e-8
     end
 end
 #FIXME: MultipleShooting fails for large out-of-place BVP systems
 @testitem "Ray Tracing" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock,
-          LinearAlgebra
+        LinearAlgebra
 
     @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
     @inline ux(x, y, z, p) = -p[1] * sin(p[1] * x)
@@ -256,9 +290,11 @@ end
         ub = sol(1.0)
         nu = v(ua[1], ua[2], ua[3], p) # Velocity of a sound wave, function of space;
 
-        return [ua[1] - p[4], ua[2] - p[5], ua[3] - p[6],
+        return [
+            ua[1] - p[4], ua[2] - p[5], ua[3] - p[6],
             ua[7], ua[4]^2 + ua[5]^2 + ua[6]^2 - 1 / nu^2,
-            ub[1] - p[7], ub[2] - p[8], ub[3] - p[9]]
+            ub[1] - p[7], ub[2] - p[8], ub[3] - p[9],
+        ]
     end
 
     function ray_tracing_bc!(res, sol, p, t)
@@ -324,44 +360,60 @@ end
     tspan = (0.0, 1.0)
 
     prob_oop = BVProblem(
-        BVPFunction{false}(ray_tracing, ray_tracing_bc), u0, tspan, p; nlls = Val(true))
+        BVPFunction{false}(ray_tracing, ray_tracing_bc), u0, tspan, p; nlls = Val(true)
+    )
     prob_iip = BVProblem(
-        BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p; nlls = Val(true))
+        BVPFunction{true}(ray_tracing!, ray_tracing_bc!), u0, tspan, p; nlls = Val(true)
+    )
     prob_tp_oop = BVProblem(
         BVPFunction{false}(ray_tracing, (ray_tracing_bc_a, ray_tracing_bc_b); twopoint = Val(true)),
         u0,
         tspan,
         p;
-        nlls = Val(true))
+        nlls = Val(true)
+    )
     prob_tp_iip = BVProblem(
-        BVPFunction{true}(ray_tracing!, (ray_tracing_bc_a!, ray_tracing_bc_b!);
-            bcresid_prototype = (zeros(5), zeros(3)), twopoint = Val(true)),
+        BVPFunction{true}(
+            ray_tracing!, (ray_tracing_bc_a!, ray_tracing_bc_b!);
+            bcresid_prototype = (zeros(5), zeros(3)), twopoint = Val(true)
+        ),
         u0,
         tspan,
         p;
-        nlls = Val(true))
+        nlls = Val(true)
+    )
 
-    alg_sp = MultipleShooting(10,
+    alg_sp = MultipleShooting(
+        10,
         AutoVern7(Rodas4P());
         grid_coarsening = true,
         nlsolve = TrustRegion(),
-        jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
-            nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 8))))
-    alg_dense = MultipleShooting(10,
+        jac_alg = BVPJacobianAlgorithm(;
+            bc_diffmode = AutoForwardDiff(; chunksize = 8),
+            nonbc_diffmode = AutoSparse(AutoForwardDiff(; chunksize = 8))
+        )
+    )
+    alg_dense = MultipleShooting(
+        10,
         AutoVern7(Rodas4P());
         grid_coarsening = true,
         nlsolve = TrustRegion(),
-        jac_alg = BVPJacobianAlgorithm(; bc_diffmode = AutoForwardDiff(; chunksize = 8),
-            nonbc_diffmode = AutoForwardDiff(; chunksize = 8)))
+        jac_alg = BVPJacobianAlgorithm(;
+            bc_diffmode = AutoForwardDiff(; chunksize = 8),
+            nonbc_diffmode = AutoForwardDiff(; chunksize = 8)
+        )
+    )
     alg_default = MultipleShooting(10, AutoVern7(Rodas4P()); nlsolve = NewtonRaphson(), grid_coarsening = true)
 
     for (prob, alg) in
         Iterators.product((prob_iip, prob_tp_iip), (alg_sp, alg_dense, alg_default))
-        sol = solve(prob, alg; abstol = 1e-6, reltol = 1e-6, maxiters = 1000,
-            odesolve_kwargs = (; abstol = 1e-8, reltol = 1e-5))
+        sol = solve(
+            prob, alg; abstol = 1.0e-6, reltol = 1.0e-6, maxiters = 1000,
+            odesolve_kwargs = (; abstol = 1.0e-8, reltol = 1.0e-5)
+        )
 
         @test SciMLBase.successful_retcode(sol.retcode)
-        @test norm(sol.resid, Inf) < 1e-6
+        @test norm(sol.resid, Inf) < 1.0e-6
     end
 end
 
@@ -391,23 +443,31 @@ end
     end
 
     u0 = [pi / 2, pi / 2]
-    bvp2 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), u0, tspan;
-        bcresid_prototype = (zeros(1), zeros(1)))
+    bvp2 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), u0, tspan;
+        bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol2 = solve(bvp2, MultipleShooting(5, Vern7()))
     @test SciMLBase.successful_retcode(sol2)
 
-    bvp3 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol2, tspan;
-        bcresid_prototype = (zeros(1), zeros(1)))
+    bvp3 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), sol2, tspan;
+        bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol3 = solve(bvp3, MultipleShooting(5, Vern7()))
     @test SciMLBase.successful_retcode(sol3)
 
-    bvp4 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), sol2.u, tspan;
-        bcresid_prototype = (zeros(1), zeros(1)))
+    bvp4 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), sol2.u, tspan;
+        bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol4 = solve(bvp4, MultipleShooting(5, Vern7()))
     @test SciMLBase.successful_retcode(sol4)
 
-    bvp5 = TwoPointBVProblem(simplependulum!, (bc2a!, bc2b!), initialGuess,
-        tspan; bcresid_prototype = (zeros(1), zeros(1)))
+    bvp5 = TwoPointBVProblem(
+        simplependulum!, (bc2a!, bc2b!), initialGuess,
+        tspan; bcresid_prototype = (zeros(1), zeros(1))
+    )
     sol5 = solve(bvp5, MultipleShooting(5, Vern7()))
     @test SciMLBase.successful_retcode(sol5)
 end

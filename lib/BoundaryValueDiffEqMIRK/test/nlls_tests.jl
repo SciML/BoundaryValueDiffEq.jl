@@ -1,9 +1,11 @@
 @testitem "Overconstrained BVP" begin
     using BoundaryValueDiffEqMIRK, LinearAlgebra
 
-    SOLVERS = [mirk(; nlsolve)
-               for mirk in (MIRK4, MIRK5, MIRK6),
-    nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)]
+    SOLVERS = [
+        mirk(; nlsolve)
+            for mirk in (MIRK4, MIRK5, MIRK6),
+            nlsolve in (LevenbergMarquardt(), GaussNewton(), TrustRegion(), nothing)
+    ]
 
     # OOP MP-BVP
     f1(u, p, t) = [u[2], -u[1]]
@@ -20,8 +22,8 @@
     bvp1 = BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        sol = solve(bvp1, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
-        @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-2
+        sol = solve(bvp1, solver; verbose = false, dt = 1.0, abstol = 1.0e-3, reltol = 1.0e-3)
+        @test norm(bc1(sol, nothing, sol.t), Inf) < 1.0e-2
     end
 
     # IIP MP-BVP
@@ -44,10 +46,10 @@
     bvp2 = BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(3)), u0, tspan)
 
     for solver in SOLVERS
-        sol = solve(bvp2, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
+        sol = solve(bvp2, solver; verbose = false, dt = 1.0, abstol = 1.0e-3, reltol = 1.0e-3)
         resid_f = Array{Float64}(undef, 3)
         bc1!(resid_f, sol, nothing, sol.t)
-        @test norm(resid_f, Inf) < 1e-2
+        @test norm(resid_f, Inf) < 1.0e-2
     end
 
     # OOP TP-BVP
@@ -55,14 +57,17 @@
     bc1b(ub, p) = [ub[1] - 1, ub[2] + 1.729109]
 
     bvp3 = TwoPointBVProblem(
-        BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))),
+        BVPFunction{false}(
+            f1, (bc1a, bc1b); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))
+        ),
         u0,
-        tspan)
+        tspan
+    )
 
     for solver in SOLVERS
-        sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
-        @test norm(vcat(bc1a(sol.u[1], nothing), bc1b(sol.u[end], nothing)), Inf) < 1e-2
+        sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1.0e-3, reltol = 1.0e-3)
+        @test norm(vcat(bc1a(sol.u[1], nothing), bc1b(sol.u[end], nothing)), Inf) < 1.0e-2
     end
 
     # IIP TP-BVP
@@ -70,18 +75,21 @@
     bc1b!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
 
     bvp4 = TwoPointBVProblem(
-        BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))),
+        BVPFunction{true}(
+            f1!, (bc1a!, bc1b!); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))
+        ),
         u0,
-        tspan)
+        tspan
+    )
 
     for solver in SOLVERS
-        sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1e-3, reltol = 1e-3)
+        sol = solve(bvp3, solver; verbose = false, dt = 1.0, abstol = 1.0e-3, reltol = 1.0e-3)
         resida = Array{Float64}(undef, 1)
         residb = Array{Float64}(undef, 2)
         bc1a!(resida, sol(0.0), nothing)
         bc1b!(residb, sol(100.0), nothing)
-        @test norm(vcat(resida, residb), Inf) < 1e-2
+        @test norm(vcat(resida, residb), Inf) < 1.0e-2
     end
 end
 
@@ -91,14 +99,18 @@ end
     using LinearAlgebra, BoundaryValueDiffEqMIRK
 
     # Force normal form for GN
-    SOLVERS = [mirk(; nlsolve)
-               for mirk in (MIRK4, MIRK5, MIRK6),
-    nlsolve in (TrustRegion(), GaussNewton(), LevenbergMarquardt(), nothing)]
+    SOLVERS = [
+        mirk(; nlsolve)
+            for mirk in (MIRK4, MIRK5, MIRK6),
+            nlsolve in (TrustRegion(), GaussNewton(), LevenbergMarquardt(), nothing)
+    ]
 
     function hat(y)
-        return [0 -y[3] y[2]
-                y[3] 0 -y[1]
-                -y[2] y[1] 0]
+        return [
+            0 -y[3] y[2]
+            y[3] 0 -y[1]
+            -y[2] y[1] 0
+        ]
     end
 
     function inv_hat(skew)
@@ -163,8 +175,8 @@ end
     end
 
     # Parameters
-    E = 200e9
-    G = 80e9
+    E = 200.0e9
+    G = 80.0e9
     r = 0.001
     rho = 8000
     g = [9.81; 0; 0]
@@ -187,14 +199,16 @@ end
     y0 = vcat(p0, R0, zeros(6))
     p = vcat(p0, R0, pL, RL)
     prob_tp = TwoPointBVProblem(
-        rod_ode!, (bc_a!, bc_b!), y0, tspan, p, bcresid_prototype = (zeros(6), zeros(6)))
+        rod_ode!, (bc_a!, bc_b!), y0, tspan, p, bcresid_prototype = (zeros(6), zeros(6))
+    )
     prob = BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, tspan, p)
 
     for solver in SOLVERS
         sol = solve(
-            prob_tp, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
+            prob_tp, solver; verbose = false, dt = 0.1, abstol = 1.0e-1, reltol = 1.0e-1
+        )
         @test SciMLBase.successful_retcode(sol.retcode)
-        sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
+        sol = solve(prob, solver; verbose = false, dt = 0.1, abstol = 1.0e-1, reltol = 1.0e-1)
         @test SciMLBase.successful_retcode(sol.retcode)
     end
 end

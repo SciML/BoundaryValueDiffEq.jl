@@ -2,14 +2,18 @@
 
 using BoundaryValueDiffEqFIRK, LinearAlgebra
 
-SOLVERS = [firk(; nlsolve, nested_nlsolve = true)
-           for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4),
-nlsolve in (NewtonRaphson(), GaussNewton(), TrustRegion())]
+SOLVERS = [
+    firk(; nlsolve, nested_nlsolve = true)
+        for firk in (RadauIIa5, LobattoIIIa4, LobattoIIIb4, LobattoIIIc4),
+        nlsolve in (NewtonRaphson(), GaussNewton(), TrustRegion())
+]
 
-SOLVERS_NAMES = ["$solver with $nlsolve"
-                 for solver in
-                     ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
-nlsolve in ["NewtonRaphson", "GaussNewton", "TrustRegion"]]
+SOLVERS_NAMES = [
+    "$solver with $nlsolve"
+        for solver in
+        ["RadauIIa5", "LobattoIIIa4", "LobattoIIIb4", "LobattoIIIc4"],
+        nlsolve in ["NewtonRaphson", "GaussNewton", "TrustRegion"]
+]
 
 ### Overconstrained BVP ###
 
@@ -53,22 +57,31 @@ OverconstrainedProbArr = [
     BVProblem(BVPFunction{false}(f1, bc1; bcresid_prototype = zeros(3)), u0, tspan),
     BVProblem(BVPFunction{true}(f1!, bc1!; bcresid_prototype = zeros(3)), u0, tspan),
     TwoPointBVProblem(
-        BVPFunction{false}(f1, (bc1a, bc1b); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))),
+        BVPFunction{false}(
+            f1, (bc1a, bc1b); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))
+        ),
         u0,
-        tspan),
+        tspan
+    ),
     TwoPointBVProblem(
-        BVPFunction{true}(f1!, (bc1a!, bc1b!); twopoint = Val(true),
-            bcresid_prototype = (zeros(1), zeros(2))),
+        BVPFunction{true}(
+            f1!, (bc1a!, bc1b!); twopoint = Val(true),
+            bcresid_prototype = (zeros(1), zeros(2))
+        ),
         u0,
-        tspan)]
+        tspan
+    ),
+]
 
 ### Underconstrained BVP ###
 
 function hat(y)
-    return [0 -y[3] y[2]
-            y[3] 0 -y[1]
-            -y[2] y[1] 0]
+    return [
+        0 -y[3] y[2]
+        y[3] 0 -y[1]
+        -y[2] y[1] 0
+    ]
 end
 
 function inv_hat(skew)
@@ -133,8 +146,8 @@ function bc!(residual, sol, p, t)
 end
 
 # Parameters
-E = 200e9
-G = 80e9
+E = 200.0e9
+G = 80.0e9
 r = 0.001
 rho = 8000
 g = [9.81; 0; 0]
@@ -157,41 +170,47 @@ rod_ode!(dy, y, p, t) = rod_ode!(dy, y, p, t, inv(Kse), inv(Kbt), rho, A, g)
 y0 = vcat(p0, R0, zeros(6))
 p = vcat(p0, R0, pL, RL)
 UnderconstrainedProbArr = [
-    TwoPointBVProblem(rod_ode!, (bc_a!, bc_b!), y0, rod_tspan, p,
-        bcresid_prototype = (zeros(6), zeros(6))),
-    BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, rod_tspan, p)]
+    TwoPointBVProblem(
+        rod_ode!, (bc_a!, bc_b!), y0, rod_tspan, p,
+        bcresid_prototype = (zeros(6), zeros(6))
+    ),
+    BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, rod_tspan, p),
+]
 
 export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS, SOLVERS_NAMES, bc1
 
 end
 
-@testitem "Overconstrained BVP" setup=[FIRKNestedNLLSTests] begin
+@testitem "Overconstrained BVP" setup = [FIRKNestedNLLSTests] begin
     using LinearAlgebra, BoundaryValueDiffEqFIRK
 
     @testset "Problem: $i" for i in 1:4
         prob = OverconstrainedProbArr[i]
         @testset "Solver: $name" for (name, solver) in zip(SOLVERS_NAMES, SOLVERS)
             sol = solve(prob, solver; verbose = false, dt = 1.0)
-            @test norm(bc1(sol, nothing, sol.t), Inf) < 1e-2
+            @test norm(bc1(sol, nothing, sol.t), Inf) < 1.0e-2
         end
     end
 end
 
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
-@testitem "Underconstrained BVP" setup=[FIRKNestedNLLSTests] begin
+@testitem "Underconstrained BVP" setup = [FIRKNestedNLLSTests] begin
     using LinearAlgebra, BoundaryValueDiffEqFIRK, SciMLBase
 
     @testset "Problem: $i" for i in 1:2
         prob = UnderconstrainedProbArr[i]
         @testset "Solver: $name" for (name, solver) in zip(SOLVERS_NAMES, SOLVERS)
-            if (i == 2) && ((name == "RadauIIa5 with GaussNewton") ||
-                (name == "RadauIIa5 with NewtonRaphson"))
+            if (i == 2) && (
+                    (name == "RadauIIa5 with GaussNewton") ||
+                        (name == "RadauIIa5 with NewtonRaphson")
+                )
                 # Actually have successful retcode
                 continue
             else
                 sol = solve(
-                    prob, solver; verbose = false, dt = 0.1, abstol = 1e-1, reltol = 1e-1)
+                    prob, solver; verbose = false, dt = 0.1, abstol = 1.0e-1, reltol = 1.0e-1
+                )
                 @test SciMLBase.successful_retcode(sol.retcode)
             end
         end

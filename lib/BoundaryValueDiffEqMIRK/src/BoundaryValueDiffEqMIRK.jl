@@ -4,40 +4,40 @@ using ADTypes
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
-                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
-                               recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_solve_algorithm, diff!, EvalSol,
-                               concrete_jacobian_algorithm, eval_bc_residual,
-                               eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
-                               __extract_problem_details, __initial_guess, interval,
-                               __needs_diffcache, __maybe_allocate_diffcache,
-                               __restructure_sol, __cache_trait, __get_bcresid_prototype,
-                               safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
-                               recursive_flatten_twopoint!, __internal_nlsolve_problem,
-                               __internal_optimization_problem, __extract_mesh,
-                               __extract_u0, __has_initial_guess, __initial_guess_length,
-                               __initial_guess_on_mesh, __flatten_initial_guess,
-                               __build_solution, __Fix3, get_dense_ad, _sparse_like,
-                               AbstractErrorControl, DefectControl, GlobalErrorControl,
-                               SequentialErrorControl, HybridErrorControl, HOErrorControl,
-                               __use_both_error_control, __default_coloring_algorithm,
-                               DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
-                               __concrete_kwargs, __FastShortcutNonlinearPolyalg,
-                               __construct_internal_problem, __internal_solve,
-                               __default_sparsity_detector, __build_cost
+    AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
+    recursive_flatten, recursive_flatten!, recursive_unflatten!,
+    __concrete_solve_algorithm, diff!, EvalSol,
+    concrete_jacobian_algorithm, eval_bc_residual,
+    eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
+    __extract_problem_details, __initial_guess, interval,
+    __needs_diffcache, __maybe_allocate_diffcache,
+    __restructure_sol, __cache_trait, __get_bcresid_prototype,
+    safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+    recursive_flatten_twopoint!, __internal_nlsolve_problem,
+    __internal_optimization_problem, __extract_mesh,
+    __extract_u0, __has_initial_guess, __initial_guess_length,
+    __initial_guess_on_mesh, __flatten_initial_guess,
+    __build_solution, __Fix3, get_dense_ad, _sparse_like,
+    AbstractErrorControl, DefectControl, GlobalErrorControl,
+    SequentialErrorControl, HybridErrorControl, HOErrorControl,
+    __use_both_error_control, __default_coloring_algorithm,
+    DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
+    __concrete_kwargs, __FastShortcutNonlinearPolyalg,
+    __construct_internal_problem, __internal_solve,
+    __default_sparsity_detector, __build_cost
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
-                                finish_part_setindex!
+    finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize, Dual
 using LinearAlgebra
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
-                           recursivefill!
+    recursivefill!
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
-                 _unwrap_val
+    _unwrap_val
 using Setfield: @set!
 using Reexport: @reexport
 using PreallocationTools: PreallocationTools, DiffCache
@@ -83,12 +83,16 @@ include("sparse_jacobians.jl")
     u0 = [5.0, -3.5]
     bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
 
-    probs = [BVProblem(f1!, bc1!, u0, tspan; nlls = Val(false)),
+    probs = [
+        BVProblem(f1!, bc1!, u0, tspan; nlls = Val(false)),
         BVProblem(f1, bc1, u0, tspan; nlls = Val(false)),
         TwoPointBVProblem(
-            f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype, nlls = Val(false)),
+            f1!, (bc1_a!, bc1_b!), u0, tspan; bcresid_prototype, nlls = Val(false)
+        ),
         TwoPointBVProblem(
-            f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype, nlls = Val(false))]
+            f1, (bc1_a, bc1_b), u0, tspan; bcresid_prototype, nlls = Val(false)
+        ),
+    ]
 
     algs = []
 
@@ -134,14 +138,23 @@ include("sparse_jacobians.jl")
     bcresid_prototype2 = (Array{Float64}(undef, 1), Array{Float64}(undef, 2))
 
     probs = [
-        BVProblem(BVPFunction(f1_nlls!, bc1_nlls!; bcresid_prototype = bcresid_prototype1),
-            u0, tspan, nlls = Val(true)),
-        BVProblem(BVPFunction(f1_nlls, bc1_nlls; bcresid_prototype = bcresid_prototype1),
-            u0, tspan, nlls = Val(true)),
-        TwoPointBVProblem(f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
-            bcresid_prototype = bcresid_prototype2, nlls = Val(true)),
-        TwoPointBVProblem(f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
-            bcresid_prototype = bcresid_prototype2, nlls = Val(true))]
+        BVProblem(
+            BVPFunction(f1_nlls!, bc1_nlls!; bcresid_prototype = bcresid_prototype1),
+            u0, tspan, nlls = Val(true)
+        ),
+        BVProblem(
+            BVPFunction(f1_nlls, bc1_nlls; bcresid_prototype = bcresid_prototype1),
+            u0, tspan, nlls = Val(true)
+        ),
+        TwoPointBVProblem(
+            f1_nlls!, (bc1_nlls_a!, bc1_nlls_b!), u0, tspan;
+            bcresid_prototype = bcresid_prototype2, nlls = Val(true)
+        ),
+        TwoPointBVProblem(
+            f1_nlls, (bc1_nlls_a, bc1_nlls_b), u0, tspan;
+            bcresid_prototype = bcresid_prototype2, nlls = Val(true)
+        ),
+    ]
 
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
 
@@ -158,7 +171,7 @@ include("sparse_jacobians.jl")
     @compile_workload begin
         @sync for prob in probs, alg in algs
 
-            Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1e-2)
+            Threads.@spawn solve(prob, alg; dt = 0.2, abstol = 1.0e-2)
         end
     end
 end

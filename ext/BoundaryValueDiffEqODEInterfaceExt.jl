@@ -2,13 +2,13 @@ module BoundaryValueDiffEqODEInterfaceExt
 
 using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 using BoundaryValueDiffEqCore: __extract_u0, __initial_guess_length, __extract_mesh,
-                               __flatten_initial_guess, __get_bcresid_prototype,
-                               __has_initial_guess, __initial_guess
+    __flatten_initial_guess, __get_bcresid_prototype,
+    __has_initial_guess, __initial_guess
 using SciMLBase: SciMLBase, BVProblem, TwoPointBVProblem, ReturnCode
 using ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
-                    OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
-                    OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
-                    OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
+    OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
+    OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
+    OPT_MAXSUBINTERVALS, RHS_CALL_INSITU, evalSolution
 using ODEInterface: Bvpm2, bvpm2_init, bvpm2_solve, bvpm2_destroy, bvpm2_get_x
 using ODEInterface: bvpsol
 using ODEInterface: colnew
@@ -19,7 +19,7 @@ using ForwardDiff: ForwardDiff
 #------
 # BVPM2
 #------
-function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3, kwargs...)
+function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1.0e-3, kwargs...)
     if !(prob.problem_type isa TwoPointBVProblem)
         throw(ArgumentError("`BVPM2` only supports `TwoPointBVProblem!`"))
     end
@@ -47,12 +47,15 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
     obj = Bvpm2()
     if prob.u0 isa Function
         guess_function = @closure (x, y) -> (y .= vec(__initial_guess(prob.u0, prob.p, x)))
-        bvpm2_init(obj, no_odes, no_left_bc, mesh, guess_function,
-            eltype(u0_)[], alg.max_num_subintervals)
+        bvpm2_init(
+            obj, no_odes, no_left_bc, mesh, guess_function,
+            eltype(u0_)[], alg.max_num_subintervals
+        )
     else
         u0 = __flatten_initial_guess(prob.u0)
         bvpm2_init(
-            obj, no_odes, no_left_bc, mesh, u0, eltype(u0)[], alg.max_num_subintervals)
+            obj, no_odes, no_left_bc, mesh, u0, eltype(u0)[], alg.max_num_subintervals
+        )
     end
 
     bvp2m_f = if SciMLBase.isinplace(prob)
@@ -61,37 +64,45 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPM2; dt = 0.0, reltol = 1e-3,
         @closure (t, u, du) -> du .= vec(prob.f(reshape(u, u0_size), prob.p, t))
     end
     bvp2m_bc = if SciMLBase.isinplace(prob)
-        @closure (ya,
+        @closure (
+            ya,
             yb,
             bca,
-            bcb) -> begin
+            bcb,
+        ) -> begin
             prob.f.bc[1](reshape(bca, left_bc_size), reshape(ya, u0_size), prob.p)
             prob.f.bc[2](reshape(bcb, right_bc_size), reshape(yb, u0_size), prob.p)
             return nothing
         end
     else
         @closure (
-            ya, yb, bca, bcb) -> begin
+            ya, yb, bca, bcb,
+        ) -> begin
             bca .= vec(prob.f.bc[1](reshape(ya, u0_size), prob.p))
             bcb .= vec(prob.f.bc[2](reshape(yb, u0_size), prob.p))
             return nothing
         end
     end
 
-    opt = OptionsODE(OPT_RTOL => reltol, OPT_METHODCHOICE => alg.method_choice,
+    opt = OptionsODE(
+        OPT_RTOL => reltol, OPT_METHODCHOICE => alg.method_choice,
         OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
-        OPT_SINGULARTERM => alg.singular_term, OPT_ERRORCONTROL => alg.error_control)
+        OPT_SINGULARTERM => alg.singular_term, OPT_ERRORCONTROL => alg.error_control
+    )
 
     sol, retcode, stats = bvpm2_solve(obj, bvp2m_f, bvp2m_bc, opt)
     retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure
     destats = SciMLBase.DEStats(
-        stats["no_rhs_calls"], 0, 0, 0, stats["no_jac_calls"], 0, 0, 0, 0, 0, 0, 0, 0)
+        stats["no_rhs_calls"], 0, 0, 0, stats["no_jac_calls"], 0, 0, 0, 0, 0, 0, 0, 0
+    )
 
     x_mesh = bvpm2_get_x(sol)
     evalsol = evalSolution(sol, x_mesh)
-    ivpsol = SciMLBase.build_solution(prob, alg, x_mesh,
+    ivpsol = SciMLBase.build_solution(
+        prob, alg, x_mesh,
         map(x -> reshape(convert(Vector{eltype(evalsol)}, x), u0_size), eachcol(evalsol));
-        retcode, stats = destats, original = (sol, retcode, stats))
+        retcode, stats = destats, original = (sol, retcode, stats)
+    )
 
     bvpm2_destroy(obj)
     bvpm2_destroy(sol)
@@ -102,8 +113,10 @@ end
 #-------
 # BVPSOL
 #-------
-function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
-        reltol = 1e-3, dt = 0.0, verbose = true, kwargs...)
+function SciMLBase.__solve(
+        prob::BVProblem, alg::BVPSOL; maxiters = 1000,
+        reltol = 1.0e-3, dt = 0.0, verbose = true, kwargs...
+    )
     if !(prob.problem_type isa TwoPointBVProblem)
         throw(ArgumentError("`BVPSOL` only supports `TwoPointBVProblem!`"))
     end
@@ -121,7 +134,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
     mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n - 1))
     if u0 === nothing
         # initial_guess function was provided
-        u0 = mapreduce(@closure(t->vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)
+        u0 = mapreduce(@closure(t -> vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)
     end
 
     if prob.f.bcresid_prototype !== nothing
@@ -135,7 +148,8 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
 
     opt = OptionsODE(
         OPT_RTOL => reltol, OPT_MAXSTEPS => maxiters, OPT_BVPCLASS => alg.bvpclass,
-        OPT_SOLMETHOD => alg.sol_method, OPT_RHS_CALLMODE => RHS_CALL_INSITU)
+        OPT_SOLMETHOD => alg.sol_method, OPT_RHS_CALLMODE => RHS_CALL_INSITU
+    )
 
     bvpsol_f = if SciMLBase.isinplace(prob)
         @closure (t, u, du) -> prob.f(reshape(du, u0_size), reshape(u, u0_size), prob.p, t)
@@ -144,8 +158,10 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
     end
 
     bvpsol_bc = if SciMLBase.isinplace(prob)
-        @closure (ya, yb,
-            r) -> begin
+        @closure (
+            ya, yb,
+            r,
+        ) -> begin
             left_bc = reshape(@view(r[1:no_left_bc]), left_bc_size)
             right_bc = reshape(@view(r[(no_left_bc + 1):end]), right_bc_size)
             prob.f.bc[1](left_bc, reshape(ya, u0_size), prob.p)
@@ -153,9 +169,11 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
             return nothing
         end
     else
-        @closure (ya,
+        @closure (
+            ya,
             yb,
-            r) -> begin
+            r,
+        ) -> begin
             r[1:no_left_bc] .= vec(prob.f.bc[1](reshape(ya, u0_size), prob.p))
             r[(no_left_bc + 1):end] .= vec(prob.f.bc[2](reshape(yb, u0_size), prob.p))
             return nothing
@@ -186,10 +204,33 @@ function SciMLBase.__solve(prob::BVProblem, alg::BVPSOL; maxiters = 1000,
         end
     end
 
-    ivpsol = SciMLBase.build_solution(prob, alg, sol_t,
+    # Determine the return code for SciMLBase
+    # For retcode -5 (initial values inconsistent with separable linear bc),
+    # the solver may still produce a valid solution. Check the BC residuals
+    # to determine if the solution is acceptable.
+    sciml_retcode = if retcode ≥ 0
+        ReturnCode.Success
+    elseif retcode == -5
+        # Check if the solution satisfies the boundary conditions within tolerance
+        ya = sol_x[:, 1]
+        yb = sol_x[:, end]
+        bc_resid = zeros(eltype(sol_x), length(ya))
+        bvpsol_bc(ya, yb, bc_resid)
+        # Use the same tolerance as the solver
+        if maximum(abs, bc_resid) ≤ reltol
+            ReturnCode.Success
+        else
+            ReturnCode.Failure
+        end
+    else
+        ReturnCode.Failure
+    end
+
+    ivpsol = SciMLBase.build_solution(
+        prob, alg, sol_t,
         map(x -> reshape(convert(Vector{eltype(u0_)}, x), u0_size), eachcol(sol_x));
-        retcode = retcode ≥ 0 ? ReturnCode.Success : ReturnCode.Failure,
-        stats, original = (sol_t, sol_x, retcode, stats))
+        retcode = sciml_retcode, stats, original = (sol_t, sol_x, retcode, stats)
+    )
 
     return ivpsol
 end
@@ -197,8 +238,10 @@ end
 #-------
 # COLNEW
 #-------
-function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
-        reltol = 1e-3, dt = 0.0, verbose = true, kwargs...)
+function SciMLBase.__solve(
+        prob::BVProblem, alg::COLNEW; maxiters = 1000,
+        reltol = 1.0e-3, dt = 0.0, verbose = true, kwargs...
+    )
     dt ≤ 0 && throw(ArgumentError("`dt` must be positive"))
 
     t₀, t₁ = prob.tspan
@@ -210,7 +253,7 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
     mesh = __extract_mesh(prob.u0, t₀, t₁, ifelse(n == -1, dt, n - 1))
     if u0 === nothing
         # initial_guess function was provided
-        u0 = mapreduce(@closure(t->vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)
+        u0 = mapreduce(@closure(t -> vec(__initial_guess(prob.u0, prob.p, t))), hcat, mesh)
     end
 
     no_odes = length(u0_)
@@ -311,13 +354,15 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
         opt = OptionsODE(
             OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
             OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
-            OPT_MAXSUBINTERVALS => alg.max_num_subintervals, OPT_RTOL => reltol)
+            OPT_MAXSUBINTERVALS => alg.max_num_subintervals, OPT_RTOL => reltol
+        )
     else
         opt = OptionsODE(
             OPT_BVPCLASS => alg.bvpclass, OPT_COLLOCATIONPTS => alg.collocationpts,
             OPT_MAXSTEPS => maxiters, OPT_DIAGNOSTICOUTPUT => alg.diagnostic_output,
             OPT_MAXSUBINTERVALS => alg.max_num_subintervals,
-            OPT_RTOL => reltol, OPT_ADDGRIDPOINTS => fixed_points)
+            OPT_RTOL => reltol, OPT_ADDGRIDPOINTS => fixed_points
+        )
     end
 
     sol, retcode, stats = colnew(_tspan, orders, zeta, rhs, Drhs, bc, Dbc, nothing, opt)
@@ -337,12 +382,14 @@ function SciMLBase.__solve(prob::BVProblem, alg::COLNEW; maxiters = 1000,
 
     evalsol = evalSolution(sol, mesh)
     destats = SciMLBase.DEStats(
-        stats["no_rhs_calls"], 0, 0, 0, stats["no_jac_calls"], 0, 0, 0, 0, 0, 0, 0, 0)
+        stats["no_rhs_calls"], 0, 0, 0, stats["no_jac_calls"], 0, 0, 0, 0, 0, 0, 0, 0
+    )
 
     return SciMLBase.build_solution(
         prob, alg, mesh, collect(Vector{eltype(evalsol)}, eachrow(evalsol));
         retcode = retcode > 0 ? ReturnCode.Success : ReturnCode.Failure,
-        stats = destats, original = (sol, retcode, stats))
+        stats = destats, original = (sol, retcode, stats)
+    )
 end
 
 export BVPM2, BVPSOL, COLNEW

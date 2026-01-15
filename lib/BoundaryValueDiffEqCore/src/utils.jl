@@ -57,7 +57,7 @@ function diff!(dx, x)
 end
 
 function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
-    mul!(z, A, b, α, β)
+    return mul!(z, A, b, α, β)
 end
 
 # NOTE: We can implement it as mul! as above but then we pay the cost of moving
@@ -84,7 +84,8 @@ end
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(
-        ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractVectorOfArray, p, t) where {BC}
+        ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractVectorOfArray, p, t
+    ) where {BC}
     ua = sol[:, 1]
     ub = sol[:, end]
     resida = bca(ua, p)
@@ -92,7 +93,8 @@ function eval_bc_residual(
     return (resida, residb)
 end
 function eval_bc_residual(
-        ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t) where {BC}
+        ::TwoPointBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t
+    ) where {BC}
     ua = first(sol)
     ub = last(sol)
     resida = bca(ua, p)
@@ -104,8 +106,10 @@ function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
 eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, t)
-@views function eval_bc_residual!(resid, ::TwoPointBVProblem, (bca!, bcb!)::BC,
-        sol::AbstractVectorOfArray, p, t) where {BC}
+@views function eval_bc_residual!(
+        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractVectorOfArray, p, t
+    ) where {BC}
     ua = sol[:, 1]
     ub = sol[:, end]
     bca!(resid.resida, ua, p)
@@ -113,31 +117,38 @@ eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, 
     return resid
 end
 @views function eval_bc_residual!(
-        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol::AbstractArray, p, t) where {BC}
+        resid, ::TwoPointBVProblem, (bca!, bcb!)::BC, sol::AbstractArray, p, t
+    ) where {BC}
     ua = first(sol)
     ub = last(sol)
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
-        sol::AbstractVectorOfArray, p, t) where {BC}
+@views function eval_bc_residual!(
+        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractVectorOfArray, p, t
+    ) where {BC}
     ua = sol[:, 1]
     ub = sol[:, end]
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
-        sol::AbstractArray, p, t) where {BC}
+@views function eval_bc_residual!(
+        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractArray, p, t
+    ) where {BC}
     ua = first(sol)
     ub = last(sol)
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
 end
-@views function eval_bc_residual!(resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
-        sol::SciMLBase.ODESolution, p, t) where {BC}
+@views function eval_bc_residual!(
+        resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
+        sol::SciMLBase.ODESolution, p, t
+    ) where {BC}
     ua = first(sol)
     ub = last(sol)
     bca!(resid[1], ua, p)
@@ -149,8 +160,10 @@ function eval_bc_residual(::StandardSecondOrderBVProblem, bc::BC, y, dy, p, t) w
     res_bc = bc(dy, y, p, t)
     return res_bc
 end
-function eval_bc_residual(::TwoPointSecondOrderBVProblem, (bca, bcb)::BC,
-        sol::AbstractVectorOfArray, p, t) where {BC}
+function eval_bc_residual(
+        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC,
+        sol::AbstractVectorOfArray, p, t
+    ) where {BC}
     L = length(t)
     ua = sol[:, 1]
     ub = sol[:, L]
@@ -159,7 +172,8 @@ function eval_bc_residual(::TwoPointSecondOrderBVProblem, (bca, bcb)::BC,
     return vcat(bca(dua, ua, p), bcb(dub, ub, p))
 end
 function eval_bc_residual(
-        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t) where {BC}
+        ::TwoPointSecondOrderBVProblem, (bca, bcb)::BC, sol::AbstractArray, p, t
+    ) where {BC}
     L = length(t)
     ua = first(sol)
     ub = sol[L]
@@ -169,42 +183,49 @@ function eval_bc_residual(
 end
 
 function eval_bc_residual!(resid, ::StandardBVProblem, bc!::BC, sol, p, t) where {BC}
-    bc!(resid, sol, p, t)
+    return bc!(resid, sol, p, t)
 end
 
 function eval_bc_residual!(
-        resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t) where {BC}
-    bc!(resid, dsol, sol, p, t)
+        resid, ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t
+    ) where {BC}
+    return bc!(resid, dsol, sol, p, t)
 end
 
-function eval_bc_residual!(resid::AbstractArray{<:AbstractArray},
-        ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t) where {BC}
+function eval_bc_residual!(
+        resid::AbstractArray{<:AbstractArray},
+        ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t
+    ) where {BC}
     M = length(sol[1])
     res_bc = vcat(resid[1], resid[2])
     bc!(res_bc, dsol, sol, p, t)
     copyto!(resid[1], res_bc[1:M])
-    copyto!(resid[2], res_bc[(M + 1):end])
+    return copyto!(resid[2], res_bc[(M + 1):end])
 end
 
-function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC,
-        sol::AbstractVectorOfArray, p, t) where {BC}
+function eval_bc_residual!(
+        resid, ::TwoPointSecondOrderBVProblem, (bca!, bcb!)::BC,
+        sol::AbstractVectorOfArray, p, t
+    ) where {BC}
     L = length(t)
     ua = sol[:, 1]
     ub = sol[:, L]
     dua = sol[:, L + 1]
     dub = sol[:, end]
     bca!(resid[1], dua, ua, p)
-    bcb!(resid[2], dub, ub, p)
+    return bcb!(resid[2], dub, ub, p)
 end
-function eval_bc_residual!(resid, ::TwoPointSecondOrderBVProblem,
-        (bca!, bcb!)::BC, sol::AbstractArray, p, t) where {BC}
+function eval_bc_residual!(
+        resid, ::TwoPointSecondOrderBVProblem,
+        (bca!, bcb!)::BC, sol::AbstractArray, p, t
+    ) where {BC}
     L = length(t)
     ua = first(sol)
     ub = sol[L]
     dua = sol[L + 1]
     dub = last(sol)
     bca!(resid[1], dua, ua, p)
-    bcb!(resid[2], dub, ub, p)
+    return bcb!(resid[2], dub, ub, p)
 end
 
 """
@@ -261,8 +282,10 @@ function __extract_problem_details(prob, u0::AbstractVectorOfArray; kwargs...)
     _u0 = first(u0.u)
     return Val(true), eltype(_u0), length(_u0), (length(u0.u) - 1), _u0
 end
-function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
-        check_positive_dt::Bool = false, fit_parameters::Bool = false)
+function __extract_problem_details(
+        prob, u0::AbstractArray; dt = 0.0,
+        check_positive_dt::Bool = false, fit_parameters::Bool = false
+    )
     # Problem does not have Initial Guess
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     t₀, t₁ = prob.tspan
@@ -274,8 +297,10 @@ function __extract_problem_details(prob, u0::AbstractArray; dt = 0.0,
     end
     return Val(false), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), prob.u0
 end
-function __extract_problem_details(prob, f::F; dt = 0.0, check_positive_dt::Bool = false,
-        fit_parameters::Bool = false) where {F <: Function}
+function __extract_problem_details(
+        prob, f::F; dt = 0.0, check_positive_dt::Bool = false,
+        fit_parameters::Bool = false
+    ) where {F <: Function}
     # Problem passes in a initial guess function
     check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
 
@@ -284,8 +309,10 @@ function __extract_problem_details(prob, f::F; dt = 0.0, check_positive_dt::Bool
     return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end
 
-function __extract_problem_details(prob, u0::SciMLBase.ODESolution; dt = 0.0,
-        check_positive_dt::Bool = false, fit_parameters::Bool = false)
+function __extract_problem_details(
+        prob, u0::SciMLBase.ODESolution; dt = 0.0,
+        check_positive_dt::Bool = false, fit_parameters::Bool = false
+    )
     # Problem passes in a initial guess function
     _u0 = first(u0.u)
     _t = u0.t
@@ -307,10 +334,12 @@ function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, 
         end
         return f(p, t)
     elseif hasmethod(f, Tuple{T})
-        Base.depwarn("initial guess function must take 2 inputs `(p, t)` instead of just \
+        Base.depwarn(
+            "initial guess function must take 2 inputs `(p, t)` instead of just \
                      `t`. The single argument version has been deprecated and will be \
                      removed in the next major release of SciMLBase.",
-            :__initial_guess)
+            :__initial_guess
+        )
         if fit_parameters
             p isa SciMLBase.NullParameters &&
                 throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
@@ -348,7 +377,7 @@ function __get_bcresid_prototype(::TwoPointSecondOrderBVProblem, prob::BVProblem
 end
 function __get_bcresid_prototype(::StandardSecondOrderBVProblem, prob::BVProblem, u)
     prototype = prob.f.bcresid_prototype !== nothing ? prob.f.bcresid_prototype :
-                __zeros_like(u)
+        __zeros_like(u)
     return prototype, size(prototype)
 end
 
@@ -403,8 +432,10 @@ end
 __vec_f(du, u, p, t, f, u_size) = vec(f(reshape(du, u_size), reshape(u, u_size), p, t))
 
 function __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
-    bc!(reshape(resid, resid_size), __restructure_sol(dsol, u_size),
-        __restructure_sol(sol, u_size), p, t)
+    bc!(
+        reshape(resid, resid_size), __restructure_sol(dsol, u_size),
+        __restructure_sol(sol, u_size), p, t
+    )
     return nothing
 end
 
@@ -414,10 +445,10 @@ function __vec_so_bc!(resid, dsol, sol, p, bc!, resid_size, u_size)
 end
 
 function __vec_so_bc(dsol, sol, p, t, bc, u_size)
-    vec(bc(__restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t))
+    return vec(bc(__restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t))
 end
 function __vec_so_bc(dsol, sol, p, bc, u_size)
-    vec(bc(reshape(dsol, u_size), reshape(sol, u_size), p))
+    return vec(bc(reshape(dsol, u_size), reshape(sol, u_size), p))
 end
 
 @inline __get_non_sparse_ad(ad::AbstractADType) = ad
@@ -436,7 +467,8 @@ end
 # Construct the internal NonlinearProblem
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
-        u0, args...; kwargs...) where {uType, tType, iip, nlls}
+        u0, args...; kwargs...
+    ) where {uType, tType, iip, nlls}
     if nlls
         return NonlinearLeastSquaresProblem(args...; kwargs...)
     else
@@ -446,14 +478,17 @@ end
 
 @inline function __internal_nlsolve_problem(
         bvp::BVProblem{uType, tType, iip, Nothing}, resid_prototype,
-        u0, args...; kwargs...) where {uType, tType, iip}
+        u0, args...; kwargs...
+    ) where {uType, tType, iip}
     return __internal_nlsolve_problem(
-        bvp, length(resid_prototype), length(u0), args...; kwargs...)
+        bvp, length(resid_prototype), length(u0), args...; kwargs...
+    )
 end
 
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, Nothing}, l1::Int,
-        l2::Int, args...; kwargs...) where {uType, tType, iip}
+        l2::Int, args...; kwargs...
+    ) where {uType, tType, iip}
     if l1 != l2
         return NonlinearLeastSquaresProblem(args...; kwargs...)
     else
@@ -463,19 +498,23 @@ end
 
 @inline function __internal_nlsolve_problem(
         ::SecondOrderBVProblem{uType, tType, iip, nlls}, resid_prototype,
-        u0, args...; kwargs...) where {uType, tType, iip, nlls}
+        u0, args...; kwargs...
+    ) where {uType, tType, iip, nlls}
     return NonlinearProblem(args...; kwargs...)
 end
 
 # Construct the internal OptimizationProblem
 @inline function __internal_optimization_problem(
-        ::BVProblem{uType, tType, iip}, args...; kwargs...) where {uType, tType, iip}
+        ::BVProblem{uType, tType, iip}, args...; kwargs...
+    ) where {uType, tType, iip}
     prob = OptimizationProblem(args...; kwargs...)
     return prob
 end
 
-@inline function __internal_optimization_problem(::SecondOrderBVProblem{uType, tType, iip},
-        args...; kwargs...) where {uType, tType, iip}
+@inline function __internal_optimization_problem(
+        ::SecondOrderBVProblem{uType, tType, iip},
+        args...; kwargs...
+    ) where {uType, tType, iip}
     prob = OptimizationProblem(args...; kwargs...)
     return prob
 end
@@ -500,7 +539,12 @@ Takes the input initial guess and returns the value at the starting mesh point.
 Takes the input initial guess and returns the mesh.
 """
 @inline __extract_mesh(u₀, t₀, t₁, n::Int) = collect(range(t₀; stop = t₁, length = n + 1))
-@inline __extract_mesh(u₀, t₀, t₁, dt::Number) = collect(t₀:dt:t₁)
+@inline function __extract_mesh(u₀, t₀, t₁, dt::Number)
+    # Use range with specified endpoints to ensure mesh includes exactly t₀ and t₁
+    # This fixes issues where t₀:dt:t₁ may not include t₁ due to floating point precision
+    n = Int(cld(t₁ - t₀, dt))
+    return collect(range(t₀; stop = t₁, length = n + 1))
+end
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Int) = copy(u₀.t)
 @inline __extract_mesh(u₀::DiffEqArray, t₀, t₁, ::Number) = copy(u₀.t)
 @inline __extract_mesh(u₀::SciMLBase.ODESolution, t₀, t₁, ::Int) = copy(u₀.t)
@@ -608,7 +652,7 @@ nodual_value(x::ForwardDiff.Dual) = ForwardDiff.value(x)
 nodual_value(x::AbstractArray{<:ForwardDiff.Dual}) = map(ForwardDiff.value, x)
 nodual_value(x::SparseConnectivityTracer.Dual) = SparseConnectivityTracer.primal(x)
 function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
-    map(SparseConnectivityTracer.primal, x)
+    return map(SparseConnectivityTracer.primal, x)
 end
 
 function __split_kwargs(; abstol, adaptive, controller, kwargs...)
@@ -616,7 +660,8 @@ function __split_kwargs(; abstol, adaptive, controller, kwargs...)
 end
 
 @inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
-    nlsolve_kwargs...)
+    nlsolve_kwargs...,
+)
 @inline __concrete_kwargs(::Nothing, optimize, nlsolve_kwargs, optimize_kwargs) = (;) # Doesn't support for now
 @inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
     nlsolve_kwargs...)

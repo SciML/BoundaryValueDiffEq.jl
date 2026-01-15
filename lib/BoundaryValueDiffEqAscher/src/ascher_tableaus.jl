@@ -59,8 +59,10 @@ function constructAscher(alg::Ascher4, ::Type{T}) where {T}
     acol = Matrix{T}(undef, k, k)
 
     # Gauss Legendre collocation points
-    rho = [0.06943184420297371373, 0.33000947820757187134,
-        0.66999052179242812866, 0.93056815579702628627]
+    rho = [
+        0.06943184420297371373, 0.33000947820757187134,
+        0.66999052179242812866, 0.93056815579702628627,
+    ]
 
     # find runge-kutta coefficients b, acol
     for j in 1:k
@@ -79,8 +81,10 @@ function constructAscher(alg::Ascher5, ::Type{T}) where {T}
     acol = Matrix{T}(undef, k, k)
 
     # Gauss Legendre collocation points
-    rho = [0.04691007703066801815, 0.23076534494715844614, 0.5,
-        0.76923465505284155386, 0.95308992296933198185]
+    rho = [
+        0.04691007703066801815, 0.23076534494715844614, 0.5,
+        0.76923465505284155386, 0.95308992296933198185,
+    ]
 
     # find runge-kutta coefficients b, acol
     for j in 1:k
@@ -99,8 +103,10 @@ function constructAscher(alg::Ascher6, ::Type{T}) where {T}
     acol = Matrix{T}(undef, k, k)
 
     # Gauss Legendre collocation points
-    rho = [0.03376524289842397497, 0.16939530676686775923, 0.38069040695840154764,
-        0.61930959304159845236, 0.83060469323313224077, 0.96623475710157602503]
+    rho = [
+        0.03376524289842397497, 0.16939530676686775923, 0.38069040695840154764,
+        0.61930959304159845236, 0.83060469323313224077, 0.96623475710157602503,
+    ]
 
     # find runge-kutta coefficients b, acol
     for j in 1:k
@@ -119,8 +125,10 @@ function constructAscher(alg::Ascher7, ::Type{T}) where {T}
     acol = Matrix{T}(undef, k, k)
 
     # Gauss Legendre collocation points
-    rho = [0.02544600438286209743, 0.12923440720030276996, 0.29707742431130140792, 0.5,
-        0.70292257568869859208, 0.87076559279969723004, 0.97455399561713790257]
+    rho = [
+        0.02544600438286209743, 0.12923440720030276996, 0.29707742431130140792, 0.5,
+        0.70292257568869859208, 0.87076559279969723004, 0.97455399561713790257,
+    ]
     # find runge-kutta coefficients b, acol
     for j in 1:k
         @views vmonde!(rho, coef[:, j], k)
@@ -150,7 +158,7 @@ function vmonde!(rho, coef, k)
         coef[kmi] = ifac * coef[kmi]
         ifac = ifac * i
     end
-    coef[1] = ifac * coef[1]
+    return coef[1] = ifac * coef[1]
 end
 
 function rkbas!(s, coef, k::Integer, rkb, dm)
@@ -175,6 +183,7 @@ function rkbas!(s, coef, k::Integer, rkb, dm)
         end
         dm[i] = p
     end
+    return
 end
 
 function rkbas!(s, coef, k::Integer, rkb)
@@ -191,4 +200,5 @@ function rkbas!(s, coef, k::Integer, rkb)
         end
         rkb[i] = p
     end
+    return
 end

@@ -21,16 +21,18 @@
 
     #System functions
     function f(v, h, r)
-        -(glb * (v - el) +
-          gnab * (1 / (1 + exp(-(v + 37) / 7)))^3 * h * (v - ena) +
-          gkb * (0.75 * (1 - h))^4 * (v - ek) +
-          gtb * (1 / (1 + exp(-(v + 60) / 6.2)))^2 * r * (v - et)) - gex * ss * (v - vex) -
-        gsyn * sj * (v - vsyn) + iext
+        -(
+            glb * (v - el) +
+                gnab * (1 / (1 + exp(-(v + 37) / 7)))^3 * h * (v - ena) +
+                gkb * (0.75 * (1 - h))^4 * (v - ek) +
+                gtb * (1 / (1 + exp(-(v + 60) / 6.2)))^2 * r * (v - et)
+        ) - gex * ss * (v - vex) -
+            gsyn * sj * (v - vsyn) + iext
     end
 
     function g(v, h)
         eps * ((1 / (1 + exp((v + 41) / 4))) - h) /
-        (1 / ((0.128 * exp(-(v + 46) / 18)) + (4 / (1 + exp(-(v + 23) / 5)))))
+            (1 / ((0.128 * exp(-(v + 46) / 18)) + (4 / (1 + exp(-(v + 23) / 5)))))
     end
 
     function k(v, r)
@@ -51,7 +53,7 @@
     u0 = [-40.296570996984855, 0.7298857398191566, 0.0011680534089275774]
     tspan = (0.0, T)
     prob = ODEProblem(TC!, u0, tspan, dt = 0.01)
-    sol = solve(prob, Rodas4P(), reltol = 1e-12, abstol = 1e-12, saveat = 0.5)
+    sol = solve(prob, Rodas4P(), reltol = 1.0e-12, abstol = 1.0e-12, saveat = 0.5)
 
     # The BVP set up
     # This is not really kind of Two-Point BVP we support.
@@ -67,6 +69,6 @@
     @test SciMLBase.successful_retcode(sol6.retcode)
 
     bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1e-15)
+    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1.0e-15)
     @test SciMLBase.successful_retcode(sol6.retcode)
 end
