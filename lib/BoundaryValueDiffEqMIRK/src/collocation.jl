@@ -1,16 +1,20 @@
 function Φ!(residual, cache::MIRKCache, y, u, trait, constraint)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
-        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, trait, constraint)
+    return Φ!(
+        residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
+        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, trait, constraint
+    )
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
-        mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{true})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{true}
+    )
     (; c, v, x, b) = TU
     L_f_prototype = length(f_prototype)
 
     tmpy,
-    tmpu = get_tmp(fᵢ_cache, u)[1:L_f_prototype],
-    get_tmp(fᵢ_cache, u)[(L_f_prototype + 1):end]
+        tmpu = get_tmp(fᵢ_cache, u)[1:L_f_prototype],
+        get_tmp(fᵢ_cache, u)[(L_f_prototype + 1):end]
 
     T = eltype(u)
     for i in eachindex(k_discrete)
@@ -37,8 +41,10 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
-        mesh_dt, stage::Int, _, ::DiffCacheNeeded, constraint::Val{false})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p, mesh,
+        mesh_dt, stage::Int, _, ::DiffCacheNeeded, constraint::Val{false}
+    )
     (; c, v, x, b) = TU
 
     tmp = get_tmp(fᵢ_cache, u)
@@ -63,8 +69,10 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, _, ::NoDiffCacheNeeded, ::Val{false})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
+        mesh, mesh_dt, stage::Int, _, ::NoDiffCacheNeeded, ::Val{false}
+    )
     (; c, v, x, b) = TU
 
     tmp = similar(fᵢ_cache)

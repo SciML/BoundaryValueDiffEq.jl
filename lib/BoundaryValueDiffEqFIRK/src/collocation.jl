@@ -1,20 +1,26 @@
 function Φ!(residual, cache::FIRKCacheExpand, y, u, trait, constraint)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
-        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, trait, constraint)
+    return Φ!(
+        residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
+        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, trait, constraint
+    )
 end
 
 function Φ!(residual, cache::FIRKCacheNested, y, u, trait, constraint)
-    return Φ!(residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache, trait, constraint)
+    return Φ!(
+        residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
+        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache, trait, constraint
+    )
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{true})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
+        mesh, mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{true}
+    )
     (; c, a, b) = TU
     L_f_prototype = length(f_prototype)
     tmp1,
-    tmpu = get_tmp(fᵢ_cache, u)[1:L_f_prototype],
-    get_tmp(fᵢ_cache, u)[(L_f_prototype + 1):end]
+        tmpu = get_tmp(fᵢ_cache, u)[1:L_f_prototype],
+        get_tmp(fᵢ_cache, u)[(L_f_prototype + 1):end]
 
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
     T = eltype(u)
@@ -51,8 +57,10 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{false})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
+        mesh, mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{false}
+    )
     (; c, a, b) = TU
     tmp1 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
@@ -87,7 +95,8 @@ end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p, mesh,
-        mesh_dt, stage::Int, f_prototype, ::NoDiffCacheNeeded, ::Val{false})
+        mesh_dt, stage::Int, f_prototype, ::NoDiffCacheNeeded, ::Val{false}
+    )
     (; c, a, b) = TU
     tmp1 = similar(fᵢ_cache)
     K = similar(k_discrete[1])
@@ -158,8 +167,10 @@ function FIRK_nlsolve(K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
     return res
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{true})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{true}
+    )
     (; b) = TU
     (; nest_prob, alg) = cache
 
@@ -188,8 +199,10 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{false})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{false}
+    )
     (; b) = TU
     (; nest_prob, alg) = cache
 
@@ -218,8 +231,10 @@ end
     end
 end
 
-@views function Φ!(residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded, ::Val{false})
+@views function Φ!(
+        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded, ::Val{false}
+    )
     (; b) = TU
     (; nest_prob, alg) = cache
 

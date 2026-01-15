@@ -371,7 +371,8 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     return __construct_internal_problem(
         prob, prob.problem_type, alg, loss, jac, jac_prototype,
         resid_prototype, bcresid_prototype, f_prototype, lz,
-        cache.p, cache.ncomp, length(cache.mesh), cost_fun)
+        cache.p, cache.ncomp, length(cache.mesh), cost_fun
+    )
 end
 
 function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
