@@ -214,9 +214,9 @@ function __construct_internal_problem(
         resid_prototype, y, p, M::Int, N::Int, ::Nothing, ::Nothing
     )
     T = eltype(y)
-    iip = SciMLBase.isinplace(prob)
+    #iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
-        nlf = NonlinearFunction{iip}(
+        nlf = NonlinearFunction{true}(
             loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype
         )
