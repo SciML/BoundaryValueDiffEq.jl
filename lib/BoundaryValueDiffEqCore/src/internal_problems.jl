@@ -247,14 +247,15 @@ function __construct_internal_problem(
         jac_prototype, resid_prototype, y, p, M::Int, N::Int
     )
     T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
-        nlf = NonlinearFunction{true}(
+        nlf = NonlinearFunction{iip}(
             loss; jac = jac, resid_prototype = resid_prototype,
             jac_prototype = jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
-        optf = OptimizationFunction{true}(
+        optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
             AutoSparse(
                 get_dense_ad(alg.jac_alg.nonbc_diffmode),
