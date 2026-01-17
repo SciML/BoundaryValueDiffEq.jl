@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting Started with BVP solving in Julia · BoundaryValueDiffEq.jl</title><meta name="title" content="Getting Started with BVP solving in Julia · BoundaryValueDiffEq.jl"/><meta property="og:title" content="Getting Started with BVP solving in Julia · BoundaryValueDiffEq.jl"/><meta property="twitter:title" content="Getting Started with BVP solving in Julia · BoundaryValueDiffEq.jl"/><meta name="description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="twitter:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/tutorials/getting_started/"/><meta property="twitter:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/tutorials/getting_started/"/><link rel="canonical" href="https://docs.sciml.ai/BoundaryValueDiffEq/stable/tutorials/getting_started/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="BoundaryValueDiffEq.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">BoundaryValueDiffEq.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a></li><li class="is-active"><a class="tocitem" href>Getting Started with BVP solving in Julia</a><ul class="internal"><li><a class="tocitem" href="#Solving-Linear-two-point-boundary-value-problem"><span>Solving Linear two-point boundary value problem</span></a></li><li><a class="tocitem" href="#Solving-second-order-boundary-value-problem"><span>Solving second order boundary value problem</span></a></li><li><a class="tocitem" href="#Solving-semi-explicit-boundary-value-differential-algebraic-equations"><span>Solving semi-explicit boundary value differential-algebraic equations</span></a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../continuation/">Solve BVP with Continuation</a></li><li><a class="tocitem" href="../solve_nlls_bvp/">Solve Overdetermined and Underdetermined BVP</a></li><li><a class="tocitem" href="../unknown_parameters/">Estimate Unknown Parameters in BVP</a></li><li><a class="tocitem" href="../extremum/">Solve BVP with Extremum Boundary Conditions</a></li></ul></li><li><span class="tocitem">Basics</span><ul><li><a class="tocitem" href="../../basics/bvp_problem/">Boundary Value Problems</a></li><li><a class="tocitem" href="../../basics/bvp_functions/">BVP Functions and Jacobian Types</a></li><li><a class="tocitem" href="../../basics/solve/">Common Solver Options (Solve Keyword Arguments)</a></li><li><a class="tocitem" href="../../basics/autodiff/">Automatic Differentiation Backends</a></li><li><a class="tocitem" href="../../basics/error_control/">Error Control Adaptivity</a></li></ul></li><li><span class="tocitem">Solver Summaries and Recommendations</span><ul><li><a class="tocitem" href="../../solvers/mirk/">BoundaryValueDiffEqMIRK</a></li><li><a class="tocitem" href="../../solvers/firk/">BoundaryValueDiffEqFIRK</a></li><li><a class="tocitem" href="../../solvers/shooting/">BoundaryValueDiffEqShooting</a></li><li><a class="tocitem" href="../../solvers/mirkn/">BoundaryValueDiffEqMIRKN</a></li><li><a class="tocitem" href="../../solvers/ascher/">BoundaryValueDiffEqAscher</a></li><li><a class="tocitem" href="../../solvers/simple_solvers/">SimpleBoundaryValueDiffEq</a></li><li><a class="tocitem" href="../../solvers/wrappers/">Wrapper Methods</a></li></ul></li><li><span class="tocitem">Wrapped Solver APIs</span><ul><li><a class="tocitem" href="../../api/odeinterface/">ODEInterface.jl</a></li></ul></li><li><span class="tocitem">Development Documentation</span><ul><li><a class="tocitem" href="../../devdocs/internal_interfaces/">Internal Abstract Types</a></li></ul></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Getting Started with BVP solving in Julia</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Getting Started with BVP solving in Julia</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/master/docs/src/tutorials/getting_started.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Get-Started-with-Efficient-BVP-solving-in-Julia"><a class="docs-heading-anchor" href="#Get-Started-with-Efficient-BVP-solving-in-Julia">Get Started with Efficient BVP solving in Julia</a><a id="Get-Started-with-Efficient-BVP-solving-in-Julia-1"></a><a class="docs-heading-anchor-permalink" href="#Get-Started-with-Efficient-BVP-solving-in-Julia" title="Permalink"></a></h1><p>When ordinary differential equations has constraints over the time span, we should model the differential equations as a boundary value problem which has the form of:</p><p class="math-container">\[\frac{du}{dt}=f(u, p, t)\\
+g(u(a),u(b))=0\]</p><p>BoundaryValueDiffEq.jl addresses three types of BVProblem.</p><ol><li>General boundary value problems:, i.e., differential equations with constraints applied over the time span. This is a system where you would like to obtain the solution of the differential equations and make sure the solution satisfy the boundary conditions simutanously.</li><li>General second order boundary value problems, i.e., differential equations with constraints for both solution and derivative of solution applied over time span. This is a system where you would like to obtain the solution of the differential equations and make sure the solution satisfy the boundary conditions simutanously.</li><li>Boundary value differential-algebraic equations, i.e., apart from constraints applied over the time span, BVDAE has additional algebraic equations which state the algebraic relationship of different states in BVDAE.</li></ol><h2 id="Solving-Linear-two-point-boundary-value-problem"><a class="docs-heading-anchor" href="#Solving-Linear-two-point-boundary-value-problem">Solving Linear two-point boundary value problem</a><a id="Solving-Linear-two-point-boundary-value-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-Linear-two-point-boundary-value-problem" title="Permalink"></a></h2><p>Consider the linear two-point boundary value problem from <a href="https://archimede.uniba.it/%7Ebvpsolvers/testsetbvpsolvers/?page_id=29">standard BVP test problem</a>.</p><pre><code class="language-julia hljs">using BoundaryValueDiffEq
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = u[1]
+end
+function bc!(res, u, p, t)
+    res[1] = u(0.0)[1] - 1
+    res[2] = u(1.0)[1]
+end
+tspan = (0.0, 1.0)
+u0 = [0.0, 0.0]
+prob = BVProblem(f!, bc!, u0, tspan)
+sol = solve(prob, MIRK4(), dt = 0.01)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: MIRK Order 4 Interpolation
+t: 101-element Vector{Float64}:
+ 0.0
+ 0.01
+ 0.02
+ 0.03
+ 0.04
+ 0.05
+ 0.06
+ 0.07
+ 0.08
+ 0.09
+ ⋮
+ 0.92
+ 0.93
+ 0.94
+ 0.95
+ 0.96
+ 0.97
+ 0.98
+ 0.99
+ 1.0
+u: 101-element Vector{Vector{Float64}}:
+ [1.0000000000000002, -1.3130352855093994]
+ [0.9869194287214476, -1.3031007711534117]
+ [0.9739375502081996, -1.2932965679604564]
+ [0.961053066261587, -1.2836216955020445]
+ [0.9482646884224784, -1.2740751862828676]
+ [0.9355711378424326, -1.264656085644049]
+ [0.9229711451558134, -1.255363451667674]
+ [0.9104634503528526, -1.246196355082602]
+ [0.8980468026536467, -1.2371538791715353]
+ [0.8857199603830783, -1.2282351196793475]
+ ⋮
+ [0.06814608517899787, -0.8536425188086404]
+ [0.059612925049218654, -0.8530037290807472]
+ [0.05108572626162192, -0.8524502404365982]
+ [0.04256363608922266, -0.8519819975268682]
+ [0.034045802315902034, -0.8515989535268759]
+ [0.025531373151184485, -0.8513010701319021]
+ [0.01701949714505822, -0.851088317553359]
+ [0.008509323102829352, -0.8509606745158118]
+ [1.888963463549682e-15, -0.8509181282548499]</code></pre><p>Since this problem only has constraints at the start and end of the time span, we can directly use <code>TwoPointBVProblem</code>:</p><pre><code class="language-julia hljs">function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = u[1]
+end
+function bca!(res, ua, p)
+    res[1] = ua[1] - 1
+end
+function bcb!(res, ub, p)
+    res[1] = ub[1]
+end
+tspan = (0.0, 1.0)
+u0 = [0.0, 0.0]
+prob = TwoPointBVProblem(
+    f!, (bca!, bcb!), u0, tspan, bcresid_prototype = (zeros(1), zeros(1)))
+sol = solve(prob, MIRK4(), dt = 0.01)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: MIRK Order 4 Interpolation
+t: 101-element Vector{Float64}:
+ 0.0
+ 0.01
+ 0.02
+ 0.03
+ 0.04
+ 0.05
+ 0.06
+ 0.07
+ 0.08
+ 0.09
+ ⋮
+ 0.92
+ 0.93
+ 0.94
+ 0.95
+ 0.96
+ 0.97
+ 0.98
+ 0.99
+ 1.0
+u: 101-element Vector{Vector{Float64}}:
+ [1.0, -1.3130352855093863]
+ [0.9869194287214468, -1.3031007711533988]
+ [0.9739375502081986, -1.2932965679604438]
+ [0.9610530662615859, -1.2836216955020319]
+ [0.9482646884224767, -1.2740751862828552]
+ [0.9355711378424306, -1.264656085644036]
+ [0.9229711451558111, -1.2553634516676615]
+ [0.9104634503528498, -1.2461963550825896]
+ [0.8980468026536435, -1.237153879171523]
+ [0.8857199603830749, -1.2282351196793353]
+ ⋮
+ [0.06814608517899479, -0.8536425188086307]
+ [0.0596129250492158, -0.8530037290807374]
+ [0.051085726261619085, -0.8524502404365886]
+ [0.04256363608921999, -0.8519819975268585]
+ [0.03404580231589969, -0.8515989535268664]
+ [0.02553137315118217, -0.8513010701318926]
+ [0.017019497145056007, -0.8510883175533496]
+ [0.008509323102827404, -0.850960674515802]
+ [0.0, -0.85091812825484]</code></pre><h2 id="Solving-second-order-boundary-value-problem"><a class="docs-heading-anchor" href="#Solving-second-order-boundary-value-problem">Solving second order boundary value problem</a><a id="Solving-second-order-boundary-value-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-second-order-boundary-value-problem" title="Permalink"></a></h2><p>Consirder the test problem from example problems in MIRKN paper <a href="../../references/#Muir2001MonoImplicitRM">Muir and Adams [1]</a>.</p><p class="math-container">\[\begin{cases}
+y_1&#39;(x) = y_2(x),\\
+ε y_2&#39;(x) = -y_1(x) y_2&#39;(x) - y_3(x) y_3&#39;(x),\\
+ε y_3&#39;(x) =  y_1&#39;(x) y_3(x) - y_1(x) y_3 &#39;(x)
+\end{cases}\]</p><p>with initial conditions:</p><p class="math-container">\[\begin{align*}
+y_1(0) &amp;= y_1&#39;(0) = y_1(1)=y_1&#39;(1)=0, \\
+y_3(0) &amp;= -1, \\
+y_3(1) &amp;=1
+\end{align*}\]</p><pre><code class="language-julia hljs">using BoundaryValueDiffEqMIRKN
+function f!(ddu, du, u, p, t)
+    ε = 0.1
+    ddu[1] = u[2]
+    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ε
+    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ε
+end
+function bc!(res, du, u, p, t)
+    res[1] = u(0.0)[1]
+    res[2] = u(1.0)[1]
+    res[3] = u(0.0)[3] + 1
+    res[4] = u(1.0)[3] - 1
+    res[5] = du(0.0)[1]
+    res[6] = du(1.0)[1]
+end
+u0 = [1.0, 1.0, 1.0]
+tspan = (0.0, 1.0)
+prob = SecondOrderBVProblem(f!, bc!, u0, tspan)
+sol = solve(prob, MIRKN4(), dt = 0.01)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: 1st order linear
+t: 101-element Vector{Float64}:
+ 0.0
+ 0.01
+ 0.02
+ 0.03
+ 0.04
+ 0.05
+ 0.06
+ 0.07
+ 0.08
+ 0.09
+ ⋮
+ 0.92
+ 0.93
+ 0.94
+ 0.95
+ 0.96
+ 0.97
+ 0.98
+ 0.99
+ 1.0
+u: 101-element Vector{RecursiveArrayTools.ArrayPartition{Float64, Tuple{Vector{Float64}, Vector{Float64}}}}:
+ ([0.0, 0.3328934890329491, -1.0], [0.0, -4.010479674083407, 2.0236679146909697])
+ ([1.5984664668543462e-5, 0.2937936928225238, -0.9797638564104205], [0.003131766606691315, -3.810163665799217, 2.0235091242732737])
+ ([6.136522044712101e-5, 0.2566765050243832, -0.9595307774915736], [0.005882482569360628, -3.6139607231638085, 2.0230621956194597])
+ ([0.0001324296051457547, 0.2215007185849898, -0.939303433911345], [0.008271768059633793, -3.421885583981421, 2.0223687045265892])
+ ([0.00022565989561494675, 0.18822499479744334, -0.919084097326964], [0.0103188304945587, -3.2339498926251906, 2.021466903737087])
+ ([0.0003377281741200673, 0.15680789272407653, -0.8988746728294515], [0.012042463369676465, -3.050162499071444, 2.020391879546658])
+ ([0.00046549238446856676, 0.12720789572660737, -0.8786767298402238], [0.013461045371694317, -2.870529738490244, 2.0191757047765426])
+ ([0.0006059921805446137, 0.09938343529420679, -0.8584915314958932], [0.01459253974279438, -2.6950556922072537, 2.0178475881707127])
+ ([0.0007564447696354829, 0.07329291235171712, -0.8383200625567625], [0.015454493870475343, -2.5237424308458163, 2.0164340202676723])
+ ([0.00091424075268197, 0.04889471622221105, -0.8181630558740564], [0.016064039078606228, -2.3565902404492114, 2.01495891578711])
+ ⋮
+ ([-0.0007564445318050725, -0.0732928505571428, 0.8383200167121017], [0.015454488132544299, -2.523742087416382, 2.016434599748343])
+ ([-0.0006059919969477579, -0.09938337021368433, 0.8584914914331959], [0.01459253463949101, -2.6950553790414453, 2.0178481651538576])
+ ([-0.0004654922485998865, -0.1272078276807125, 0.8786766955366693], [0.013461040934305219, -2.870529459185726, 2.019176279694524])
+ ([-0.000337728079177945, -0.15680782206960553, 0.8988746442665584], [0.012042459626101714, -3.0501622572697045, 2.0203924528321595])
+ ([-0.00022565983453721198, -0.1882249219277029, 0.9190840744905099], [0.010318827468947996, -3.2339496919818616, 2.0214674758065083])
+ ([-0.00013242957064901552, -0.22150064392978935, 0.9393034167911198], [0.008271765772021118, -3.4218854281365743, 2.022369275763086])
+ ([-6.136520506974088e-5, -0.2566764290497379, 0.9595307660809608], [0.0058824810353004815, -3.6139606157140864, 2.0230627663556993])
+ ([-1.5984660817239234e-5, -0.29379361603009285, 0.979763850705805], [0.0031317658368992555, -3.8101636102728778, 2.0235096947739475])
+ ([0.0, -0.3328934119592388, 1.0], [0.0, -4.01047967391811, 2.0236684851351194])</code></pre><h2 id="Solving-semi-explicit-boundary-value-differential-algebraic-equations"><a class="docs-heading-anchor" href="#Solving-semi-explicit-boundary-value-differential-algebraic-equations">Solving semi-explicit boundary value differential-algebraic equations</a><a id="Solving-semi-explicit-boundary-value-differential-algebraic-equations-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-semi-explicit-boundary-value-differential-algebraic-equations" title="Permalink"></a></h2><p>Consider the nonlinear semi-explicit DAE of index at most 2 in COLDAE paper <a href="../../references/#ascher1994collocation">Ascher and Spiteri [2]</a></p><p class="math-container">\[\begin{cases}
+x_1&#39; = (ε+ x_2 - \sin(t)) y + \cos(t) \\
+x_2&#39; = \cos(t) \\
+x_3&#39; = y \\
+0 = (x_1-p_1(t)) (y-e^t)
+\end{cases}\]</p><p>with boundary conditions</p><p class="math-container">\[\begin{align*}
+x_1(0) &amp;= 0, \\
+x_3(0) &amp;= 1, \\
+x_2(1) &amp;= \sin(1)
+\end{align*}\]</p><pre><code class="language-julia hljs">using BoundaryValueDiffEqAscher
+function f!(du, u, p, t)
+    du[1] = (1 + u[2] - sin(t)) * u[4] + cos(t)
+    du[2] = cos(t)
+    du[3] = u[4]
+    du[4] = (u[1] - sin(t)) * (u[4] - exp(t))
+end
+function bc!(res, u, p, t)
+    res[1] = u[1]
+    res[2] = u[3] - 1
+    res[3] = u[2] - sin(1.0)
+end
+u0 = [0.0, 0.0, 0.0, 0.0]
+tspan = (0.0, 1.0)
+fun = BVPFunction(f!, bc!, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
+prob = BVProblem(fun, u0, tspan)
+sol = solve(prob, Ascher4(zeta = [0.0, 0.0, 1.0]), dt = 0.01)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: 1st order linear
+t: 101-element Vector{Float64}:
+ 0.0
+ 0.01
+ 0.02
+ 0.03
+ 0.04
+ 0.05
+ 0.06
+ 0.07
+ 0.08
+ 0.09
+ ⋮
+ 0.92
+ 0.93
+ 0.94
+ 0.95
+ 0.96
+ 0.97
+ 0.98
+ 0.99
+ 1.0
+u: 101-element Vector{Vector{Float64}}:
+ [0.0, -1.0259220371532954e-15, 1.0, 4.76135832351527e-12]
+ [0.009999833334154757, 0.009999833334165648, 0.999999999999988, 2.8579238589425407e-11]
+ [0.019998666693309276, 0.01999866669333207, 0.9999999999999761, 5.237755722129986e-11]
+ [0.02999550020245993, 0.029995500202494665, 0.9999999999999643, 7.621661319539019e-11]
+ [0.03998933418658654, 0.039989334186633176, 0.9999999999999523, 9.997699669875379e-11]
+ [0.049979169270618816, 0.04997916927067736, 0.9999999999999404, 1.2378972768141135e-10]
+ [0.05996400647937318, 0.05996400647944364, 0.9999999999999285, 1.475773287621681e-10]
+ [0.0699428473374495, 0.06994284733753182, 0.9999999999999167, 1.7131385383621756e-10]
+ [0.07991469396907754, 0.07991469396917175, 0.9999999999999049, 1.9501766924604922e-10]
+ [0.08987854919790399, 0.08987854919801011, 0.9999999999998929, 2.1890735974029323e-10]
+ ⋮
+ [0.795601620035417, 0.7956016200363661, 0.9999999999990511, 1.9005087130180983e-9]
+ [0.8016199408828205, 0.8016199408837772, 0.9999999999990434, 1.916167456445694e-9]
+ [0.80755810040415, 0.8075581004051142, 0.9999999999990362, 1.9314613608204314e-9]
+ [0.813415504788403, 0.8134155047893737, 0.9999999999990298, 1.9442051099533203e-9]
+ [0.8191915683000205, 0.8191915683009983, 0.9999999999990224, 1.95841120472908e-9]
+ [0.8248857133374655, 0.8248857133384501, 0.9999999999990156, 1.971977832070703e-9]
+ [0.8304973704909792, 0.8304973704919705, 0.9999999999990086, 1.985236259910425e-9]
+ [0.8360259785995224, 0.8360259786005205, 0.9999999999990017, 1.9986604727359073e-9]
+ [0.8414709848068925, 0.8414709848078965, 0.9999999999989958, -2.005743902510829e-9]</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a><a class="docs-footer-nextpage" href="../continuation/">Solve BVP with Continuation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Saturday 17 January 2026 16:10">Saturday 17 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
