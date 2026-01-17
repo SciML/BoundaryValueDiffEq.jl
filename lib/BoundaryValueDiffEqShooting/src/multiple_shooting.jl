@@ -262,7 +262,7 @@ function __solve_nlproblem!(
     jac_prototype_bc = DI.jacobian(
         bc_fn, similar(bcresid_prototype), bc_jac_cache, bc_diffmode, u_at_nodes
     )
-    jac_prototype = vcat(Matrix(jac_prototype_ode), jac_prototype_bc)
+    jac_prototype = vcat(sparse(jac_prototype_ode), jac_prototype_bc)
 
     jac_fn = @closure (
         J,
