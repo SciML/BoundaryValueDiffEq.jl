@@ -50,9 +50,9 @@ function SciMLBase.__solve(
     y_ = similar(resid_prototype)
 
     jac_cache = if iip
-        DI.prepare_jacobian(nothing, y_, diffmode, vec(u0); strict = Val(false))
+        DI.prepare_jacobian(nothing, y_, diffmode, __vec(u0); strict = Val(false))
     else
-        DI.prepare_jacobian(nothing, diffmode, vec(u0); strict = Val(false))
+        DI.prepare_jacobian(nothing, diffmode, __vec(u0); strict = Val(false))
     end
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
@@ -74,9 +74,9 @@ function SciMLBase.__solve(
     end
 
     jac_prototype = if iip
-        DI.jacobian(loss_fnₚ, y_, jac_cache, diffmode, vec(u0))
+        DI.jacobian(loss_fnₚ, y_, jac_cache, diffmode, __vec(u0))
     else
-        DI.jacobian(loss_fnₚ, jac_cache, diffmode, vec(u0))
+        DI.jacobian(loss_fnₚ, jac_cache, diffmode, __vec(u0))
     end
 
     jac_fn = if iip
@@ -145,12 +145,12 @@ function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}
-    DI.jacobian!(loss_fn, fu, J, jac_cache, diffmode, vec(u))
+    DI.jacobian!(loss_fn, fu, J, jac_cache, diffmode, __vec(u))
     return J
 end
 
 function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where {L}
-    DI.jacobian!(loss_fn, J, jac_cache, diffmode, vec(u))
+    DI.jacobian!(loss_fn, J, jac_cache, diffmode, __vec(u))
     return J
 end
 
