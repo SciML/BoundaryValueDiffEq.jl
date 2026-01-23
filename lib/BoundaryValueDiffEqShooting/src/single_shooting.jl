@@ -6,6 +6,9 @@ function SciMLBase.__solve(
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
+    elseif prob.u0 isa Number
+        # Scalar BVP case
+        u0 = [prob.u0]
     else
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
