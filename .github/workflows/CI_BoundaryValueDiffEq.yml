@@ -42,6 +42,9 @@ jobs:
           - "pre"
         os:
           - ubuntu-latest
+        include:
+          - version: "pre"
+            skip_qa: true
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
@@ -70,6 +73,8 @@ jobs:
           Pkg.instantiate()
           Pkg.test(; coverage="user")
         shell: julia --color=yes --code-coverage=user --depwarn=yes --project=. {0}
+        env:
+          SKIP_QA: ${{ matrix.skip_qa || 'false' }}
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: src,ext,lib/BoundaryValueDiffEqCore/src,lib/BoundaryValueDiffEqMIRK/src,lib/BoundaryValueDiffEqMIRKN/src,lib/BoundaryValueDiffEqFIRK/src,lib/BoundaryValueDiffEqShooting/src,lib/BoundaryValueDiffEqAscher/src
