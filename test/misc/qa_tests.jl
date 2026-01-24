@@ -8,6 +8,8 @@
 end
 
 @testitem "JET Package Test" tags=[:qa] begin
+    import Pkg
+    Pkg.add("JET")
     using JET
 
     JET.test_package(BoundaryValueDiffEq, target_defined_modules = true)
