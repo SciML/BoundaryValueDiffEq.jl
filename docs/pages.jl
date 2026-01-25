@@ -5,7 +5,7 @@ pages = [
     "Getting Started with BVP solving in Julia" => "tutorials/getting_started.md",
     "Tutorials" => Any[
         "tutorials/continuation.md", "tutorials/solve_nlls_bvp.md",
-        "tutorials/unknown_parameters.md", "tutorials/extremum.md",
+        "tutorials/unknown_parameters.md", "tutorials/optimal_control.md", "tutorials/extremum.md",
     ],
     "Basics" => Any[
         "basics/bvp_problem.md", "basics/bvp_functions.md",
