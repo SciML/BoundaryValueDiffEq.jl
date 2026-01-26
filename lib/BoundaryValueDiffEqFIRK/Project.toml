@@ -47,7 +47,6 @@ LinearAlgebra = "1.10"
 LinearSolve = "2.36.2, 3"
 Mooncake = "0.4.146"
 OrdinaryDiffEqRosenbrock = "1.15.1"
-Pkg = "1.10"
 PreallocationTools = "0.4.24"
 PrecompileTools = "1.2"
 Preferences = "1.4"
@@ -71,7 +70,6 @@ InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
-Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
@@ -79,4 +77,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OrdinaryDiffEqRosenbrock", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
+test = ["Aqua", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OrdinaryDiffEqRosenbrock", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
