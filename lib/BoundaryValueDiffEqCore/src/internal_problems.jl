@@ -146,12 +146,12 @@ function __construct_internal_problem(
 end
 
 # Single shooting use diffmode for StandardBVProblem and TwoPointBVProblem
+# Version with Val{iip} for type stability
 function __construct_internal_problem(
         prob::SciMLBase.AbstractBVProblem, alg, loss, jac,
-        jac_prototype, resid_prototype, y, p, M::Int, N::Int, ::Nothing
-    )
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int, ::Nothing, ::Val{iip}
+    ) where {iip}
     T = eltype(y)
-    iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(
             loss; jac = jac, resid_prototype = resid_prototype,
@@ -176,6 +176,17 @@ function __construct_internal_problem(
             prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
         )
     end
+end
+
+# Fallback version without Val{iip} - extracts iip at runtime (for backwards compatibility)
+function __construct_internal_problem(
+        prob::SciMLBase.AbstractBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int, ::Nothing
+    )
+    return __construct_internal_problem(
+        prob, alg, loss, jac, jac_prototype, resid_prototype,
+        y, p, M, N, nothing, Val(SciMLBase.isinplace(prob))
+    )
 end
 
 # Multiple shooting always use inplace version internal problem constructor
