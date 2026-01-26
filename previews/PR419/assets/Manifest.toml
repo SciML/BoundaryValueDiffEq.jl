@@ -916,15 +916,16 @@ uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
 version = "0.1.3"
 
 [[deps.Integrals]]
-deps = ["CommonSolve", "HCubature", "LinearAlgebra", "MonteCarloIntegration", "QuadGK", "Random", "Reexport", "SciMLBase"]
-git-tree-sha1 = "28033edfa1ddab1dcd98690e48be1bd68401737b"
+deps = ["ArrayInterface", "CommonSolve", "HCubature", "LinearAlgebra", "MonteCarloIntegration", "QuadGK", "Random", "Reexport", "SciMLBase"]
+git-tree-sha1 = "2f1567d54ba4ed8450c4bab0722cff90726e47ae"
 uuid = "de52edbc-65ea-441a-8357-d3a637375a31"
-version = "4.8.0"
+version = "4.9.1"
 
     [deps.Integrals.extensions]
     IntegralsArblibExt = "Arblib"
     IntegralsCubaExt = "Cuba"
     IntegralsCubatureExt = "Cubature"
+    IntegralsDifferentiationInterfaceExt = ["ADTypes", "DifferentiationInterface", "ChainRulesCore"]
     IntegralsFastGaussQuadratureExt = "FastGaussQuadrature"
     IntegralsForwardDiffExt = "ForwardDiff"
     IntegralsMCIntegrationExt = "MCIntegration"
@@ -932,10 +933,12 @@ version = "4.8.0"
     IntegralsZygoteExt = ["Zygote", "ChainRulesCore", "Mooncake"]
 
     [deps.Integrals.weakdeps]
+    ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
     Arblib = "fb37089c-8514-4489-9461-98f9c8763369"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     Cuba = "8a292aeb-7a57-582c-b821-06e4c11590b1"
     Cubature = "667455a9-e2ce-5579-9412-b964f529a492"
+    DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
     FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
     ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
     MCIntegration = "ea1e2de9-7db7-4b42-91ee-0cd1bf6df167"
