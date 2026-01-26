@@ -47,12 +47,6 @@ jobs:
         run: |
           import Pkg
           Pkg.Registry.update()
-          # Install packages present in subdirectories
-          dev_pks = Pkg.PackageSpec[]
-          for path in ("lib/BoundaryValueDiffEqCore", "lib/BoundaryValueDiffEqMIRK", "lib/BoundaryValueDiffEqMIRKN", "lib/BoundaryValueDiffEqFIRK", "lib/BoundaryValueDiffEqShooting", "lib/BoundaryValueDiffEqAscher")
-              push!(dev_pks, Pkg.PackageSpec(; path))
-          end
-          Pkg.develop(dev_pks)
           Pkg.instantiate()
-          Pkg.test()
+          include("test/qa/runtests.jl")
         shell: julia --color=yes --project=test/qa {0}
