@@ -15,8 +15,9 @@ function SciMLBase.__solve(
     (; diffmode) = alg.jac_alg
 
     bcresid_prototype, resid_size = __get_bcresid_prototype(prob, u0)
-    iip, bc, u0, u0_size = isinplace(prob), prob.f.bc, deepcopy(u0), size(u0)
-    @assert (iip || isnothing(alg_.optimize)) "Out-of-place constraints don't allow optimization solvers "
+    iip = Val(isinplace(prob))
+    bc, u0, u0_size = prob.f.bc, deepcopy(u0), size(u0)
+    @assert (_unwrap_val(iip) || isnothing(alg_.optimize)) "Out-of-place constraints don't allow optimization solvers "
     resid_prototype = __vec(bcresid_prototype)
 
     # Construct the residual function
@@ -27,74 +28,35 @@ function SciMLBase.__solve(
     else
         ode_kwargs = (; actual_ode_kwargs...)
     end
-    internal_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, prob.p)
+    internal_prob = ODEProblem{_unwrap_val(iip)}(prob.f, u0, prob.tspan, prob.p)
     ode_cache_loss_fn = SciMLBase.__init(internal_prob, alg.ode_alg; ode_kwargs...)
 
-    loss_fn = if iip
-        @closure (
-            du,
-            u,
-            p,
-        ) -> __single_shooting_loss!(
-            du, u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type, resid_size
-        )
-    else
-        @closure (
-            u,
-            p,
-        ) -> __single_shooting_loss(
-            u, p, ode_cache_loss_fn, bc, u0_size, prob.problem_type
-        )
-    end
+    loss_fn = __single_shooting_make_loss(
+        iip, ode_cache_loss_fn, bc, u0_size, prob.problem_type, resid_size
+    )
 
     y_ = similar(resid_prototype)
 
-    jac_cache = if iip
-        DI.prepare_jacobian(nothing, y_, diffmode, vec(u0); strict = Val(false))
-    else
-        DI.prepare_jacobian(nothing, diffmode, vec(u0); strict = Val(false))
-    end
+    jac_cache = __single_shooting_make_jac_cache(iip, y_, diffmode, u0)
 
     ode_cache_jac_fn = __single_shooting_jacobian_ode_cache(
         internal_prob, jac_cache, __cache_trait(diffmode),
         diffmode, u0, alg.ode_alg; ode_kwargs...
     )
 
-    loss_fnₚ = if iip
-        @closure (
-            du,
-            u,
-        ) -> __single_shooting_loss!(
-            du, u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size
-        )
-    else
-        @closure (u) -> __single_shooting_loss(
-            u, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type
-        )
-    end
+    loss_fnₚ = __single_shooting_make_loss_p(
+        iip, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size
+    )
 
-    jac_prototype = if iip
-        DI.jacobian(loss_fnₚ, y_, jac_cache, diffmode, vec(u0))
-    else
-        DI.jacobian(loss_fnₚ, jac_cache, diffmode, vec(u0))
-    end
+    jac_prototype = __single_shooting_compute_jac_prototype(
+        iip, loss_fnₚ, y_, jac_cache, diffmode, u0
+    )
 
-    jac_fn = if iip
-        @closure (
-            J, u, p,
-        ) -> __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fnₚ, y_)
-    else
-        @closure (
-            u,
-            p,
-        ) -> __single_shooting_jacobian(
-            jac_prototype, u, jac_cache, diffmode, loss_fnₚ
-        )
-    end
+    jac_fn = __single_shooting_make_jac_fn(iip, jac_cache, diffmode, loss_fnₚ, y_, jac_prototype)
 
     nlprob = __construct_internal_problem(
         prob, alg, loss_fn, jac_fn, jac_prototype,
-        resid_prototype, u0, prob.p, length(u0), 1, nothing
+        resid_prototype, u0, prob.p, length(u0), 1, nothing, iip
     )
     solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
     kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
@@ -102,11 +64,103 @@ function SciMLBase.__solve(
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache
-    internal_prob_final = ODEProblem{iip}(prob.f, reshape(nlsol.u, u0_size), prob.tspan, prob.p)
+    internal_prob_final = ODEProblem{_unwrap_val(iip)}(
+        prob.f, reshape(nlsol.u, u0_size), prob.tspan, prob.p
+    )
     odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     return __build_solution(prob, odesol, nlsol)
 end
+
+# Helper functions with Val dispatch for type stability
+
+# Loss function creation
+function __single_shooting_make_loss(
+        ::Val{true}, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+    return @closure (
+        du,
+        u,
+        p,
+    ) -> __single_shooting_loss!(
+        du, u, p, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+end
+
+function __single_shooting_make_loss(
+        ::Val{false}, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+    return @closure (
+        u,
+        p,
+    ) -> __single_shooting_loss(
+        u, p, ode_cache, bc, u0_size, problem_type
+    )
+end
+
+# Jacobian cache creation
+function __single_shooting_make_jac_cache(::Val{true}, y_, diffmode, u0)
+    return DI.prepare_jacobian(nothing, y_, diffmode, vec(u0); strict = Val(false))
+end
+
+function __single_shooting_make_jac_cache(::Val{false}, y_, diffmode, u0)
+    return DI.prepare_jacobian(nothing, diffmode, vec(u0); strict = Val(false))
+end
+
+# Loss function for jacobian computation (with fixed p)
+function __single_shooting_make_loss_p(
+        ::Val{true}, p, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+    return @closure (
+        du,
+        u,
+    ) -> __single_shooting_loss!(
+        du, u, p, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+end
+
+function __single_shooting_make_loss_p(
+        ::Val{false}, p, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+    return @closure (u) -> __single_shooting_loss(
+        u, p, ode_cache, bc, u0_size, problem_type
+    )
+end
+
+# Jacobian prototype computation
+function __single_shooting_compute_jac_prototype(
+        ::Val{true}, loss_fnₚ, y_, jac_cache, diffmode, u0
+    )
+    return DI.jacobian(loss_fnₚ, y_, jac_cache, diffmode, vec(u0))
+end
+
+function __single_shooting_compute_jac_prototype(
+        ::Val{false}, loss_fnₚ, y_, jac_cache, diffmode, u0
+    )
+    return DI.jacobian(loss_fnₚ, jac_cache, diffmode, vec(u0))
+end
+
+# Jacobian function creation
+function __single_shooting_make_jac_fn(
+        ::Val{true}, jac_cache, diffmode, loss_fnₚ, y_, jac_prototype
+    )
+    return @closure (
+        J, u, p,
+    ) -> __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fnₚ, y_)
+end
+
+function __single_shooting_make_jac_fn(
+        ::Val{false}, jac_cache, diffmode, loss_fnₚ, y_, jac_prototype
+    )
+    return @closure (
+        u,
+        p,
+    ) -> __single_shooting_jacobian(
+        jac_prototype, u, jac_cache, diffmode, loss_fnₚ
+    )
+end
+
+# Original loss and jacobian functions
 
 function __single_shooting_loss!(
         resid_, u0_, p, cache, bc::BC, u0_size,
