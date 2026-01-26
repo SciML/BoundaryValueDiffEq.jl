@@ -41,6 +41,7 @@ LinearAlgebra = "1.10"
 Logging = "1.10"
 NonlinearSolveFirstOrder = "1.2"
 OptimizationBase = "3.2.0, 4"
+Pkg = "1.10"
 PreallocationTools = "0.4.24"
 RecursiveArrayTools = "3.27.0"
 Reexport = "1.2"
@@ -55,8 +56,8 @@ julia = "1.10"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "InteractiveUtils", "Test"]
+test = ["Aqua", "InteractiveUtils", "Pkg", "Test"]
