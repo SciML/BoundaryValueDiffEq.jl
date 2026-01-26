@@ -43,10 +43,12 @@ jobs:
             ${{ runner.os }}-qa-${{ env.cache-name }}-
             ${{ runner.os }}-qa-
             ${{ runner.os }}-
-      - name: "Run QA Tests"
+      - name: "Install Dependencies"
         run: |
-          import Pkg
-          Pkg.Registry.update()
-          Pkg.instantiate()
-          include("test/qa/runtests.jl")
-        shell: julia --color=yes --project=test/qa {0}
+          julia --color=yes --project=test/qa -e '
+            import Pkg
+            Pkg.Registry.update()
+            Pkg.instantiate()
+          '
+      - name: "Run QA Tests"
+        run: julia --color=yes --project=test/qa test/qa/runtests.jl
