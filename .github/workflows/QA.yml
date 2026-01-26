@@ -1,0 +1,54 @@
+name: "QA"
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "src/**"
+      - "ext/**"
+      - "test/qa/**"
+      - "Project.toml"
+      - ".github/workflows/QA.yml"
+      - "lib/**"
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - "1.11"
+          # QA tests are skipped on pre-release Julia due to JET compatibility issues
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: actions/cache@v5
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-qa-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-qa-${{ env.cache-name }}-
+            ${{ runner.os }}-qa-
+            ${{ runner.os }}-
+      - name: "Install Dependencies"
+        run: |
+          julia --color=yes --project=test/qa -e '
+            import Pkg
+            Pkg.Registry.update()
+            Pkg.instantiate()
+          '
+      - name: "Run QA Tests"
+        run: julia --color=yes --project=test/qa test/qa/runtests.jl

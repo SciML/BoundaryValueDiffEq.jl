@@ -35,7 +35,7 @@ DiffEqBase = "6.183"
 ForwardDiff = "0.10.38, 1"
 Integrals = "4.7.1"
 InteractiveUtils = "<0.0.1, 1"
-JET = "0.9.18, 0.11.0"
+
 LineSearch = "0.1.4"
 LinearAlgebra = "1.10"
 Logging = "1.10"
@@ -55,8 +55,7 @@ julia = "1.10"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "InteractiveUtils", "JET", "Test"]
+test = ["Aqua", "InteractiveUtils", "Test"]
