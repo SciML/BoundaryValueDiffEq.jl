@@ -206,7 +206,10 @@ p3 = plot(sol.t, m, xlabel = "Time", ylabel = "Mass", legend = false)
 p4 = plot(sol.t, c, xlabel = "Time", ylabel = "Thrust", legend = false)
 
 plot(p1, p2, p3, p4, layout = (2, 2))
+savefig("rocket_launch.png"); nothing # hide
 ```
+
+![](rocket_launch.png)
 
 Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.
 
@@ -353,9 +356,9 @@ anim = @animate for k in eachindex(t)
 end
 
 # Save GIF
-gif(anim, "./cart_pole.gif", fps = 40)
+gif(anim, "../assets/cart_pole.gif", fps = 40)
 ```
 
 After we plot the final solution:
 
-![cart_pole](./cart_pole.gif)
+![](../assets/cart_pole.gif)
