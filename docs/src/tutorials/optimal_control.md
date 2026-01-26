@@ -358,7 +358,3 @@ end
 # Save GIF
 gif(anim, "../assets/cart_pole.gif", fps = 40)
 ```
-
-After we plot the final solution:
-
-![](../assets/cart_pole.gif)
