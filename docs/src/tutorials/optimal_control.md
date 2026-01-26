@@ -82,7 +82,7 @@ With all the above parts, we can build the model for our block move optimal cont
 So the copy-and-paste code for the block move optimal control problem is:
 
 ```julia
-using BoundaryValueDiffEqMIRK, Ipopt, OptimizationMOI
+using BoundaryValueDiffEqMIRK, Ipopt, OptimizationIpopt
 #cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
 cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
 function block_move!(du, u, p, t)
