@@ -82,7 +82,7 @@ With all the above parts, we can build the model for our block move optimal cont
 So the copy-and-paste code for the block move optimal control problem is:
 
 ```julia
-using BoundaryValueDiffEqMIRK, Ipopt, OptimizationIpopt
+using BoundaryValueDiffEqMIRK, OptimizationIpopt
 #cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
 cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
 function block_move!(du, u, p, t)
@@ -102,7 +102,7 @@ block_move_fun = BVPFunction(block_move!, block_move_bc!; cost = cost_fun,
     f_prototype = zeros(2), bcresid_prototype = zeros(4))
 block_move_prob = BVProblem(
     block_move_fun, u0, tspan; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf])
-sol = solve(block_move_prob, MIRK4(; optimize = Ipopt.Optimizer()), dt = 0.002, adaptive = false)
+sol = solve(block_move_prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.002, adaptive = false)
 ```
 
 ## Rocket Launching Optimal Control
@@ -194,7 +194,7 @@ u0 = [v_0, h_0, m_T, 3.0]
 rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun, f_prototype = zeros(3))
 rocket_launch_prob = BVProblem(
     rocket_launch_fun, u0, tspan; lb = [0.0, h_0, m_T, 0.0], ub = [Inf, Inf, m_0, u_t_max])
-sol = solve(rocket_launch_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = Δt, adaptive = false)
+sol = solve(rocket_launch_prob, MIRK4(; optimize = IpoptOptimizer()); dt = Δt, adaptive = false)
 
 u = reduce(hcat, sol.u)
 v, h, m, c = u[1, :], u[2, :], u[3, :], u[4, :]
@@ -275,7 +275,7 @@ The target cost function is defined as the "energy" so the target cost function 
 ```
 
 ```@example cart_pole
-using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt, Plots
+using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
 m_1 = 1.0                      # Cart mass
 m_2 = 0.3                      # Pole mass
 l = 0.5                        # Pole length
@@ -308,7 +308,7 @@ cart_pole_fun = BVPFunction(cart_pole!, cart_pole_bc!; cost = cost_fun,
     bcresid_prototype = zeros(7), f_prototype = zeros(4))
 cart_pole_prob = BVProblem(cart_pole_fun, u0, tspan; lb = [-2.0, -Inf, -Inf, -Inf, -20.0],
     ub = [2.0, Inf, Inf, Inf, 20.0])
-sol = solve(cart_pole_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = 0.01, adaptive = false)
+sol = solve(cart_pole_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.01, adaptive = false)
 
 t = sol.t
 x, theta, dx, dtheta, f = sol[1, :], sol[2, :], sol[3, :], sol[4, :], sol[5, :]
