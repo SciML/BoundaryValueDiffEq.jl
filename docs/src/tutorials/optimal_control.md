@@ -12,12 +12,12 @@ Block move optimal control problem is an easy example of optimal control problem
 
 Suppose we apply the external force $f$ on a block which can slide without friction in one dimension, its position $x$ and velocity $v$ can be described using:
 
-$$
+```math
 \left\{\begin{aligned}
 &\frac{dx}{dt}=v\\
 &\frac{dv}{dt}=f
 \end{aligned}\right.
-$$
+```
 
 Since the presence of control variables $f$, we can pass our state variables and control variables together as `[state variables, control variables]`, which is `u = [x, v, f]` in the system dynamics:
 
@@ -35,9 +35,9 @@ To tell solvers the difference between state variables and control variables, `f
 
 The block moves from $x = -1$ at time $t = 0$ to $x = 0$ at time $t = 1$, starting and finishing at rest:
 
-$$
+```math
 x(0)=-1.0, v(0)=0, x(1)=0, v(1)=0
-$$
+```
 
 So the boundary conditions are:
 
@@ -54,9 +54,9 @@ end
 
 We want to minimize the total energy during the whole process, so the cost functional is an integral of the applied force(Lagrange form):
 
-$$
+```math
 \min_{x(t),v(t),f(t)} \frac{1}{2}\int_0^1 u^2(\tau)d\tau
-$$
+```
 
 The cost functional should be defined following the interpolating style in boundary conditions, for example, use `sol(t₁)` to interpolate at `t=t₁`. Here, to express the integral cost function, we can directly use `integral(f, domain)` to integrate the integrand:
 
@@ -66,7 +66,7 @@ cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
 
 As for other cost functional which need the interpolation of some exact points of the solution(Mayer form), we only need to define an OOP cost function that interpolating the solution at the specific point, for example:
 
-```julia
+```@example block_move
 cost_fun(sol, p) = sol(1.0)[3]
 ```
 
@@ -82,7 +82,7 @@ With all the above parts, we can build the model for our block move optimal cont
 So the copy-and-paste code for the block move optimal control problem is:
 
 ```julia
-using BoundaryValueDiffEqMIRK, Ipopt, OptimizationMOI
+using BoundaryValueDiffEqMIRK, OptimizationIpopt
 #cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
 cost_fun(sol, p) = 0.5*integral((t, p) -> sol(t)[3]^2, (0.0, 1.0))
 function block_move!(du, u, p, t)
@@ -102,7 +102,7 @@ block_move_fun = BVPFunction(block_move!, block_move_bc!; cost = cost_fun,
     f_prototype = zeros(2), bcresid_prototype = zeros(4))
 block_move_prob = BVProblem(
     block_move_fun, u0, tspan; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf])
-sol = solve(block_move_prob, MIRK4(; optimize = Ipopt.Optimizer()), dt = 0.002, adaptive = false)
+sol = solve(block_move_prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.002, adaptive = false)
 ```
 
 ## Rocket Launching Optimal Control
@@ -119,46 +119,46 @@ The control variable is
 
 The dynamics of the launching can be formulated with three differential equations:
 
-$$
+```math
 \left\{\begin{aligned}
 &\frac{dx_v}{dt}=\frac{u_t-drag(x_h,x_v)}{x_m}-g(x_h)\\
 &\frac{dx_h}{dt}=x_v\\
 &\frac{dx_m}{dt}=-\frac{u_t}{c}
 \end{aligned}\right.
-$$
+```
 
 where the drag $D(x_h,x_v)$ is a function of altitude and velocity:
 
-$$
+```math
 D(x_h,x_v)=D_c\cdot x_v^2\cdot\exp^{h_c(\frac{x_h-x_h(0)}{x_h(0)})}
-$$
+```
 
 gravity $g(x_h)$ is a function of altitude:
 
-$$
+```math
 g(x_h)=g_0\cdot (\frac{x_h(0)}{x_h})^2
-$$
+```
 
 $c$ is a constant. Suppose the final time is $T$, we here want to maximize the final altitude $x_h(T)$:
 
-$$
+```math
 \max x_h(T)
-$$
+```
 
 The inequality constraints for the state variables and control variables are:
 
-$$
+```math
 \left\{\begin{aligned}
 &x_v>0\\
 &x_h>0\\
 &m_T<x_m<m_0\\
 &0<u_t<u_{t\text{max}}
 \end{aligned}\right.
-$$
+```
 
 Similar solving for such optimal control problem can be found on JuMP.jl and InfiniteOpt.jl. The detailed parameters are taken from [COPS](https://www.mcs.anl.gov/%7Emore/cops/cops3.pdf).
 
-```julia
+```@example rocket_launch
 using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
 h_0 = 1                      # Initial height
 v_0 = 0                      # Initial velocity
@@ -194,7 +194,7 @@ u0 = [v_0, h_0, m_T, 3.0]
 rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun, f_prototype = zeros(3))
 rocket_launch_prob = BVProblem(
     rocket_launch_fun, u0, tspan; lb = [0.0, h_0, m_T, 0.0], ub = [Inf, Inf, m_0, u_t_max])
-sol = solve(rocket_launch_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = Δt, adaptive = false)
+sol = solve(rocket_launch_prob, MIRK4(; optimize = IpoptOptimizer()); dt = Δt, adaptive = false)
 
 u = reduce(hcat, sol.u)
 v, h, m, c = u[1, :], u[2, :], u[3, :], u[4, :]
@@ -206,7 +206,10 @@ p3 = plot(sol.t, m, xlabel = "Time", ylabel = "Mass", legend = false)
 p4 = plot(sol.t, c, xlabel = "Time", ylabel = "Thrust", legend = false)
 
 plot(p1, p2, p3, p4, layout = (2, 2))
+savefig("rocket_launch.png"); nothing # hide
 ```
+
+![](rocket_launch.png)
 
 Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.
 
@@ -214,7 +217,7 @@ Similar optimal control problem solving can also be deployed in JuMP.jl and Infi
 
 The dynamic equation of the motion of cart-pole swing-up problem are given by:
 
-$$
+```math
 
 \begin{bmatrix}
 \ddot{x} \\
@@ -230,13 +233,13 @@ m_1 + m_2 & m_2 \ell \cos\theta
   - g \sin\theta \\
     F + m_2 \ell \dot{\theta}^2 \sin\theta
     \end{bmatrix}
-    $$
+```
 
 where $x$ is the location of the cart, $\theta$ is the pole angle, $m_1$ is the cart mass, $m_2$ is the pole mass, $l$ is the pole length.
 
 By converting the dynamics to first order equations, we can get the formulation:
 
-$$
+```math
 \begin{bmatrix}
 \dot{x} \\
 \dot{\theta} \\
@@ -260,22 +263,22 @@ x \\ \theta \\ \dot{x} \\ \dot{\theta} \\ e
 {m_2 \ell \cos^2\theta - (m_1 + m_2)\ell} \\
 F^2
 \end{bmatrix}
-$$
+```
 
 and the initial conditions of all states at $t=0$ are all zero, the boundary conditions at time $t_f$ are:
 
-$$
+```math
 x_f=d, \dot{x_f}=0, \theta_f=\pi, \dot{\theta_f}=0
-$$
+```
 
 The target cost function is defined as the "energy" so the target cost function is:
 
-$$
+```math
 \min J=\int\dot{e}dt=F
-$$
+```
 
-```julia
-using BoundaryValueDiffEqMIRK, OptimizationMOI, Ipopt, Plots
+```@example cart_pole
+using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
 m_1 = 1.0                      # Cart mass
 m_2 = 0.3                      # Pole mass
 l = 0.5                        # Pole length
@@ -308,7 +311,7 @@ cart_pole_fun = BVPFunction(cart_pole!, cart_pole_bc!; cost = cost_fun,
     bcresid_prototype = zeros(7), f_prototype = zeros(4))
 cart_pole_prob = BVProblem(cart_pole_fun, u0, tspan; lb = [-2.0, -Inf, -Inf, -Inf, -20.0],
     ub = [2.0, Inf, Inf, Inf, 20.0])
-sol = solve(cart_pole_prob, MIRK4(; optimize = Ipopt.Optimizer()); dt = 0.01, adaptive = false)
+sol = solve(cart_pole_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.01, adaptive = false)
 
 t = sol.t
 x, theta, dx, dtheta, f = sol[1, :], sol[2, :], sol[3, :], sol[4, :], sol[5, :]
@@ -353,9 +356,5 @@ anim = @animate for k in eachindex(t)
 end
 
 # Save GIF
-gif(anim, "./cart_pole.gif", fps = 40)
+gif(anim, "../assets/cart_pole.gif", fps = 40)
 ```
-
-After we plot the final solution:
-
-![cart_pole](./cart_pole.gif)
