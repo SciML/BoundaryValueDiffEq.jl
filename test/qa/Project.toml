@@ -1,0 +1,19 @@
+name = "QA"
+uuid = "00000000-0000-0000-0000-000000000000"
+
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+BoundaryValueDiffEq = "764a87c0-6b3e-53db-9096-fe964310641d"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+BoundaryValueDiffEq = {path = "../.."}
+
+[compat]
+Aqua = "0.8.11"
+JET = "0.10"
+SciMLBase = "2.130.0"
+Test = "1.10"
+julia = "1.10"

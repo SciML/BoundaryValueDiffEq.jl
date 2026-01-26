@@ -1,8 +1,2 @@
-@testitem "Quality Assurance" begin
-    using Aqua
-
-    Aqua.test_all(
-        BoundaryValueDiffEq; ambiguities = false,
-        piracies = (broken = false, treat_as_own = [SciMLBase.BVProblem])
-    )
-end
+# QA tests have been moved to a separate test group with its own Project.toml
+# See test/qa/ for Aqua and JET tests
