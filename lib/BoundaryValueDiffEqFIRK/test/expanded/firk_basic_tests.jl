@@ -142,45 +142,7 @@ end
     end
 end
 
-@testitem "JET: Runtime Dispatches" setup = [FIRKExpandedConvergenceTests] begin
-    using JET
-
-    @testset "Problem: $i" for i in 1:10
-        prob = probArr[i]
-        @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-            solver = lobattoIIIa_solver(
-                Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-        end
-        @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-            solver = lobattoIIIb_solver(
-                Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-        end
-        @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-            solver = lobattoIIIc_solver(
-                Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-        end
-        @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-            solver = radau_solver(
-                Val(stage); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_opt broken = true target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules = (BoundaryValueDiffEqFIRK,) solve(prob, solver; dt = 0.2)
-        end
-    end
-end
+# JET tests have been moved to the separate QA test group (test/qa/)
 
 @testitem "Convergence on Linear" setup = [FIRKExpandedConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools

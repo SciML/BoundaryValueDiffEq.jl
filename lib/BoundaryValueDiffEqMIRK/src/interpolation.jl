@@ -76,7 +76,7 @@ end
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     w, _ = interp_weights(τ, cache.alg)
-    return sum_stages!(z, id, cache, w, i, T)
+    return sum_stages!(z, id, cache, w, i, τ, T)
 end
 
 @inline function interpolant!(
@@ -87,23 +87,34 @@ end
     dt = mesh_dt[i]
     τ = (t - mesh[i]) / dt
     _, w′ = interp_weights(τ, cache.alg)
-    return sum_stages!(dz, id, cache, w′, i, T)
+    return sum_stages!(dz, id, cache, w′, i, τ, T)
 end
 
 @views function sum_stages!(
         z::AbstractArray, id::MIRKInterpolation,
         cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
-        w, i::Int, ::Type{Val{0}}
+        w, i::Int, τ, ::Type{Val{0}}
     ) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
-    length_z = length(z)
+
+    has_control = !isnothing(cache.prob.f.f_prototype)
+
+    # state variables have their interpolation polynomials
+    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
     z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
+    __maybe_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][1:length_z, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
+        z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
+        w[(stage + 1):s_star], true, true
     )
+
+    # control variable just use linear interpolation
+    if has_control
+        inc = τ / dt .* (id.u[i + 1] .- id.u[i])
+        copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
+    end
     z .= z .* dt .+ id.u[i]
 
     return nothing
@@ -111,17 +122,28 @@ end
 @views function sum_stages!(
         z::AbstractArray, id::MIRKInterpolation,
         cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w, i::Int, ::Type{Val{0}}
+        w, i::Int, τ, ::Type{Val{0}}
     ) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
-    length_z = length(z)
+
+    has_control = !isnothing(cache.prob.f.f_prototype)
+    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
+
     z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i][1:length_z, 1:stage], w[1:stage])
+    __maybe_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
     __maybe_matmul!(
-        z, k_interp.u[i][1:length_z, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
+        z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
+        w[(stage + 1):s_star], true, true
     )
+
+    # control variable just use linear interpolation
+    if has_control
+        inc = τ / dt .* (id.u[i + 1] .- id.u[i])
+        copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
+    end
+
     z .= z .* dt .+ id.u[i]
 
     return nothing
@@ -129,34 +151,49 @@ end
 
 @views function sum_stages!(
         z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
-        w′, i::Int, ::Type{Val{1}}
+        w′, i::Int, τ, ::Type{Val{1}}
     ) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
-    length_z = length(z′)
+    has_control = !isnothing(cache.prob.f.f_prototype)
+    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
+
     z′ .= zero(z′)
-    __maybe_matmul!(z′, k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
     __maybe_matmul!(
-        z′, k_interp.u[i][1:length_z, 1:(s_star - stage)],
+        z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
     )
+
+    # control variable just use linear interpolation
+    if has_control
+        inc = τ .* id.u[i + 1] .+ (1 - τ) .* id.u[i]
+        copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
+    end
 
     return nothing
 end
 @views function sum_stages!(
         z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w′, i::Int, ::Type{Val{1}}
+        w′, i::Int, τ, ::Type{Val{1}}
     ) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp) = cache
+    (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
-    length_z = length(z′)
+    has_control = !isnothing(cache.prob.f.f_prototype)
+    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′, k_discrete[i][1:length_z, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
     __maybe_matmul!(
-        z′, k_interp.u[i][1:length_z, 1:(s_star - stage)],
+        z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
     )
+
+    # control variable just use linear interpolation
+    if has_control
+        inc = τ .* id.u[i + 1] .+ (1 - τ) .* id.u[i]
+        copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
+    end
 
     return nothing
 end
@@ -167,28 +204,40 @@ end
 # basically simplified version of the interpolation for MIRK
 function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (; t, u, cache) = s
-    (; alg, stage, k_discrete) = cache
+    (; alg, stage, k_discrete, M) = cache
     # Quick handle for the case where tval is at the boundary
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
     z = zero(last(u))
+    has_control = !isnothing(cache.prob.f.f_prototype)
+    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
     ii = interval(t, tval)
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     w, _ = evalsol_interp_weights(τ, alg)
     K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
         @view(k_discrete[ii][:, 1:stage])
-    __maybe_matmul!(z, K, @view(w[1:stage]))
+    __maybe_matmul!(z[1:length_z], K, @view(w[1:stage]))
+
+    # control variable just use linear interpolation
+    if has_control
+        inc = τ / dt .* (u[ii + 1] .- u[ii])
+        copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
+    end
+
     z .= z .* dt .+ u[ii]
+
     return z
 end
 
 # Interpolate intermediate solution at multiple points
 function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     (; t, u, cache) = s
-    (; alg, stage, k_discrete, mesh_dt) = cache
+    (; alg, stage, k_discrete, mesh_dt, M) = cache
     # Quick handle for the case where tval is at the boundary
     zvals = [zero(last(u)) for _ in tvals]
+    has_control = !isnothing(cache.prob.f.f_prototype)
+    length_z = has_control ? length(cache.prob.f.f_prototype) : length(first(zvals))
     for (i, tval) in enumerate(tvals)
         (tval == t[1]) && return first(u)
         (tval == t[end]) && return last(u)
@@ -198,7 +247,13 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
         w, _ = evalsol_interp_weights(τ, alg)
         K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
             @view(k_discrete[ii][:, 1:stage])
-        __maybe_matmul!(zvals[i], K, @view(w[1:stage]))
+        __maybe_matmul!(zvals[i][1:length_z], K, @view(w[1:stage]))
+
+        # control variable just use linear interpolation
+        if has_control
+            inc = τ / dt .* (u[ii + 1] .- u[ii])
+            copyto!(zvals[i], (length_z + 1):M, inc, (length_z + 1):M)
+        end
         zvals[i] .= zvals[i] .* dt .+ u[ii]
     end
     return zvals

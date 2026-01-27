@@ -84,20 +84,7 @@ end
     end
 end
 
-@testitem "JET tests" setup = [MIRKNConvergenceTests] begin
-    using JET
-
-    @testset "Problem: $i" for i in 1:6
-        prob = probArr[i]
-        @testset "MIRKN$order" for order in (4, 6)
-            solver = mirkn_solver(
-                Val(order); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_call target_modules = (BoundaryValueDiffEqMIRKN,) solve(prob, solver; dt = 0.2)
-        end
-    end
-end
+# JET tests have been moved to the separate QA test group (test/qa/)
 
 @testitem "Example problem from paper" begin
     using BoundaryValueDiffEqMIRKN

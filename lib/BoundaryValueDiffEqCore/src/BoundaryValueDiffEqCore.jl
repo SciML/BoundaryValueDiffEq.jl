@@ -7,6 +7,7 @@ using ArrayInterface: parameterless_type, fast_scalar_indexing
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using ForwardDiff: ForwardDiff, pickchunksize
+using Integrals: Integrals, IntegralProblem
 using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
@@ -27,6 +28,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm
 include("types.jl")
 include("solution_utils.jl")
 include("utils.jl")
+include("internal_problems.jl")
 include("algorithms.jl")
 include("abstract_types.jl")
 include("alg_utils.jl")
@@ -45,5 +47,6 @@ export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
     NoErrorControl
 export HOErrorControl, REErrorControl
+export integral
 
 end

@@ -22,6 +22,7 @@ const RETESTITEMS_NWORKER_THREADS = parse(
 @info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
 
 ReTestItems.runtests(
-    BoundaryValueDiffEq; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
+    BoundaryValueDiffEq;
+    tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
     nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS
 )

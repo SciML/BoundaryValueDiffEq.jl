@@ -15,6 +15,7 @@
     fixpnt
     alg
     pt
+    f_prototype
     bcresid_prototype
 
     residual
@@ -118,6 +119,7 @@ function SciMLBase.__init(
         vecf, vecbc
     end
 
+    f_prototype = isnothing(prob.f.f_prototype) ? nothing : __vec(prob.f.f_prototype)
     bcresid_prototype, _ = __get_bcresid_prototype(prob.problem_type, prob, u0)
 
     if prob.f.jac === nothing
@@ -150,7 +152,7 @@ function SciMLBase.__init(
     g = build_almost_block_diagonals(zeta, ncomp, mesh, T)
     cache = AscherCache{iip, T}(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
-        fixpnt, alg, prob.problem_type, bcresid_prototype, residual, zval, yval, gval,
+        fixpnt, alg, prob.problem_type, f_prototype, bcresid_prototype, residual, zval, yval, gval,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
     )
@@ -318,7 +320,7 @@ function __append_similar(x::AbstractVector{<:AbstractArray{T}}, n) where {T <: 
 end
 
 function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
-    (; alg, pt) = cache
+    (; alg, pt, prob, f_prototype, bcresid_prototype) = cache
     (; jac_alg) = alg
     loss = if iip
         @closure (res, z, p) -> @views Φ!(cache, z, res, pt)
@@ -364,9 +366,12 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
         )
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.ncomp + cache.ny)
+
     return __construct_internal_problem(
-        cache.prob, cache.prob.problem_type, alg, loss, jac, jac_prototype,
-        resid_prototype, lz, cache.p, cache.ncomp, length(cache.mesh)
+        prob, prob.problem_type, alg, loss, jac, jac_prototype,
+        resid_prototype, bcresid_prototype, f_prototype, lz,
+        cache.p, cache.ncomp, length(cache.mesh), cost_fun
     )
 end
 

@@ -174,7 +174,7 @@ function __solve_nlproblem!(
     # NOTE: u_at_nodes is updated inplace
     nlprob = __construct_internal_problem(
         prob, prob.problem_type, alg, loss_fn, jac_fn, jac_prototype,
-        resid_prototype, u_at_nodes, prob.p, M, length(nodes), nothing
+        resid_prototype, u_at_nodes, prob.p, M, length(nodes), nothing, nothing
     )
 
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
@@ -262,7 +262,7 @@ function __solve_nlproblem!(
     jac_prototype_bc = DI.jacobian(
         bc_fn, similar(bcresid_prototype), bc_jac_cache, bc_diffmode, u_at_nodes
     )
-    jac_prototype = vcat(jac_prototype_ode, jac_prototype_bc)
+    jac_prototype = vcat(sparse(jac_prototype_ode), jac_prototype_bc)
 
     jac_fn = @closure (
         J,
@@ -276,7 +276,7 @@ function __solve_nlproblem!(
     # NOTE: u_at_nodes is updated inplace
     nlprob = __construct_internal_problem(
         prob, prob.problem_type, alg, loss_fn, jac_fn, jac_prototype,
-        resid_prototype, u_at_nodes, prob.p, M, length(nodes), nothing
+        resid_prototype, u_at_nodes, prob.p, M, length(nodes), nothing, nothing
     )
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
     __solve(nlprob, nlsolve_alg; kwargs...)

@@ -23,7 +23,8 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     __use_both_error_control, __default_coloring_algorithm,
     DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
     __concrete_kwargs, __FastShortcutNonlinearPolyalg,
-    __construct_internal_problem, __internal_solve
+    __construct_internal_problem, __internal_solve,
+    __default_sparsity_detector, __build_cost
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
@@ -177,6 +178,6 @@ end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I
 export BVPJacobianAlgorithm
-export maxsol, minsol
+export maxsol, minsol, integral
 
 end

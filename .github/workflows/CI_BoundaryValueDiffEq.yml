@@ -37,9 +37,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - "1"
+          - "1.11"
           - "lts"
-          - "pre"
+          # - "pre"  # Disabled: ReTestItems has issues with pre-release Julia
         os:
           - ubuntu-latest
     steps:

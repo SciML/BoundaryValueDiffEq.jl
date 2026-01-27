@@ -1,5 +1,7 @@
 @testitem "Basic Shooting" begin
-    using BoundaryValueDiffEqShooting, LinearAlgebra, OrdinaryDiffEqTsit5, JET
+    using BoundaryValueDiffEqShooting, LinearAlgebra, OrdinaryDiffEqTsit5
+
+    # JET tests have been moved to the separate QA test group (test/qa/)
 
     SOLVERS = [
         Shooting(Tsit5(), NewtonRaphson(; autodiff = AutoFiniteDiff())),
@@ -13,9 +15,6 @@
         ),
         MultipleShooting(10, Tsit5()),
     ]
-    # JET_SKIP = [false, false, true, false, false, true]
-    JET_SKIP = [true, true, true, true, true, true]
-    JET_BROKEN = [false, false, false, false, false, false]
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
@@ -44,16 +43,6 @@
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
-
-        JET_SKIP[i] && continue
-        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
-        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
     end
 
     # Out of Place
@@ -78,16 +67,6 @@
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
-
-        JET_SKIP[i] && continue
-        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp2, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
-        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp2, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
     end
 
     # Inplace
@@ -108,16 +87,6 @@
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
-
-        JET_SKIP[i] && continue
-        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
-        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
     end
 
     # Out of Place
@@ -135,16 +104,6 @@
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
-
-        JET_SKIP[i] && continue
-        @test_opt target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp4, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
-        @test_call target_modules = (BoundaryValueDiffEqShooting,) solve(
-            bvp4, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3)
-        ) broken = JET_BROKEN[i]
     end
 end
 

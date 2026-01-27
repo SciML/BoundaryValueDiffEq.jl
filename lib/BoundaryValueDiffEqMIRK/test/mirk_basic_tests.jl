@@ -115,30 +115,7 @@ end
     end
 end
 
-@testitem "JET: Runtime Dispatches" setup = [MIRKConvergenceTests] begin
-    using JET
-
-    @testset "Problem: $i" for i in 1:10
-        prob = probArr[i]
-        @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
-            solver = mirk_solver(
-                Val(order); nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_opt target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
-        end
-
-        @testset "MIRK$(order)I" for order in (6,)
-            solver = MIRK6I(;
-                nlsolve = NewtonRaphson(),
-                jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
-            )
-            @test_opt target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
-            @test_call target_modules = (BoundaryValueDiffEqMIRK,) solve(prob, solver; dt = 0.2)
-        end
-    end
-end
+# JET tests have been moved to the separate QA test group (test/qa/)
 
 @testitem "Convergence on Linear" setup = [MIRKConvergenceTests] begin
     using LinearAlgebra, DiffEqDevTools

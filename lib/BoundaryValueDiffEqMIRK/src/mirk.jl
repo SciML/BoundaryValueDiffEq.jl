@@ -12,6 +12,7 @@
     alg                        # MIRK methods
     TU                         # MIRK Tableau
     ITU                        # MIRK Interpolation Tableau
+    f_prototype
     bcresid_prototype
     # Everything below gets resized in adaptive methods
     mesh                       # Discrete mesh
@@ -44,6 +45,10 @@ function SciMLBase.__init(
     diffcache = __cache_trait(alg.jac_alg)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     fit_parameters = haskey(prob.kwargs, :fit_parameters)
+    constraint = (!isnothing(prob.f.inequality)) ||
+        (!isnothing(prob.f.equality)) ||
+        (!isnothing(prob.lb)) ||
+        (!isnothing(prob.ub))
 
     t₀, t₁ = prob.tspan
     ig, T,
@@ -65,50 +70,109 @@ function SciMLBase.__init(
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
+    f_prototype = isnothing(prob.f.f_prototype) ? nothing : __vec(prob.f.f_prototype)
+    L_f_prototype = isnothing(f_prototype) ? N : length(f_prototype)
 
-    k_discrete = [
-        __maybe_allocate_diffcache(safe_similar(X, N, stage), chunksize, alg.jac_alg)
-            for _ in 1:Nig
-    ]
-    k_interp = VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
+    k_discrete = if !constraint
+        [
+            __maybe_allocate_diffcache(safe_similar(X, N, stage), chunksize, alg.jac_alg)
+                for _ in 1:Nig
+        ]
+    else
+        [
+            __maybe_allocate_diffcache(safe_similar(X, L_f_prototype, stage), chunksize, alg.jac_alg)
+                for _ in 1:Nig
+        ]
+    end
+    k_interp = if !constraint
+        VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
+    else
+        VectorOfArray([similar(X, L_f_prototype, ITU.s_star - stage) for _ in 1:Nig])
+    end
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
 
     residual = if iip
-        if prob.problem_type isa TwoPointBVProblem
-            vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀.u[2:end]))))
+        if !constraint
+            if prob.problem_type isa TwoPointBVProblem
+                vcat([__alloc(__vec(bcresid_prototype))], __alloc.(copy.(@view(y₀.u[2:end]))))
+            else
+                vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀.u[2:end]))))
+            end
         else
-            vcat([__alloc(bcresid_prototype)], __alloc.(copy.(@view(y₀.u[2:end]))))
+            if prob.problem_type isa TwoPointBVProblem
+                vcat(
+                    [__alloc(__vec(bcresid_prototype))], __alloc.(
+                        copy.(
+                            [
+                                f_prototype
+                                    for _ in 1:Nig
+                            ]
+                        )
+                    )
+                )
+            else
+                vcat(
+                    [__alloc(bcresid_prototype)], __alloc.(
+                        copy.(
+                            [
+                                f_prototype
+                                    for _ in 1:Nig
+                            ]
+                        )
+                    )
+                )
+            end
         end
     else
         nothing
     end
 
     use_both = __use_both_error_control(controller)
-    errors = VectorOfArray(
-        [
-            similar(X, ifelse(adaptive, N, 0))
-                for _ in 1:ifelse(use_both, 2Nig, Nig)
-        ]
-    )
-    new_stages = VectorOfArray([similar(X, N) for _ in 1:Nig])
+    errors = if !constraint
+        VectorOfArray(
+            [
+                similar(X, ifelse(adaptive, N, 0))
+                    for _ in 1:ifelse(use_both, 2Nig, Nig)
+            ]
+        )
+    else
+        VectorOfArray(
+            [
+                similar(X, ifelse(adaptive, L_f_prototype, 0))
+                    for _ in 1:ifelse(use_both, 2Nig, Nig)
+            ]
+        )
+    end
+    new_stages = if !constraint
+        VectorOfArray([similar(X, N) for _ in 1:Nig])
+    else
+        VectorOfArray([similar(X, L_f_prototype) for _ in 1:Nig])
+    end
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        #TODO: Simplify the logic by wrapping the functions
-        if fit_parameters == true
+        f_wrapped = prob.f
+        bc_wrapped = prob.f.bc
+        if fit_parameters
             l_parameters = length(prob.p)
-            vecf! = function (du, u, p, t)
-                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
-                return du[(end - l_parameters + 1):end] .= 0
+            base_f = f_wrapped
+            f_wrapped = @closure (
+                du,
+                u,
+                p,
+                t,
+            ) -> begin
+                @inbounds @views begin
+                    base_f(du, u, u[(end - l_parameters + 1):end], t)
+                    fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
+                end
+                return nothing
             end
-            vecbc! = prob.f.bc
-            vecf!, vecbc!
-        else
-            prob.f, prob.f.bc
         end
+        f_wrapped, bc_wrapped
     elseif iip
         vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
@@ -145,9 +209,9 @@ function SciMLBase.__init(
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
-        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y, y₀,
-        residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, nlsolve_kwargs,
+        alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
+        TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
+        y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...)
     )
 end
@@ -264,6 +328,17 @@ end
 
 # Constructing the Nonlinear Problem
 function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
+    constraint = (!isnothing(cache.prob.f.inequality)) ||
+        (!isnothing(cache.prob.f.equality)) ||
+        (!isnothing(cache.prob.lb)) ||
+        (!isnothing(cache.prob.ub))
+    return __construct_problem(cache, y, y₀, Val(constraint))
+end
+
+function __construct_problem(
+        cache::MIRKCache{iip}, y::AbstractVector,
+        y₀::AbstractVectorOfArray, constraint
+    ) where {iip}
     pt = cache.problem_type
     (; jac_alg) = cache.alg
 
@@ -289,7 +364,7 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::Abs
             u,
             p,
         ) -> __mirk_loss_collocation!(
-            du, u, p, cache.y, cache.mesh, cache.residual, cache, trait
+            du, u, p, cache.y, cache.mesh, cache.residual, cache, trait, constraint
         )
     else
         @closure (
@@ -307,7 +382,7 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::Abs
             p,
         ) -> __mirk_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual,
-            cache.mesh, cache, eval_sol, trait
+            cache.mesh, cache, eval_sol, trait, constraint
         )
     else
         @closure (
@@ -324,20 +399,21 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::Abs
             u,
             p,
         ) -> __mirk_loss!(
-            du, u, p, cache.y, pt, cache.bc, cache.residual, cache.mesh, cache, trait
+            du, u, p, cache.y, pt, cache.bc, cache.residual,
+            cache.bcresid_prototype, cache.mesh, cache, eval_sol, trait, constraint
         )
     end
 
-    return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt)
+    return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt, constraint)
 end
 
 @views function __mirk_loss!(
-        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
-        mesh, cache, EvalSol, trait::DiffCacheNeeded
+        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
+        cache, EvalSol, trait::DiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait)
+    Φ!(resids[2:end], cache, y_, u, trait, constraint)
     EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
@@ -346,11 +422,11 @@ end
 end
 
 @views function __mirk_loss!(
-        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
-        mesh, cache, EvalSol, trait::NoDiffCacheNeeded
+        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
+        cache, EvalSol, trait::NoDiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    Φ!(residual[2:end], cache, y_, u, trait)
+    Φ!(residual[2:end], cache, y_, u, trait, constraint)
     EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_bc_residual!(residual[1], pt, bc!, EvalSol, p, mesh)
@@ -360,24 +436,24 @@ end
 
 # loss function for optimization based solvers
 @views function __mirk_loss!(
-        resid, u, p, y, pt::StandardBVProblem, bc!::BC,
-        residual, mesh, cache, trait
+        resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual,
+        bcresid_prototype, mesh, cache, _, trait, constraint
     ) where {BC}
-    bcresid = length(cache.bcresid_prototype)
+    bcresid = length(bcresid_prototype)
     __mirk_loss_bc!(resid[1:bcresid], u, p, pt, bc!, y, mesh, cache, trait)
     __mirk_loss_collocation!(
-        resid[(bcresid + 1):end], u, p, y, mesh, residual, cache, trait
+        resid[(bcresid + 1):end], u, p, y, mesh, residual, cache, trait, constraint
     )
     return nothing
 end
 
 @views function __mirk_loss!(
-        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache, _, trait::DiffCacheNeeded
+        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
+        mesh, cache, _, trait::DiffCacheNeeded, constraint
     ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait)
+    Φ!(resids[2:end], cache, y_, u, trait, constraint)
     resida = resids[1][1:prod(cache.resid_size[1])]
     residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
     eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
@@ -386,11 +462,11 @@ end
 end
 
 @views function __mirk_loss!(
-        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache, _, trait::NoDiffCacheNeeded
+        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
+        mesh, cache, _, trait::NoDiffCacheNeeded, constraint
     ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    Φ!(residual[2:end], cache, y_, u, trait)
+    Φ!(residual[2:end], cache, y_, u, trait, constraint)
     resida = residual[1][1:prod(cache.resid_size[1])]
     residb = residual[1][(prod(cache.resid_size[1]) + 1):end]
     eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
@@ -400,10 +476,10 @@ end
 
 # loss function for optimization based solvers
 @views function __mirk_loss!(
-        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache, trait
+        resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
+        bcresid_prototype, mesh, cache, _, trait, constraint
     ) where {BC1, BC2}
-    __mirk_loss!(resid, u, p, y, pt, bc!, residual, mesh, cache, nothing, trait)
+    __mirk_loss!(resid, u, p, y, pt, bc!, residual, mesh, cache, nothing, trait, constraint)
     return nothing
 end
 
@@ -446,21 +522,21 @@ end
 end
 
 @views function __mirk_loss_collocation!(
-        resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded
+        resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual[2:end]]
-    Φ!(resids, cache, y_, u, trait)
+    Φ!(resids, cache, y_, u, trait, constraint)
     recursive_flatten!(resid, resids)
     return nothing
 end
 
 @views function __mirk_loss_collocation!(
-        resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded
+        resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
     resids = [r for r in residual[2:end]]
-    Φ!(resids, cache, y_, u, trait)
+    Φ!(resids, cache, y_, u, trait, constraint)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -472,16 +548,97 @@ end
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-        loss::LF, ::StandardBVProblem
+        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        ::StandardBVProblem, constraint::Val{true}
     ) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
+    (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
     N = length(cache.mesh)
 
-    resid_bc = cache.bcresid_prototype
+    resid_bc = bcresid_prototype
+    L = length(resid_bc)
+    L_f_prototype = length(f_prototype)
+    resid_collocation = safe_similar(y, L_f_prototype * (N - 1))
+
+    cache_bc = if iip
+        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+    end
+
+    nonbc_diffmode = AutoSparse(
+        get_dense_ad(jac_alg.nonbc_diffmode),
+        sparsity_detector = __default_sparsity_detector(jac_alg.nonbc_diffmode),
+        coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
+    )
+    cache_collocation = if iip
+        DI.prepare_jacobian(
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+        )
+    else
+        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+    end
+
+    J_bc = if iip
+        DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
+    else
+        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
+    end
+    J_c = if iip
+        DI.jacobian(
+            loss_collocation, resid_collocation, cache_collocation,
+            nonbc_diffmode, y, Constant(cache.p)
+        )
+    else
+        DI.jacobian(
+            loss_collocation, cache_collocation, nonbc_diffmode, y, Constant(cache.p)
+        )
+    end
+    jac_prototype = vcat(J_bc, J_c)
+
+    jac = if iip
+        @closure (
+            J,
+            u,
+            p,
+        ) -> __mirk_mpoint_jacobian!(
+            J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
+            loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p
+        )
+    else
+        @closure (
+            u,
+            p,
+        ) -> __mirk_mpoint_jacobian(
+            jac_prototype, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc,
+            cache_collocation, loss_bc, loss_collocation, L, cache.p
+        )
+    end
+
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
+    resid_prototype = vcat(resid_bc, resid_collocation)
+    return __construct_internal_problem(
+        prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun
+    )
+end
+
+# Dispatch for problems with constraints
+function __construct_problem(
+        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        ::StandardBVProblem, constraint::Val{false}
+    ) where {iip, BC, C, LF}
+    (; jac_alg) = cache.alg
+    (; f_prototype, bcresid_prototype, prob) = cache
+    (; bc_diffmode) = jac_alg
+    N = length(cache.mesh)
+
+    resid_bc = bcresid_prototype
     L = length(resid_bc)
     resid_collocation = safe_similar(y, cache.M * (N - 1))
+    resid_prototype = vcat(resid_bc, resid_collocation)
 
     cache_bc = if iip
         DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
@@ -564,10 +721,11 @@ function __construct_problem(
         )
     end
 
-    resid_prototype = vcat(resid_bc, resid_collocation)
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     return __construct_internal_problem(
-        cache.prob, cache.problem_type, cache.alg, loss, jac,
-        jac_prototype, resid_prototype, y, cache.p, cache.M, N
+        prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun
     )
 end
 
@@ -626,24 +784,80 @@ function __mirk_mpoint_jacobian(
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C,
-        loss::LF, ::TwoPointBVProblem
+        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        ::TwoPointBVProblem, constraint::Val{true}
     ) where {iip, BC, C, LF}
     (; jac_alg) = cache.alg
+    (; f_prototype, bcresid_prototype, prob) = cache
+    N = length(cache.mesh)
+    L_f_prototype = length(f_prototype)
+
+    resid = vcat(
+        @view(bcresid_prototype[1:prod(cache.resid_size[1])]),
+        safe_similar(y, L_f_prototype * (N - 1)),
+        @view(bcresid_prototype[(prod(cache.resid_size[1]) + 1):end])
+    )
+
+    diffmode = if jac_alg.diffmode isa AutoSparse
+        AutoSparse(
+            get_dense_ad(jac_alg.diffmode);
+            sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
+            coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
+        )
+    else
+        jac_alg.diffmode
+    end
+
+    diffcache = if iip
+        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+    else
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+    end
+
+    jac_prototype = if iip
+        DI.jacobian(loss, resid, diffcache, diffmode, y, Constant(cache.p))
+    else
+        DI.jacobian(loss, diffcache, diffmode, y, Constant(cache.p))
+    end
+
+    jac = if iip
+        @closure (
+            J, u, p,
+        ) -> __mirk_2point_jacobian!(J, u, diffmode, diffcache, loss, resid, p)
+    else
+        @closure (
+            u, p,
+        ) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
+    end
+
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
+    resid_prototype = copy(resid)
+    return __construct_internal_problem(
+        prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun
+    )
+end
+
+function __construct_problem(
+        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        ::TwoPointBVProblem, constraint::Val{false}
+    ) where {iip, BC, C, LF}
+    (; jac_alg) = cache.alg
+    (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
 
     resid = vcat(
-        @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
+        @view(bcresid_prototype[1:prod(cache.resid_size[1])]),
         safe_similar(y, cache.M * (N - 1)),
-        @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end])
+        @view(bcresid_prototype[(prod(cache.resid_size[1]) + 1):end])
     )
 
     diffmode = if jac_alg.diffmode isa AutoSparse
         sparse_jacobian_prototype = __generate_sparse_jacobian_prototype(
             cache, cache.problem_type,
-            @view(cache.bcresid_prototype[1:prod(cache.resid_size[1])]),
-            @view(cache.bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]),
-            cache.M, N
+            @view(bcresid_prototype[1:prod(cache.resid_size[1])]),
+            @view(bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]), cache.M, N
         )
         AutoSparse(
             get_dense_ad(jac_alg.diffmode);
@@ -676,10 +890,12 @@ function __construct_problem(
         ) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
+    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+
     resid_prototype = copy(resid)
     return __construct_internal_problem(
-        cache.prob, cache.problem_type, cache.alg, loss, jac,
-        jac_prototype, resid_prototype, y, cache.p, cache.M, N
+        cache.prob, cache.problem_type, cache.alg, loss, jac, jac_prototype,
+        resid_prototype, bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun
     )
 end
 
