@@ -352,8 +352,12 @@ function __initial_guess(f::F, p::P, t::T; fit_parameters = false) where {F, P, 
 end
 
 function __tunable_part(p)
-    part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
-    return part
+    if SciMLStructures.isscimlstructure(p)
+        part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        return part
+    else
+        p
+    end
 end
 
 function __get_bcresid_prototype(prob::BVProblem, u)

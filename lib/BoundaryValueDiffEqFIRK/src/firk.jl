@@ -193,13 +193,21 @@ function init_nested(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        if fit_parameters == true
-            tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+            tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
             vecf! = function (du, u, p, t)
                 _p = SciMLStructures.replace(SciMLStructures.Tunable(), p, @view(u[(end - l_parameters + 1):end]))
                 prob.f(du, u, _p, t)
                 du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        elseif fit_parameters
+            l_parameters = length(prob.p)
+            vecf! = function (du, u, p, t)
+                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
+                return du[(end - l_parameters + 1):end] .= 0
             end
             vecbc! = prob.f.bc
             vecf!, vecbc!
@@ -346,12 +354,20 @@ function init_expanded(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        if fit_parameters == true
-            l_parameters = length(__tunable_part(prob.p))
+        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+            tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             vecf! = function (du, u, p, t)
                 _p = SciMLStructures.replace(SciMLStructures.Tunable(), p, @view(u[(end - l_parameters + 1):end]))
                 prob.f(du, u, _p, t)
                 du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        elseif fit_parameters
+            l_parameters = length(prob.p)
+            vecf! = function (du, u, p, t)
+                prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
+                return du[(end - l_parameters + 1):end] .= 0
             end
             vecbc! = prob.f.bc
             vecf!, vecbc!
@@ -450,11 +466,16 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters
-        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
         new_p = SciMLStructures.replace(SciMLStructures.Tunable(), prob.p, first(cache.y₀)[(length_u + 1):end])
         prob = remake(prob; p = new_p)
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
+    elseif fit_parameters
+        length_u = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
     end
@@ -490,11 +511,16 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters
-        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
         new_p = SciMLStructures.replace(SciMLStructures.Tunable(), prob.p, first(cache.y₀)[(length_u + 1):end])
         prob = remake(prob; p = new_p)
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
+    elseif fit_parameters
+        length_u = cache.M - length(prob.p)
+        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
     end
