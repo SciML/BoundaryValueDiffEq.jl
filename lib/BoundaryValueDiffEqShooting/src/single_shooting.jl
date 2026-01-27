@@ -59,17 +59,61 @@ function SciMLBase.__solve(
         resid_prototype, u0, prob.p, length(u0), 1, nothing, iip
     )
     solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
-    nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
+    nlsolve_kw = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
 
-    # There is no way to reinit with the same cache with different cache. But not saving
-    # the internal values gives a significant speedup. So we just create a new cache
-    internal_prob_final = ODEProblem{_unwrap_val(iip)}(
-        prob.f, reshape(nlsol.u, u0_size), prob.tspan, prob.p
+    return __single_shooting_solve_and_build(
+        prob, alg, nlprob, solve_alg, nlsolve_kw, actual_ode_kwargs, u0, u0_size, iip
     )
+end
+
+# Separate function to help type inference - dispatches on solution type
+function __single_shooting_solve_and_build(
+        prob, alg, nlprob::NonlinearProblem, solve_alg, nlsolve_kw,
+        actual_ode_kwargs, u0::U, u0_size, iip::Val{IIP}
+    ) where {U, IIP}
+    nlsol = __solve(nlprob, solve_alg; nlsolve_kw...)
+
+    # Type-stable reshape: nlsol.u has same type as vec(u0)
+    u_final = __reshape_from_solution(nlsol.u, u0, u0_size)
+    internal_prob_final = ODEProblem{IIP}(prob.f, u_final, prob.tspan, prob.p)
     odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     return __build_solution(prob, odesol, nlsol)
+end
+
+function __single_shooting_solve_and_build(
+        prob, alg, nlprob::NonlinearLeastSquaresProblem, solve_alg, nlsolve_kw,
+        actual_ode_kwargs, u0::U, u0_size, iip::Val{IIP}
+    ) where {U, IIP}
+    nlsol = __solve(nlprob, solve_alg; nlsolve_kw...)
+
+    u_final = __reshape_from_solution(nlsol.u, u0, u0_size)
+    internal_prob_final = ODEProblem{IIP}(prob.f, u_final, prob.tspan, prob.p)
+    odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
+
+    return __build_solution(prob, odesol, nlsol)
+end
+
+function __single_shooting_solve_and_build(
+        prob, alg, optprob::OptimizationProblem, solve_alg, nlsolve_kw,
+        actual_ode_kwargs, u0::U, u0_size, iip::Val{IIP}
+    ) where {U, IIP}
+    optsol = __internal_solve(optprob, solve_alg; nlsolve_kw...)
+
+    u_final = __reshape_from_solution(optsol.u, u0, u0_size)
+    internal_prob_final = ODEProblem{IIP}(prob.f, u_final, prob.tspan, prob.p)
+    odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
+
+    return __build_solution(prob, odesol, optsol)
+end
+
+# Type-stable reshape helper
+@inline function __reshape_from_solution(sol_u, u0::AbstractVector{T}, u0_size) where {T}
+    return reshape(convert(typeof(u0), sol_u), u0_size)
+end
+
+@inline function __reshape_from_solution(sol_u, u0::AbstractArray{T}, u0_size) where {T}
+    return reshape(convert(Vector{T}, sol_u), u0_size)
 end
 
 # Helper functions with Val dispatch for type stability

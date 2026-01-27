@@ -31,7 +31,7 @@ using LinearAlgebra
 using Reexport: @reexport
 using RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
-    _unwrap_val
+    _unwrap_val, NonlinearProblem, NonlinearLeastSquaresProblem, OptimizationProblem
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using OrdinaryDiffEqTsit5: Tsit5
