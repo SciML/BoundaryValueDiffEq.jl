@@ -2,7 +2,7 @@
 
 julia_version = "1.10.10"
 manifest_format = "2.0"
-project_hash = "c199761e7e679798a7b36b6eb5d87edf4e82ff91"
+project_hash = "9ddd79bf93b6a43aecfea46e1e7428f9be5984f7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -1580,10 +1580,10 @@ version = "4.2.0"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [[deps.OptimizationIpopt]]
-deps = ["Ipopt", "LinearAlgebra", "OptimizationBase", "SciMLBase", "SparseArrays", "SymbolicIndexingInterface"]
-git-tree-sha1 = "fd7d1e9b2cb9b8d80274faab27d05c0d0fd2e91f"
+deps = ["Ipopt", "LinearAlgebra", "OptimizationBase", "Reexport", "SciMLBase", "SparseArrays", "SymbolicIndexingInterface"]
+git-tree-sha1 = "0b645ecd9d89568dcdac3343fde9f9732874e59d"
 uuid = "43fad042-7963-4b32-ab19-e2a4f9a67124"
-version = "0.2.6"
+version = "1.0.0"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
