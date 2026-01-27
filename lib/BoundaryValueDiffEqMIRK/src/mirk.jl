@@ -167,7 +167,7 @@ function SciMLBase.__init(
                 t,
             ) -> begin
                 @inbounds @views begin
-                    _p = SciMLStructures.replace(SciMLStructures.Tunable(), p, u[(end - l_parameters + 1):end])
+                    _p = repack(u[(end - l_parameters + 1):end])
                     base_f(du, u, _p, t)
                     fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
                 end
@@ -277,7 +277,7 @@ function SciMLBase.solve!(
     if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
-        new_p = SciMLStructures.replace(SciMLStructures.Tunable(), prob.p, first(cache.y₀)[(length_u + 1):end])
+        new_p = repack(first(cache.y₀)[(length_u + 1):end])
         prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
