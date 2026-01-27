@@ -319,7 +319,7 @@ function __extract_problem_details(
     if fit_parameters
         prob.p isa SciMLBase.NullParameters &&
             throw(ArgumentError("`fit_parameters` is true but `prob.p` is not set."))
-        new_u = vcat(u0, __tunable_part(prob.p))
+        new_u = vcat(_u0, __tunable_part(prob.p))
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
