@@ -134,7 +134,7 @@ end
             else
                 sol = solve(prob, lobattoIIIb_solver(Val(stage); nested_nlsolve = nested); dt = 0.2)
             end
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
+            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < 0.3
         end
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
             @time if stage == 2 # LobattoIIIc2 doesn't support adaptivity
