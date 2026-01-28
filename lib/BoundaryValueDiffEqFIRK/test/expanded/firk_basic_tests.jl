@@ -468,3 +468,60 @@ end
 
     @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 end
+
+@testitem "Test unknown parameters estimation with SciMLStructures" begin
+    using BoundaryValueDiffEqFIRK, SciMLStructures
+
+    # Define a custom struct that wraps parameters
+    struct MyParams{T}
+        params::T
+    end
+
+    # Implement SciMLStructures interface
+    SciMLStructures.isscimlstructure(::MyParams) = true
+    SciMLStructures.ismutablescimlstructure(::MyParams) = false
+    function SciMLStructures.canonicalize(::SciMLStructures.Tunable, p::MyParams)
+        repack = let p = p
+            (newp) -> MyParams(newp)
+        end
+        return p.params, repack, false
+    end
+
+    # Problem setup (same as vector test)
+    tspan = (0.0, pi)
+    function f!(du, u, p, t)
+        params = p isa MyParams ? p.params : p
+        du[1] = u[2]
+        du[2] = -(params[1] - 10 * cos(2 * t)) * u[1]
+    end
+    function bca!(res, u, p)
+        res[1] = u[2]
+        res[2] = u[1] - 1.0
+    end
+    function bcb!(res, u, p)
+        res[1] = u[2]
+    end
+    function guess(p, t)
+        return [cos(4t); -4sin(4t)]
+    end
+
+    # Solve with plain vector
+    bvp_vec = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+    )
+    sol_vec = solve(bvp_vec, RadauIIa5(), dt = 0.05)
+
+    # Solve with SciMLStructures-compatible struct
+    bvp_struct = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, MyParams([15.0]),
+        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+    )
+    sol_struct = solve(bvp_struct, RadauIIa5(), dt = 0.05)
+
+    # Both should give the same result
+    @test sol_vec.prob.p ≈ [17.09658] atol = 1.0e-5
+    @test sol_struct.prob.p isa MyParams
+    @test sol_struct.prob.p.params ≈ [17.09658] atol = 1.0e-5
+    @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
+end
