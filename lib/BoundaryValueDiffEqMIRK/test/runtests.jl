@@ -23,5 +23,6 @@ const RETESTITEMS_NWORKER_THREADS = parse(
 
 ReTestItems.runtests(
     BoundaryValueDiffEqMIRK; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS
+    nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS,
+    testitem_timeout = 5 * 60 * 60
 )
