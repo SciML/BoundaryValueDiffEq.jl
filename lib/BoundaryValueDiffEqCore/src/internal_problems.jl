@@ -9,7 +9,7 @@
         l_params = length(tunable_part)
         length_u = M - l_params
         cost_fun = @views function (u, p_orig)
-            newy = [u[i:(i + M - 1)] for i in 1:M:(length(u) - M + 1)]
+            newy = eachcol(reshape(u, M, :))
             # Extract tunable params from first mesh point (same at all points)
             params_from_u = u[(length_u + 1):M]
             new_p = SciMLStructures.replace(SciMLStructures.Tunable(), p_orig, params_from_u)
@@ -20,7 +20,7 @@
         length_u = M - length(p)
         cost_fun = @views function (u, p)
             # When fit_parameters=true, the state vector is augmented with tunable params
-            newy = [u[i:(i + M - 1)] for i in 1:M:(length(u) - M + 1)]
+            newy = eachcol(reshape(u, M, :))
             params_from_u = u[(length_u + 1):M]
             eval_sol = EvalSol(newy, mesh, cache)
             return fun(eval_sol, params_from_u)
@@ -28,7 +28,7 @@
     else
         cost_fun = @views function (u, p)
             # simple recursive unflatten
-            newy = [u[i:(i + M - 1)] for i in 1:M:(length(u) - M + 1)]
+            newy = eachcol(reshape(u, M, :))
             eval_sol = EvalSol(newy, mesh, cache)
             return fun(eval_sol, p)
         end
