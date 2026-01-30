@@ -24,7 +24,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
     __concrete_kwargs, __FastShortcutNonlinearPolyalg,
     __construct_internal_problem, __internal_solve,
-    __default_sparsity_detector, __build_cost
+    __default_sparsity_detector, __build_cost, __add_singular_term!
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase

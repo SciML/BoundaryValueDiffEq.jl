@@ -666,3 +666,20 @@ end
 @inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
     nlsolve_kwargs...,
 )
+
+"""
+    __add_singular_term!(K, singular_term, y, t)
+
+Helper function to add the singular term contribution S * y / t to K for t > 0.
+Used in collocation residual computation for singular BVPs of the form y' = S*y/t + f(t,y).
+"""
+@inline function __add_singular_term!(K, singular_term::Nothing, y, t)
+    return nothing
+end
+
+@inline function __add_singular_term!(K, singular_term::AbstractMatrix, y, t)
+    if t > 0
+        mul!(K, singular_term, y, one(t) / t, one(t))
+    end
+    return nothing
+end

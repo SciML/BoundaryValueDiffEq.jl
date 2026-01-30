@@ -28,6 +28,7 @@
     errors
     new_stages
     resid_size
+    singular_term
     nlsolve_kwargs
     optimize_kwargs
     kwargs
@@ -211,8 +212,8 @@ function SciMLBase.__init(
     return MIRKCache{iip, T, use_both, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
-        y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, nlsolve_kwargs,
-        optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...)
+        y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
+        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, fit_parameters, kwargs...)
     )
 end
 

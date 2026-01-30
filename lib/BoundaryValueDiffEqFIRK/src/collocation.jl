@@ -1,7 +1,7 @@
 function Φ!(residual, cache::FIRKCacheExpand, y, u, trait, constraint)
     return Φ!(
         residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
-        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, trait, constraint
+        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, cache.singular_term, trait, constraint
     )
 end
 
@@ -14,7 +14,7 @@ end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{true}
+        mesh, mesh_dt, stage::Int, f_prototype, singular_term, ::DiffCacheNeeded, ::Val{true}
     )
     (; c, a, b) = TU
     L_f_prototype = length(f_prototype)
@@ -59,7 +59,7 @@ end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, ::DiffCacheNeeded, ::Val{false}
+        mesh, mesh_dt, stage::Int, _, singular_term, ::DiffCacheNeeded, ::Val{false}
     )
     (; c, a, b) = TU
     tmp1 = get_tmp(fᵢ_cache, u)
@@ -81,7 +81,9 @@ end
         for r in 1:stage
             @. tmp1 = yᵢ
             __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            f!(residual[ctr + r], tmp1, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            f!(residual[ctr + r], tmp1, p, t)
+            __add_singular_term!(residual[ctr + r], singular_term, tmp1, t)
             residual[ctr + r] .-= K[:, r]
         end
 
@@ -95,7 +97,7 @@ end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p, mesh,
-        mesh_dt, stage::Int, f_prototype, ::NoDiffCacheNeeded, ::Val{false}
+        mesh_dt, stage::Int, _, singular_term, ::NoDiffCacheNeeded, ::Val{false}
     )
     (; c, a, b) = TU
     tmp1 = similar(fᵢ_cache)
@@ -117,7 +119,9 @@ end
         for r in 1:stage
             @. tmp1 = yᵢ
             __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            f!(residual[ctr + r], tmp1, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            f!(residual[ctr + r], tmp1, p, t)
+            __add_singular_term!(residual[ctr + r], singular_term, tmp1, t)
             residual[ctr + r] .-= K[:, r]
         end
 
@@ -266,7 +270,7 @@ end
 function Φ(cache::FIRKCacheExpand, y, u, trait)
     return Φ(
         cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, trait
+        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait
     )
 end
 
@@ -279,7 +283,7 @@ end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
-        u, p, mesh, mesh_dt, stage::Int, ::DiffCacheNeeded
+        u, p, mesh, mesh_dt, stage::Int, singular_term, ::DiffCacheNeeded
     )
     (; c, a, b) = TU
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
@@ -302,7 +306,9 @@ end
         for r in 1:stage
             @. tmp1 = yᵢ
             __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            residuals[ctr + r] = f(tmp1, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            residuals[ctr + r] = f(tmp1, p, t)
+            __add_singular_term!(residuals[ctr + r], singular_term, tmp1, t)
             residuals[ctr + r] .-= K[:, r]
         end
 
@@ -317,7 +323,7 @@ end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
-        u, p, mesh, mesh_dt, stage::Int, ::NoDiffCacheNeeded
+        u, p, mesh, mesh_dt, stage::Int, singular_term, ::NoDiffCacheNeeded
     )
     (; c, a, b) = TU
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
@@ -340,7 +346,9 @@ end
         for r in 1:stage
             @. tmp1 = yᵢ
             __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            residuals[ctr + r] = f(tmp1, p, mesh[i] + c[r] * h)
+            t = mesh[i] + c[r] * h
+            residuals[ctr + r] = f(tmp1, p, t)
+            __add_singular_term!(residuals[ctr + r], singular_term, tmp1, t)
             residuals[ctr + r] .-= K[:, r]
         end
 
