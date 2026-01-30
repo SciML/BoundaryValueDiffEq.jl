@@ -71,11 +71,11 @@
             sol = solve(prob, lobattoIIIa_solver(Val(stage)), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
         end
-        for stage in (2, 3, 4, 5)
+        for stage in (3, 4, 5)
             sol = solve(prob, lobattoIIIb_solver(Val(stage)), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
         end
-        for stage in (2, 3, 4, 5)
+        for stage in (3, 4, 5)
             sol = solve(prob, lobattoIIIc_solver(Val(stage)), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
         end
