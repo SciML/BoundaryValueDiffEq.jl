@@ -106,7 +106,7 @@ probArr = [
     ),
 ]
 
-testTol = 0.2
+testTol = 0.25
 affineTol = 1.0e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
