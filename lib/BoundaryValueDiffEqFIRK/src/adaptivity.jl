@@ -189,10 +189,16 @@ end
 end
 
 function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
-    vals = vcat(yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
     M = length(yᵢ)
-    A = s_constraints(M, h)
-    coeffs = reshape(A \ vals, 6, M)'
+    A = s_constraints_block(h)
+    coeffs = similar(yᵢ, M, 6)
+    for k in 1:M
+        bk = SVector(yᵢ[k], yᵢ₊₁[k], dyᵢ[k], dyᵢ₊₁[k], ymid[k], dymid[k])
+        xk = A \ bk
+        for j in 1:6
+            coeffs[k, j] = xk[j]
+        end
+    end
     return coeffs
 end
 
@@ -211,31 +217,26 @@ function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
 end
 
 """
-    s_constraints(M, h)
+    s_constraints_block(h)
 
-Form the quartic interpolation constraint matrix, see bvp5c paper.
+Form the 6×6 quintic interpolation constraint block as an SMatrix.
+The full `6M × 6M` constraint matrix is block-diagonal with `M` identical copies
+of this block. See bvp5c paper.
+
+Rows correspond to: value at t=0, value at t=h, value at t=h/2,
+                     derivative at t=0, derivative at t=h, derivative at t=h/2.
+Columns correspond to polynomial coefficients c₁..c₆ of p(t) = Σ cⱼ tʲ⁻¹.
 """
-function s_constraints(M, h)
-    t = repeat([0.0, 1.0 * h, 0.5 * h, 0.0, 1.0 * h, 0.5 * h], M)
-    A = zeros(6 * M, 6 * M)
-    for i in 1:6
-        row_start = (i - 1) * M + 1
-        for k in 0:(M - 1)
-            for j in 1:6
-                A[row_start + k, j + k * 6] = t[i + k * 6]^(j - 1)
-            end
-        end
-    end
-    for i in 4:6
-        row_start = (i - 1) * M + 1
-        for k in 0:(M - 1)
-            for j in 1:6
-                A[row_start + k, j + k * 6] = j == 1.0 ? 0.0 :
-                    (j - 1) * t[i + k * 6]^(j - 2)
-            end
-        end
-    end
-    return A
+function s_constraints_block(h)
+    t1, t2, t3 = zero(h), h, h / 2
+    SMatrix{6, 6}(
+        one(h), one(h), one(h), zero(h), zero(h), zero(h),
+        t1, t2, t3, one(h), one(h), one(h),
+        t1^2, t2^2, t3^2, 2 * t1, 2 * t2, 2 * t3,
+        t1^3, t2^3, t3^3, 3 * t1^2, 3 * t2^2, 3 * t3^2,
+        t1^4, t2^4, t3^4, 4 * t1^3, 4 * t2^3, 4 * t3^3,
+        t1^5, t2^5, t3^5, 5 * t1^4, 5 * t2^4, 5 * t3^4,
+    )
 end
 
 """
