@@ -110,8 +110,8 @@ eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, 
         resid, ::TwoPointBVProblem, (bca!, bcb!)::BC,
         sol::AbstractVectorOfArray, p, t
     ) where {BC}
-    ua = sol[:, 1]
-    ub = sol[:, end]
+    ua = sol.u[1]
+    ub = sol.u[end]
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
@@ -129,8 +129,8 @@ end
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
         sol::AbstractVectorOfArray, p, t
     ) where {BC}
-    ua = sol[:, 1]
-    ub = sol[:, end]
+    ua = sol.u[1]
+    ub = sol.u[end]
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
