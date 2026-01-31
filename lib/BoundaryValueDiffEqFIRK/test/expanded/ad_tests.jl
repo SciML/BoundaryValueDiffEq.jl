@@ -107,9 +107,14 @@
                 )
             )
         )
-        for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
+        for jac_alg in [jac_alg_forwarddiff, jac_alg_mooncake]
             sol = solve(prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
         end
+        # Enzyme on TwoPointBVP segfaults due to upstream Enzyme.jl bug
+        # https://github.com/EnzymeAD/Enzyme.jl/issues/2940
+        @test_skip solve(
+            prob, RadauIIa5(; jac_alg = jac_alg_enzyme, nested_nlsolve = false), dt = 0.01
+        )
     end
 end
