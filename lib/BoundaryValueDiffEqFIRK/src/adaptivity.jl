@@ -195,9 +195,7 @@ function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
     for k in 1:M
         bk = SVector(yᵢ[k], yᵢ₊₁[k], dyᵢ[k], dyᵢ₊₁[k], ymid[k], dymid[k])
         xk = A \ bk
-        for j in 1:6
-            coeffs[k, j] = xk[j]
-        end
+        @view(coeffs[k, :]) .= xk
     end
     return coeffs
 end
