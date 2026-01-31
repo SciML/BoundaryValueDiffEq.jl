@@ -227,7 +227,7 @@ Columns correspond to polynomial coefficients c₁..c₆ of p(t) = Σ cⱼ tʲ�
 """
 function s_constraints_block(h)
     t1, t2, t3 = zero(h), h, h / 2
-    SMatrix{6, 6}(
+    return SMatrix{6, 6}(
         one(h), one(h), one(h), zero(h), zero(h), zero(h),
         t1, t2, t3, one(h), one(h), one(h),
         t1^2, t2^2, t3^2, 2 * t1, 2 * t2, 2 * t3,
