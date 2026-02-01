@@ -193,7 +193,17 @@ function init_nested(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        if fit_parameters == true
+        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+            tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+            l_parameters = length(tunable_part)
+            vecf! = function (du, u, p, t)
+                _p = repack(@view(u[(end - l_parameters + 1):end]))
+                prob.f(du, u, _p, t)
+                return du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        elseif fit_parameters
             l_parameters = length(prob.p)
             vecf! = function (du, u, p, t)
                 prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
@@ -344,7 +354,17 @@ function init_expanded(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        if fit_parameters == true
+        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+            tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+            l_parameters = length(tunable_part)
+            vecf! = function (du, u, p, t)
+                _p = repack(@view(u[(end - l_parameters + 1):end]))
+                prob.f(du, u, _p, t)
+                return du[(end - l_parameters + 1):end] .= 0
+            end
+            vecbc! = prob.f.bc
+            vecf!, vecbc!
+        elseif fit_parameters
             l_parameters = length(prob.p)
             vecf! = function (du, u, p, t)
                 prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
@@ -447,7 +467,14 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters
+    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        length_u = cache.M - length(tunable_part)
+        new_p = repack(first(cache.y₀)[(length_u + 1):end])
+        prob = remake(prob; p = new_p)
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
+    elseif fit_parameters
         length_u = cache.M - length(prob.p)
         prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
@@ -485,7 +512,14 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters
+    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        length_u = cache.M - length(tunable_part)
+        new_p = repack(first(cache.y₀)[(length_u + 1):end])
+        prob = remake(prob; p = new_p)
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
+    elseif fit_parameters
         length_u = cache.M - length(prob.p)
         prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
@@ -638,9 +672,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{true}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
     (; bc_diffmode) = jac_alg
@@ -707,7 +741,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
@@ -718,9 +755,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{false}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
     (; bc_diffmode) = jac_alg
@@ -815,7 +852,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
@@ -826,9 +866,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{true}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; stage, bcresid_prototype, f_prototype) = cache
     N = length(cache.mesh)
@@ -877,7 +917,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(
@@ -888,9 +931,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{false}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; stage, bcresid_prototype, f_prototype, prob) = cache
     N = length(cache.mesh)
@@ -954,7 +997,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(
@@ -965,9 +1011,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{true}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bc_diffmode) = jac_alg
     (; bcresid_prototype, f_prototype) = cache
@@ -1031,7 +1077,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
@@ -1041,9 +1090,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{false}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bc_diffmode) = jac_alg
     (; bcresid_prototype, f_prototype, prob) = cache
@@ -1132,7 +1181,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
@@ -1142,9 +1194,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{true}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bcresid_prototype, f_prototype) = cache
     N = length(cache.mesh)
@@ -1191,7 +1243,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(
@@ -1201,9 +1256,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{false}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bcresid_prototype, f_prototype, prob) = cache
     N = length(cache.mesh)
@@ -1256,7 +1311,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(
