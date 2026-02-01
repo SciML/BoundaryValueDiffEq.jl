@@ -22,6 +22,7 @@ using Setfield: @set!, @set
 using SparseArrays: sparse
 using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm
+using SciMLStructures: SciMLStructures
 
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 

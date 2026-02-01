@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqCore"
 uuid = "56b672f2-a5fe-4263-ab2d-da677488eb3a"
-authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
 version = "1.11.1"
+authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -20,6 +20,7 @@ PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
@@ -45,6 +46,7 @@ PreallocationTools = "0.4.24"
 RecursiveArrayTools = "3.27.0"
 Reexport = "1.2"
 SciMLBase = "2.130.0"
+SciMLStructures = "1.7.0"
 Setfield = "1"
 SparseArrays = "1.10"
 SparseConnectivityTracer = "0.6.13, 1"

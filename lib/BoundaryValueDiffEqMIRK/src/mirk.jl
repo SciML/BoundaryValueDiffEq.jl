@@ -157,7 +157,24 @@ function SciMLBase.__init(
         bc = if X isa AbstractVector
         f_wrapped = prob.f
         bc_wrapped = prob.f.bc
-        if fit_parameters
+        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+            tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+            l_parameters = length(tunable_part)
+            base_f = f_wrapped
+            f_wrapped = @closure (
+                du,
+                u,
+                p,
+                t,
+            ) -> begin
+                @inbounds @views begin
+                    _p = repack(u[(end - l_parameters + 1):end])
+                    base_f(du, u, _p, t)
+                    fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
+                end
+                return nothing
+            end
+        elseif fit_parameters
             l_parameters = length(prob.p)
             base_f = f_wrapped
             f_wrapped = @closure (
@@ -258,7 +275,14 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters
+    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+        length_u = cache.M - length(tunable_part)
+        new_p = repack(first(cache.y₀)[(length_u + 1):end])
+        prob = remake(prob; p = new_p)
+        map(x -> resize!(x, length_u), cache.y₀)
+        resize!(cache.fᵢ₂_cache, length_u)
+    elseif fit_parameters
         length_u = cache.M - length(prob.p)
         prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
@@ -549,9 +573,9 @@ end
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::StandardBVProblem, constraint::Val{true}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, UB, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
@@ -617,7 +641,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
     return __construct_internal_problem(
@@ -628,9 +655,9 @@ end
 
 # Dispatch for problems with constraints
 function __construct_problem(
-        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::StandardBVProblem, constraint::Val{false}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, UB, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
@@ -722,7 +749,10 @@ function __construct_problem(
         )
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     return __construct_internal_problem(
         prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
@@ -785,9 +815,9 @@ function __mirk_mpoint_jacobian(
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::TwoPointBVProblem, constraint::Val{true}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, UB, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
@@ -831,7 +861,10 @@ function __construct_problem(
         ) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(
@@ -841,9 +874,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::TwoPointBVProblem, constraint::Val{false}
-    ) where {iip, BC, C, LF}
+    ) where {iip, T, UB, DC, fit_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
@@ -891,7 +924,10 @@ function __construct_problem(
         ) -> __mirk_2point_jacobian(u, jac_prototype, diffmode, diffcache, loss, p)
     end
 
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.M)
+    cost_fun = __build_cost(
+        prob.f.cost, cache, cache.mesh, cache.M;
+        fit_parameters, p = cache.p
+    )
 
     resid_prototype = copy(resid)
     return __construct_internal_problem(

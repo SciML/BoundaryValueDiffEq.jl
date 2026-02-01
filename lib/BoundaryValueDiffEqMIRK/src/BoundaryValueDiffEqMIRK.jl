@@ -44,6 +44,7 @@ using PreallocationTools: PreallocationTools, DiffCache
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 using SparseArrays: sparse
+using SciMLStructures: SciMLStructures
 
 const DI = DifferentiationInterface
 
