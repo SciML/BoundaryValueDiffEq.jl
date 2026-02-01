@@ -191,7 +191,6 @@ struct NoDiffCacheNeeded end
 @inline __cache_trait(::AutoForwardDiff) = DiffCacheNeeded()
 @inline __cache_trait(ad::AutoSparse) = __cache_trait(ADTypes.dense_ad(ad))
 @inline function __cache_trait(jac_alg::BVPJacobianAlgorithm)
-    return isnothing(jac_alg.diffmode) ? __cache_trait(jac_alg.nonbc_diffmode) :
-        __cache_trait(jac_alg.diffmode)
+    return __needs_diffcache(jac_alg) ? DiffCacheNeeded() : NoDiffCacheNeeded()
 end
 @inline __cache_trait(_) = NoDiffCacheNeeded()
