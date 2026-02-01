@@ -1323,7 +1323,7 @@ end
         mesh, cache, _, trait::NoDiffCacheNeeded, constraint
     ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    soly_ = VectorOfArray(y_)
+    soly_ = y_ isa AbstractVectorOfArray ? y_ : VectorOfArray(y_)
     resida = residual[1][1:prod(cache.resid_size[1])]
     residb = residual[1][(prod(cache.resid_size[1]) + 1):end]
     eval_bc_residual!((resida, residb), pt, bc!, soly_, p, mesh)
