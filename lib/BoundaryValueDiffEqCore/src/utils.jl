@@ -88,8 +88,8 @@ function eval_bc_residual(
     ) where {BC}
     ua = sol[:, 1]
     ub = sol[:, end]
-    resida = bca(ua, p)
-    residb = bcb(ub, p)
+    resida = bca(__maybe_scalar_state(ua), p)
+    residb = bcb(__maybe_scalar_state(ub), p)
     return (resida, residb)
 end
 function eval_bc_residual(
@@ -97,8 +97,8 @@ function eval_bc_residual(
     ) where {BC}
     ua = first(sol)
     ub = last(sol)
-    resida = bca(ua, p)
-    residb = bcb(ub, p)
+    resida = bca(__maybe_scalar_state(ua), p)
+    residb = bcb(__maybe_scalar_state(ub), p)
     return (resida, residb)
 end
 
@@ -110,8 +110,8 @@ eval_bc_residual!(resid, _, bc!::BC, sol, p, t) where {BC} = bc!(resid, sol, p, 
         resid, ::TwoPointBVProblem, (bca!, bcb!)::BC,
         sol::AbstractVectorOfArray, p, t
     ) where {BC}
-    ua = sol[:, 1]
-    ub = sol[:, end]
+    ua = sol.u[1]
+    ub = sol.u[end]
     bca!(resid.resida, ua, p)
     bcb!(resid.residb, ub, p)
     return resid
@@ -129,8 +129,8 @@ end
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
         sol::AbstractVectorOfArray, p, t
     ) where {BC}
-    ua = sol[:, 1]
-    ub = sol[:, end]
+    ua = sol.u[1]
+    ub = sol.u[end]
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
@@ -272,6 +272,12 @@ end
 function __extract_problem_details(prob; kwargs...)
     return __extract_problem_details(prob, prob.u0; kwargs...)
 end
+function __extract_problem_details(prob, u0::Number; dt = 0.0, check_positive_dt::Bool = false, kwargs...)
+    # Scalar BVP
+    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    t₀, t₁ = prob.tspan
+    return Val(true), typeof(u0), 1, Int(cld(t₁ - t₀, dt)), [u0]
+end
 function __extract_problem_details(prob, u0::AbstractVector{<:AbstractArray}; kwargs...)
     # Problem has Initial Guess
     _u0 = first(u0)
@@ -367,7 +373,8 @@ function __get_bcresid_prototype(::TwoPointBVProblem, prob::BVProblem, u)
     prototype = if prob.f.bcresid_prototype !== nothing
         prob.f.bcresid_prototype.x
     else
-        first(prob.f.bc)(u, prob.p), last(prob.f.bc)(u, prob.p)
+        u₀ = __maybe_scalar_state(u)
+        first(prob.f.bc)(u₀, prob.p), last(prob.f.bc)(u₀, prob.p)
     end
     return prototype, size.(prototype)
 end
@@ -408,8 +415,18 @@ end
 @inline __safe_vec(x) = vec(x)
 @inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
 
+@inline __vec(x::Number) = [x]
 @inline __vec(x::AbstractArray) = vec(x)
 @inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
+
+@inline __maybe_scalar_state(x::Number) = x
+@inline function __maybe_scalar_state(x::AbstractArray)
+    return length(x) == 1 ? first(x) : x
+end
+@inline function __maybe_scalar_state(x::Tuple)
+    return length(x) == 1 ? first(x) : x
+end
+@inline __maybe_scalar_state(x) = x
 
 # Restructure Non-Vector Inputs
 function __vec_f!(du, u, p, t, f!, u_size)
@@ -540,6 +557,7 @@ Takes the input initial guess and returns the value at the starting mesh point.
 @inline __extract_u0(u₀::F, p, t₀) where {F <: Function} = __initial_guess(u₀, p, t₀)
 @inline __extract_u0(u₀::AbstractArray, p, t₀) = u₀
 @inline __extract_u0(u₀::SciMLBase.ODESolution, p, t₀) = u₀.u[1]
+@inline __extract_u0(u₀::Number, p, t₀) = u₀
 @inline __extract_u0(u₀::T, p, t₀) where {T} = error("`prob.u0::$(T)` is not supported.")
 
 """

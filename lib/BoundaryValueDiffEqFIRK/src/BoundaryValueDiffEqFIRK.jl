@@ -46,6 +46,7 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __so
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using SciMLStructures: SciMLStructures
+using StaticArrays: SMatrix, SVector
 
 const DI = DifferentiationInterface
 

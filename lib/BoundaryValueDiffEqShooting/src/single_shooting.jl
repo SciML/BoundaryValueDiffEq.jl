@@ -6,6 +6,9 @@ function SciMLBase.__solve(
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
+    elseif prob.u0 isa Number
+        # Scalar BVP case
+        u0 = [prob.u0]
     else
         verbose && @warn "Initial guess provided, but will be ignored for Shooting."
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
@@ -199,12 +202,12 @@ function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}
-    DI.jacobian!(loss_fn, fu, J, jac_cache, diffmode, vec(u))
+    DI.jacobian!(loss_fn, fu, J, jac_cache, diffmode, __vec(u))
     return J
 end
 
 function __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fn::L) where {L}
-    DI.jacobian!(loss_fn, J, jac_cache, diffmode, vec(u))
+    DI.jacobian!(loss_fn, J, jac_cache, diffmode, __vec(u))
     return J
 end
 
