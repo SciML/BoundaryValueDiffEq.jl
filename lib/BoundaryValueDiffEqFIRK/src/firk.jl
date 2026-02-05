@@ -27,6 +27,7 @@
     defect
     nest_prob
     resid_size
+    singular_term
     nlsolve_kwargs
     optimize_kwargs
     kwargs
@@ -62,6 +63,7 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     fᵢ₂_cache
     defect
     resid_size
+    singular_term
     nlsolve_kwargs
     optimize_kwargs
     kwargs
@@ -263,7 +265,7 @@ function init_nested(
     return FIRKCacheNested{iip, T, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
     )
 end
@@ -414,7 +416,7 @@ function init_expanded(
     return FIRKCacheExpand{iip, T, typeof(diffcache), fit_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, nlsolve_kwargs,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
     )
 end

@@ -25,7 +25,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     __build_solution, __Fix3, __split_kwargs, _sparse_like,
     get_dense_ad, __internal_optimization_problem,
     __internal_solve, __default_sparsity_detector, __build_cost,
-    __tunable_part
+    __tunable_part, __add_singular_term!
 
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase
