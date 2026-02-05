@@ -31,7 +31,7 @@ y_2(0)=0,\ y_2(\pi)=0
 
 It is worthnoting that in this system, while we have two differetial equations, it isn't enough to estimate the unknown parameters and guarantee a unique numerical solution with only two given boundary conditions. While under the hood, the parameters are estimated simultaneously with the numerical solution, it makes the boundary value problem an underconstrained BVP if the number of constraints are equal to the number of states, which may result in more than one solution. So we should provide additional constraint $y(0)=1$ from the original equation to make sure unique numerical solution and the estimated parameters are we actually wanted.
 
-With BoundaryValueDiffEq.jl, it's easy to solve boundary value problems with unknown parameters, we can just specify `fit_parameters=true` when constructing the BVP and provide the guess of the unknown parameters in `prob.p`, for example, to estimate the unknown parameters in the above BVP system:
+With BoundaryValueDiffEq.jl, it's easy to solve boundary value problems with unknown parameters, we can just specify `tunable_parameters=true` when constructing the BVP and provide the guess of the unknown parameters in `prob.p`, for example, to estimate the unknown parameters in the above BVP system:
 
 ```@example unknown
 using BoundaryValueDiffEq, Plots
@@ -49,7 +49,7 @@ function bcb!(res, u, p)
 end
 guess(p, t) = [cos(4t); -4sin(4t)]
 bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
-    bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true)
+    bcresid_prototype = (zeros(2), zeros(1)), tunable_parameters = true)
 sol = solve(bvp, MIRK4(), dt = 0.05)
 plot(sol)
 ```
