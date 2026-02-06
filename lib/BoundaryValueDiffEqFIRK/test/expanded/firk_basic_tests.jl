@@ -441,7 +441,7 @@ end
     end
     bvp = TwoPointBVProblem(
         f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
     )
     sol = solve(bvp, RadauIIa5(), dt = 0.05)
 
@@ -462,7 +462,7 @@ end
     end
     bvp = TwoPointBVProblem(
         f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
     )
     sol = solve(bvp, RadauIIa5(), dt = 0.05)
 
@@ -508,14 +508,14 @@ end
     # Solve with plain vector
     bvp_vec = TwoPointBVProblem(
         f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
     )
     sol_vec = solve(bvp_vec, RadauIIa5(), dt = 0.05)
 
     # Solve with SciMLStructures-compatible struct
     bvp_struct = TwoPointBVProblem(
         f!, (bca!, bcb!), guess, tspan, MyParams([15.0]),
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
     )
     sol_struct = solve(bvp_struct, RadauIIa5(), dt = 0.05)
 

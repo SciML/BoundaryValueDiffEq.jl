@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T, use_both, diffcache, tunable_parameters} <:
+@concrete struct MIRKCache{iip, T, use_both, diffcache, tune_parameters} <:
     AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
@@ -45,7 +45,7 @@ function SciMLBase.__init(
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
-    tunable_parameters = haskey(prob.kwargs, :tunable_parameters)
+    tune_parameters = haskey(prob.kwargs, :tune_parameters)
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -55,7 +55,7 @@ function SciMLBase.__init(
     ig, T,
         N,
         Nig,
-        X = __extract_problem_details(prob; dt, check_positive_dt = true, tunable_parameters = tunable_parameters)
+        X = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -157,7 +157,7 @@ function SciMLBase.__init(
         bc = if X isa AbstractVector
         f_wrapped = prob.f
         bc_wrapped = prob.f.bc
-        if tunable_parameters && SciMLStructures.isscimlstructure(prob.p)
+        if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
             base_f = f_wrapped
@@ -174,7 +174,7 @@ function SciMLBase.__init(
                 end
                 return nothing
             end
-        elseif tunable_parameters
+        elseif tune_parameters
             l_parameters = length(prob.p)
             base_f = f_wrapped
             f_wrapped = @closure (
@@ -226,11 +226,11 @@ function SciMLBase.__init(
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    return MIRKCache{iip, T, use_both, typeof(diffcache), tunable_parameters}(
+    return MIRKCache{iip, T, use_both, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
         y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
-        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tunable_parameters, kwargs...)
+        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...)
     )
 end
 
@@ -255,9 +255,9 @@ end
 function SciMLBase.solve!(
         cache::MIRKCache{
             iip, T, use_both, diffcache,
-            tunable_parameters,
+            tune_parameters,
         }
-    ) where {iip, T, use_both, diffcache, tunable_parameters}
+    ) where {iip, T, use_both, diffcache, tune_parameters}
     (abstol, adaptive, controller), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
@@ -275,14 +275,14 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if tunable_parameters && SciMLStructures.isscimlstructure(prob.p)
+    if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
         new_p = repack(first(cache.y₀)[(length_u + 1):end])
         prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
-    elseif tunable_parameters
+    elseif tune_parameters
         length_u = cache.M - length(prob.p)
         prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
@@ -573,9 +573,9 @@ end
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip, T, UB, DC, tunable_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::StandardBVProblem, constraint::Val{true}
-    ) where {iip, T, UB, DC, tunable_parameters, BC, C, LF}
+    ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
@@ -643,7 +643,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tunable_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -655,9 +655,9 @@ end
 
 # Dispatch for problems with constraints
 function __construct_problem(
-        cache::MIRKCache{iip, T, UB, DC, tunable_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::StandardBVProblem, constraint::Val{false}
-    ) where {iip, T, UB, DC, tunable_parameters, BC, C, LF}
+    ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     (; bc_diffmode) = jac_alg
@@ -751,7 +751,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tunable_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     return __construct_internal_problem(
@@ -815,9 +815,9 @@ function __mirk_mpoint_jacobian(
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip, T, UB, DC, tunable_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::TwoPointBVProblem, constraint::Val{true}
-    ) where {iip, T, UB, DC, tunable_parameters, BC, C, LF}
+    ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
@@ -863,7 +863,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tunable_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = copy(resid)
@@ -874,9 +874,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip, T, UB, DC, tunable_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
+        cache::MIRKCache{iip, T, UB, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C, loss::LF,
         ::TwoPointBVProblem, constraint::Val{false}
-    ) where {iip, T, UB, DC, tunable_parameters, BC, C, LF}
+    ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
     N = length(cache.mesh)
@@ -926,7 +926,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tunable_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = copy(resid)
