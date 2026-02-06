@@ -49,7 +49,7 @@ function bcb!(res, u, p)
 end
 guess(p, t) = [cos(4t); -4sin(4t)]
 bvp = TwoPointBVProblem(f!, (bca!, bcb!), guess, tspan, [15.0],
-    bcresid_prototype = (zeros(2), zeros(1)), tunable_parameters = true)
+    bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true)
 sol = solve(bvp, MIRK4(), dt = 0.05)
 plot(sol)
 ```
