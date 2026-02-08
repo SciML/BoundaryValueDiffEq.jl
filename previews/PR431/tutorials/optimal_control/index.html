@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Solve Dynamical Optimization problem · BoundaryValueDiffEq.jl</title><meta name="title" content="Solve Dynamical Optimization problem · BoundaryValueDiffEq.jl"/><meta property="og:title" content="Solve Dynamical Optimization problem · BoundaryValueDiffEq.jl"/><meta property="twitter:title" content="Solve Dynamical Optimization problem · BoundaryValueDiffEq.jl"/><meta name="description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="twitter:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/tutorials/optimal_control/"/><meta property="twitter:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/tutorials/optimal_control/"/><link rel="canonical" href="https://docs.sciml.ai/BoundaryValueDiffEq/stable/tutorials/optimal_control/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="BoundaryValueDiffEq.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">BoundaryValueDiffEq.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a></li><li><a class="tocitem" href="../getting_started/">Getting Started with BVP solving in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../continuation/">Solve BVP with Continuation</a></li><li><a class="tocitem" href="../solve_nlls_bvp/">Solve Overdetermined and Underdetermined BVP</a></li><li><a class="tocitem" href="../unknown_parameters/">Estimate Unknown Parameters in BVP</a></li><li class="is-active"><a class="tocitem" href>Solve Dynamical Optimization problem</a><ul class="internal"><li><a class="tocitem" href="#Block-Move-Optimal-Control"><span>Block Move Optimal Control</span></a></li><li><a class="tocitem" href="#Rocket-Launching-Optimal-Control"><span>Rocket Launching Optimal Control</span></a></li><li><a class="tocitem" href="#Cart-Pole-Optimal-Control"><span>Cart-Pole Optimal Control</span></a></li></ul></li><li><a class="tocitem" href="../extremum/">Solve BVP with Extremum Boundary Conditions</a></li></ul></li><li><span class="tocitem">Basics</span><ul><li><a class="tocitem" href="../../basics/bvp_problem/">Boundary Value Problems</a></li><li><a class="tocitem" href="../../basics/bvp_functions/">BVP Functions and Jacobian Types</a></li><li><a class="tocitem" href="../../basics/solve/">Common Solver Options (Solve Keyword Arguments)</a></li><li><a class="tocitem" href="../../basics/autodiff/">Automatic Differentiation Backends</a></li><li><a class="tocitem" href="../../basics/error_control/">Error Control Adaptivity</a></li></ul></li><li><span class="tocitem">Solver Summaries and Recommendations</span><ul><li><a class="tocitem" href="../../solvers/mirk/">BoundaryValueDiffEqMIRK</a></li><li><a class="tocitem" href="../../solvers/firk/">BoundaryValueDiffEqFIRK</a></li><li><a class="tocitem" href="../../solvers/shooting/">BoundaryValueDiffEqShooting</a></li><li><a class="tocitem" href="../../solvers/mirkn/">BoundaryValueDiffEqMIRKN</a></li><li><a class="tocitem" href="../../solvers/ascher/">BoundaryValueDiffEqAscher</a></li><li><a class="tocitem" href="../../solvers/simple_solvers/">SimpleBoundaryValueDiffEq</a></li><li><a class="tocitem" href="../../solvers/wrappers/">Wrapper Methods</a></li></ul></li><li><span class="tocitem">Wrapped Solver APIs</span><ul><li><a class="tocitem" href="../../api/odeinterface/">ODEInterface.jl</a></li></ul></li><li><span class="tocitem">Development Documentation</span><ul><li><a class="tocitem" href="../../devdocs/internal_interfaces/">Internal Abstract Types</a></li></ul></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Solve Dynamical Optimization problem</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Solve Dynamical Optimization problem</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/master/docs/src/tutorials/optimal_control.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Solve-Dynamical-Optimization-problem"><a class="docs-heading-anchor" href="#Solve-Dynamical-Optimization-problem">Solve Dynamical Optimization problem</a><a id="Solve-Dynamical-Optimization-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Solve-Dynamical-Optimization-problem" title="Permalink"></a></h1><p>BoundaryValueDiffEq.jl is capable of solving dynamical optimization problems via collocation solvers. The syntax for solving with BoundaryValueDiffEq.jl is quite different from JuMP-style optimization modeling DSL.</p><p>To model such optimal control problem is more similar to solve an boundary value problem, we only need to further provide the cost functional within <code>BVPFunction</code>. In the following content, we will explain the detailed usage of BoundaryValueDiffEq.jl in dynamical optimization with some hands-on examples.</p><h2 id="Block-Move-Optimal-Control"><a class="docs-heading-anchor" href="#Block-Move-Optimal-Control">Block Move Optimal Control</a><a id="Block-Move-Optimal-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Block-Move-Optimal-Control" title="Permalink"></a></h2><p>Block move optimal control problem is an easy example of optimal control problem <a href="../../references/#kelly2017introduction">Kelly [4]</a>, this problem models moving a small block between two points, starting and finishing at rest, in a fixed amount of time.</p><h3 id="System-dynamics"><a class="docs-heading-anchor" href="#System-dynamics">System dynamics</a><a id="System-dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#System-dynamics" title="Permalink"></a></h3><p>Suppose we apply the external force <span>$f$</span> on a block which can slide without friction in one dimension, its position <span>$x$</span> and velocity <span>$v$</span> can be described using:</p><p class="math-container">\[\left\{\begin{aligned}
+&amp;\frac{dx}{dt}=v\\
+&amp;\frac{dv}{dt}=f
+\end{aligned}\right.\]</p><p>Since the presence of control variables <span>$f$</span>, we can pass our state variables and control variables together as <code>[state variables, control variables]</code>, which is <code>u = [x, v, f]</code> in the system dynamics:</p><pre><code class="language-julia hljs">function block_move!(du, u, p, t)
+    x, v, f = u[1], u[2], u[3]
+    du[1] = v
+    du[2] = f
+end</code></pre><p>To tell solvers the difference between state variables and control variables, <code>f_prototype</code> must be explicitly specified in <code>BVPFunction</code>, for example, we have 2 state variables and 1 control variable, so <code>f_prototype = zeros(2)</code>.</p><h3 id="Boundary-Constraints"><a class="docs-heading-anchor" href="#Boundary-Constraints">Boundary Constraints</a><a id="Boundary-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary-Constraints" title="Permalink"></a></h3><p>The block moves from <span>$x = -1$</span> at time <span>$t = 0$</span> to <span>$x = 0$</span> at time <span>$t = 1$</span>, starting and finishing at rest:</p><p class="math-container">\[x(0)=-1.0, v(0)=0, x(1)=0, v(1)=0\]</p><p>So the boundary conditions are:</p><pre><code class="language-julia hljs">function block_move_bc!(res, u, p, t)
+    res[1] = u(0.0)[1] + 1.0
+    res[2] = u(0.0)[2]
+    res[3] = u(1.0)[1]
+    res[4] = u(1.0)[2]
+end</code></pre><h3 id="Cost-functional"><a class="docs-heading-anchor" href="#Cost-functional">Cost functional</a><a id="Cost-functional-1"></a><a class="docs-heading-anchor-permalink" href="#Cost-functional" title="Permalink"></a></h3><p>We want to minimize the total energy during the whole process, so the cost functional is an integral of the applied force(Lagrange form):</p><p class="math-container">\[\min_{x(t),v(t),f(t)} \frac{1}{2}\int_0^1 u^2(\tau)d\tau\]</p><p>The cost functional should be defined following the interpolating style in boundary conditions, for example, use <code>sol(t₁)</code> to interpolate at <code>t=t₁</code>. Here, to express the integral cost function, we can directly use <code>integral(f, domain)</code> to integrate the integrand:</p><pre><code class="language-julia hljs">cost_fun(sol, p) = 0.5*integral((t, p) -&gt; sol(t)[3]^2, (0.0, 1.0))</code></pre><p>As for other cost functional which need the interpolation of some exact points of the solution(Mayer form), we only need to define an OOP cost function that interpolating the solution at the specific point, for example:</p><pre><code class="language-julia hljs">cost_fun(sol, p) = sol(1.0)[3]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">cost_fun (generic function with 1 method)</code></pre><h3 id="State-and-Control-bounds"><a class="docs-heading-anchor" href="#State-and-Control-bounds">State and Control bounds</a><a id="State-and-Control-bounds-1"></a><a class="docs-heading-anchor-permalink" href="#State-and-Control-bounds" title="Permalink"></a></h3><p>Block move optimal control problem with minimized energy desn&#39;t require lower and upper bounds, so we can just specify <code>lb = [-Inf, -Inf, -Inf]</code> and <code>ub = [Inf, Inf, Inf]</code>.</p><h3 id="Initial-guess"><a class="docs-heading-anchor" href="#Initial-guess">Initial guess</a><a id="Initial-guess-1"></a><a class="docs-heading-anchor-permalink" href="#Initial-guess" title="Permalink"></a></h3><p>The initial guess of the dynamical optimization problem must be provided, either as the initial guess of the first state, <code>u0 = [-1.0, 0.0, 6.0]</code> or initial guess function of the whole solution such as <code>u0(t, p) = [sin(t), cos(t), sin(t)]</code>.</p><p>With all the above parts, we can build the model for our block move optimal control example: So the copy-and-paste code for the block move optimal control problem is:</p><pre><code class="language-julia hljs">using BoundaryValueDiffEqMIRK, OptimizationIpopt
+#cost_fun(sol, p) = 0.5*sum(reduce(hcat, sol.u)[3, :] .^ 2)*0.005
+cost_fun(sol, p) = 0.5*integral((t, p) -&gt; sol(t)[3]^2, (0.0, 1.0))
+function block_move!(du, u, p, t)
+    x, v, f = u[1], u[2], u[3]
+    du[1] = v
+    du[2] = f
+end
+function block_move_bc!(res, u, p, t)
+    res[1] = u(0.0)[1] + 1.0
+    res[2] = u(0.0)[2]
+    res[3] = u(1.0)[1]
+    res[4] = u(1.0)[2]
+end
+tspan = (0.0, 1.0)
+u0 = [-1.0, 0.0, 6.0]
+block_move_fun = BVPFunction(block_move!, block_move_bc!; cost = cost_fun,
+    f_prototype = zeros(2), bcresid_prototype = zeros(4))
+block_move_prob = BVProblem(
+    block_move_fun, u0, tspan; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf])
+sol = solve(block_move_prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.002, adaptive = false)</code></pre><h2 id="Rocket-Launching-Optimal-Control"><a class="docs-heading-anchor" href="#Rocket-Launching-Optimal-Control">Rocket Launching Optimal Control</a><a id="Rocket-Launching-Optimal-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Rocket-Launching-Optimal-Control" title="Permalink"></a></h2><p>Another classical optimal control problem is the rocket launching problem(aka <a href="https://en.wikipedia.org/wiki/Goddard_problem">Goddard Rocket problem</a>). Say we have a rocket with limited fuel and is launched vertically. And we want to control the final altitude of this rocket so that we can make the best of the limited fuel in rocket to get to the highest altitude. In this optimal control problem, the state variables are:</p><ul><li>Velocity of the rocket: <span>$x_v(t)$</span></li><li>Altitude of the rocket: <span>$x_h(t)$</span></li><li>Mass of the rocket and the fuel: <span>$x_m(t)$</span></li></ul><p>The control variable is</p><ul><li>Thrust of the rocket: <span>$u_t(t)$</span></li></ul><p>The dynamics of the launching can be formulated with three differential equations:</p><p class="math-container">\[\left\{\begin{aligned}
+&amp;\frac{dx_v}{dt}=\frac{u_t-drag(x_h,x_v)}{x_m}-g(x_h)\\
+&amp;\frac{dx_h}{dt}=x_v\\
+&amp;\frac{dx_m}{dt}=-\frac{u_t}{c}
+\end{aligned}\right.\]</p><p>where the drag <span>$D(x_h,x_v)$</span> is a function of altitude and velocity:</p><p class="math-container">\[D(x_h,x_v)=D_c\cdot x_v^2\cdot\exp^{h_c(\frac{x_h-x_h(0)}{x_h(0)})}\]</p><p>gravity <span>$g(x_h)$</span> is a function of altitude:</p><p class="math-container">\[g(x_h)=g_0\cdot (\frac{x_h(0)}{x_h})^2\]</p><p class="math-container">\[c\]</p><p>is a constant. Suppose the final time is <span>$T$</span>, we here want to maximize the final altitude <span>$x_h(T)$</span>:</p><p class="math-container">\[\max x_h(T)\]</p><p>The inequality constraints for the state variables and control variables are:</p><p class="math-container">\[\left\{\begin{aligned}
+&amp;x_v&gt;0\\
+&amp;x_h&gt;0\\
+&amp;m_T&lt;x_m&lt;m_0\\
+&amp;0&lt;u_t&lt;u_{t\text{max}}
+\end{aligned}\right.\]</p><p>Similar solving for such optimal control problem can be found on JuMP.jl and InfiniteOpt.jl. The detailed parameters are taken from <a href="https://www.mcs.anl.gov/%7Emore/cops/cops3.pdf">COPS</a>.</p><pre><code class="language-julia hljs">using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
+h_0 = 1                      # Initial height
+v_0 = 0                      # Initial velocity
+m_0 = 1.0                    # Initial mass
+m_T = 0.6                    # Final mass
+g_0 = 1                      # Gravity at the surface
+h_c = 500                    # Used for drag
+c = 0.5 * sqrt(g_0 * h_0)    # Thrust-to-fuel mass
+D_c = 0.5 * 620 * m_0 / g_0  # Drag scaling
+u_t_max = 3.5 * g_0 * m_0    # Maximum thrust
+T_max = 0.2                  # Number of seconds
+T = 1_000                    # Number of time steps
+Δt = 0.2 / T;                # Time per discretized step
+
+tspan = (0.0, 0.2)
+drag(x_h, x_v) = D_c * x_v^2 * exp(-h_c * (x_h - h_0) / h_0)
+g(x_h) = g_0 * (h_0 / x_h)^2
+function rocket_launch!(du, u, p, t)
+    # u_t is the control variable (thrust)
+    x_v, x_h, x_m, u_t = u[1], u[2], u[3], u[4]
+    du[1] = (u_t-drag(x_h, x_v))/x_m - g(x_h)
+    du[2] = x_v
+    du[3] = -u_t/c
+end
+function rocket_launch_bc!(res, u, p, t)
+    res[1] = u(0.0)[1] - v_0
+    res[2] = u(0.0)[2] - h_0
+    res[3] = u(0.0)[3] - m_0
+    res[4] = u(0.2)[4] - 0.0
+end
+cost_fun(u, p) = -u(0.2)[2]
+u0 = [v_0, h_0, m_T, 3.0]
+rocket_launch_fun = BVPFunction(rocket_launch!, rocket_launch_bc!; cost = cost_fun, f_prototype = zeros(3))
+rocket_launch_prob = BVProblem(
+    rocket_launch_fun, u0, tspan; lb = [0.0, h_0, m_T, 0.0], ub = [Inf, Inf, m_0, u_t_max])
+sol = solve(rocket_launch_prob, MIRK4(; optimize = IpoptOptimizer()); dt = Δt, adaptive = false)
+
+u = reduce(hcat, sol.u)
+v, h, m, c = u[1, :], u[2, :], u[3, :], u[4, :]
+
+# Plot the solution
+p1 = plot(sol.t, v, xlabel = &quot;Time&quot;, ylabel = &quot;Velocity&quot;, legend = false)
+p2 = plot(sol.t, h, xlabel = &quot;Time&quot;, ylabel = &quot;Altitude&quot;, legend = false)
+p3 = plot(sol.t, m, xlabel = &quot;Time&quot;, ylabel = &quot;Mass&quot;, legend = false)
+p4 = plot(sol.t, c, xlabel = &quot;Time&quot;, ylabel = &quot;Thrust&quot;, legend = false)
+
+plot(p1, p2, p3, p4, layout = (2, 2))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************</code></pre><p><img src="../rocket_launch.png" alt/></p><p>Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.</p><h2 id="Cart-Pole-Optimal-Control"><a class="docs-heading-anchor" href="#Cart-Pole-Optimal-Control">Cart-Pole Optimal Control</a><a id="Cart-Pole-Optimal-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Cart-Pole-Optimal-Control" title="Permalink"></a></h2><p>The dynamic equation of the motion of cart-pole swing-up problem are given by:</p><p class="math-container">\[
+\begin{bmatrix}
+\ddot{x} \\
+\ddot{\theta}
+\end{bmatrix}
+
+\begin{bmatrix}
+\cos\theta &amp; \ell \\
+m_1 + m_2 &amp; m_2 \ell \cos\theta
+\end{bmatrix}^{-1}
+\begin{bmatrix}
+
+  - g \sin\theta \\
+    F + m_2 \ell \dot{\theta}^2 \sin\theta
+    \end{bmatrix}\]</p><p>where <span>$x$</span> is the location of the cart, <span>$\theta$</span> is the pole angle, <span>$m_1$</span> is the cart mass, <span>$m_2$</span> is the pole mass, <span>$l$</span> is the pole length.</p><p>By converting the dynamics to first order equations, we can get the formulation:</p><p class="math-container">\[\begin{bmatrix}
+\dot{x} \\
+\dot{\theta} \\
+\ddot{x} \\
+\ddot{\theta} \\
+\dot{e}
+\end{bmatrix}
+
+f\!\left(
+\begin{bmatrix}
+x \\ \theta \\ \dot{x} \\ \dot{\theta} \\ e
+\end{bmatrix}
+\right)
+
+\begin{bmatrix}
+\dot{x} \\
+\dot{\theta} \\
+\dfrac{-m_2 g \sin\theta \cos\theta - \left(F + m_2 \ell \dot{\theta}^2 \sin\theta\right)}
+{m_2 \cos^2\theta - (m_1 + m_2)} \\
+\dfrac{(m_1 + m_2) g \sin\theta + \cos\theta \left(F + m_2 \ell \dot{\theta}^2 \sin\theta\right)}
+{m_2 \ell \cos^2\theta - (m_1 + m_2)\ell} \\
+F^2
+\end{bmatrix}\]</p><p>and the initial conditions of all states at <span>$t=0$</span> are all zero, the boundary conditions at time <span>$t_f$</span> are:</p><p class="math-container">\[x_f=d, \dot{x_f}=0, \theta_f=\pi, \dot{\theta_f}=0\]</p><p>The target cost function is defined as the &quot;energy&quot; so the target cost function is:</p><p class="math-container">\[\min J=\int\dot{e}dt=F\]</p><pre><code class="language-julia hljs">using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
+m_1 = 1.0                      # Cart mass
+m_2 = 0.3                      # Pole mass
+l = 0.5                        # Pole length
+d = 2.0                        # Cart target location
+t_0 = 0.0                      # Start time
+t_f = 2.0                      # Final time
+g = 9.81                       # Gravity constant
+tspan = (t_0, t_f)
+function cart_pole!(du, u, p, t)
+    x, θ, dx, dθ, f = u[1], u[2], u[3], u[4], u[5]
+    du[1] = dx
+    du[2] = dθ
+    du[3] = (- m_2*g*sin(θ)*cos(θ) - (f + m_2*l*θ^2*sin(θ))) / (m_2*l*cos(θ)^2 - m_1 - m_2)
+    du[4] = ((m_1 + m_2)*g*sin(θ) + cos(θ)*(f + m_1*l*dθ^2*sin(θ))) /
+            (m_2*l*cos(θ)^2 - (m_1 + m_2)*l)
+end
+
+function cart_pole_bc!(du, u, p, t)
+    du[1] = u(t_f)[1] - d
+    du[2] = u(t_f)[2] - π
+    du[3] = u(t_0)[2] - 0.0
+    du[4] = u(t_0)[3] - 0.0
+    du[5] = u(t_0)[4] - 0.0
+    du[6] = u(t_f)[3] - 0.0
+    du[7] = u(t_f)[4] - 0.0
+end
+cost_fun(u, p) = u(t_f)[5]
+u0 = [0.0, 0.0, 0.0, 0.0, 10.0]
+cart_pole_fun = BVPFunction(cart_pole!, cart_pole_bc!; cost = cost_fun,
+    bcresid_prototype = zeros(7), f_prototype = zeros(4))
+cart_pole_prob = BVProblem(cart_pole_fun, u0, tspan; lb = [-2.0, -Inf, -Inf, -Inf, -20.0],
+    ub = [2.0, Inf, Inf, Inf, 20.0])
+sol = solve(cart_pole_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.01, adaptive = false)
+
+t = sol.t
+x, theta, dx, dtheta, f = sol[1, :], sol[2, :], sol[3, :], sol[4, :], sol[5, :]
+
+L = 1.0    # pole length (visual)
+cart_w = 0.4    # cart width
+cart_h = 0.2    # cart height
+
+# Precompute pole tip coordinates
+px = x .+ L .* sin.(theta)
+py = cart_h/2 .- L .* cos.(theta)
+
+# Axis limits (a bit margin around the cart trajectory)
+xmin = minimum(x) - 2L
+xmax = maximum(x) + 2L
+ymin = -2.0
+ymax = 2.0
+
+anim = @animate for k in eachindex(t)
+    cart_x = x[k]
+    pole_x = px[k]
+    pole_y = py[k]
+
+    # Base plot / axis
+    plot(; xlim = (xmin, xmax), ylim = (ymin, ymax), aspect_ratio = :equal,
+        legend = false, title = &quot;Cart–Pole (t = $(round(t[k], digits=2)) s)&quot;)
+
+    # Draw ground
+    plot!([xmin, xmax], [0, 0], lw = 2, color = :black)
+
+    # Draw cart as a rectangle
+    rect = Shape(
+        [cart_x - cart_w/2, cart_x + cart_w/2, cart_x + cart_w/2, cart_x - cart_w/2],
+        [0, 0, cart_h, cart_h])
+    plot!(rect, color = :gray)
+
+    # Draw pole as a line from cart center to tip
+    plot!([cart_x, pole_x], [cart_h/2, pole_y], lw = 3, color = :red)
+
+    # Draw pivot point
+    scatter!([cart_x], [cart_h/2], ms = 4, color = :black)
+end
+
+# Save GIF
+gif(anim, &quot;../assets/cart_pole.gif&quot;, fps = 40)</code></pre><img src="ab647640.gif" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../unknown_parameters/">« Estimate Unknown Parameters in BVP</a><a class="docs-footer-nextpage" href="../extremum/">Solve BVP with Extremum Boundary Conditions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Sunday 8 February 2026 15:47">Sunday 8 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
