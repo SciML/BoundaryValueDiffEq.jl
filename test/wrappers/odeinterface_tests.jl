@@ -29,7 +29,7 @@ export ex7_f!, ex7_2pbc1!, ex7_2pbc2!, u0, p, tspan
 
 end
 
-@testitem "BVPM2" setup = [ODEInterfaceWrapperTestSetup] skip = true begin
+@testitem "BVPM2" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] skip = true begin
     using ODEInterface, RecursiveArrayTools, LinearAlgebra
 
     tpprob = TwoPointBVProblem(
@@ -46,7 +46,7 @@ end
 end
 
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
-@testitem "BVPSOL" setup = [ODEInterfaceWrapperTestSetup] begin
+@testitem "BVPSOL" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] begin
     using ODEInterface, OrdinaryDiffEqTsit5, RecursiveArrayTools, NonlinearSolveFirstOrder
 
     tpprob = TwoPointBVProblem(
@@ -100,7 +100,7 @@ end
     @test sol_bvpsol isa SciMLBase.ODESolution
 end
 
-@testitem "COLNEW" setup = [ODEInterfaceWrapperTestSetup] begin
+@testitem "COLNEW" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] begin
     using ODEInterface, RecursiveArrayTools
 
     function f!(du, u, p, t)
@@ -122,7 +122,7 @@ end
     @test SciMLBase.successful_retcode(sol_colnew)
 end
 
-@testitem "COLNEW for multi-points BVP" setup = [ODEInterfaceWrapperTestSetup] begin
+@testitem "COLNEW for multi-points BVP" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] begin
     using ODEInterface, RecursiveArrayTools
 
     function f!(du, u, p, t)

@@ -21,8 +21,22 @@ const RETESTITEMS_NWORKER_THREADS = parse(
 
 @info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
 
-ReTestItems.runtests(
-    BoundaryValueDiffEq;
-    tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS
-)
+if GROUP == "wrappers"
+    # Wrapper tests must be explicitly requested via GROUP=wrappers
+    ReTestItems.runtests(
+        joinpath(@__DIR__, "wrappers");
+        nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS
+    )
+else
+    # For "all" and other groups, exclude wrappers (they have external deps like ODEInterface)
+    for dir in readdir(@__DIR__)
+        dirpath = joinpath(@__DIR__, dir)
+        isdir(dirpath) || continue
+        dir in ("wrappers", "qa") && continue
+        ReTestItems.runtests(
+            dirpath;
+            tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
+            nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS
+        )
+    end
+end
