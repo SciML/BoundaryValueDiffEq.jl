@@ -293,7 +293,7 @@ function SciMLBase.solve!(
 
     interpolation = __build_interpolation(cache, u.u)
 
-    odesol = DiffEqBase.build_solution(
+    odesol = SciMLBase.build_solution(
         prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info
     )
     return __build_solution(prob, odesol, sol_nlprob)

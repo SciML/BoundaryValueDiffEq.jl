@@ -28,7 +28,6 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     __tunable_part, __add_singular_term!
 
 using ConcreteStructs: @concrete
-using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
     finish_part_setindex!

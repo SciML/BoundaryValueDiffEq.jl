@@ -27,7 +27,6 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     __default_sparsity_detector, __build_cost, __add_singular_term!
 
 using ConcreteStructs: @concrete
-using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
     finish_part_setindex!

@@ -5,7 +5,7 @@ struct FIRKExpandInterpolation{T1, T2} <: AbstractDiffEqInterpolation
     cache
 end
 
-function DiffEqBase.interp_summary(interp::FIRKExpandInterpolation)
+function SciMLBase.interp_summary(interp::FIRKExpandInterpolation)
     return "FIRK Order $(interp.cache.order) Interpolation"
 end
 
@@ -26,7 +26,7 @@ struct FIRKNestedInterpolation{T1, T2} <: AbstractDiffEqInterpolation
     cache
 end
 
-function DiffEqBase.interp_summary(interp::FIRKNestedInterpolation)
+function SciMLBase.interp_summary(interp::FIRKNestedInterpolation)
     return "FIRK Order $(interp.cache.order) Interpolation"
 end
 

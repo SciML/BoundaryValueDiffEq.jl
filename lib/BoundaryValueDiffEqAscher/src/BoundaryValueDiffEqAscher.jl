@@ -14,7 +14,6 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
     __internal_solve, __build_cost
 
 using ConcreteStructs: @concrete
-using DiffEqBase: DiffEqBase
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, Dual
