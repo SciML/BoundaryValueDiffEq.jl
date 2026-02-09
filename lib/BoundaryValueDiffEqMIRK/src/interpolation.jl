@@ -5,7 +5,7 @@
     cache
 end
 
-function DiffEqBase.interp_summary(interp::MIRKInterpolation)
+function SciMLBase.interp_summary(interp::MIRKInterpolation)
     return "MIRK Order $(interp.cache.order) Interpolation"
 end
 
