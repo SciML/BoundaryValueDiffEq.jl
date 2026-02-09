@@ -445,7 +445,7 @@ end
     end
     bvp = TwoPointBVProblem(
         f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
     )
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
@@ -466,7 +466,7 @@ end
     end
     bvp = TwoPointBVProblem(
         f!, (bca!, bcb!), guess, tspan, [15.0],
-        bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
     )
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
@@ -513,13 +513,13 @@ end
     @testset "nlsolve" begin
         bvp_vec = TwoPointBVProblem(
             f!, (bca!, bcb!), guess, tspan, [15.0],
-            bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+            bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
         )
         sol_vec = solve(bvp_vec, MIRK4(), dt = 0.05)
 
         bvp_struct = TwoPointBVProblem(
             f!, (bca!, bcb!), guess, tspan, MyParams([15.0]),
-            bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+            bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
         )
         sol_struct = solve(bvp_struct, MIRK4(), dt = 0.05)
 
@@ -533,13 +533,13 @@ end
     @testset "optimize" begin
         bvp_vec = TwoPointBVProblem(
             f!, (bca!, bcb!), guess, tspan, [15.0],
-            bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+            bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
         )
         sol_vec = solve(bvp_vec, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 
         bvp_struct = TwoPointBVProblem(
             f!, (bca!, bcb!), guess, tspan, MyParams([15.0]),
-            bcresid_prototype = (zeros(2), zeros(1)), fit_parameters = true
+            bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
         )
         sol_struct = solve(bvp_struct, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 

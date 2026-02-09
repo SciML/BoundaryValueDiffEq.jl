@@ -1,4 +1,4 @@
-@concrete struct FIRKCacheNested{iip, T, diffcache, fit_parameters} <:
+@concrete struct FIRKCacheNested{iip, T, diffcache, tune_parameters} <:
     AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of FIRK method
     stage::Int                 # The state of FIRK method
@@ -35,7 +35,7 @@ end
 
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
 
-@concrete struct FIRKCacheExpand{iip, T, diffcache, fit_parameters} <:
+@concrete struct FIRKCacheExpand{iip, T, diffcache, tune_parameters} <:
     AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of FIRK method
     stage::Int                 # The state of FIRK method
@@ -122,7 +122,7 @@ function init_nested(
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
     diffcache = __cache_trait(alg.jac_alg)
-    fit_parameters = haskey(prob.kwargs, :fit_parameters)
+    tune_parameters = haskey(prob.kwargs, :tune_parameters)
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -132,7 +132,7 @@ function init_nested(
     ig, T,
         M,
         Nig,
-        X = __extract_problem_details(prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
+        X = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -195,7 +195,7 @@ function init_nested(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
             vecf! = function (du, u, p, t)
@@ -205,7 +205,7 @@ function init_nested(
             end
             vecbc! = prob.f.bc
             vecf!, vecbc!
-        elseif fit_parameters
+        elseif tune_parameters
             l_parameters = length(prob.p)
             vecf! = function (du, u, p, t)
                 prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
@@ -252,7 +252,7 @@ function init_nested(
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
     # Somewhat arbitrary initialization of K
-    K0 = __K0_on_u0(prob, stage; fit_parameters = fit_parameters)
+    K0 = __K0_on_u0(prob, stage; tune_parameters = tune_parameters)
 
     nestprob_p = zeros(T, M + 2)
 
@@ -262,7 +262,7 @@ function init_nested(
         nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
     end
 
-    return FIRKCacheNested{iip, T, typeof(diffcache), fit_parameters}(
+    return FIRKCacheNested{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
@@ -282,7 +282,7 @@ function init_expanded(
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
     diffcache = __cache_trait(alg.jac_alg)
-    fit_parameters = haskey(prob.kwargs, :fit_parameters)
+    tune_parameters = haskey(prob.kwargs, :tune_parameters)
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -292,7 +292,7 @@ function init_expanded(
     ig, T,
         M,
         Nig,
-        X = __extract_problem_details(prob; dt, check_positive_dt = true, fit_parameters = fit_parameters)
+        X = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -356,7 +356,7 @@ function init_expanded(
     bcresid_prototype = __vec(bcresid_prototype)
     f,
         bc = if X isa AbstractVector
-        if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+        if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
             vecf! = function (du, u, p, t)
@@ -366,7 +366,7 @@ function init_expanded(
             end
             vecbc! = prob.f.bc
             vecf!, vecbc!
-        elseif fit_parameters
+        elseif tune_parameters
             l_parameters = length(prob.p)
             vecf! = function (du, u, p, t)
                 prob.f(du, u, @view(u[(end - l_parameters + 1):end]), t)
@@ -413,7 +413,7 @@ function init_expanded(
 
     prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
 
-    return FIRKCacheExpand{iip, T, typeof(diffcache), fit_parameters}(
+    return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
@@ -449,9 +449,9 @@ end
 
 function SciMLBase.solve!(
         cache::FIRKCacheExpand{
-            iip, T, diffcache, fit_parameters,
+            iip, T, diffcache, tune_parameters,
         }
-    ) where {iip, T, diffcache, fit_parameters}
+    ) where {iip, T, diffcache, tune_parameters}
     (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
@@ -469,14 +469,14 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+    if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
         new_p = repack(first(cache.y₀)[(length_u + 1):end])
         prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
-    elseif fit_parameters
+    elseif tune_parameters
         length_u = cache.M - length(prob.p)
         prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
@@ -495,9 +495,9 @@ end
 
 function SciMLBase.solve!(
         cache::FIRKCacheNested{
-            iip, T, diffcache, fit_parameters,
+            iip, T, diffcache, tune_parameters,
         }
-    ) where {iip, T, diffcache, fit_parameters}
+    ) where {iip, T, diffcache, tune_parameters}
     (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
@@ -514,14 +514,14 @@ function SciMLBase.solve!(
     end
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
-    if fit_parameters && SciMLStructures.isscimlstructure(prob.p)
+    if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
         new_p = repack(first(cache.y₀)[(length_u + 1):end])
         prob = remake(prob; p = new_p)
         map(x -> resize!(x, length_u), cache.y₀)
         resize!(cache.fᵢ₂_cache, length_u)
-    elseif fit_parameters
+    elseif tune_parameters
         length_u = cache.M - length(prob.p)
         prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
         map(x -> resize!(x, length_u), cache.y₀)
@@ -674,9 +674,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{true}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
     (; bc_diffmode) = jac_alg
@@ -745,7 +745,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -757,9 +757,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{false}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
     (; bc_diffmode) = jac_alg
@@ -856,7 +856,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -868,9 +868,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{true}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; stage, bcresid_prototype, f_prototype) = cache
     N = length(cache.mesh)
@@ -921,7 +921,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = copy(resid)
@@ -933,9 +933,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheExpand{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheExpand{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{false}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; stage, bcresid_prototype, f_prototype, prob) = cache
     N = length(cache.mesh)
@@ -1001,7 +1001,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = copy(resid)
@@ -1013,9 +1013,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{true}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bc_diffmode) = jac_alg
     (; bcresid_prototype, f_prototype) = cache
@@ -1081,7 +1081,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -1092,9 +1092,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{false}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bc_diffmode) = jac_alg
     (; bcresid_prototype, f_prototype, prob) = cache
@@ -1185,7 +1185,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -1196,9 +1196,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{true}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bcresid_prototype, f_prototype) = cache
     N = length(cache.mesh)
@@ -1247,7 +1247,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = copy(resid)
@@ -1258,9 +1258,9 @@ function __construct_problem(
 end
 
 function __construct_problem(
-        cache::FIRKCacheNested{iip, T, DC, fit_parameters}, y, loss_bc::BC, loss_collocation::C,
+        cache::FIRKCacheNested{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::TwoPointBVProblem, ::Val{false}
-    ) where {iip, T, DC, fit_parameters, BC, C, LF}
+    ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; bcresid_prototype, f_prototype, prob) = cache
     N = length(cache.mesh)
@@ -1315,7 +1315,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        fit_parameters, p = cache.p
+        tune_parameters, p = cache.p
     )
 
     resid_prototype = copy(resid)

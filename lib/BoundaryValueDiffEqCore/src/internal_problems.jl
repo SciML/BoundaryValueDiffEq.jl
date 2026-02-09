@@ -1,9 +1,9 @@
 @inline __default_cost(::Nothing) = (x, p) -> 0.0
 @inline __default_cost(f) = f
 @inline __build_cost(::Nothing, cache, mesh, M; kwargs...) = (x, p) -> 0.0
-@inline function __build_cost(fun, cache, mesh, M; fit_parameters = false, p = nothing)
-    if fit_parameters && SciMLStructures.isscimlstructure(p)
-        # When fit_parameters=true, the state vector is augmented with tunable params
+@inline function __build_cost(fun, cache, mesh, M; tune_parameters = false, p = nothing)
+    if tune_parameters && SciMLStructures.isscimlstructure(p)
+        # When tune_parameters=true, the state vector is augmented with tunable params
         # Extract them and use SciMLStructures.replace to update p for the cost function
         tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
         l_params = length(tunable_part)
@@ -16,10 +16,10 @@
             eval_sol = EvalSol(newy, mesh, cache)
             return fun(eval_sol, new_p)
         end
-    elseif fit_parameters && !isnothing(p)
+    elseif tune_parameters && !isnothing(p)
         length_u = M - length(p)
         cost_fun = @views function (u, p)
-            # When fit_parameters=true, the state vector is augmented with tunable params
+            # When tune_parameters=true, the state vector is augmented with tunable params
             newy = eachcol(reshape(u, M, :))
             params_from_u = u[(length_u + 1):M]
             eval_sol = EvalSol(newy, mesh, cache)
