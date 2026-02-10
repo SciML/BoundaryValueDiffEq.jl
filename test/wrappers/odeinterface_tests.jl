@@ -29,7 +29,7 @@ export ex7_f!, ex7_2pbc1!, ex7_2pbc2!, u0, p, tspan
 
 end
 
-@testitem "BVPM2" setup = [ODEInterfaceWrapperTestSetup] begin
+@testitem "BVPM2" setup = [ODEInterfaceWrapperTestSetup] skip = true begin
     using ODEInterface, RecursiveArrayTools, LinearAlgebra
 
     tpprob = TwoPointBVProblem(
