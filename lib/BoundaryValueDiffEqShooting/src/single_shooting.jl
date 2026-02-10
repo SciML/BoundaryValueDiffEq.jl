@@ -3,6 +3,8 @@ function SciMLBase.__solve(
         odesolve_kwargs = (;), nlsolve_kwargs = (; abstol = abstol),
         optimize_kwargs = (; abstol = abstol), verbose = true, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
+
     # Setup the problem
     if prob.u0 isa AbstractArray{<:Number}
         u0 = prob.u0
@@ -10,7 +12,11 @@ function SciMLBase.__solve(
         # Scalar BVP case
         u0 = [prob.u0]
     else
-        verbose && @warn "Initial guess provided, but will be ignored for Shooting."
+        @SciMLMessage(
+            "Initial guess provided, but will be ignored for Shooting.",
+            verbose_spec,
+            :shooting_initial_guess
+        )
         u0 = __extract_u0(prob.u0, prob.p, first(prob.tspan))
     end
 

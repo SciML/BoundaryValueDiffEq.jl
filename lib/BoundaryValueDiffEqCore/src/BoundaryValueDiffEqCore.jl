@@ -18,6 +18,7 @@ using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
 using Reexport: @reexport
 using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
     StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
+using SciMLLogging: SciMLLogging, @SciMLMessage, @verbosity_specifier
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
@@ -35,6 +36,7 @@ include("abstract_types.jl")
 include("alg_utils.jl")
 include("default_internal_solve.jl")
 include("calc_errors.jl")
+include("verbosity.jl")
 
 function SciMLBase.__solve(
         prob::AbstractBVProblem,
@@ -49,5 +51,6 @@ export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorCon
     NoErrorControl
 export HOErrorControl, REErrorControl
 export integral
+export BVPVerbosity, _process_verbose_param, DEFAULT_VERBOSE
 
 end
