@@ -24,7 +24,7 @@ Generate new mesh based on the defect or the global error.
         iip, T,
     }
     (; order, errors, mesh, mesh_dt) = cache
-    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, _, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
     n = N - 1
 
@@ -78,7 +78,7 @@ end
         iip, T,
     }
     (; order, errors, mesh, mesh_dt) = cache
-    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, _, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
     n = N - 1
 
@@ -133,7 +133,7 @@ end
         iip, T,
     }
     (; order, errors, mesh, mesh_dt) = cache
-    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, _, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
     n = N - 1
 
@@ -189,7 +189,7 @@ end
         iip, T,
     }
     (; order, errors, mesh, mesh_dt) = cache
-    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, _, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
     n = N - 1
 

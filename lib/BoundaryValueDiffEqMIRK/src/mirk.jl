@@ -32,6 +32,7 @@
     nlsolve_kwargs
     optimize_kwargs
     kwargs
+    verbose
 end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
@@ -39,8 +40,9 @@ Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
         controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...
+        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
@@ -230,7 +232,7 @@ function SciMLBase.__init(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
         y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
-        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...)
+        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
     )
 end
 
@@ -258,7 +260,7 @@ function SciMLBase.solve!(
             tune_parameters,
         }
     ) where {iip, T, use_both, diffcache, tune_parameters}
-    (abstol, adaptive, controller), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, adaptive, controller, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
 
@@ -303,7 +305,8 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
     nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
-        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
+        cache.verbose
     )
     sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)

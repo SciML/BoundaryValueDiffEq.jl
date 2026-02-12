@@ -183,7 +183,21 @@ function __solve_nlproblem!(
     )
 
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    __internal_solve(nlprob, nlsolve_alg; kwargs...)
+    # Extract verbose, nlsolve_kwargs, optimize_kwargs from merged kwargs
+    verbose_val = get(kwargs, :verbose, true)
+    verbose_spec = _process_verbose_param(verbose_val)
+    nlsolve_kw = get(kwargs, :nlsolve_kwargs, (;))
+    optimize_kw = get(kwargs, :optimize_kwargs, (;))
+
+    # Construct kwargs with nonlinear verbosity
+    concrete_kw = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kw, optimize_kw, verbose_spec)
+
+    # Filter out verbose, nlsolve_kwargs, optimize_kwargs from kwargs since they're handled
+    other_kw = filter(kwargs) do (k, v)
+        k ∉ (:verbose, :nlsolve_kwargs, :optimize_kwargs)
+    end
+
+    __internal_solve(nlprob, nlsolve_alg; concrete_kw..., other_kw...)
 
     return nothing
 end
@@ -284,7 +298,22 @@ function __solve_nlproblem!(
         resid_prototype, u_at_nodes, prob.p, M, length(nodes), nothing, nothing
     )
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    __solve(nlprob, nlsolve_alg; kwargs...)
+
+    # Extract verbose, nlsolve_kwargs, optimize_kwargs from merged kwargs
+    verbose_val = get(kwargs, :verbose, true)
+    verbose_spec = _process_verbose_param(verbose_val)
+    nlsolve_kw = get(kwargs, :nlsolve_kwargs, (;))
+    optimize_kw = get(kwargs, :optimize_kwargs, (;))
+
+    # Construct kwargs with nonlinear verbosity
+    concrete_kw = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kw, optimize_kw, verbose_spec)
+
+    # Filter out verbose, nlsolve_kwargs, optimize_kwargs from kwargs since they're handled
+    other_kw = filter(kwargs) do (k, v)
+        k ∉ (:verbose, :nlsolve_kwargs, :optimize_kwargs)
+    end
+
+    __solve(nlprob, nlsolve_alg; concrete_kw..., other_kw...)
 
     return nothing
 end

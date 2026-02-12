@@ -42,6 +42,7 @@
     nlsolve_kwargs
     optimize_kwargs
     kwargs
+    verbose
 end
 
 Base.eltype(::AscherCache{iip, T}) where {iip, T} = T
@@ -63,8 +64,9 @@ end
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractAscher; dt = 0.0, controller = GlobalErrorControl(),
         adaptive = true, abstol = 1.0e-4, nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...
+        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
@@ -154,13 +156,13 @@ function SciMLBase.__init(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
         fixpnt, alg, prob.problem_type, f_prototype, bcresid_prototype, residual, zval, yval, gval,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
-        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
+        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
     return cache
 end
 
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
-    (abstol, adaptive, _), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
     # We do the first iteration outside the loop to preserve type-stability of the
@@ -186,7 +188,8 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     nlprob = __construct_nlproblem(cache)
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
-        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
+        cache.verbose
     )
     nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
     error_norm = 2 * abstol

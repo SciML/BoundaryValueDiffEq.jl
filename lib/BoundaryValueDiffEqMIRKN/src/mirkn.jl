@@ -23,6 +23,7 @@
     nlsolve_kwargs
     optimize_kwargs
     kwargs
+    verbose
 end
 
 Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
@@ -31,8 +32,9 @@ function SciMLBase.__init(
         prob::SecondOrderBVProblem, alg::AbstractMIRKN;
         dt = 0.0, adaptive = false, abstol = 1.0e-6,
         controller = NoErrorControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...
+        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
@@ -117,7 +119,7 @@ function SciMLBase.__init(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, resid_size, nlsolve_kwargs,
-        optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
+        optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
 
@@ -138,7 +140,8 @@ function __perform_mirkn_iteration(cache::MIRKNCache)
     nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
-        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
+        cache.verbose
     )
     sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)

@@ -68,7 +68,7 @@ function SciMLBase.__solve(
         resid_prototype, u0, prob.p, length(u0), 1, nothing, iip
     )
     solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs)
+    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs, verbose_spec)
     nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
 
     # There is no way to reinit with the same cache with different cache. But not saving
