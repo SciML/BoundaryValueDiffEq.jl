@@ -19,7 +19,7 @@ using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPJacobian
     __extract_u0, __has_initial_guess, __initial_guess_length,
     __initial_guess_on_mesh, __flatten_initial_guess,
     __get_non_sparse_ad, __build_solution, __Fix3, get_dense_ad,
-    __internal_solve, _process_verbose_param, BVPVerbosity
+    __internal_solve, _process_verbose_param, BVPVerbosity, @SciMLMessage
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian,
@@ -31,7 +31,6 @@ using Reexport: @reexport
 using RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
     _unwrap_val, solve
-using SciMLLogging: @SciMLMessage
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using OrdinaryDiffEqTsit5: Tsit5

@@ -11,14 +11,16 @@ using Integrals: Integrals, IntegralProblem
 using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
-using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
-using OptimizationBase: OptimizationBase
+using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm, NonlinearVerbosity
+using OptimizationBase: OptimizationBase, OptimizationVerbosity
 using PreallocationTools: PreallocationTools, DiffCache
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
 using Reexport: @reexport
 using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
     StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
-using SciMLLogging: SciMLLogging, @SciMLMessage, @verbosity_specifier
+using SciMLLogging: SciMLLogging, @SciMLMessage, Silent, DebugLevel,
+    InfoLevel, WarnLevel, ErrorLevel, @verbosity_specifier, AbstractVerbositySpecifier,
+    None, Minimal, Standard, Detailed, All, AbstractMessageLevel
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
@@ -27,6 +29,7 @@ using SciMLStructures: SciMLStructures
 
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 
+include("verbosity.jl")
 include("types.jl")
 include("solution_utils.jl")
 include("utils.jl")
@@ -36,7 +39,6 @@ include("abstract_types.jl")
 include("alg_utils.jl")
 include("default_internal_solve.jl")
 include("calc_errors.jl")
-include("verbosity.jl")
 
 function SciMLBase.__solve(
         prob::AbstractBVProblem,

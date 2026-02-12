@@ -3,9 +3,8 @@ module BoundaryValueDiffEqODEInterfaceExt
 using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 using BoundaryValueDiffEqCore: __extract_u0, __initial_guess_length, __extract_mesh,
     __flatten_initial_guess, __get_bcresid_prototype,
-    __has_initial_guess, __initial_guess, _process_verbose_param, BVPVerbosity
+    __has_initial_guess, __initial_guess, _process_verbose_param, BVPVerbosity, @SciMLMessage
 using SciMLBase: SciMLBase, BVProblem, TwoPointBVProblem, ReturnCode
-using SciMLLogging: @SciMLMessage
 using ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
     OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,

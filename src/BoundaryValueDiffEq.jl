@@ -2,7 +2,8 @@ module BoundaryValueDiffEq
 
 using ADTypes
 using BoundaryValueDiffEqAscher
-using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPVerbosity,
+                                DEFAULT_VERBOSE
 using BoundaryValueDiffEqFIRK
 using BoundaryValueDiffEqMIRK
 using BoundaryValueDiffEqMIRKN
@@ -40,6 +41,8 @@ export Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7
 export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
 
 export BVPJacobianAlgorithm
+
+export BVPVerbosity, DEFAULT_VERBOSE
 
 export maxsol, minsol
 
