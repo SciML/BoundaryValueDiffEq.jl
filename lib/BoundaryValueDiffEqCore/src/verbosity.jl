@@ -1,7 +1,7 @@
-using SciMLLogging: @verbosity_specifier, SciMLLogging
-
 @verbosity_specifier BVPVerbosity begin
     toggles = (
+        :nonlinear_verbosity,
+        :optimization_verbosity,
         :bvpsol_convergence,
         :bvpsol_integrator,
         :bvpsol_linear_solver,
@@ -22,6 +22,8 @@ using SciMLLogging: @verbosity_specifier, SciMLLogging
 
     presets = (
         None = (
+            nonlinear_verbosity = None(),
+            optimization_verbosity = None(),
             bvpsol_convergence = Silent(),
             bvpsol_integrator = Silent(),
             bvpsol_linear_solver = Silent(),
@@ -40,6 +42,8 @@ using SciMLLogging: @verbosity_specifier, SciMLLogging
             deprecations = Silent(),
         ),
         Minimal = (
+            nonlinear_verbosity = Minimal(),
+            optimization_verbosity = Minimal(),
             bvpsol_convergence = WarnLevel(),
             bvpsol_integrator = WarnLevel(),
             bvpsol_linear_solver = WarnLevel(),
@@ -58,6 +62,8 @@ using SciMLLogging: @verbosity_specifier, SciMLLogging
             deprecations = WarnLevel(),
         ),
         Standard = (
+            nonlinear_verbosity = Standard(),
+            optimization_verbosity = Standard(),
             bvpsol_convergence = WarnLevel(),
             bvpsol_integrator = WarnLevel(),
             bvpsol_linear_solver = WarnLevel(),
@@ -76,6 +82,8 @@ using SciMLLogging: @verbosity_specifier, SciMLLogging
             deprecations = WarnLevel(),
         ),
         Detailed = (
+            nonlinear_verbosity = Detailed(),
+            optimization_verbosity = Detailed(),
             bvpsol_convergence = WarnLevel(),
             bvpsol_integrator = WarnLevel(),
             bvpsol_linear_solver = WarnLevel(),
@@ -94,6 +102,8 @@ using SciMLLogging: @verbosity_specifier, SciMLLogging
             deprecations = WarnLevel(),
         ),
         All = (
+            nonlinear_verbosity = All(),
+            optimization_verbosity = All(),
             bvpsol_convergence = InfoLevel(),
             bvpsol_integrator = InfoLevel(),
             bvpsol_linear_solver = InfoLevel(),
@@ -157,6 +167,8 @@ Fine-grained toggles for specific message categories:
 - `:multiple_shooting_initial_guess` - Multiple shooting initial guess warnings
 
 **General:**
+- `:nonlinear_verbosity` - Controls verbosity of the underlying NonlinearSolve.jl solver (uses SciMLLogging presets)
+- `:optimization_verbosity` - Controls verbosity of the underlying Optimization.jl solver (uses SciMLLogging presets)
 - `:type_inference` - Type stability warnings
 - `:initialization` - ODE solver initialization failures
 - `:adaptivity` - Mesh refinement and adaptivity messages
@@ -216,6 +228,24 @@ solve(prob, BVPSOL(); verbose = BVPVerbosity(
     bvpsol_linear_solver = WarnLevel(),
     colnew_matrix = WarnLevel()
 ))
+
+# Control NonlinearSolve verbosity independently
+solve(prob, MIRK4(); verbose = BVPVerbosity(
+    None(),  # Silence BVP messages
+    nonlinear_verbosity = All()  # Show all NonlinearSolve convergence info
+))
+
+# Silence NonlinearSolve but keep BVP messages
+solve(prob, MIRK4(); verbose = BVPVerbosity(
+    Standard(),  # Standard BVP messages
+    nonlinear_verbosity = None()  # No NonlinearSolve output
+))
+
+# Control Optimization.jl verbosity independently
+solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose = BVPVerbosity(
+    None(),  # Silence BVP messages
+    optimization_verbosity = All()  # Show all Optimization.jl convergence info
+))
 ```
 
 ## Using Groups
@@ -273,19 +303,27 @@ Groups for convenient toggle control:
 # Preset Details
 
 ## None
+- `nonlinear_verbosity` → `None()` (no NonlinearSolve output)
+- `optimization_verbosity` → `None()` (no Optimization.jl output)
 - All toggles: `Silent()`
 
 ## Minimal
+- `nonlinear_verbosity` → `Minimal()` (minimal NonlinearSolve output)
+- `optimization_verbosity` → `Minimal()` (minimal Optimization.jl output)
 - All solver failure toggles → `WarnLevel()`
 - `deprecations` → `WarnLevel()`
 - All others → `Silent()`
 
 ## Standard (Default)
+- `nonlinear_verbosity` → `Standard()` (standard NonlinearSolve output)
+- `optimization_verbosity` → `Standard()` (standard Optimization.jl output)
 - All solver failure toggles → `WarnLevel()`
 - All shooting and input validation toggles → `WarnLevel()`
 - All others → `Silent()`
 
 ## Detailed
+- `nonlinear_verbosity` → `Detailed()` (detailed NonlinearSolve convergence info)
+- `optimization_verbosity` → `Detailed()` (detailed Optimization.jl convergence info)
 - All solver failure toggles → `WarnLevel()`
 - All shooting and input validation toggles → `WarnLevel()`
 - `initialization` → `InfoLevel()`
@@ -293,6 +331,8 @@ Groups for convenient toggle control:
 - `adaptivity` → `Silent()` (still off, can be very verbose)
 
 ## All
+- `nonlinear_verbosity` → `All()` (maximum NonlinearSolve verbosity)
+- `optimization_verbosity` → `All()` (maximum Optimization.jl verbosity)
 - All toggles → `InfoLevel()` (including adaptivity)
 - `deprecations` → `WarnLevel()`
 """
