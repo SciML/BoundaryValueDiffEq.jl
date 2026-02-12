@@ -11,7 +11,8 @@ using Integrals: Integrals, IntegralProblem
 using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
-using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm, NonlinearVerbosity
+using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
+using NonlinearSolveBase: NonlinearVerbosity
 using OptimizationBase: OptimizationBase, OptimizationVerbosity
 using PreallocationTools: PreallocationTools, DiffCache
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
