@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqFIRK"
 uuid = "85d9eb09-370e-4000-bb32-543851f73618"
-version = "1.10.0"
+version = "1.10.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -42,7 +42,6 @@ FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
 Hwloc = "3"
 InteractiveUtils = "<0.0.1, 1"
-
 LinearAlgebra = "1.10"
 LinearSolve = "2.36.2, 3"
 Mooncake = "0.4.146"
