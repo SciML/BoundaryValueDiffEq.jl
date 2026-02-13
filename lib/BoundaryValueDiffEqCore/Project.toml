@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqCore"
 uuid = "56b672f2-a5fe-4263-ab2d-da677488eb3a"
-version = "1.12.0"
+version = "1.12.1"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
 
 [deps]
@@ -36,12 +36,11 @@ DiffEqBase = "6.183"
 ForwardDiff = "0.10.38, 1"
 Integrals = "4.7.1"
 InteractiveUtils = "<0.0.1, 1"
-
 LineSearch = "0.1.4"
 LinearAlgebra = "1.10"
 Logging = "1.10"
 NonlinearSolveFirstOrder = "1.2"
-OptimizationBase = "3.2.0, 4"
+OptimizationBase = "3.2.0, 4, 5"
 PreallocationTools = "0.4.24"
 RecursiveArrayTools = "3.27.0"
 Reexport = "1.2"
