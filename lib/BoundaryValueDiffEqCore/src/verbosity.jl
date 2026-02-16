@@ -298,7 +298,7 @@ Groups for convenient toggle control:
 - **`resources`** - Resource exhaustion issues
 - **`input_validation`** - Input validation warnings
 - **`solver_failures`** - All solver failure toggles
-- **`progress`** - Initialization, adaptivity, and convergence result
+- **`progress`** - Initialization, adaptivity, and convergence results
 
 # Preset Details
 
