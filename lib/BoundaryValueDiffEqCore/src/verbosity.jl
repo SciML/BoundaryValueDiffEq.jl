@@ -124,18 +124,24 @@
     )
 
     groups = (
-        bvpsol = (:bvpsol_convergence, :bvpsol_integrator, :bvpsol_linear_solver,
-                  :bvpsol_resources, :bvpsol_bc_inconsistent),
+        bvpsol = (
+            :bvpsol_convergence, :bvpsol_integrator, :bvpsol_linear_solver,
+            :bvpsol_resources, :bvpsol_bc_inconsistent,
+        ),
         colnew = (:colnew_convergence, :colnew_matrix, :colnew_resources, :colnew_input),
         shooting = (:shooting_initial_guess, :multiple_shooting_initial_guess),
         convergence = (:bvpsol_convergence, :colnew_convergence),
         linear_algebra = (:bvpsol_linear_solver, :colnew_matrix),
         resources = (:bvpsol_resources, :colnew_resources),
-        input_validation = (:bvpsol_bc_inconsistent, :colnew_input, :shooting_initial_guess,
-                           :multiple_shooting_initial_guess, :type_inference),
-        solver_failures = (:bvpsol_convergence, :bvpsol_integrator, :bvpsol_linear_solver,
-                          :bvpsol_resources, :bvpsol_bc_inconsistent, :colnew_convergence,
-                          :colnew_matrix, :colnew_resources, :colnew_input),
+        input_validation = (
+            :bvpsol_bc_inconsistent, :colnew_input, :shooting_initial_guess,
+            :multiple_shooting_initial_guess, :type_inference,
+        ),
+        solver_failures = (
+            :bvpsol_convergence, :bvpsol_integrator, :bvpsol_linear_solver,
+            :bvpsol_resources, :bvpsol_bc_inconsistent, :colnew_convergence,
+            :colnew_matrix, :colnew_resources, :colnew_input,
+        ),
         progress = (:initialization, :adaptivity, :convergence_result),
     )
 end

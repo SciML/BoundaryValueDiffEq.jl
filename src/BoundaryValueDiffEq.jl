@@ -3,7 +3,7 @@ module BoundaryValueDiffEq
 using ADTypes
 using BoundaryValueDiffEqAscher
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPVerbosity,
-                                DEFAULT_VERBOSE
+    DEFAULT_VERBOSE
 using BoundaryValueDiffEqFIRK
 using BoundaryValueDiffEqMIRK
 using BoundaryValueDiffEqMIRKN

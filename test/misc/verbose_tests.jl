@@ -69,9 +69,9 @@
 
         # Test with default verbose
         (abstol, adaptive, controller, verbose), remaining = __split_kwargs(
-            abstol = 1e-6, adaptive = true, controller = DefectControl()
+            abstol = 1.0e-6, adaptive = true, controller = DefectControl()
         )
-        @test abstol == 1e-6
+        @test abstol == 1.0e-6
         @test adaptive == true
         @test controller isa DefectControl
         @test verbose == DEFAULT_VERBOSE
@@ -79,10 +79,10 @@
         # Test with custom verbose
         custom_verbose = BVPVerbosity(SciMLLogging.None())
         (abstol, adaptive, controller, verbose), remaining = __split_kwargs(
-            abstol = 1e-4, adaptive = false, controller = NoErrorControl(),
+            abstol = 1.0e-4, adaptive = false, controller = NoErrorControl(),
             verbose = custom_verbose
         )
-        @test abstol == 1e-4
+        @test abstol == 1.0e-4
         @test adaptive == false
         @test controller isa NoErrorControl
         @test verbose == custom_verbose
@@ -211,13 +211,15 @@ end
         prob = BVProblem(f!, bc!, u0, tspan)
 
         # Test with All preset
-        sol = solve(prob, MIRK4(), dt = 0.1,
+        sol = solve(
+            prob, MIRK4(), dt = 0.1,
             verbose = BVPVerbosity(SciMLLogging.All())
         )
         @test SciMLBase.successful_retcode(sol)
 
         # Test with None preset
-        sol = solve(prob, RadauIIa5(), dt = 0.1,
+        sol = solve(
+            prob, RadauIIa5(), dt = 0.1,
             verbose = BVPVerbosity(SciMLLogging.None())
         )
         @test SciMLBase.successful_retcode(sol)
@@ -234,7 +236,8 @@ end
         u0_2 = [0.0]
         prob2 = SecondOrderBVProblem(f2!, bc2!, u0_2, tspan2)
 
-        sol2 = solve(prob2, MIRKN4(), dt = 0.1,
+        sol2 = solve(
+            prob2, MIRKN4(), dt = 0.1,
             verbose = BVPVerbosity(SciMLLogging.Detailed())
         )
         @test SciMLBase.successful_retcode(sol2)
@@ -329,8 +332,10 @@ end
 
     # Test with explicit nlsolve algorithm
     @testset "Explicit nlsolve algorithm verbosity" begin
-        cache = init(prob, MIRK4(nlsolve = NewtonRaphson()), dt = 0.1,
-            verbose = BVPVerbosity(SciMLLogging.All()))
+        cache = init(
+            prob, MIRK4(nlsolve = NewtonRaphson()), dt = 0.1,
+            verbose = BVPVerbosity(SciMLLogging.All())
+        )
 
         kwargs = __concrete_kwargs(
             cache.alg.nlsolve, cache.alg.optimize,
@@ -345,7 +350,8 @@ end
     # Test user-specified verbose takes precedence
     @testset "User nlsolve_kwargs verbose precedence" begin
         user_verbose = NonlinearVerbosity(SciMLLogging.Minimal())
-        cache = init(prob, MIRK4(), dt = 0.1,
+        cache = init(
+            prob, MIRK4(), dt = 0.1,
             verbose = BVPVerbosity(SciMLLogging.All()),
             nlsolve_kwargs = (; verbose = user_verbose)
         )
@@ -423,9 +429,11 @@ end
 
     # Test all presets with MIRK
     @testset "MIRK with all verbosity presets" begin
-        for preset in [SciMLLogging.None(), SciMLLogging.Minimal(),
-                       SciMLLogging.Standard(), SciMLLogging.Detailed(),
-                       SciMLLogging.All()]
+        for preset in [
+                SciMLLogging.None(), SciMLLogging.Minimal(),
+                SciMLLogging.Standard(), SciMLLogging.Detailed(),
+                SciMLLogging.All(),
+            ]
             sol = solve(prob, MIRK4(), dt = 0.1, verbose = BVPVerbosity(preset))
             @test SciMLBase.successful_retcode(sol)
         end
@@ -434,8 +442,10 @@ end
     # Test with explicit nonlinear solver
     @testset "MIRK with explicit nlsolve and various verbosity" begin
         for preset in [SciMLLogging.None(), SciMLLogging.All()]
-            sol = solve(prob, MIRK4(nlsolve = NewtonRaphson()), dt = 0.1,
-                verbose = BVPVerbosity(preset))
+            sol = solve(
+                prob, MIRK4(nlsolve = NewtonRaphson()), dt = 0.1,
+                verbose = BVPVerbosity(preset)
+            )
             @test SciMLBase.successful_retcode(sol)
         end
     end
@@ -463,8 +473,10 @@ end
         u0_2 = [0.0]
         prob2 = SecondOrderBVProblem(f2!, bc2!, u0_2, tspan)
 
-        for preset in [SciMLLogging.None(), SciMLLogging.Minimal(),
-                       SciMLLogging.Standard(), SciMLLogging.All()]
+        for preset in [
+                SciMLLogging.None(), SciMLLogging.Minimal(),
+                SciMLLogging.Standard(), SciMLLogging.All(),
+            ]
             sol = solve(prob2, MIRKN4(), dt = 0.1, verbose = BVPVerbosity(preset))
             @test SciMLBase.successful_retcode(sol)
         end
