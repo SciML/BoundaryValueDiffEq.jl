@@ -682,8 +682,8 @@ function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
     return map(SparseConnectivityTracer.primal, x)
 end
 
-function __split_kwargs(; abstol, adaptive, controller, kwargs...)
-    return ((abstol, adaptive, controller), (; abstol, adaptive, kwargs...))
+function __split_kwargs(; abstol, adaptive, controller, verbose = DEFAULT_VERBOSE, kwargs...)
+    return ((abstol, adaptive, controller, verbose), (; abstol, adaptive, kwargs...))
 end
 
 @inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
@@ -693,6 +693,51 @@ end
 @inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
     nlsolve_kwargs...,
 )
+
+# Overloads that handle BVP verbosity → NonlinearSolve verbosity conversion
+@inline function __concrete_kwargs(
+        nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs, bvp_verbose::BVPVerbosity
+    )
+    # Check if user already specified verbose in nlsolve_kwargs
+    if haskey(nlsolve_kwargs, :verbose)
+        return (; nlsolve_kwargs...)  # User's explicit verbose wins
+    else
+        # Convert preset to NonlinearVerbosity if needed
+        nl_verbose = bvp_verbose.nonlinear_verbosity isa NonlinearVerbosity ?
+            bvp_verbose.nonlinear_verbosity :
+            NonlinearVerbosity(bvp_verbose.nonlinear_verbosity)
+        return (; verbose = nl_verbose, nlsolve_kwargs...)
+    end
+end
+
+@inline function __concrete_kwargs(
+        ::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs, bvp_verbose::BVPVerbosity
+    )
+    if haskey(nlsolve_kwargs, :verbose)
+        return (; nlsolve_kwargs...)
+    else
+        # Convert preset to NonlinearVerbosity if needed
+        nl_verbose = bvp_verbose.nonlinear_verbosity isa NonlinearVerbosity ?
+            bvp_verbose.nonlinear_verbosity :
+            NonlinearVerbosity(bvp_verbose.nonlinear_verbosity)
+        return (; verbose = nl_verbose, nlsolve_kwargs...)
+    end
+end
+
+@inline function __concrete_kwargs(
+        ::Nothing, optimize, nlsolve_kwargs, optimize_kwargs, bvp_verbose::BVPVerbosity
+    )
+    # Check if user already specified verbose in optimize_kwargs
+    if haskey(optimize_kwargs, :verbose)
+        return (; optimize_kwargs...)  # User's explicit verbose wins
+    else
+        # Convert preset to OptimizationVerbosity if needed
+        opt_verbose = bvp_verbose.optimization_verbosity isa OptimizationVerbosity ?
+            bvp_verbose.optimization_verbosity :
+            OptimizationVerbosity(bvp_verbose.optimization_verbosity)
+        return (; verbose = opt_verbose, optimize_kwargs...)
+    end
+end
 
 """
     __add_singular_term!(K, singular_term, y, t)

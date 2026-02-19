@@ -31,6 +31,7 @@
     nlsolve_kwargs
     optimize_kwargs
     kwargs
+    verbose
 end
 
 Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
@@ -67,6 +68,7 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     nlsolve_kwargs
     optimize_kwargs
     kwargs
+    verbose
 end
 
 Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
@@ -92,19 +94,19 @@ end
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
         controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...
+        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     if alg.nested_nlsolve
         return init_nested(
             prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
             controller = controller, nlsolve_kwargs = nlsolve_kwargs,
-            optimize_kwargs = optimize_kwargs, kwargs...
+            optimize_kwargs = optimize_kwargs, verbose = verbose, kwargs...
         )
     else
         return init_expanded(
             prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
             controller = controller, nlsolve_kwargs = nlsolve_kwargs,
-            optimize_kwargs = optimize_kwargs, kwargs...
+            optimize_kwargs = optimize_kwargs, verbose = verbose, kwargs...
         )
     end
 end
@@ -112,8 +114,9 @@ end
 function init_nested(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
         controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...
+        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     iip = isinplace(prob)
@@ -266,15 +269,16 @@ function init_nested(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
-        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
+        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
 
 function init_expanded(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
         controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), kwargs...
+        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
@@ -417,7 +421,7 @@ function init_expanded(
         alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
-        optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...)
+        optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
 
@@ -452,7 +456,7 @@ function SciMLBase.solve!(
             iip, T, diffcache, tune_parameters,
         }
     ) where {iip, T, diffcache, tune_parameters}
-    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
     length_u = cache.in_size
@@ -498,7 +502,7 @@ function SciMLBase.solve!(
             iip, T, diffcache, tune_parameters,
         }
     ) where {iip, T, diffcache, tune_parameters}
-    (abstol, adaptive, _), kwargs = __split_kwargs(; cache.kwargs...)
+    (abstol, adaptive, _, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
 
@@ -542,7 +546,8 @@ function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}
     nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
-        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
+        cache.verbose
     )
     sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)

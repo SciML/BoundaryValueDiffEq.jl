@@ -10,6 +10,7 @@ pages = [
     "Basics" => Any[
         "basics/bvp_problem.md", "basics/bvp_functions.md",
         "basics/solve.md", "basics/autodiff.md", "basics/error_control.md",
+        "basics/verbosity.md",
     ],
     "Solver Summaries and Recommendations" => Any[
         "solvers/mirk.md", "solvers/firk.md", "solvers/shooting.md", "solvers/mirkn.md",

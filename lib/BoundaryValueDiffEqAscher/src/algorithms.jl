@@ -52,7 +52,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
         @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm} <: AbstractAscher
             nlsolve::N = nothing
             optimize::O = nothing
-            zeta::Vector{Float64} = nothing
+            zeta::Vector{Float64} = Float64[]
             jac_alg::J = BVPJacobianAlgorithm()
             max_num_subintervals::Int = 3000
         end

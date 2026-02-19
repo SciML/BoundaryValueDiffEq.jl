@@ -3,7 +3,7 @@ module BoundaryValueDiffEqODEInterfaceExt
 using BoundaryValueDiffEq: BVPM2, BVPSOL, COLNEW
 using BoundaryValueDiffEqCore: __extract_u0, __initial_guess_length, __extract_mesh,
     __flatten_initial_guess, __get_bcresid_prototype,
-    __has_initial_guess, __initial_guess
+    __has_initial_guess, __initial_guess, _process_verbose_param, BVPVerbosity, @SciMLMessage
 using SciMLBase: SciMLBase, BVProblem, TwoPointBVProblem, ReturnCode
 using ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
     OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
@@ -124,6 +124,8 @@ function SciMLBase.__solve(
         throw(ArgumentError("Initial Guess is required for `BVPSOL`"))
     end
 
+    verbose_spec = _process_verbose_param(verbose)
+
     t₀, t₁ = prob.tspan
     u0_ = __extract_u0(prob.u0, prob.p, t₀)
     u0_size = size(u0_)
@@ -182,26 +184,54 @@ function SciMLBase.__solve(
 
     sol_t, sol_x, retcode, stats = bvpsol(bvpsol_f, bvpsol_bc, mesh, u0, alg.odesolver, opt)
 
-    if verbose
-        if retcode == -3
-            @warn "Integrator failed to complete the trajectory"
-        elseif retcode == -4
-            @warn "Gauss Newton method failed to converge"
-        elseif retcode == -5
-            @warn "Given initial values inconsistent with separable linear bc"
-        elseif retcode == -6
-            @warn "Iterative refinement failed to converge for `sol_method=0` \
-                   Termination since multiple shooting condition or \
-                   condition of Jacobian is too bad for `sol_method=1`"
-        elseif retcode == -8
-            @warn "Condensing algorithm for linear block system fails, try `sol_method=1`"
-        elseif retcode == -9
-            @warn "Sparse linear solver failed"
-        elseif retcode == -10
-            @warn "Real or integer work-space exhausted"
-        elseif retcode == -11
-            @warn "Rank reduction failed - resulting rank is zero"
-        end
+    if retcode == -3
+        @SciMLMessage(
+            "BVPSOL: Integrator failed to complete the trajectory (retcode=-3)",
+            verbose_spec,
+            :bvpsol_integrator
+        )
+    elseif retcode == -4
+        @SciMLMessage(
+            "BVPSOL: Gauss Newton method failed to converge (retcode=-4)",
+            verbose_spec,
+            :bvpsol_convergence
+        )
+    elseif retcode == -5
+        @SciMLMessage(
+            "BVPSOL: Given initial values inconsistent with separable linear bc (retcode=-5)",
+            verbose_spec,
+            :bvpsol_bc_inconsistent
+        )
+    elseif retcode == -6
+        @SciMLMessage(
+            "BVPSOL: Iterative refinement failed to converge for `sol_method=0`. Termination since multiple shooting condition or condition of Jacobian is too bad for `sol_method=1` (retcode=-6)",
+            verbose_spec,
+            :bvpsol_convergence
+        )
+    elseif retcode == -8
+        @SciMLMessage(
+            "BVPSOL: Condensing algorithm for linear block system fails, try `sol_method=1` (retcode=-8)",
+            verbose_spec,
+            :bvpsol_linear_solver
+        )
+    elseif retcode == -9
+        @SciMLMessage(
+            "BVPSOL: Sparse linear solver failed (retcode=-9)",
+            verbose_spec,
+            :bvpsol_linear_solver
+        )
+    elseif retcode == -10
+        @SciMLMessage(
+            "BVPSOL: Real or integer work-space exhausted (retcode=-10)",
+            verbose_spec,
+            :bvpsol_resources
+        )
+    elseif retcode == -11
+        @SciMLMessage(
+            "BVPSOL: Rank reduction failed - resulting rank is zero (retcode=-11)",
+            verbose_spec,
+            :bvpsol_linear_solver
+        )
     end
 
     # Determine the return code for SciMLBase
@@ -243,6 +273,8 @@ function SciMLBase.__solve(
         reltol = 1.0e-3, dt = 0.0, verbose = true, kwargs...
     )
     dt ≤ 0 && throw(ArgumentError("`dt` must be positive"))
+
+    verbose_spec = _process_verbose_param(verbose)
 
     t₀, t₁ = prob.tspan
     u0_ = __extract_u0(prob.u0, prob.p, t₀)
@@ -367,17 +399,30 @@ function SciMLBase.__solve(
 
     sol, retcode, stats = colnew(_tspan, orders, zeta, rhs, Drhs, bc, Dbc, nothing, opt)
 
-    if verbose
-        if retcode == 0
-            @warn "Collocation matrix is singular"
-        elseif retcode == -1
-            @warn "The expected no. of subintervals exceeds storage(try to increase \
-                   `OPT_MAXSUBINTERVALS`)"
-        elseif retcode == -2
-            @warn "The nonlinear iteration has not converged"
-        elseif retcode == -3
-            @warn "There is an input data error"
-        end
+    if retcode == 0
+        @SciMLMessage(
+            "COLNEW: Collocation matrix is singular (retcode=0)",
+            verbose_spec,
+            :colnew_matrix
+        )
+    elseif retcode == -1
+        @SciMLMessage(
+            "COLNEW: The expected no. of subintervals exceeds storage (try to increase `OPT_MAXSUBINTERVALS`) (retcode=-1)",
+            verbose_spec,
+            :colnew_resources
+        )
+    elseif retcode == -2
+        @SciMLMessage(
+            "COLNEW: The nonlinear iteration has not converged (retcode=-2)",
+            verbose_spec,
+            :colnew_convergence
+        )
+    elseif retcode == -3
+        @SciMLMessage(
+            "COLNEW: There is an input data error (retcode=-3)",
+            verbose_spec,
+            :colnew_input
+        )
     end
 
     evalsol = evalSolution(sol, mesh)

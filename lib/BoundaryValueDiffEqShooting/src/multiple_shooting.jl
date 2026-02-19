@@ -3,6 +3,8 @@ function SciMLBase.__solve(
         nlsolve_kwargs = (; abstol = abstol), optimize_kwargs = (; abstol = abstol),
         ensemblealg = EnsembleThreads(), verbose = true, kwargs...
     )
+    verbose_spec = _process_verbose_param(verbose)
+
     (; f, tspan) = prob
 
     if !(ensemblealg isa EnsembleSerial) && !(ensemblealg isa EnsembleThreads)
@@ -21,8 +23,11 @@ function SciMLBase.__solve(
 
     __alg = concretize_jacobian_algorithm(_alg, prob)
     alg = if has_initial_guess && Nig != __alg.nshoots
-        verbose &&
-            @warn "Initial guess length != `nshoots + 1`! Adapting to `nshoots = $(Nig)`"
+        @SciMLMessage(
+            "Initial guess length != `nshoots + 1`! Adapting to `nshoots = $(Nig)`",
+            verbose_spec,
+            :multiple_shooting_initial_guess
+        )
         update_nshoots(__alg, Nig)
     else
         __alg
@@ -63,12 +68,12 @@ function SciMLBase.__solve(
         if i == 1
             u_at_nodes = __multiple_shooting_initialize!(
                 nodes, prob, alg, ig, nshoots, ode_cache_loss_fn;
-                kwargs..., verbose, odesolve_kwargs...
+                kwargs..., verbose_spec, odesolve_kwargs...
             )
         else
             u_at_nodes = __multiple_shooting_initialize!(
                 nodes, u_at_nodes, prob, alg, cur_nshoot, all_nshoots[i - 1], ig,
-                ode_cache_loss_fn, u0; kwargs..., verbose, odesolve_kwargs...
+                ode_cache_loss_fn, u0; kwargs..., verbose_spec, odesolve_kwargs...
             )
         end
 
@@ -178,7 +183,21 @@ function __solve_nlproblem!(
     )
 
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    __internal_solve(nlprob, nlsolve_alg; kwargs...)
+    # Extract verbose, nlsolve_kwargs, optimize_kwargs from merged kwargs
+    verbose_val = get(kwargs, :verbose, true)
+    verbose_spec = _process_verbose_param(verbose_val)
+    nlsolve_kw = get(kwargs, :nlsolve_kwargs, (;))
+    optimize_kw = get(kwargs, :optimize_kwargs, (;))
+
+    # Construct kwargs with nonlinear verbosity
+    concrete_kw = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kw, optimize_kw, verbose_spec)
+
+    # Filter out verbose, nlsolve_kwargs, optimize_kwargs from kwargs since they're handled
+    other_kw = filter(kwargs) do (k, v)
+        k ∉ (:verbose, :nlsolve_kwargs, :optimize_kwargs)
+    end
+
+    __internal_solve(nlprob, nlsolve_alg; concrete_kw..., other_kw...)
 
     return nothing
 end
@@ -279,7 +298,22 @@ function __solve_nlproblem!(
         resid_prototype, u_at_nodes, prob.p, M, length(nodes), nothing, nothing
     )
     nlsolve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    __solve(nlprob, nlsolve_alg; kwargs...)
+
+    # Extract verbose, nlsolve_kwargs, optimize_kwargs from merged kwargs
+    verbose_val = get(kwargs, :verbose, true)
+    verbose_spec = _process_verbose_param(verbose_val)
+    nlsolve_kw = get(kwargs, :nlsolve_kwargs, (;))
+    optimize_kw = get(kwargs, :optimize_kwargs, (;))
+
+    # Construct kwargs with nonlinear verbosity
+    concrete_kw = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kw, optimize_kw, verbose_spec)
+
+    # Filter out verbose, nlsolve_kwargs, optimize_kwargs from kwargs since they're handled
+    other_kw = filter(kwargs) do (k, v)
+        k ∉ (:verbose, :nlsolve_kwargs, :optimize_kwargs)
+    end
+
+    __solve(nlprob, nlsolve_alg; concrete_kw..., other_kw...)
 
     return nothing
 end
@@ -504,7 +538,7 @@ end
 # No initial guess
 @views function __multiple_shooting_initialize!(
         nodes, prob, alg::MultipleShooting, ::Val{false},
-        nshoots::Int, odecache_; verbose, kwargs...
+        nshoots::Int, odecache_; verbose_spec, kwargs...
     )
     (; f, u0, tspan, p) = prob
     (; ode_alg) = alg
@@ -515,8 +549,12 @@ end
 
     # Ensures type stability in case the parameters are dual numbers
     if !(p isa SciMLBase.NullParameters)
-        if !isconcretetype(eltype(p)) && verbose
-            @warn "Type inference will fail if eltype(p) is not a concrete type"
+        if !isconcretetype(eltype(p))
+            @SciMLMessage(
+                "Type inference will fail if eltype(p) is not a concrete type",
+                verbose_spec,
+                :type_inference
+            )
         end
         u_at_nodes = similar(u0, promote_type(eltype(u0), eltype(p)), (nshoots + 1) * N)
     else
@@ -533,9 +571,11 @@ end
             u_at_nodes[(i - 1) * N .+ (1:N)] .= vec(sol(nodes[i]))
         end
     else
-        @warn "Initialization using odesolve failed. Initializing using 0s. It is \
-               recommended to provide an initial guess function via \
-               `u0 = <function>(p, t)` in this case."
+        @SciMLMessage(
+            "Initialization using odesolve failed. Initializing using 0s. It is recommended to provide an initial guess function via `u0 = <function>(p, t)` in this case.",
+            verbose_spec,
+            :initialization
+        )
         fill!(u_at_nodes, 0)
     end
 

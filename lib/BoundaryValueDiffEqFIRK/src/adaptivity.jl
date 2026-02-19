@@ -249,7 +249,7 @@ Generate new mesh based on the defect.
         }
     ) where {iip, T}
     (; order, defect, mesh, mesh_dt) = cache
-    (abstol, _, _), _ = __split_kwargs(; cache.kwargs...)
+    (abstol, _, _, _), _ = __split_kwargs(; cache.kwargs...)
     N = length(mesh)
 
     safety_factor = T(1.3)

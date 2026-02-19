@@ -12,12 +12,16 @@ using Logging: Logging
 using LinearAlgebra
 using LineSearch: BackTracking
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
-using OptimizationBase: OptimizationBase
+using NonlinearSolveBase: NonlinearVerbosity
+using OptimizationBase: OptimizationBase, OptimizationVerbosity
 using PreallocationTools: PreallocationTools, DiffCache
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
 using Reexport: @reexport
 using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
     StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
+using SciMLLogging: SciMLLogging, @SciMLMessage, Silent, DebugLevel,
+    InfoLevel, WarnLevel, ErrorLevel, @verbosity_specifier, AbstractVerbositySpecifier,
+    None, Minimal, Standard, Detailed, All, AbstractMessageLevel
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
@@ -26,6 +30,7 @@ using SciMLStructures: SciMLStructures
 
 @reexport using NonlinearSolveFirstOrder, SciMLBase
 
+include("verbosity.jl")
 include("types.jl")
 include("solution_utils.jl")
 include("utils.jl")
@@ -49,5 +54,6 @@ export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorCon
     NoErrorControl
 export HOErrorControl, REErrorControl
 export integral
+export BVPVerbosity, _process_verbose_param, DEFAULT_VERBOSE
 
 end
