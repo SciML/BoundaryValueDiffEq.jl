@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqAscher"
 uuid = "7227322d-7511-4e07-9247-ad6ff830280e"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.9.1"
+version = "1.10.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -22,10 +22,10 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 ADTypes = "1.14"
 AlmostBlockDiagonals = "0.1.10"
 Aqua = "0.8"
-BoundaryValueDiffEqCore = "1.12"
+BoundaryValueDiffEqCore = "2.0"
 ConcreteStructs = "0.2.3"
 DiffEqDevTools = "2.44"
-DifferentiationInterface = "0.6.42, 0.7"
+DifferentiationInterface = "0.7"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
 Hwloc = "3"
