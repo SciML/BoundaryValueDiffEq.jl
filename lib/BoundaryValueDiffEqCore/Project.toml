@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqCore"
 uuid = "56b672f2-a5fe-4263-ab2d-da677488eb3a"
-version = "1.12.1"
+version = "2.0.0"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
 
 [deps]
