@@ -33,7 +33,7 @@ BoundaryValueDiffEqShooting = {path = "../lib/BoundaryValueDiffEqShooting"}
 ADTypes = "1.9"
 BoundaryValueDiffEq = "5.13.0"
 BoundaryValueDiffEqAscher = "1.2.0"
-BoundaryValueDiffEqCore = "1.3.0"
+BoundaryValueDiffEqCore = "2"
 BoundaryValueDiffEqFIRK = "1.3.0"
 BoundaryValueDiffEqMIRK = "1.3.0"
 BoundaryValueDiffEqMIRKN = "1.8.0"
