@@ -141,11 +141,11 @@ Number of Iterations....: 23
 
                                    (scaled)                 (unscaled)
 Objective...............:  -1.0128319455234935e+00   -1.0128319455234935e+00
-Dual infeasibility......:   7.4846776150983163e-12    7.4846776150983163e-12
-Constraint violation....:   4.9068870711446722e-12    4.9068870711446722e-12
-Variable bound violation:   3.2125799708061472e-38    3.2125799708061472e-38
-Complementarity.........:   9.0916272821364531e-10    9.0916272821364531e-10
-Overall NLP error.......:   9.0916272821364531e-10    9.0916272821364531e-10
+Dual infeasibility......:   7.4844555705992704e-12    7.4844555705992704e-12
+Constraint violation....:   4.9068840517210205e-12    4.9068840517210205e-12
+Variable bound violation:   6.5767051682324500e-42    6.5767051682324500e-42
+Complementarity.........:   9.0916272821362080e-10    9.0916272821362080e-10
+Overall NLP error.......:   9.0916272821362080e-10    9.0916272821362080e-10
 
 
 Number of objective function evaluations             = 26
@@ -155,7 +155,7 @@ Number of inequality constraint evaluations          = 0
 Number of equality constraint Jacobian evaluations   = 24
 Number of inequality constraint Jacobian evaluations = 0
 Number of Lagrangian Hessian evaluations             = 23
-Total seconds in IPOPT                               = 1261.926
+Total seconds in IPOPT                               = 984.398
 
 EXIT: Optimal Solution Found.</code></pre><p><img src="../rocket_launch.png" alt/></p><p>Similar optimal control problem solving can also be deployed in JuMP.jl and InfiniteOpt.jl.</p><h2 id="Cart-Pole-Optimal-Control"><a class="docs-heading-anchor" href="#Cart-Pole-Optimal-Control">Cart-Pole Optimal Control</a><a id="Cart-Pole-Optimal-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Cart-Pole-Optimal-Control" title="Permalink"></a></h2><p>The dynamic equation of the motion of cart-pole swing-up problem are given by:</p><p class="math-container">\[
 \begin{bmatrix}
@@ -271,4 +271,4 @@ anim = @animate for k in eachindex(t)
 end
 
 # Save GIF
-gif(anim, &quot;../assets/cart_pole.gif&quot;, fps = 40)</code></pre><img src="ab647640.gif" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../unknown_parameters/">« Estimate Unknown Parameters in BVP</a><a class="docs-footer-nextpage" href="../extremum/">Solve BVP with Extremum Boundary Conditions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Friday 20 February 2026 02:00">Friday 20 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+gif(anim, &quot;../assets/cart_pole.gif&quot;, fps = 40)</code></pre><img src="ab647640.gif" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../unknown_parameters/">« Estimate Unknown Parameters in BVP</a><a class="docs-footer-nextpage" href="../extremum/">Solve BVP with Extremum Boundary Conditions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 21 February 2026 00:55">Saturday 21 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
