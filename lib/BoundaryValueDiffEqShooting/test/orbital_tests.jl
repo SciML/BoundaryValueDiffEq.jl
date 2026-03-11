@@ -71,7 +71,7 @@
         sol = solve(
             bvp, Shooting(DP5(); nlsolve, jac_alg); force_dtmin = true,
             abstol = 1.0e-6, reltol = 1.0e-6, verbose = false,
-            odesolve_kwargs = (abstol = 1.0e-6, reltol = 1.0e-3)
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
         )
 
         @test SciMLBase.successful_retcode(sol)
@@ -80,7 +80,7 @@
         sol = solve(
             bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1.0e-6, reltol = 1.0e-6,
-            verbose = false, odesolve_kwargs = (abstol = 1.0e-6, reltol = 1.0e-3)
+            verbose = false, odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
         )
 
         @test SciMLBase.successful_retcode(sol)
@@ -103,7 +103,7 @@
         sol = solve(
             bvp, Shooting(DP5(); nlsolve, jac_alg); force_dtmin = true,
             abstol = 1.0e-6, reltol = 1.0e-6, verbose = false,
-            odesolve_kwargs = (abstol = 1.0e-6, reltol = 1.0e-3)
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
         )
 
         @test SciMLBase.successful_retcode(sol)
@@ -112,7 +112,7 @@
         sol = solve(
             bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
             force_dtmin = true, abstol = 1.0e-6, reltol = 1.0e-6,
-            verbose = false, odesolve_kwargs = (abstol = 1.0e-6, reltol = 1.0e-3)
+            verbose = false, odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
         )
 
         @test SciMLBase.successful_retcode(sol)
