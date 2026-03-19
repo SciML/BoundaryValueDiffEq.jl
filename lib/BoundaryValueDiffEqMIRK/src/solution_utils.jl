@@ -66,6 +66,86 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: AbstractBou
 end
 
 """
+    interp_setup!(cache::MIRKCache)
+
+`interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
+Here, the ki_interp is the stages in one subinterval.
+"""
+@views function interp_setup!(
+        cache::MIRKCache{
+            iip, T, use_both, DiffCacheNeeded,
+        }
+    ) where {iip, T, use_both}
+    (; x_star, s_star, c_star, v_star) = cache.ITU
+    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
+    for r in 1:(s_star - stage)
+        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
+        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
+        for j in eachindex(k_discrete)
+            __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
+        end
+        if r > 1
+            for j in eachindex(k_interp)
+                __maybe_matmul!(
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
+                )
+            end
+        end
+        for i in eachindex(new_stages)
+            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
+                (1 - v_star[r]) .* vec(y[i].du) .+
+                v_star[r] .* vec(y[i + 1].du)
+            if iip
+                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            else
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] +
+                        c_star[r] * mesh_dt[i]
+                )
+            end
+        end
+    end
+
+    return k_interp
+end
+@views function interp_setup!(
+        cache::MIRKCache{
+            iip, T, use_both, NoDiffCacheNeeded,
+        }
+    ) where {iip, T, use_both}
+    (; x_star, s_star, c_star, v_star) = cache.ITU
+    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
+    for r in 1:(s_star - stage)
+        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
+        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
+        for j in eachindex(k_discrete)
+            __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
+        end
+        if r > 1
+            for j in eachindex(k_interp)
+                __maybe_matmul!(
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
+                )
+            end
+        end
+        for i in eachindex(new_stages)
+            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
+                (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
+            if iip
+                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            else
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] +
+                        c_star[r] * mesh_dt[i]
+                )
+            end
+        end
+    end
+
+    return k_interp
+end
+
+"""
     update_eval_sol!(eval_sol::EvalSol, y_, cache)
 
 Update the intermediate solution `eval_sol` with the new flattened solution `y_` and the cache. When evaluating boundary conditions with new solution during nonlinear solving, we should always update the intermediate solution with discrete solution + discrete stages + new stages(continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
@@ -74,7 +154,7 @@ Update the intermediate solution `eval_sol` with the new flattened solution `y_`
     eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
-    setup_interp!(eval_sol.cache)
+    interp_setup!(eval_sol.cache)
     return nothing
 end
 
