@@ -65,6 +65,11 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: AbstractBou
     return zvals
 end
 
+"""
+    update_eval_sol!(eval_sol::EvalSol, y_, cache)
+
+Update the intermediate solution `eval_sol` with the new flattened solution `y_` and the cache. When evaluating boundary conditions with new solution during nonlinear solving, we should always update the intermediate solution with discrete solution + discrete stages + new stages(continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
+"""
 @views function update_eval_sol!(eval_sol::EvalSol, y_, cache::AbstractBoundaryValueDiffEqCache)
     eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
