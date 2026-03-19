@@ -435,29 +435,65 @@ function __construct_problem(
     return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt, constraint)
 end
 
+@views function setup_interp!(
+        cache::MIRKCache{
+            iip, T, use_both, DiffCacheNeeded,
+        }
+    ) where {iip, T, use_both}
+    (; x_star, s_star, c_star, v_star) = cache.ITU
+    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
+    for r in 1:(s_star - stage)
+        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
+        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
+        for j in eachindex(k_discrete)
+            __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
+        end
+        if r > 1
+            for j in eachindex(k_interp)
+                __maybe_matmul!(
+                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
+                )
+            end
+        end
+        for i in eachindex(new_stages)
+            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
+                (1 - v_star[r]) .* vec(y[i].du) .+
+                v_star[r] .* vec(y[i + 1].du)
+            if iip
+                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
+            else
+                k_interp.u[i][:, r] .= f(
+                    new_stages.u[i], p, mesh[i] +
+                        c_star[r] * mesh_dt[i]
+                )
+            end
+        end
+    end
+
+    return k_interp
+end
+
 @views function __mirk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
-        cache, EvalSol, trait::DiffCacheNeeded, constraint
+        cache, eval_sol, trait::DiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
-    eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
+    update_eval_sol!(eval_sol, y_, cache)
+    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
 
 @views function __mirk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
-        cache, EvalSol, trait::NoDiffCacheNeeded, constraint
+        cache, eval_sol, trait::NoDiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait, constraint)
-    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
-    eval_bc_residual!(residual[1], pt, bc!, EvalSol, p, mesh)
+    update_eval_sol!(eval_sol, y_, cache)
+    eval_bc_residual!(residual[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, residual)
     return nothing
 end
@@ -512,13 +548,12 @@ end
 end
 
 @views function __mirk_loss(
-        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, EvalSol, trait
+        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol, trait
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, trait)
-    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
-    resid_bc = eval_bc_residual(pt, bc, EvalSol, p, mesh)
+    update_eval_sol!(eval_sol, y_, cache)
+    resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
 

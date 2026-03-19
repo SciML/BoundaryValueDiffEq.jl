@@ -51,6 +51,7 @@ const DI = DifferentiationInterface
 
 include("types.jl")
 include("algorithms.jl")
+include("solution_utils.jl")
 include("mirk.jl")
 include("adaptivity.jl")
 include("alg_utils.jl")
