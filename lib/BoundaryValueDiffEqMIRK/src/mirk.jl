@@ -440,12 +440,11 @@ end
         cache, EvalSol, trait::DiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resids = [get_tmp(r, u) for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait, constraint)
+    Φ!(residual[2:end], cache, y_, u, trait, constraint)
     EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
-    eval_bc_residual!(resids[1], pt, bc!, EvalSol, p, mesh)
-    recursive_flatten!(resid, resids)
+    eval_bc_residual!(get_tmp(residual[1], u), pt, bc!, EvalSol, p, mesh)
+    recursive_flatten!(resid, residual, u)
     return nothing
 end
 
@@ -480,12 +479,12 @@ end
         mesh, cache, _, trait::DiffCacheNeeded, constraint
     ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
-    resids = [get_tmp(r, u) for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    resida = resids[1][1:prod(cache.resid_size[1])]
-    residb = resids[1][(prod(cache.resid_size[1]) + 1):end]
+    Φ!(residual[2:end], cache, y_, u, trait, constraint)
+    resid0 = get_tmp(residual[1], u)
+    resida = resid0[1:prod(cache.resid_size[1])]
+    residb = resid0[(prod(cache.resid_size[1]) + 1):end]
     eval_bc_residual!((resida, residb), pt, bc!, y_, p, mesh)
-    recursive_flatten_twopoint!(resid, resids, cache.resid_size)
+    recursive_flatten_twopoint!(resid, residual, u, cache.resid_size)
     return nothing
 end
 
@@ -553,9 +552,9 @@ end
         resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [get_tmp(r, u) for r in residual[2:end]]
-    Φ!(resids, cache, y_, u, trait, constraint)
-    recursive_flatten!(resid, resids)
+    collocation_residual = residual[2:end]
+    Φ!(collocation_residual, cache, y_, u, trait, constraint)
+    recursive_flatten!(resid, collocation_residual, u)
     return nothing
 end
 
@@ -563,9 +562,9 @@ end
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
-    Φ!(resids, cache, y_, u, trait, constraint)
-    recursive_flatten!(resid, resids)
+    collocation_residual = residual[2:end]
+    Φ!(collocation_residual, cache, y_, u, trait, constraint)
+    recursive_flatten!(resid, collocation_residual)
     return nothing
 end
 
