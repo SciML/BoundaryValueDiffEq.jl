@@ -267,7 +267,7 @@ end
     end
 
     @testset "Test interpolation on multi-point BVP" begin
-        function prob_mp_analytic(u, t)
+        function prob_mp_analytic(u, p, t)
             return [
                 sin(t),
                 cos(t),
@@ -275,32 +275,37 @@ end
         end
 
         # ODE system
-        function prob_mp_f!(du, u, p, x)
+        function prob_mp_f!(du, u, p, t)
             du[1] = u[2]
             du[2] = -u[1]
         end
 
         # Independent multi-point boundary conditions
-        function prob_mp_bc!(residual, sol, p, x)
+        function prob_mp_bc!(residual, sol, p, t)
             residual[1] = sol(pi / 6)[1] - 0.5
             residual[2] = sol(pi / 3)[2] - 0.5
         end
 
+        prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
         prob_mp_tspan = (0.0, pi / 2)
-        prob_mp = BVProblem(prob_mp_f!, prob_mp_bc!, [0.0, 1.0], prob_mp_tspan)
+        prob_mp = BVProblem(prob_mp_function, prob_mp_bc!, [0.0, 1.0], prob_mp_tspan)
 
         @testset "Interpolation for adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
             sol = solve(prob_mp, mirk_solver(Val(order)); dt = 0.001)
-            sol_analytic = prob_mp_analytic(nothing, pi / 3)[2]
+            sol_analytic_1 = prob_mp_analytic(nothing, pi / 6)
+            sol_analytic_2 = prob_mp_analytic(nothing, pi / 3)
 
-            @test sol(pi / 3)[2] ≈ sol_analytic atol = testTol
+            @test sol(pi / 6) ≈ sol_analytic_1 atol = testTol
+            @test sol(pi / 3) ≈ sol_analytic_2 atol = testTol
         end
 
         @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
             sol = solve(prob_mp, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
-            sol_analytic = prob_mp_analytic(nothing, pi / 3)[2]
+            sol_analytic_1 = prob_mp_analytic(nothing, pi / 6)
+            sol_analytic_2 = prob_mp_analytic(nothing, pi / 3)
 
-            @test sol(pi / 3)[2] ≈ sol_analytic atol = testTol
+            @test sol(pi / 6) ≈ sol_analytic_1 atol = testTol
+            @test sol(pi / 3) ≈ sol_analytic_2 atol = testTol
         end
     end
 end

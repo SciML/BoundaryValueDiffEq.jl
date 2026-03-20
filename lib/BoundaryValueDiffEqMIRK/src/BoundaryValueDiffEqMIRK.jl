@@ -51,12 +51,11 @@ const DI = DifferentiationInterface
 
 include("types.jl")
 include("algorithms.jl")
-include("solution_utils.jl")
 include("mirk.jl")
+include("interpolation.jl")
 include("adaptivity.jl")
 include("alg_utils.jl")
 include("collocation.jl")
-include("interpolation.jl")
 include("mirk_tableaus.jl")
 include("sparse_jacobians.jl")
 
