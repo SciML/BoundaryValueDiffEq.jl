@@ -1,3 +1,6 @@
+@inline _maybe_get_tmp(x::DiffCache, u) = PreallocationTools.get_tmp(x, u)
+@inline _maybe_get_tmp(x, u) = x
+
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
@@ -15,11 +18,36 @@ end
     end
     return y
 end
+
+@views function recursive_flatten!(y::AbstractVector, x::AbstractVector{<:DiffCache}, u::AbstractVector)
+    i = 0
+    for xᵢ in x
+        tmp = PreallocationTools.get_tmp(xᵢ, u)
+        copyto!(y[(i + 1):(i + length(tmp))], tmp)
+        i += length(tmp)
+    end
+    return y
+end
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
     for xᵢ in xiter
+        copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
+        i += length(xᵢ)
+    end
+    copyto!(y[(i + 1):(i + prod(sizes[2]))], x_[(end - prod(sizes[2]) + 1):end])
+    return y
+end
+
+@views function recursive_flatten_twopoint!(
+        y::AbstractVector, x::AbstractVector{<:DiffCache}, u::AbstractVector, sizes
+    )
+    x_ = PreallocationTools.get_tmp(first(x), u)
+    copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
+    i = prod(sizes[1])
+    for j in 2:length(x)
+        xᵢ = PreallocationTools.get_tmp(x[j], u)
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
         i += length(xᵢ)
     end
