@@ -88,9 +88,9 @@ function SciMLBase.__init(
         ]
     end
     k_interp = if !constraint
-        VectorOfArray([similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
+        VectorOfArray([safe_similar(X, N, ITU.s_star - stage) for _ in 1:Nig])
     else
-        VectorOfArray([similar(X, L_f_prototype, ITU.s_star - stage) for _ in 1:Nig])
+        VectorOfArray([safe_similar(X, L_f_prototype, ITU.s_star - stage) for _ in 1:Nig])
     end
 
     bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
@@ -135,22 +135,22 @@ function SciMLBase.__init(
     errors = if !constraint
         VectorOfArray(
             [
-                similar(X, ifelse(adaptive, N, 0))
+                safe_similar(X, ifelse(adaptive, N, 0))
                     for _ in 1:ifelse(use_both, 2Nig, Nig)
             ]
         )
     else
         VectorOfArray(
             [
-                similar(X, ifelse(adaptive, L_f_prototype, 0))
+                safe_similar(X, ifelse(adaptive, L_f_prototype, 0))
                     for _ in 1:ifelse(use_both, 2Nig, Nig)
             ]
         )
     end
     new_stages = if !constraint
-        VectorOfArray([similar(X, N) for _ in 1:Nig])
+        VectorOfArray([safe_similar(X, N) for _ in 1:Nig])
     else
-        VectorOfArray([similar(X, L_f_prototype) for _ in 1:Nig])
+        VectorOfArray([safe_similar(X, L_f_prototype) for _ in 1:Nig])
     end
 
     # Transform the functions to handle non-vector inputs
