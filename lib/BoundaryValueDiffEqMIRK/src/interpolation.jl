@@ -236,7 +236,7 @@ end
 # Interpolate intermediate solution at multiple points
 function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     (; t, u, cache) = s
-    (; alg, stage, k_discrete, mesh_dt, M) = cache
+    (; alg, stage, k_discrete, k_interp, mesh_dt, M) = cache
     # Quick handle for the case where tval is at the boundary
     zvals = [zero(last(u)) for _ in tvals]
     f_prototype = cache.prob.f.f_prototype
@@ -363,13 +363,17 @@ end
 # Intermediate derivative solution for evaluating derivative boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     (; t, u, cache) = s
-    (; alg, stage, k_discrete, mesh_dt) = cache
-    z′ = zero(last(u))
+    (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
+    z′ = zeros(typeof(tval), cache.M)
     ii = interval(t, tval)
     dt = mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     _, w′ = interp_weights(τ, alg)
     __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    __maybe_matmul!(
+        z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]),
+        @view(w′[(stage + 1):cache.ITU.s_star]), true, true
+    )
     return z′
 end
 
