@@ -292,8 +292,8 @@ end
 
         @testset "Interpolation for adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
             sol = solve(prob_mp, mirk_solver(Val(order)); dt = 0.001)
-            sol_analytic_1 = prob_mp_analytic(nothing, pi / 6)
-            sol_analytic_2 = prob_mp_analytic(nothing, pi / 3)
+            sol_analytic_1 = prob_mp_analytic(nothing, nothing, pi / 6)
+            sol_analytic_2 = prob_mp_analytic(nothing, nothing, pi / 3)
 
             @test sol(pi / 6) ≈ sol_analytic_1 atol = testTol
             @test sol(pi / 3) ≈ sol_analytic_2 atol = testTol
@@ -301,8 +301,8 @@ end
 
         @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
             sol = solve(prob_mp, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
-            sol_analytic_1 = prob_mp_analytic(nothing, pi / 6)
-            sol_analytic_2 = prob_mp_analytic(nothing, pi / 3)
+            sol_analytic_1 = prob_mp_analytic(nothing, nothing, pi / 6)
+            sol_analytic_2 = prob_mp_analytic(nothing, nothing, pi / 3)
 
             @test sol(pi / 6) ≈ sol_analytic_1 atol = testTol
             @test sol(pi / 3) ≈ sol_analytic_2 atol = testTol

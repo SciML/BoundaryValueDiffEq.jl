@@ -202,7 +202,7 @@ end
 
 # Intermediate solution for evaluating boundary conditions
 # basically simplified version of the interpolation for MIRK
-function (s::EvalSol{C})(tval::Number) where {C <: AbstractBoundaryValueDiffEqCache}
+function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (; t, u, cache) = s
     (; alg, stage, k_discrete, k_interp, M) = cache
     # Quick handle for the case where tval is at the boundary
@@ -234,7 +234,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: AbstractBoundaryValueDiffEqCa
 end
 
 # Interpolate intermediate solution at multiple points
-function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: AbstractBoundaryValueDiffEqCache}
+function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     (; t, u, cache) = s
     (; alg, stage, k_discrete, mesh_dt, M) = cache
     # Quick handle for the case where tval is at the boundary
@@ -352,7 +352,7 @@ end
 
 Update the intermediate solution `eval_sol` with the new flattened solution `y_` and the cache. When evaluating boundary conditions with new solution during nonlinear solving, we should always update the intermediate solution with discrete solution + discrete stages + new stages(Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
 """
-@views function update_eval_sol!(eval_sol::EvalSol, y_, cache::AbstractBoundaryValueDiffEqCache)
+@views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
     eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
     eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
@@ -361,7 +361,7 @@ Update the intermediate solution `eval_sol` with the new flattened solution `y_`
 end
 
 # Intermediate derivative solution for evaluating derivative boundary conditions
-function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: AbstractBoundaryValueDiffEqCache}
+function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     (; t, u, cache) = s
     (; alg, stage, k_discrete, mesh_dt) = cache
     z′ = zero(last(u))
@@ -378,7 +378,7 @@ Construct n root-finding problems and solve them to find the critical points wit
 """
 function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) where {
         C <:
-        AbstractBoundaryValueDiffEqCache,
+        MIRKCache,
     }
     (; alg) = sol.cache
     n = first(size(sol))
@@ -402,7 +402,7 @@ end
 
 Find the maximum of the solution over the time span `tspan`.
 """
-function maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: AbstractBoundaryValueDiffEqCache}
+function maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
     nlsols = __construct_then_solve_root_problem(sol, tspan)
     tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
     u = sol(tvals)
@@ -414,7 +414,7 @@ end
 
 Find the minimum of the solution over the time span `tspan`.
 """
-function minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: AbstractBoundaryValueDiffEqCache}
+function minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
     nlsols = __construct_then_solve_root_problem(sol, tspan)
     tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
     u = sol(tvals)
