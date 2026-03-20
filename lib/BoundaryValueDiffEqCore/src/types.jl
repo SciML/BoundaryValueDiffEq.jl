@@ -175,14 +175,11 @@ function __maybe_allocate_diffcache(x, chunksize, jac_alg)
 end
 __maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(zero(x.du), chunksize)
 
-## get_tmp shows a warning as it should on cache expansion, this behavior however is
-## expected for adaptive BVP solvers so we write our own `get_tmp` and drop the warning logs
-
-@inline function get_tmp(dc, u)
-    return Logging.with_logger(Logging.NullLogger()) do
-        PreallocationTools.get_tmp(dc, u)
-    end
-end
+## PreallocationTools.get_tmp may warn on cache expansion (resize), which is expected
+## behavior for adaptive BVP solvers. We call it directly here for performance;
+## warnings during adaptive cache expansion are suppressed at the __expand_cache! call site.
+@inline get_tmp(dc::DiffCache, u) = PreallocationTools.get_tmp(dc, u)
+@inline get_tmp(dc, u) = dc
 
 # DiffCache
 struct DiffCacheNeeded end
