@@ -181,17 +181,22 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
     )
 end
 
-function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {
-        iip, T,
-    }
-    info::ReturnCode.T = ReturnCode.Success
-    nlprob = __construct_nlproblem(cache)
+# Function barrier to ensure type-stable solve of internal nonlinear/optimization problem.
+@inline function __solve_internal_problem(nlprob, cache::AscherCache)
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
         cache.verbose
     )
-    nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
+    return __internal_solve(nlprob, solve_alg; kwargs...)
+end
+
+function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {
+        iip, T,
+    }
+    info::ReturnCode.T = ReturnCode.Success
+    nlprob = __construct_nlproblem(cache)
+    nlsol = __solve_internal_problem(nlprob, cache)
     error_norm = 2 * abstol
     info = nlsol.retcode
 

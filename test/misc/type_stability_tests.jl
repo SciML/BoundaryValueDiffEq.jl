@@ -1,5 +1,5 @@
 @testitem "Type Stability" begin
-    using LinearAlgebra, BoundaryValueDiffEq, OrdinaryDiffEqTsit5
+    using LinearAlgebra, BoundaryValueDiffEq, OrdinaryDiffEqTsit5, SciMLBase
 
     f(u, p, t) = [p[1] * u[1] - p[2] * u[1] * u[2], p[3] * u[1] * u[2] - p[4] * u[2]]
     function f!(du, u, p, t)
@@ -23,6 +23,28 @@
     bcresid_prototype = (zeros(1), zeros(1))
 
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+
+    # BVProblem constructor type stability (issue #454)
+    @testset "BVProblem Constructor" begin
+        # Explicit iip constructors should be type-stable
+        @inferred BVProblem{true}(f!, bc!, u0, tspan, p)
+        @inferred BVProblem{false}(f, bc, u0, tspan, p)
+        @inferred BVProblem{true}(f!, bc!, u0, tspan, p; nlls = Val(false))
+        @inferred BVProblem{false}(f, bc, u0, tspan, p; nlls = Val(false))
+
+        # TwoPointBVProblem explicit iip constructors (with nlls for type stability)
+        @inferred TwoPointBVProblem{true}(
+            f!, (twobc_a!, twobc_b!), u0, tspan, p;
+            bcresid_prototype, nlls = Val(false)
+        )
+        @inferred TwoPointBVProblem{false}(
+            f, (twobc_a, twobc_b), u0, tspan, p; nlls = Val(false)
+        )
+
+        # __init should be type-stable with properly typed problems
+        prob_iip = BVProblem{true}(f!, bc!, u0, tspan, p; nlls = Val(false))
+        @inferred SciMLBase.__init(prob_iip, MIRK5(; jac_alg); dt = 0.2)
+    end
 
     # Multi-Point BVP
     @testset "Multi-Point BVP" begin

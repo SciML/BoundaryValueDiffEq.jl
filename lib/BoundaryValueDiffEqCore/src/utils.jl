@@ -515,11 +515,16 @@ end
         ::BVProblem{uType, tType, iip, Nothing}, l1::Int,
         l2::Int, args...; kwargs...
     ) where {uType, tType, iip}
-    if l1 != l2
-        return NonlinearLeastSquaresProblem(args...; kwargs...)
-    else
-        return NonlinearProblem(args...; kwargs...)
-    end
+    is_nlls = l1 != l2
+    return __internal_nlsolve_problem_barrier(Val(is_nlls), args...; kwargs...)
+end
+
+@inline function __internal_nlsolve_problem_barrier(::Val{true}, args...; kwargs...)
+    return NonlinearLeastSquaresProblem(args...; kwargs...)
+end
+
+@inline function __internal_nlsolve_problem_barrier(::Val{false}, args...; kwargs...)
+    return NonlinearProblem(args...; kwargs...)
 end
 
 @inline function __internal_nlsolve_problem(
