@@ -200,8 +200,12 @@ end
 
 @inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
 
-# Intermediate solution for evaluating boundary conditions
-# basically simplified version of the interpolation for MIRK
+"""
+    EvalSol
+
+Intermidiate solution for evaluating boundary conditions.
+It contains the discrete solution, discrete stages and new stages for interpolation.
+"""
 function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (; t, u, cache) = s
     (; alg, stage, k_discrete, k_interp, M) = cache
@@ -267,11 +271,24 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     return zvals
 end
 
+# Intermediate derivative solution for evaluating derivative boundary conditions
+function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
+    (; t, u, cache) = s
+    (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
+    z′ = zeros(typeof(tval), cache.M)
+    ii = interval(t, tval)
+    dt = mesh_dt[ii]
+    τ = (tval - t[ii]) / dt
+    _, w′ = interp_weights(τ, alg)
+    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    return z′
+end
+
 """
     interp_setup!(cache::MIRKCache)
 
-`interp_setup!` prepare the extra stages in ki_interp for interpolant construction.
-Here, the ki_interp is the stages in one subinterval.
+`interp_setup!` prepare the extra stages in `ki_interp`` for interpolant construction.
+Here, the `ki_interp`` is the stages in one subinterval.
 """
 @views function interp_setup!(
         cache::MIRKCache{
@@ -348,9 +365,12 @@ end
 end
 
 """
-    update_eval_sol!(eval_sol::EvalSol, y_, cache)
+    update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
 
-Update the intermediate solution `eval_sol` with the new flattened solution `y_` and the cache. When evaluating boundary conditions with new solution during nonlinear solving, we should always update the intermediate solution with discrete solution + discrete stages + new stages(Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
+Update the intermediate solution `eval_sol` with the new flattened solution `y_` and the cache.
+When evaluating boundary conditions with new solution during nonlinear solving, we should
+always update the intermediate solution with discrete solution + discrete stages + new stages
+(Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
 """
 @views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
     eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
@@ -358,23 +378,6 @@ Update the intermediate solution `eval_sol` with the new flattened solution `y_`
     eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
     interp_setup!(eval_sol.cache)
     return nothing
-end
-
-# Intermediate derivative solution for evaluating derivative boundary conditions
-function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
-    (; t, u, cache) = s
-    (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
-    z′ = zeros(typeof(tval), cache.M)
-    ii = interval(t, tval)
-    dt = mesh_dt[ii]
-    τ = (tval - t[ii]) / dt
-    _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
-    __maybe_matmul!(
-        z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]),
-        @view(w′[(stage + 1):cache.ITU.s_star]), true, true
-    )
-    return z′
 end
 
 """
