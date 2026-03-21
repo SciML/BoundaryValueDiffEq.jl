@@ -203,7 +203,7 @@ end
 """
     EvalSol
 
-Intermidiate solution for evaluating boundary conditions.
+Intermediate solution for evaluating boundary conditions.
 It contains the discrete solution, discrete stages and new stages for interpolation.
 """
 function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
