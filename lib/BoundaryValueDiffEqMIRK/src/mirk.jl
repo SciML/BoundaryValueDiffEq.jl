@@ -301,14 +301,22 @@ function SciMLBase.solve!(
     return __build_solution(prob, odesol, sol_nlprob)
 end
 
-function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+# Function barrier to ensure type-stable solve of internal nonlinear/optimization problem.
+# Without this, the Union{NonlinearProblem, NonlinearLeastSquaresProblem} return type from
+# __construct_problem propagates through the solve chain, causing type instability.
+@inline function __solve_internal_problem(nlprob, cache::MIRKCache)
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
         cache.verbose
     )
-    sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
+    sol = __internal_solve(nlprob, solve_alg; kwargs...)
+    return sol, solve_alg
+end
+
+function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
+    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    sol_nlprob, solve_alg = __solve_internal_problem(nlprob, cache)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     error_norm = 2 * abstol

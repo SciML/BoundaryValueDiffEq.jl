@@ -67,9 +67,7 @@ function SciMLBase.__solve(
         prob, alg, loss_fn, jac_fn, jac_prototype,
         resid_prototype, u0, prob.p, length(u0), 1, nothing, iip
     )
-    solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
-    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs, verbose_spec)
-    nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
+    nlsol = __solve_shooting_internal_problem(nlprob, alg, nlsolve_kwargs, optimize_kwargs, verbose_spec)
 
     # There is no way to reinit with the same cache with different cache. But not saving
     # the internal values gives a significant speedup. So we just create a new cache
@@ -79,6 +77,13 @@ function SciMLBase.__solve(
     odesol = __solve(internal_prob_final, alg.ode_alg; actual_ode_kwargs...)
 
     return __build_solution(prob, odesol, nlsol)
+end
+
+# Function barrier to ensure type-stable solve of internal nonlinear/optimization problem.
+@inline function __solve_shooting_internal_problem(nlprob, alg, nlsolve_kwargs, optimize_kwargs, verbose_spec)
+    solve_alg = __concrete_solve_algorithm(nlprob, alg.nlsolve, alg.optimize)
+    kwargs = __concrete_kwargs(alg.nlsolve, alg.optimize, nlsolve_kwargs, optimize_kwargs, verbose_spec)
+    return __internal_solve(nlprob, solve_alg; kwargs...)
 end
 
 # Helper functions with Val dispatch for type stability

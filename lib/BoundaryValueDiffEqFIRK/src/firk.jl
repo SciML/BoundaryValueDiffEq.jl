@@ -542,14 +542,20 @@ function SciMLBase.solve!(
     return __build_solution(prob, odesol, sol_nlprob)
 end
 
-function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+# Function barrier to ensure type-stable solve of internal nonlinear/optimization problem.
+@inline function __solve_internal_problem(nlprob, cache::Union{FIRKCacheExpand, FIRKCacheNested})
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
         cache.verbose
     )
-    sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
+    sol = __internal_solve(nlprob, solve_alg; kwargs...)
+    return sol, solve_alg
+end
+
+function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
+    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    sol_nlprob, solve_alg = __solve_internal_problem(nlprob, cache)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     defect_norm = 2 * abstol

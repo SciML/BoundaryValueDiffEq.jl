@@ -136,14 +136,19 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
     return __build_solution(cache.prob, odesol, sol_nlprob)
 end
 
-function __perform_mirkn_iteration(cache::MIRKNCache)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
+# Function barrier to ensure type-stable solve of internal nonlinear/optimization problem.
+@inline function __solve_internal_problem(nlprob, cache::MIRKNCache)
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
         cache.verbose
     )
-    sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
+    return __internal_solve(nlprob, solve_alg; kwargs...)
+end
+
+function __perform_mirkn_iteration(cache::MIRKNCache)
+    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
+    sol_nlprob = __solve_internal_problem(nlprob, cache)
     recursive_unflatten!(cache.y₀, sol_nlprob.u)
 
     return sol_nlprob, sol_nlprob.retcode
