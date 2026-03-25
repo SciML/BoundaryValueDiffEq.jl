@@ -273,7 +273,7 @@ end
 
 # Intermediate derivative solution for evaluating derivative boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
-    (; t, u, cache) = s
+    (; t, cache) = s
     (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
     z′ = zeros(typeof(tval), cache.M)
     ii = interval(t, tval)
@@ -281,6 +281,10 @@ function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     τ = (tval - t[ii]) / dt
     _, w′ = interp_weights(τ, alg)
     __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    __maybe_matmul!(
+        z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
+        true, true
+    )
     return z′
 end
 
@@ -387,7 +391,6 @@ function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) wher
         C <:
         MIRKCache,
     }
-    (; alg) = sol.cache
     n = first(size(sol))
     nlprobs = Vector{SciMLBase.NonlinearProblem}(undef, n)
     nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
