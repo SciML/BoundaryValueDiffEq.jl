@@ -1,3 +1,6 @@
+@inline _maybe_get_tmp(x::DiffCache, u) = PreallocationTools.get_tmp(x, u)
+@inline _maybe_get_tmp(x, u) = x
+
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
@@ -15,11 +18,36 @@ end
     end
     return y
 end
+
+@views function recursive_flatten!(y::AbstractVector, x::AbstractVector{<:DiffCache}, u::AbstractVector)
+    i = 0
+    for xᵢ in x
+        tmp = PreallocationTools.get_tmp(xᵢ, u)
+        copyto!(y[(i + 1):(i + length(tmp))], tmp)
+        i += length(tmp)
+    end
+    return y
+end
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
     for xᵢ in xiter
+        copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
+        i += length(xᵢ)
+    end
+    copyto!(y[(i + 1):(i + prod(sizes[2]))], x_[(end - prod(sizes[2]) + 1):end])
+    return y
+end
+
+@views function recursive_flatten_twopoint!(
+        y::AbstractVector, x::AbstractVector{<:DiffCache}, u::AbstractVector, sizes
+    )
+    x_ = PreallocationTools.get_tmp(first(x), u)
+    copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
+    i = prod(sizes[1])
+    for j in 2:length(x)
+        xᵢ = PreallocationTools.get_tmp(x[j], u)
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
         i += length(xᵢ)
     end
@@ -37,6 +65,28 @@ end
 end
 
 @views function recursive_unflatten!(y::Vector{<:DiffCache}, x::AbstractVector)
+    return recursive_unflatten!(get_tmp.(y, (x,)), x)
+end
+
+# Non-allocating version with pre-allocated output cache.
+# When element types match (primal path), fills y_cache in-place.
+# When they don't (Dual path), falls back to broadcast allocation.
+@views function recursive_unflatten!(
+        y::Vector{<:DiffCache}, y_cache::Vector{<:AbstractVector{T}}, x::AbstractVector{T}
+    ) where {T}
+    i = 0
+    for (j, yᵢ) in enumerate(y)
+        tmp = PreallocationTools.get_tmp(yᵢ, x)
+        y_cache[j] = tmp
+        copyto!(tmp, x[(i + 1):(i + length(tmp))])
+        i += length(tmp)
+    end
+    return y_cache
+end
+
+@views function recursive_unflatten!(
+        y::Vector{<:DiffCache}, y_cache::Vector, x::AbstractVector
+    )
     return recursive_unflatten!(get_tmp.(y, (x,)), x)
 end
 
@@ -67,6 +117,21 @@ end
 @views function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
     @simd ivdep for j in eachindex(b)
         @inbounds @. z = α * A[:, j] * b[j] + β * z
+    end
+    return z
+end
+
+function __maybe_matmul!(z::AbstractArray, A::AbstractVector{<:AbstractVector}, b,
+        α = eltype(z)(1), β = eltype(z)(0))
+    @inbounds for i in eachindex(z)
+        z[i] *= β
+    end
+    @inbounds for j in eachindex(b)
+        bj = α * b[j]
+        Aj = A[j]
+        @simd ivdep for i in eachindex(z)
+            z[i] += Aj[i] * bj
+        end
     end
     return z
 end
@@ -255,6 +320,21 @@ function __resize!(x::AbstractVector{<:DiffCache}, n, M)
     if N > 0
         chunksize = pickchunksize(M * (N + length(x)))
         append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
+    else
+        resize!(x, n)
+    end
+    return x
+end
+
+function __resize!(x::AbstractVector{<:AbstractVector{<:DiffCache}}, n, M)
+    N = n - length(x)
+    N == 0 && return x
+    if N > 0
+        chunksize = pickchunksize(M * (N + length(x)))
+        append!(x, [
+            [__maybe_allocate_diffcache(dc, chunksize) for dc in last(x)]
+            for _ in 1:N
+        ])
     else
         resize!(x, n)
     end

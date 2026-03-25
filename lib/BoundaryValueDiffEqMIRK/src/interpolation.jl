@@ -104,7 +104,13 @@ end
     # state variables have their interpolation polynomials
     length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
     z .= zero(z)
-    __maybe_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
+    k_du = [dc.du for dc in k_discrete[i]]
+    if has_control
+        k_du_sub = [v[1:length_z] for v in k_du]
+        __maybe_matmul!(z[1:length_z], k_du_sub, w[1:stage])
+    else
+        __maybe_matmul!(z[1:length_z], k_du, w[1:stage])
+    end
     __maybe_matmul!(
         z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true
@@ -132,7 +138,12 @@ end
     length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
 
     z .= zero(z)
-    __maybe_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
+    if has_control
+        k_sub = [v[1:length_z] for v in k_discrete[i]]
+        __maybe_matmul!(z[1:length_z], k_sub, w[1:stage])
+    else
+        __maybe_matmul!(z[1:length_z], k_discrete[i], w[1:stage])
+    end
     __maybe_matmul!(
         z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true
@@ -159,7 +170,13 @@ end
     length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
+    k_du = [dc.du for dc in k_discrete[i]]
+    if has_control
+        k_du_sub = [v[1:length_z] for v in k_du]
+        __maybe_matmul!(z′[1:length_z], k_du_sub, w′[1:stage])
+    else
+        __maybe_matmul!(z′[1:length_z], k_du, w′[1:stage])
+    end
     __maybe_matmul!(
         z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
@@ -183,7 +200,12 @@ end
     length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
+    if has_control
+        k_sub = [v[1:length_z] for v in k_discrete[i]]
+        __maybe_matmul!(z′[1:length_z], k_sub, w′[1:stage])
+    else
+        __maybe_matmul!(z′[1:length_z], k_discrete[i], w′[1:stage])
+    end
     __maybe_matmul!(
         z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
@@ -215,8 +237,8 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     w, _ = evalsol_interp_weights(τ, alg)
-    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
-        @view(k_discrete[ii][:, 1:stage])
+    K = __needs_diffcache(alg.jac_alg) ? [dc.du for dc in k_discrete[ii]] :
+        k_discrete[ii]
     __maybe_matmul!(z[1:length_z], K, @view(w[1:stage]))
 
     # control variable just use linear interpolation
@@ -245,8 +267,8 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
         dt = mesh_dt[ii]
         τ = (tval - t[ii]) / dt
         w, _ = evalsol_interp_weights(τ, alg)
-        K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
-            @view(k_discrete[ii][:, 1:stage])
+        K = __needs_diffcache(alg.jac_alg) ? [dc.du for dc in k_discrete[ii]] :
+            k_discrete[ii]
         __maybe_matmul!(zvals[i][1:length_z], K, @view(w[1:stage]))
 
         # control variable just use linear interpolation
@@ -268,7 +290,7 @@ function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     dt = mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    __maybe_matmul!(z′, [dc.du for dc in k_discrete[ii]], @view(w′[1:stage]))
     return z′
 end
 
