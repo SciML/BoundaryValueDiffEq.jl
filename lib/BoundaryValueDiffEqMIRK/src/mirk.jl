@@ -441,8 +441,8 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait, constraint)
-    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
+    copyto!(EvalSol.u, __restructure_sol(y_, cache.in_size))
+    copyto!(EvalSol.cache.k_discrete, cache.k_discrete)
     eval_bc_residual!(get_tmp(residual[1], u), pt, bc!, EvalSol, p, mesh)
     recursive_flatten!(resid, residual, u)
     return nothing
@@ -454,8 +454,8 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait, constraint)
-    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
+    copyto!(EvalSol.u, __restructure_sol(y_, cache.in_size))
+    copyto!(EvalSol.cache.k_discrete, cache.k_discrete)
     eval_bc_residual!(residual[1], pt, bc!, EvalSol, p, mesh)
     recursive_flatten!(resid, residual)
     return nothing
@@ -515,8 +515,8 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, trait)
-    EvalSol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    EvalSol.cache.k_discrete[1:end] .= cache.k_discrete
+    copyto!(EvalSol.u, __restructure_sol(y_, cache.in_size))
+    copyto!(EvalSol.cache.k_discrete, cache.k_discrete)
     resid_bc = eval_bc_residual(pt, bc, EvalSol, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
