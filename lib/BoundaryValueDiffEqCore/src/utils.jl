@@ -121,6 +121,21 @@ end
     return z
 end
 
+function __maybe_matmul!(z::AbstractArray, A::AbstractVector{<:AbstractVector}, b,
+        α = eltype(z)(1), β = eltype(z)(0))
+    @inbounds for i in eachindex(z)
+        z[i] *= β
+    end
+    @inbounds for j in eachindex(b)
+        bj = α * b[j]
+        Aj = A[j]
+        @simd ivdep for i in eachindex(z)
+            z[i] += Aj[i] * bj
+        end
+    end
+    return z
+end
+
 """
     interval(mesh, t)
 
@@ -305,6 +320,21 @@ function __resize!(x::AbstractVector{<:DiffCache}, n, M)
     if N > 0
         chunksize = pickchunksize(M * (N + length(x)))
         append!(x, [__maybe_allocate_diffcache(last(x), chunksize) for _ in 1:N])
+    else
+        resize!(x, n)
+    end
+    return x
+end
+
+function __resize!(x::AbstractVector{<:AbstractVector{<:DiffCache}}, n, M)
+    N = n - length(x)
+    N == 0 && return x
+    if N > 0
+        chunksize = pickchunksize(M * (N + length(x)))
+        append!(x, [
+            [__maybe_allocate_diffcache(dc, chunksize) for dc in last(x)]
+            for _ in 1:N
+        ])
     else
         resize!(x, n)
     end

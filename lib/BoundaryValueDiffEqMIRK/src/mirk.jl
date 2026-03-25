@@ -80,13 +80,15 @@ function SciMLBase.__init(
 
     k_discrete = if !constraint
         [
-            __maybe_allocate_diffcache(safe_similar(X, N, stage), chunksize, alg.jac_alg)
-                for _ in 1:Nig
+            [__maybe_allocate_diffcache(safe_similar(X, N), chunksize, alg.jac_alg)
+                for _ in 1:stage]
+            for _ in 1:Nig
         ]
     else
         [
-            __maybe_allocate_diffcache(safe_similar(X, L_f_prototype, stage), chunksize, alg.jac_alg)
-                for _ in 1:Nig
+            [__maybe_allocate_diffcache(safe_similar(X, L_f_prototype), chunksize, alg.jac_alg)
+                for _ in 1:stage]
+            for _ in 1:Nig
         ]
     end
     k_interp = if !constraint

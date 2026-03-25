@@ -583,7 +583,7 @@ Here, the ki_interp is the stages in one subinterval.
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
         for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
+            __maybe_matmul!(new_stages.u[j], [dc.du for dc in k_discrete[j]], x_star[idx₁])
         end
         if r > 1
             for j in eachindex(k_interp)
@@ -620,7 +620,7 @@ end
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
         for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
+            __maybe_matmul!(new_stages.u[j], k_discrete[j], x_star[idx₁])
         end
         if r > 1
             for j in eachindex(k_interp)
@@ -675,7 +675,7 @@ end
     (; s_star) = cache.ITU
 
     fᵢ₂_cache .= zero(z)
-    __maybe_matmul!(fᵢ₂_cache, k_discrete[i].du[:, 1:stage], w[1:stage])
+    __maybe_matmul!(fᵢ₂_cache, [dc.du for dc in k_discrete[i]], w[1:stage])
     __maybe_matmul!(
         fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
     )
@@ -691,7 +691,7 @@ end
     (; s_star) = cache.ITU
 
     fᵢ₂_cache .= zero(z)
-    __maybe_matmul!(fᵢ₂_cache, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(fᵢ₂_cache, k_discrete[i], w[1:stage])
     __maybe_matmul!(
         fᵢ₂_cache, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
     )
@@ -708,13 +708,14 @@ end
     (; stage, k_discrete, k_interp) = cache
     (; s_star) = cache.ITU
 
+    k_du = [dc.du for dc in k_discrete[i]]
     z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i].du[:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_du, w[1:stage])
     __maybe_matmul!(
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
     )
     z′ .= zero(z′)
-    __maybe_matmul!(z′, k_discrete[i].du[:, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′, k_du, w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true
     )
@@ -731,12 +732,12 @@ end
     (; s_star) = cache.ITU
 
     z .= zero(z)
-    __maybe_matmul!(z, k_discrete[i][:, 1:stage], w[1:stage])
+    __maybe_matmul!(z, k_discrete[i], w[1:stage])
     __maybe_matmul!(
         z, k_interp.u[i][:, 1:(s_star - stage)], w[(stage + 1):s_star], true, true
     )
     z′ .= zero(z′)
-    __maybe_matmul!(z′, k_discrete[i][:, 1:stage], w′[1:stage])
+    __maybe_matmul!(z′, k_discrete[i], w′[1:stage])
     __maybe_matmul!(
         z′, k_interp.u[i][:, 1:(s_star - stage)], w′[(stage + 1):s_star], true, true
     )
