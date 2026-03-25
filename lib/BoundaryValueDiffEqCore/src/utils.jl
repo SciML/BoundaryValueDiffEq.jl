@@ -68,6 +68,28 @@ end
     return recursive_unflatten!(get_tmp.(y, (x,)), x)
 end
 
+# Non-allocating version with pre-allocated output cache.
+# When element types match (primal path), fills y_cache in-place.
+# When they don't (Dual path), falls back to broadcast allocation.
+@views function recursive_unflatten!(
+        y::Vector{<:DiffCache}, y_cache::Vector{<:AbstractVector{T}}, x::AbstractVector{T}
+    ) where {T}
+    i = 0
+    for (j, yᵢ) in enumerate(y)
+        tmp = PreallocationTools.get_tmp(yᵢ, x)
+        y_cache[j] = tmp
+        copyto!(tmp, x[(i + 1):(i + length(tmp))])
+        i += length(tmp)
+    end
+    return y_cache
+end
+
+@views function recursive_unflatten!(
+        y::Vector{<:DiffCache}, y_cache::Vector, x::AbstractVector
+    )
+    return recursive_unflatten!(get_tmp.(y, (x,)), x)
+end
+
 @views function recursive_unflatten!(y::AbstractVectorOfArray, x::AbstractVector)
     i = 0
     for yᵢ in y

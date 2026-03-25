@@ -22,9 +22,10 @@
     y
     y₀
     residual
-    # The following 2 caches are never resized
+    # The following 3 caches are never resized
     fᵢ_cache
     fᵢ₂_cache
+    y_cache                        # Pre-allocated get_tmp pointers for primal path
     errors
     new_stages
     resid_size
@@ -66,6 +67,7 @@ function SciMLBase.__init(
 
     fᵢ_cache = __alloc(zero(X))
     fᵢ₂_cache = vec(zero(X))
+    y_cache = Vector{Vector{T}}(undef, Nig + 1)
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
@@ -231,7 +233,7 @@ function SciMLBase.__init(
     return MIRKCache{iip, T, use_both, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, N, size(X), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
-        y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
+        y₀, residual, fᵢ_cache, fᵢ₂_cache, y_cache, errors, new_stages, resid₁_size, prob.singular_term
         , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
     )
 end
@@ -251,6 +253,7 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     __resize!(cache.residual, Nₙ, cache.M)
     __resize!(cache.errors, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __resize!(cache.new_stages, Nₙ - 1, cache.M)
+    resize!(cache.y_cache, Nₙ)
     return cache
 end
 
@@ -439,8 +442,8 @@ end
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
         cache, EvalSol, trait::DiffCacheNeeded, constraint
     ) where {BC}
-    y_ = recursive_unflatten!(y, u)
-    Φ!(residual[2:end], cache, y_, u, trait, constraint)
+    y_ = recursive_unflatten!(y, cache.y_cache, u)
+    Φ!(residual[2:end], cache, y, u, trait, constraint)
     copyto!(EvalSol.u, __restructure_sol(y_, cache.in_size))
     copyto!(EvalSol.cache.k_discrete, cache.k_discrete)
     eval_bc_residual!(get_tmp(residual[1], u), pt, bc!, EvalSol, p, mesh)
@@ -478,8 +481,8 @@ end
         resid, u, p, y, pt::TwoPointBVProblem, bc!::Tuple{BC1, BC2}, residual,
         mesh, cache, _, trait::DiffCacheNeeded, constraint
     ) where {BC1, BC2}
-    y_ = recursive_unflatten!(y, u)
-    Φ!(residual[2:end], cache, y_, u, trait, constraint)
+    y_ = recursive_unflatten!(y, cache.y_cache, u)
+    Φ!(residual[2:end], cache, y, u, trait, constraint)
     resid0 = get_tmp(residual[1], u)
     resida = resid0[1:prod(cache.resid_size[1])]
     residb = resid0[(prod(cache.resid_size[1]) + 1):end]
@@ -551,9 +554,9 @@ end
 @views function __mirk_loss_collocation!(
         resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded, constraint
     )
-    y_ = recursive_unflatten!(y, u)
+    recursive_unflatten!(y, cache.y_cache, u)
     collocation_residual = residual[2:end]
-    Φ!(collocation_residual, cache, y_, u, trait, constraint)
+    Φ!(collocation_residual, cache, y, u, trait, constraint)
     recursive_flatten!(resid, collocation_residual, u)
     return nothing
 end
