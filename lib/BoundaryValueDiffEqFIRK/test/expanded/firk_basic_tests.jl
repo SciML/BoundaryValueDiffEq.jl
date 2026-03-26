@@ -525,3 +525,43 @@ end
     @test sol_struct.prob.p.params ≈ [17.09658] atol = 1.0e-5
     @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
 end
+
+@testitem "Test initial guess" begin
+    tspan = (0.0, 1.0)
+    function f!(du, u, p, t)
+        cond = 0.002
+        vol_heat = 0.2
+        du[1] = -u[2] / cond
+        du[2] = vol_heat
+        du[3] = 0.0
+    end
+    function bca!(res_a, u_a, p)
+        res_a[1] = u_a[2]
+        res_a[2] = u_a[1] - 100.0
+    end
+    function bcb!(res_b, u_b, p)
+        tref = 20.0
+        res_b[1] = u_b[3] * (u_b[1] - tref) - u_b[2]
+    end
+    u_guess = [
+        [100.0, 0.0, 0.006666666666666668],
+        [99.5, 0.020000000000000004, 0.006666666666666668],
+        [98.0, 0.04000000000000001, 0.006666666666666668],
+        [95.5, 0.060000000000000005, 0.006666666666666668],
+        [92.0, 0.08000000000000002, 0.006666666666666668],
+        [87.5, 0.1, 0.006666666666666668],
+        [82.0, 0.12000000000000001, 0.006666666666666668],
+        [75.5, 0.14, 0.006666666666666668],
+        [68.0, 0.16000000000000003, 0.006666666666666668],
+        [59.49999999999999, 0.18000000000000002, 0.006666666666666668],
+        [50.0, 0.2, 0.006666666666666668],
+    ]
+
+    bvp1 = TwoPointBVProblem(f!, (bca!, bcb!), u_guess, tspan; bcresid_prototype = (zeros(2), zeros(1)))
+    sol1 = solve(bvp1, RadauIIa5(), dt = 0.1, nlsolve_kwargs = (; maxiters = 0))
+    @test sol1.u == u_guess
+
+    bvp2 = TwoPointBVProblem(f!, (bca!, bcb!), sol1, tspan; bcresid_prototype = (zeros(2), zeros(1)))
+    sol2 = solve(bvp2, RadauIIa5(), dt = 0.1, nlsolve_kwargs = (; maxiters = 0))
+    @test sol2.u == u_guess
+end
