@@ -1,5 +1,5 @@
 @testitem "Type Stability" begin
-    using LinearAlgebra, BoundaryValueDiffEq, OrdinaryDiffEqTsit5
+    using LinearAlgebra, BoundaryValueDiffEq, OrdinaryDiffEqTsit5, SciMLBase
 
     f(u, p, t) = [p[1] * u[1] - p[2] * u[1] * u[2], p[3] * u[1] * u[2] - p[4] * u[2]]
     function f!(du, u, p, t)
@@ -24,10 +24,22 @@
 
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
 
+    # BVProblem constructor type stability (issue #454)
+    # Explicit {iip} constructors should be type-stable
+    @testset "BVProblem Constructor" begin
+        @inferred BVProblem{true}(f!, bc!, u0, tspan, p)
+        @inferred BVProblem{false}(f, bc, u0, tspan, p)
+
+        # __init should be type-stable with properly typed problems
+        prob_iip = BVProblem{true}(f!, bc!, u0, tspan, p)
+        @inferred SciMLBase.__init(prob_iip, MIRK5(; jac_alg); dt = 0.2)
+    end
+
     # Multi-Point BVP
+    # nlls is properly inferred as false for StandardBVProblem without bcresid_prototype
     @testset "Multi-Point BVP" begin
-        mpbvp_iip = BVProblem(f!, bc!, u0, tspan, p; nlls = Val(false))
-        mpbvp_oop = BVProblem(f, bc, u0, tspan, p; nlls = Val(false))
+        mpbvp_iip = BVProblem(f!, bc!, u0, tspan, p)
+        mpbvp_oop = BVProblem(f, bc, u0, tspan, p)
 
         # Shooting methods have deep type instability from NonlinearSolve/OrdinaryDiffEq
         # that requires further investigation. The solvers work correctly but return type
