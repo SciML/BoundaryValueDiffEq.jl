@@ -170,99 +170,143 @@ end
 
 @testitem "Interpolation" begin
     using LinearAlgebra
-
-    λ = 1
-    function prob_bvp_linear_analytic(u, λ, t)
-        a = 1 / sqrt(λ)
-        return [
-            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
-            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
-        ]
-    end
-
-    function prob_bvp_linear_analytic_derivative(u, λ, t)
-        a = 1 / sqrt(λ)
-        return [
-            (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
-            (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
-        ]
-    end
-
-    function prob_bvp_linear_f!(du, u, p, t)
-        du[1] = u[2]
-        du[2] = 1 / p * u[1]
-    end
-    function prob_bvp_linear_bc!(res, u, p, t)
-        res[1] = u(0.0)[1] - 1
-        res[2] = u(1.0)[1]
-    end
-
-    prob_bvp_linear_function = ODEFunction(prob_bvp_linear_f!, analytic = prob_bvp_linear_analytic)
-    prob_bvp_linear_tspan = (0.0, 1.0)
-    prob_bvp_linear = BVProblem(
-        prob_bvp_linear_function, prob_bvp_linear_bc!, [1.0, 0.0], prob_bvp_linear_tspan, λ
-    )
     testTol = 1.0e-6
 
     for order in (2, 3, 4, 5, 6)
         s = Symbol("MIRK$(order)")
         @eval mirk_solver(::Val{$order}) = $(s)()
     end
+    @testset "Test interpolation on two-point BVP" begin
+        λ = 1
+        function prob_tp_analytic(u, λ, t)
+            a = 1 / sqrt(λ)
+            return [
+                (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
+                (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            ]
+        end
 
-    @testset "Interpolation for adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
-        sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
-        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
+        function prob_tp_analytic_derivative(u, λ, t)
+            a = 1 / sqrt(λ)
+            return [
+                (-a * exp(-t * a) - a * exp((t - 2) * a)) / (1 - exp(-2 * a)),
+                (exp(-a * t) - exp((t - 2) * a)) / (1 - exp(-2 * a)),
+            ]
+        end
 
-        @test sol(0.001) ≈ sol_analytic atol = testTol
-        @test sol(0.001; idxs = [1, 2]) ≈ sol_analytic atol = testTol
-        @test sol(0.001; idxs = 1) ≈ sol_analytic[1] atol = testTol
-        @test sol(0.001; idxs = 2) ≈ sol_analytic[2] atol = testTol
+        function prob_tp_f!(du, u, p, t)
+            du[1] = u[2]
+            du[2] = 1 / p * u[1]
+        end
+        function prob_tp_bc!(res, u, p, t)
+            res[1] = u(0.0)[1] - 1
+            res[2] = u(1.0)[1]
+        end
+
+        prob_tp_function = ODEFunction(prob_tp_f!, analytic = prob_tp_analytic)
+        prob_tp_tspan = (0.0, 1.0)
+        prob_tp = BVProblem(
+            prob_tp_function, prob_tp_bc!, [1.0, 0.0], prob_tp_tspan, λ
+        )
+
+        @testset "Interpolation for adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
+            sol = solve(prob_tp, mirk_solver(Val(order)); dt = 0.001)
+            sol_analytic = prob_tp_analytic(nothing, λ, 0.001)
+
+            @test sol(0.001) ≈ sol_analytic atol = testTol
+            @test sol(0.001; idxs = [1, 2]) ≈ sol_analytic atol = testTol
+            @test sol(0.001; idxs = 1) ≈ sol_analytic[1] atol = testTol
+            @test sol(0.001; idxs = 2) ≈ sol_analytic[2] atol = testTol
+        end
+
+        @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
+            sol = solve(prob_tp, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
+
+            @test_nowarn sol(0.01)
+            @test_nowarn sol(0.01; idxs = [1, 2])
+            @test_nowarn sol(0.01; idxs = 1)
+            @test_nowarn sol(0.01; idxs = 2)
+        end
+
+        @testset "Interpolation for solution derivative" for order in (2, 3, 4, 5, 6)
+            sol = solve(prob_tp, mirk_solver(Val(order)); dt = 0.001)
+            sol_analytic = prob_tp_analytic(nothing, λ, 0.04)
+            dsol_analytic = prob_tp_analytic_derivative(nothing, λ, 0.04)
+
+            @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
+            @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
+        end
+
+        @testset "Interpolation for adaptive MIRK$(order)I" for order in (6,)
+            sol = solve(prob_tp, MIRK6I(); dt = 0.001)
+            sol_analytic = prob_tp_analytic(nothing, λ, 0.001)
+
+            @test sol(0.001) ≈ sol_analytic atol = testTol
+            @test sol(0.001; idxs = [1, 2]) ≈ sol_analytic atol = testTol
+            @test sol(0.001; idxs = 1) ≈ sol_analytic[1] atol = testTol
+            @test sol(0.001; idxs = 2) ≈ sol_analytic[2] atol = testTol
+        end
+
+        @testset "Interpolation for non-adaptive MIRK$(order)I" for order in (6,)
+            sol = solve(prob_tp, MIRK6I(); dt = 0.001, adaptive = false)
+
+            @test_nowarn sol(0.01)
+            @test_nowarn sol(0.01; idxs = [1, 2])
+            @test_nowarn sol(0.01; idxs = 1)
+            @test_nowarn sol(0.01; idxs = 2)
+        end
+
+        @testset "Interpolation for solution derivative" for order in (6,)
+            sol = solve(prob_tp, MIRK6I(); dt = 0.001)
+            sol_analytic = prob_tp_analytic(nothing, λ, 0.04)
+            dsol_analytic = prob_tp_analytic_derivative(nothing, λ, 0.04)
+
+            @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
+            @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
+        end
     end
 
-    @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
-        sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
+    @testset "Test interpolation on multi-point BVP" begin
+        function prob_mp_analytic(u, p, t)
+            return [
+                sin(t),
+                cos(t),
+            ]
+        end
 
-        @test_nowarn sol(0.01)
-        @test_nowarn sol(0.01; idxs = [1, 2])
-        @test_nowarn sol(0.01; idxs = 1)
-        @test_nowarn sol(0.01; idxs = 2)
-    end
+        # ODE system
+        function prob_mp_f!(du, u, p, t)
+            du[1] = u[2]
+            du[2] = -u[1]
+        end
 
-    @testset "Interpolation for solution derivative" for order in (2, 3, 4, 5, 6)
-        sol = solve(prob_bvp_linear, mirk_solver(Val(order)); dt = 0.001)
-        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
-        dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
+        # Independent multi-point boundary conditions
+        function prob_mp_bc!(residual, sol, p, t)
+            residual[1] = sol(pi / 6)[1] - 0.5
+            residual[2] = sol(pi / 3)[2] - 0.5
+        end
 
-        @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
-        @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
-    end
+        prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
+        prob_mp_tspan = (0.0, pi / 2)
+        prob_mp = BVProblem(prob_mp_function, prob_mp_bc!, [0.0, 1.0], prob_mp_tspan)
 
-    @testset "Interpolation for adaptive MIRK$(order)I" for order in (6,)
-        sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001)
-        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.001)
+        @testset "Interpolation for adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
+            sol = solve(prob_mp, mirk_solver(Val(order)); dt = 0.001)
+            sol_analytic_1 = prob_mp_analytic(nothing, nothing, pi / 6)
+            sol_analytic_2 = prob_mp_analytic(nothing, nothing, pi / 3)
 
-        @test sol(0.001) ≈ sol_analytic atol = testTol
-        @test sol(0.001; idxs = [1, 2]) ≈ sol_analytic atol = testTol
-        @test sol(0.001; idxs = 1) ≈ sol_analytic[1] atol = testTol
-        @test sol(0.001; idxs = 2) ≈ sol_analytic[2] atol = testTol
-    end
+            @test sol(pi / 6) ≈ sol_analytic_1 atol = testTol
+            @test sol(pi / 3) ≈ sol_analytic_2 atol = testTol
+        end
 
-    @testset "Interpolation for non-adaptive MIRK$(order)I" for order in (6,)
-        sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001, adaptive = false)
+        @testset "Interpolation for non-adaptive MIRK$order" for order in (2, 3, 4, 5, 6)
+            sol = solve(prob_mp, mirk_solver(Val(order)); dt = 0.001, adaptive = false)
+            sol_analytic_1 = prob_mp_analytic(nothing, nothing, pi / 6)
+            sol_analytic_2 = prob_mp_analytic(nothing, nothing, pi / 3)
 
-        @test_nowarn sol(0.01)
-        @test_nowarn sol(0.01; idxs = [1, 2])
-        @test_nowarn sol(0.01; idxs = 1)
-        @test_nowarn sol(0.01; idxs = 2)
-    end
-
-    @testset "Interpolation for solution derivative" for order in (6,)
-        sol = solve(prob_bvp_linear, MIRK6I(); dt = 0.001)
-        sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
-        dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
-
-        @test sol(0.04, Val{0}) ≈ sol_analytic atol = testTol
-        @test sol(0.04, Val{1}) ≈ dsol_analytic atol = testTol
+            @test sol(pi / 6) ≈ sol_analytic_1 atol = testTol
+            @test sol(pi / 3) ≈ sol_analytic_2 atol = testTol
+        end
     end
 end
 
@@ -409,20 +453,29 @@ end
 end
 
 @testitem "Test maxsol and minsol" setup = [MIRKConvergenceTests] begin
-    tspan = (0.0, pi / 2)
-    function simplependulum!(du, u, p, t)
-        θ = u[1]
-        dθ = u[2]
-        du[1] = dθ
-        du[2] = -9.81 * sin(θ)
+    function prob_mp_analytic(u, p, t)
+        return [
+            sin(t),
+            cos(t),
+        ]
     end
-    function bc!(residual, u, p, t)
-        residual[1] = maxsol(u, (0.0, pi / 2)) - 5.0496477654230745
-        residual[2] = minsol(u, (0.0, pi / 2)) + 4.8161991710010925
+
+    function prob_mp_f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -u[1]
     end
-    prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
+
+    function prob_mp_bc!(residual, sol, p, t)
+        residual[1] = maxsol(sol, (0.0, pi / 2)) - 1.0
+        residual[2] = minsol(sol, (0.0, pi / 2)) - 0.0
+    end
+
+    prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
+    prob_mp_tspan = (0.0, pi / 2)
+    prob = BVProblem(prob_mp_function, prob_mp_bc!, [0.0, 1.0], prob_mp_tspan)
+
     for order in (4, 6)
-        sol = solve(prob, mirk_solver(Val(order)), dt = 0.05)
+        sol = solve(prob, mirk_solver(Val(order)), dt = 0.001)
         @test SciMLBase.successful_retcode(sol)
     end
 end
