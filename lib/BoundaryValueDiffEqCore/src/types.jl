@@ -178,8 +178,6 @@ function __maybe_allocate_diffcache(x::DiffCache, chunksize)
     return DiffCache(zero(x.du), chunksize; warn_on_resize = false)
 end
 
-@inline get_tmp(dc, u) = dc
-
 # DiffCache
 struct DiffCacheNeeded end
 struct NoDiffCacheNeeded end
