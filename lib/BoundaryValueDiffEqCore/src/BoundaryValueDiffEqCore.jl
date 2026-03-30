@@ -13,7 +13,7 @@ using LineSearch: BackTracking
 using NonlinearSolveFirstOrder: NonlinearSolvePolyAlgorithm
 using NonlinearSolveBase: NonlinearVerbosity
 using OptimizationBase: OptimizationBase, OptimizationVerbosity
-using PreallocationTools: PreallocationTools, DiffCache
+using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
 using Reexport: @reexport
 using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
