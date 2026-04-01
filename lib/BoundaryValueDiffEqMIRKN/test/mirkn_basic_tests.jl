@@ -176,7 +176,7 @@ end
     end
 end
 
-@test "Test initial guess" begin
+@testitem "Test initial guess" begin
     function f!(ddu, du, u, p, t)
         ε = 0.1
         ddu[1] = u[2]
