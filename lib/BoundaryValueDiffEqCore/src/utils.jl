@@ -635,6 +635,10 @@ end
     tune_parameters && return VectorOfArray([vcat(vec(__initial_guess(u₀, p, t)), __tunable_part(p)) for t in mesh])
     return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
 end
+@inline function __initial_guess_on_mesh(u₀::Number, mesh, p; tune_parameters = false)
+    tune_parameters && return VectorOfArray([vcat([u₀], __tunable_part(p)) for _ in mesh])
+    return VectorOfArray([copy([u₀]) for _ in mesh])
+end
 @inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p)
     return VectorOfArray([copy(vec(u₀)) for _ in 1:(2 * (Nig + 1))])
 end
