@@ -124,12 +124,12 @@ function SciMLBase.__init(
 end
 
 function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
-    (_, _, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
+    N = length(cache.mesh)
 
     sol_nlprob, info = __perform_mirkn_iteration(cache)
 
-    solu = ArrayPartition.(cache.y₀.u[1:length(cache.mesh)], cache.y₀.u[(length(cache.mesh) + 1):end])
+    solu = ArrayPartition.(cache.y₀.u[1:N], cache.y₀.u[(N + 1):end])
     odesol = SciMLBase.build_solution(
         cache.prob, cache.alg, cache.mesh, solu; retcode = info
     )

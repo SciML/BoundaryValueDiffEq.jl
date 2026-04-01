@@ -47,7 +47,13 @@ function SciMLBase.__init(
     iip = isinplace(prob)
     diffcache = __cache_trait(alg.jac_alg)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
+
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
+    if tune_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
+    end
+
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -68,7 +74,7 @@ function SciMLBase.__init(
     fᵢ₂_cache = vec(zero(u0))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)

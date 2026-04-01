@@ -146,7 +146,7 @@ function init_nested(
     fᵢ₂_cache = vec(zero(u0))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructRK(alg, T)
@@ -287,6 +287,10 @@ function init_expanded(
     end
     diffcache = __cache_trait(alg.jac_alg)
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
+    if tune_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
+    end
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -312,7 +316,7 @@ function init_expanded(
     fᵢ₂_cache = vec(zero(u0))
 
     # Don't flatten this here, since we need to expand it later if needed
-    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p)
+    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
     y₀ = extend_y(_y₀, Nig + 1, stage)
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
