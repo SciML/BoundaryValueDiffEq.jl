@@ -194,10 +194,13 @@ end
     u0 = [1.0, 1.0, 1.0]
     tspan = (0.0, 1.0)
     prob = SecondOrderBVProblem(f!, bc!, u0, tspan)
-    sol1 = solve(prob, MIRKN4(), dt = 0.01)
+    sol1 = solve(prob, MIRKN4(), dt = 0.01, adaptive = false)
 
     guess = getindex.(getfield.(sol1.u, :x), 1)
     prob_with_guess = SecondOrderBVProblem(f!, bc!, guess, tspan)
     sol2 = solve(prob_with_guess, MIRKN4(), dt = 0.01, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
-    @test sol2.u == sol1.u
+
+    # Only test the initial guess, instead of the full solution with derivative solution, since no iterations are performed
+    sol2u = getindex.(getfield.(sol2.u, :x), 1)
+    @test sol2u == guess
 end
