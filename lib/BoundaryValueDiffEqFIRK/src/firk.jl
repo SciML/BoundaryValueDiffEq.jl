@@ -126,6 +126,11 @@ function init_nested(
     end
     diffcache = __cache_trait(alg.jac_alg)
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
+    if tune_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
+    end
+
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
