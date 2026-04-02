@@ -526,7 +526,8 @@ end
     @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
 end
 
-"""@testitem "Test initial guess" begin
+"""
+@testitem "Test initial guess" begin
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
         cond = 0.002
