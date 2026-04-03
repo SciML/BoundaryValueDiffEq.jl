@@ -558,12 +558,10 @@ end
     ]
 
     bvp1 = TwoPointBVProblem(f!, (bca!, bcb!), u_guess, tspan; bcresid_prototype = (zeros(2), zeros(1)))
-    sol1 = solve(bvp1, RadauIIa5(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
+    sol1 = solve(bvp1, LobattoIIIa3(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
     @test sol1.u == u_guess
-end
-#=
+
     bvp2 = TwoPointBVProblem(f!, (bca!, bcb!), sol1, tspan; bcresid_prototype = (zeros(2), zeros(1)))
-    sol2 = solve(bvp2, RadauIIa5(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
+    sol2 = solve(bvp2, LobattoIIIa3(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
     @test sol2.u == u_guess
 end
-=#
