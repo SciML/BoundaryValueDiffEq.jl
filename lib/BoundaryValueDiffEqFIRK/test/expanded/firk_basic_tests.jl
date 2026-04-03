@@ -526,7 +526,6 @@ end
     @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
 end
 
-#=
 @testitem "Test initial guess" begin
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
@@ -561,7 +560,8 @@ end
     bvp1 = TwoPointBVProblem(f!, (bca!, bcb!), u_guess, tspan; bcresid_prototype = (zeros(2), zeros(1)))
     sol1 = solve(bvp1, RadauIIa5(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
     @test sol1.u == u_guess
-
+end
+#=
     bvp2 = TwoPointBVProblem(f!, (bca!, bcb!), sol1, tspan; bcresid_prototype = (zeros(2), zeros(1)))
     sol2 = solve(bvp2, RadauIIa5(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
     @test sol2.u == u_guess
