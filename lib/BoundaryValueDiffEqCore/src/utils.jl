@@ -373,8 +373,6 @@ function __extract_problem_details(
     _u0 = first(u0.u)
     _t = u0.t
     if tune_parameters
-        prob.p isa SciMLBase.NullParameters &&
-            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
         new_u = vcat(_u0, __tunable_part(prob.p))
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
@@ -383,11 +381,7 @@ end
 
 function __initial_guess(f::F, p::P, t::T; tune_parameters = false) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
-        if tune_parameters
-            p isa SciMLBase.NullParameters &&
-                throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
-            return vcat(f(p, t), __tunable_part(p))
-        end
+        tune_parameters && return vcat(f(p, t), __tunable_part(p))
         return f(p, t)
     elseif hasmethod(f, Tuple{T})
         Base.depwarn(
@@ -396,11 +390,7 @@ function __initial_guess(f::F, p::P, t::T; tune_parameters = false) where {F, P,
                      removed in the next major release of SciMLBase.",
             :__initial_guess
         )
-        if tune_parameters
-            p isa SciMLBase.NullParameters &&
-                throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
-            return vcat(f(t), __tunable_part(p))
-        end
+        tune_parameters && return vcat(f(t), __tunable_part(p))
         return f(t)
     else
         throw(ArgumentError("`initial_guess` must be a function of the form `f(p, t)`"))
@@ -671,26 +661,45 @@ initial guess, it returns `vec(u₀)`.
 Returns the initial guess on the mesh. For `DiffEqArray` assumes that the mesh is the same
 as the mesh of the `DiffEqArray`.
 """
-@inline function __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, _, p)
+@inline function __initial_guess_on_mesh(u₀::AbstractVector{<:AbstractArray}, mesh, p; tune_parameters = false)
+    tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀])
     return VectorOfArray([copy(vec(u)) for u in u₀])
 end
-@inline function __initial_guess_on_mesh(u₀::VectorOfArray, _, p)
+@inline function __initial_guess_on_mesh(u₀::VectorOfArray, mesh, p; tune_parameters = false)
+    tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
     return copy(u₀)
 end
-@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p)
+@inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p; tune_parameters = false)
+    tune_parameters && return DiffEqArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
     return copy(u₀)
 end
-@inline function __initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p)
+@inline function __initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p; tune_parameters = false)
+    tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
     return copy(VectorOfArray(u₀.u))
 end
-@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p)
+@inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p; tune_parameters = false)
+    tune_parameters && return VectorOfArray([vcat(vec(u₀), __tunable_part(p)) for _ in mesh])
     return VectorOfArray([copy(vec(u₀)) for _ in mesh])
 end
-@inline function __initial_guess_on_mesh(u₀::F, mesh, p) where {F}
+@inline function __initial_guess_on_mesh(u₀::F, mesh, p; tune_parameters = false) where {F}
+    tune_parameters && return VectorOfArray([vcat(vec(__initial_guess(u₀, p, t)), __tunable_part(p)) for t in mesh])
     return VectorOfArray([vec(__initial_guess(u₀, p, t)) for t in mesh])
+end
+@inline function __initial_guess_on_mesh(u₀::Number, mesh, p; tune_parameters = false)
+    tune_parameters && return VectorOfArray([vcat([u₀], __tunable_part(p)) for _ in mesh])
+    return VectorOfArray([copy([u₀]) for _ in mesh])
 end
 @inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::AbstractArray, Nig, p)
     return VectorOfArray([copy(vec(u₀)) for _ in 1:(2 * (Nig + 1))])
+end
+@inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::AbstractVector{<:AbstractVector}, _, p)
+    return VectorOfArray(vcat([copy(vec(u)) for u in u₀], [copy(vec(u)) for u in u₀]))
+end
+@inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::VectorOfArray, _, p)
+    return VectorOfArray(vcat(copy(u₀.u), copy(u₀.u)))
+end
+@inline function __initial_guess_on_mesh(prob::SecondOrderBVProblem, u₀::SciMLBase.ODESolution, Nig, p)
+    return VectorOfArray(vcat(copy(VectorOfArray(u₀.u)), copy(VectorOfArray(u₀.u))))
 end
 
 # Construct BVP Solution

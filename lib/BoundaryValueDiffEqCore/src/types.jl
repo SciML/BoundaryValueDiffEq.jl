@@ -171,15 +171,13 @@ end
 end
 
 function __maybe_allocate_diffcache(x, chunksize, jac_alg)
-    return __needs_diffcache(jac_alg) ? DiffCache(x, chunksize) : x
+    return __needs_diffcache(jac_alg) ?
+        DiffCache(x, chunksize; warn_on_resize = false) : x
 end
-__maybe_allocate_diffcache(x::DiffCache, chunksize) = DiffCache(zero(x.du), chunksize)
 
-## PreallocationTools.get_tmp may warn on cache expansion (resize), which is expected
-## behavior for adaptive BVP solvers. We call it directly here for performance;
-## warnings during adaptive cache expansion are suppressed at the __expand_cache! call site.
-@inline get_tmp(dc::DiffCache, u) = PreallocationTools.get_tmp(dc, u)
-@inline get_tmp(dc, u) = dc
+function __maybe_allocate_diffcache(x::DiffCache, chunksize)
+    return DiffCache(zero(x.du), chunksize; warn_on_resize = false)
+end
 
 # DiffCache
 struct DiffCacheNeeded end

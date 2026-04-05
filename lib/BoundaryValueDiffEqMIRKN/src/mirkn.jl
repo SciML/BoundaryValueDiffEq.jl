@@ -39,7 +39,7 @@ function SciMLBase.__init(
     iip = isinplace(prob)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     t₀, t₁ = prob.tspan
-    ig, T, M, Nig, X = __extract_problem_details(prob; dt, check_positive_dt = true)
+    ig, T, M, Nig, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -51,12 +51,12 @@ function SciMLBase.__init(
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
     y = __alloc.(copy.(y₀.u))
-    fᵢ_cache = __alloc(zero(X))
-    fᵢ₂_cache = __alloc(zero(X))
+    fᵢ_cache = __alloc(zero(u0))
+    fᵢ₂_cache = __alloc(zero(u0))
     stage = alg_stage(alg)
-    bcresid_prototype = zero(vcat(X, X))
+    bcresid_prototype = zero(vcat(u0, u0))
     k_discrete = [
-        __maybe_allocate_diffcache(safe_similar(X, M, stage), chunksize, alg.jac_alg)
+        __maybe_allocate_diffcache(safe_similar(u0, M, stage), chunksize, alg.jac_alg)
             for _ in 1:Nig
     ]
 
@@ -68,15 +68,15 @@ function SciMLBase.__init(
 
     resid_size = size(bcresid_prototype)
     f,
-        bc = if X isa AbstractVector
+        bc = if u0 isa AbstractVector
         prob.f, prob.f.bc
     elseif iip
-        vecf! = @closure (ddu, du, u, p, t) -> __vec_f!(ddu, du, u, p, t, prob.f, size(X))
+        vecf! = @closure (ddu, du, u, p, t) -> __vec_f!(ddu, du, u, p, t, prob.f, size(u0))
         vecbc! = if !(prob.problem_type isa TwoPointSecondOrderBVProblem)
             @closure (
                 r, du, u, p,
                 t,
-            ) -> __vec_so_bc!(r, du, u, p, t, prob.f.bc, resid_size, size(X))
+            ) -> __vec_so_bc!(r, du, u, p, t, prob.f.bc, resid_size, size(u0))
         else
             (
                 @closure(
@@ -86,7 +86,7 @@ function SciMLBase.__init(
                         u,
                         p,
                     ) -> __vec_so_bc!(
-                        r, du, u, p, first(prob.f.bc), resid_size[1], size(X)
+                        r, du, u, p, first(prob.f.bc), resid_size[1], size(u0)
                     )
                 ),
                 @closure(
@@ -95,28 +95,28 @@ function SciMLBase.__init(
                         du,
                         u,
                         p,
-                    ) -> __vec_so_bc!(r, du, u, p, last(prob.f.bc), resid_size[2], size(X))
+                    ) -> __vec_so_bc!(r, du, u, p, last(prob.f.bc), resid_size[2], size(u0))
                 ),
             )
         end
         vecf!, vecbc!
     else
-        vecf = @closure (du, u, p, t) -> __vec_f(du, u, p, t, prob.f, size(X))
+        vecf = @closure (du, u, p, t) -> __vec_f(du, u, p, t, prob.f, size(u0))
         vecbc = if !(prob.problem_type isa TwoPointSecondOrderBVProblem)
-            @closure (du, u, p, t) -> __vec_so_bc(du, u, p, t, prob.f.bc, size(X))
+            @closure (du, u, p, t) -> __vec_so_bc(du, u, p, t, prob.f.bc, size(u0))
         else
             (
-                @closure((du, u, p) -> __vec_so_bc(du, u, p, first(prob.f.bc), size(X))),
-                @closure((du, u, p) -> __vec_so_bc(du, u, p, last(prob.f.bc), size(X))),
+                @closure((du, u, p) -> __vec_so_bc(du, u, p, first(prob.f.bc), size(u0))),
+                @closure((du, u, p) -> __vec_so_bc(du, u, p, last(prob.f.bc), size(u0))),
             )
         end
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
 
     return MIRKNCache{iip, T}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type,
+        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, resid_size, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
@@ -124,12 +124,12 @@ function SciMLBase.__init(
 end
 
 function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
-    (_, _, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
+    N = length(cache.mesh)
 
     sol_nlprob, info = __perform_mirkn_iteration(cache)
 
-    solu = ArrayPartition.(cache.y₀.u[1:length(cache.mesh)], cache.y₀.u[(length(cache.mesh) + 1):end])
+    solu = ArrayPartition.(cache.y₀.u[1:N], cache.y₀.u[(N + 1):end])
     odesol = SciMLBase.build_solution(
         cache.prob, cache.alg, cache.mesh, solu; retcode = info
     )
