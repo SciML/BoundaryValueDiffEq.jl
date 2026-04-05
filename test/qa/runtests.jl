@@ -31,11 +31,13 @@ using BoundaryValueDiffEq, BoundaryValueDiffEqMIRK, BoundaryValueDiffEqCore,
         u0 = [1.0, 0.0]
         tspan = (0.0, 1.0)
         bvp = BVProblem(
-            BVPFunction{true}(_f!, _bc!; bcresid_prototype = zeros(2)), u0, tspan)
+            BVPFunction{true}(_f!, _bc!; bcresid_prototype = zeros(2)), u0, tspan
+        )
 
         cache = SciMLBase.__init(bvp, MIRK4(); dt = 0.1, adaptive = false)
         nlprob = BoundaryValueDiffEqMIRK.__construct_problem(
-            cache, vec(cache.y₀), copy(cache.y₀))
+            cache, vec(cache.y₀), copy(cache.y₀)
+        )
 
         u_test = copy(nlprob.u0)
         resid_test = zeros(length(nlprob.u0))

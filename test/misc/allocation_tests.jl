@@ -1,4 +1,4 @@
-@testitem "MIRK Loss Function Allocations" tags=[:allocs] begin
+@testitem "MIRK Loss Function Allocations" tags = [:allocs] begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqMIRK, BoundaryValueDiffEqCore, LinearAlgebra
 
     function f!(du, u, p, t)
@@ -28,9 +28,12 @@
 
     bvp = BVProblem(BVPFunction{true}(f!, bc!; bcresid_prototype = zeros(2)), u0, tspan)
     tpbvp = BVProblem(
-        BVPFunction{true}(f!, (tpbc_a!, tpbc_b!);
-            bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true)),
-        u0, tspan)
+        BVPFunction{true}(
+            f!, (tpbc_a!, tpbc_b!);
+            bcresid_prototype = (zeros(1), zeros(1)), twopoint = Val(true)
+        ),
+        u0, tspan
+    )
 
     # Test that the loss function allocations scale sub-linearly with mesh size
     # (i.e., per-step allocations are bounded, not proportional to mesh points)
@@ -38,7 +41,8 @@
         for alg in [MIRK4(), MIRK5(), MIRK6()]
             cache = SciMLBase.__init(prob, alg; dt = 0.1, adaptive = false)
             nlprob = BoundaryValueDiffEqMIRK.__construct_problem(
-                cache, vec(cache.y₀), copy(cache.y₀))
+                cache, vec(cache.y₀), copy(cache.y₀)
+            )
 
             u_test = copy(nlprob.u0)
             resid_test = zeros(length(nlprob.u0))
