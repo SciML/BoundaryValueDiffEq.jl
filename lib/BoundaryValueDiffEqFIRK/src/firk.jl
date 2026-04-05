@@ -126,6 +126,11 @@ function init_nested(
     end
     diffcache = __cache_trait(alg.jac_alg)
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
+    if tune_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
+    end
+
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -135,18 +140,18 @@ function init_nested(
     ig, T,
         M,
         Nig,
-        X = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
+        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(M * (Nig - 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
-    fᵢ_cache = __alloc(zero(X))
-    fᵢ₂_cache = vec(zero(X))
+    fᵢ_cache = __alloc(zero(u0))
+    fᵢ₂_cache = vec(zero(u0))
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructRK(alg, T)
@@ -156,17 +161,17 @@ function init_nested(
 
     k_discrete = if !constraint
         [
-            __maybe_allocate_diffcache(safe_similar(X, M, stage), chunksize, alg.jac_alg)
+            __maybe_allocate_diffcache(safe_similar(u0, M, stage), chunksize, alg.jac_alg)
                 for _ in 1:Nig
         ]
     else
         [
-            __maybe_allocate_diffcache(safe_similar(X, L_f_prototype, stage), chunksize, alg.jac_alg)
+            __maybe_allocate_diffcache(safe_similar(u0, L_f_prototype, stage), chunksize, alg.jac_alg)
                 for _ in 1:Nig
         ]
     end
 
-    bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
+    bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, u0)
 
     residual = if iip
         if !constraint
@@ -192,12 +197,12 @@ function init_nested(
         nothing
     end
 
-    defect = VectorOfArray([safe_similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig])
+    defect = VectorOfArray([safe_similar(u0, ifelse(adaptive, M, 0)) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
     f,
-        bc = if X isa AbstractVector
+        bc = if u0 isa AbstractVector
         if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
@@ -220,39 +225,39 @@ function init_nested(
             prob.f, prob.f.bc
         end
     elseif iip
-        vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
+        vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(u0))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
-            @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
+            @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(u0))
         else
             (
                 @closure(
                     (
                         r, u,
                         p,
-                    ) -> __vec_bc!(r, u, p, first(prob.f.bc), resid₁_size[1], size(X))
+                    ) -> __vec_bc!(r, u, p, first(prob.f.bc), resid₁_size[1], size(u0))
                 ),
                 @closure(
                     (
                         r, u, p,
-                    ) -> __vec_bc!(r, u, p, last(prob.f.bc), resid₁_size[2], size(X))
+                    ) -> __vec_bc!(r, u, p, last(prob.f.bc), resid₁_size[2], size(u0))
                 ),
             )
         end
         vecf!, vecbc!
     else
-        vecf = @closure (u, p, t) -> __vec_f(u, p, t, prob.f, size(X))
+        vecf = @closure (u, p, t) -> __vec_f(u, p, t, prob.f, size(u0))
         vecbc = if !(prob.problem_type isa TwoPointBVProblem)
-            @closure (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
+            @closure (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(u0))
         else
             (
-                @closure((u, p) -> __vec_bc(u, p, first(prob.f.bc), size(X))),
-                @closure((u, p) -> __vec_bc(u, p, last(prob.f.bc), size(X))),
+                @closure((u, p) -> __vec_bc(u, p, first(prob.f.bc), size(u0))),
+                @closure((u, p) -> __vec_bc(u, p, last(prob.f.bc), size(u0))),
             )
         end
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
 
     # Somewhat arbitrary initialization of K
     K0 = __K0_on_u0(prob, stage; tune_parameters = tune_parameters)
@@ -266,7 +271,7 @@ function init_nested(
     end
 
     return FIRKCacheNested{iip, T, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
@@ -287,6 +292,10 @@ function init_expanded(
     end
     diffcache = __cache_trait(alg.jac_alg)
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
+    if tune_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
+    end
     constraint = (!isnothing(prob.f.inequality)) ||
         (!isnothing(prob.f.equality)) ||
         (!isnothing(prob.lb)) ||
@@ -296,7 +305,7 @@ function init_expanded(
     ig, T,
         M,
         Nig,
-        X = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
+        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -308,27 +317,27 @@ function init_expanded(
     chunksize = pickchunksize(M + M * Nig * (stage + 1))
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
 
-    fᵢ_cache = __alloc(zero(X)) # Runtime dispatch
-    fᵢ₂_cache = vec(zero(X))
+    fᵢ_cache = __alloc(zero(u0)) # Runtime dispatch
+    fᵢ₂_cache = vec(zero(u0))
 
     # Don't flatten this here, since we need to expand it later if needed
-    _y₀ = __initial_guess_on_mesh(X, mesh, prob.p)
+    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
     y₀ = extend_y(_y₀, Nig + 1, stage)
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
     k_discrete = if !constraint
         [
-            __maybe_allocate_diffcache(safe_similar(X, M, stage), chunksize, alg.jac_alg)
+            __maybe_allocate_diffcache(safe_similar(u0, M, stage), chunksize, alg.jac_alg)
                 for _ in 1:Nig
         ] # Runtime dispatch
     else
         [
-            __maybe_allocate_diffcache(safe_similar(X, L_f_prototype, stage), chunksize, alg.jac_alg)
+            __maybe_allocate_diffcache(safe_similar(u0, L_f_prototype, stage), chunksize, alg.jac_alg)
                 for _ in 1:Nig
         ] # Runtime dispatch
     end
 
-    bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, X)
+    bcresid_prototype, resid₁_size = __get_bcresid_prototype(prob.problem_type, prob, u0)
 
     residual = if iip
         if !constraint
@@ -354,12 +363,12 @@ function init_expanded(
         nothing
     end
 
-    defect = VectorOfArray([similar(X, ifelse(adaptive, M, 0)) for _ in 1:Nig])
+    defect = VectorOfArray([similar(u0, ifelse(adaptive, M, 0)) for _ in 1:Nig])
 
     # Transform the functions to handle non-vector inputs
     bcresid_prototype = __vec(bcresid_prototype)
     f,
-        bc = if X isa AbstractVector
+        bc = if u0 isa AbstractVector
         if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
@@ -382,43 +391,43 @@ function init_expanded(
             prob.f, prob.f.bc
         end
     elseif iip
-        vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(X))
+        vecf! = @closure (du, u, p, t) -> __vec_f!(du, u, p, t, prob.f, size(u0))
         vecbc! = if !(prob.problem_type isa TwoPointBVProblem)
-            @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(X))
+            @closure (r, u, p, t) -> __vec_bc!(r, u, p, t, prob.f.bc, resid₁_size, size(u0))
         else
             (
                 @closure(
                     (
                         r, u,
                         p,
-                    ) -> __vec_bc!(r, u, p, first(prob.f.bc)[1], resid₁_size[1], size(X))
+                    ) -> __vec_bc!(r, u, p, first(prob.f.bc)[1], resid₁_size[1], size(u0))
                 ),
                 @closure (
                     (
                         r, u,
                         p,
-                    ) -> __vec_bc!(r, u, p, last(prob.f.bc)[2], resid₁_size[2], size(X))
+                    ) -> __vec_bc!(r, u, p, last(prob.f.bc)[2], resid₁_size[2], size(u0))
                 )
             )
         end
         vecf!, vecbc!
     else
-        vecf = @closure (u, p, t) -> __vec_f(u, p, t, prob.f, size(X))
+        vecf = @closure (u, p, t) -> __vec_f(u, p, t, prob.f, size(u0))
         vecbc = if !(prob.problem_type isa TwoPointBVProblem)
-            @closure (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(X))
+            @closure (u, p, t) -> __vec_bc(u, p, t, prob.f.bc, size(u0))
         else
             (
-                @closure((u, p) -> __vec_bc(u, p, first(prob.f.bc), size(X))),
-                @closure((u, p) -> __vec_bc(u, p, last(prob.f.bc), size(X))),
+                @closure((u, p) -> __vec_bc(u, p, first(prob.f.bc), size(u0))),
+                @closure((u, p) -> __vec_bc(u, p, last(prob.f.bc), size(u0))),
             )
         end
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = X) : prob
+    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
 
     return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, M, size(X), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
