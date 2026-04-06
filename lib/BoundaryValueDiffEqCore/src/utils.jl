@@ -106,18 +106,20 @@ function diff!(dx, x)
     return dx
 end
 
-function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
-    return mul!(z, A, b, α, β)
-end
-
-# NOTE: We can implement it as mul! as above but then we pay the cost of moving
-#       `w` to the GPU too many times. Instead if we iterate of w and w′ we save
-#       that cost. Our main cost is anyways going to be due to a large `u0` and
-#       we are going to use GPUs for that
-@views function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
-    @simd ivdep for j in eachindex(b)
-        @inbounds @. z = α * A[:, j] * b[j] + β * z
+function __maybe_matmul!(z, A, b, α = one(eltype(z)), β = zero(eltype(z)))
+    # First z = β*z
+    @inbounds for i in eachindex(z)
+        z[i] *= β
     end
+
+    # Then z += α*A*b
+    @inbounds for j in axes(A, 2)
+        bj = α * b[j]
+        for i in axes(A, 1)
+            z[i] += A[i, j] * bj
+        end
+    end
+
     return z
 end
 
