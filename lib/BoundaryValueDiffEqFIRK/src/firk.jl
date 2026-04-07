@@ -5,6 +5,8 @@
     M::Int                     # The number of equations
     in_size
     f
+    mass_matrix
+    algebraic_indices
     bc
     prob                       # BVProblem
     problem_type               # StandardBVProblem
@@ -43,6 +45,8 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     M::Int                     # The number of equations
     in_size
     f
+    mass_matrix
+    algebraic_indices
     bc
     prob                       # BVProblem
     problem_type               # StandardBVProblem
@@ -273,14 +277,18 @@ function init_nested(
 
     nestprob_p = zeros(T, M + 2)
 
+    algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
+
+    mm = prob.f.mass_matrix
+
     if iip
-        nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p), K0, nestprob_p)
+        nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p, mm), K0, nestprob_p)
     else
-        nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
+        nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p, mm), K0, nestprob_p)
     end
 
     return FIRKCacheNested{iip, T, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
@@ -444,8 +452,11 @@ function init_expanded(
         prob
     end
 
+    algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
+
+
     return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
         y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec

@@ -399,6 +399,7 @@ an interpolant
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix, similar(z₁′))
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -409,6 +410,7 @@ an interpolant
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix, similar(z₂′))
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -446,6 +448,7 @@ end
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix, similar(z₁′))
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -456,6 +459,7 @@ end
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix, similar(z₂′))
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -502,6 +506,7 @@ end
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix, similar(z₁′))
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -512,6 +517,7 @@ end
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix, similar(z₂′))
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -557,6 +563,7 @@ end
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix, similar(z₁′))
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -567,6 +574,7 @@ end
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix, similar(z₂′))
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
