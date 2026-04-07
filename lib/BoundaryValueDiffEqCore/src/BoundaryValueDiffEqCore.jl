@@ -9,7 +9,7 @@ using DiffEqBase: DiffEqBase, solve
 using DifferentiationInterface: SecondOrder
 using ForwardDiff: ForwardDiff, pickchunksize
 using Integrals: Integrals, IntegralProblem
-using LinearAlgebra: LinearAlgebra, mul!
+using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
 using LineSearch: BackTracking
 using NonlinearSolveFirstOrder: NonlinearSolveFirstOrder, NonlinearSolvePolyAlgorithm,
     GaussNewton, LevenbergMarquardt, NewtonRaphson, NonlinearSolveBase, TrustRegion
