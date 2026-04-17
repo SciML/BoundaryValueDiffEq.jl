@@ -646,4 +646,8 @@ end
     bvp2 = TwoPointBVProblem(f!, (bca!, bcb!), sol1, tspan; bcresid_prototype = (zeros(2), zeros(1)))
     sol2 = solve(bvp2, RadauIIa5(; nested_nlsolve = true), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
     @test sol2.u == u_guess
+
+    # Ensure the initial guess is not modified in-place
+    sol2 = solve(bvp2, RadauIIa5(; nested_nlsolve = true), dt = 0.1, adaptive = false)
+    @test bvp2.u0 == u_guess
 end
