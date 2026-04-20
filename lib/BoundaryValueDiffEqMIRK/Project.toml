@@ -1,6 +1,6 @@
 name = "BoundaryValueDiffEqMIRK"
 uuid = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
-version = "1.13.0"
+version = "1.13.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -31,7 +31,7 @@ ADTypes = "1.14"
 Aqua = "0.8"
 ArrayInterface = "7.18"
 BandedMatrices = "1.7.5"
-BoundaryValueDiffEqCore = "2.0"
+BoundaryValueDiffEqCore = "2.2"
 ConcreteStructs = "0.2.3"
 DiffEqDevTools = "2.44"
 DifferentiationInterface = "0.7"
