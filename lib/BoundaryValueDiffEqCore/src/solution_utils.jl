@@ -13,6 +13,7 @@ Base.size(e::EvalSol, i) = size(e)[i]
 Base.axes(e::EvalSol) = Base.OneTo.(size(e))
 Base.axes(e::EvalSol, d::Int) = Base.OneTo.(size(e)[d])
 
+Base.getindex(e::EvalSol, i::Integer) = e.u[i]
 Base.getindex(e::EvalSol, args...) = Base.getindex(VectorOfArray(e.u), args...)
 Base.eachindex(e::EvalSol) = Base.eachindex(e.u)
 

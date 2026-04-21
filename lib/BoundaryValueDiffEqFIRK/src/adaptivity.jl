@@ -10,7 +10,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     ) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -55,7 +55,7 @@ end
     ) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -103,7 +103,7 @@ end
 
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -150,7 +150,7 @@ end
 
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end

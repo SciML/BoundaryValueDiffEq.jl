@@ -8,8 +8,8 @@
     end
 
     function bc!(resid, sol, p, t)
-        resid[1] = sol[1][1]
-        resid[2] = sol[end][1] - 1
+        resid[1] = sol.u[1][1]
+        resid[2] = sol.u[end][1] - 1
     end
 
     tspan = (0.0, 100.0)
