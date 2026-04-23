@@ -98,7 +98,7 @@ end
 
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1)
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1)
     if lf > 1
         h *= lf
     end
@@ -145,7 +145,7 @@ end
 
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1)
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1)
     if lf > 1
         h *= lf
     end
@@ -239,7 +239,7 @@ end
     ) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1)
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1)
     if lf > 1
         h *= lf
     end
@@ -284,7 +284,7 @@ end
     ) where {iip}
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1)
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1)
     if lf > 1
         h *= lf
     end

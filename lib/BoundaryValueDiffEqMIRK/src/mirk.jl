@@ -286,14 +286,14 @@ function SciMLBase.solve!(
     if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
-        new_p = repack(first(cache.y₀)[(length_u + 1):end])
+        new_p = repack(cache.y₀.u[1][(length_u + 1):end])
         prob = remake(prob; p = new_p)
-        map(x -> resize!(x, length_u), cache.y₀)
+        foreach(x -> resize!(x, length_u), cache.y₀.u)
         resize!(cache.fᵢ₂_cache, length_u)
     elseif tune_parameters
         length_u = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
-        map(x -> resize!(x, length_u), cache.y₀)
+        prob = remake(prob; p = cache.y₀.u[1][(length_u + 1):end])
+        foreach(x -> resize!(x, length_u), cache.y₀.u)
         resize!(cache.fᵢ₂_cache, length_u)
     end
 
