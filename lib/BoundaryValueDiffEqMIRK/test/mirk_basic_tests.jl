@@ -648,6 +648,7 @@ end
     @test_nowarn sol = solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 end
 
+# https://github.com/SciML/BoundaryValueDiffEq.jl/pull/473
 @testitem "StandardBVProblem optimize path without user lcons/ucons" begin
     # Regression test: previously, `__extract_lcons_ucons` in the Nothing-
     # f_prototype dispatch returned vectors of length N*M (decision-variable
@@ -662,13 +663,12 @@ end
         du[2] = -9.81 * sin(u[1])
     end
     function bc!(residual, u, p, t)
-        residual[1] = u(0.0)[1] - pi / 2
+        residual[1] = u(pi / 4)[1] + pi / 2
         residual[2] = u(pi / 2)[1] - pi / 2
     end
     # StandardBVProblem, no lcons/ucons — hits the fallback branch.
     prob = BVProblem(
-        simplependulum!, bc!, [pi / 2, pi / 2], tspan;
-        bcresid_prototype = zeros(2)
+        simplependulum!, bc!, [pi / 2, pi / 2], tspan
     )
     @test_nowarn solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 end
