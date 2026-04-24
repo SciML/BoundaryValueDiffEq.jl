@@ -42,7 +42,7 @@ end
 
 @views function recursive_unflatten!(y::AbstractVectorOfArray, x::AbstractVector)
     i = 0
-    for yᵢ in y
+    for yᵢ in y.u
         copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])
         i += length(yᵢ)
     end
