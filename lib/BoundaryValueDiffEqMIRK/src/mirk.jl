@@ -168,7 +168,6 @@ function SciMLBase.__init(
         if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
-            base_f = f_wrapped
             f_wrapped = @closure (
                 du,
                 u,
@@ -177,14 +176,13 @@ function SciMLBase.__init(
             ) -> begin
                 @inbounds @views begin
                     _p = repack(u[(end - l_parameters + 1):end])
-                    base_f(du, u, _p, t)
+                    prob.f(du, u, _p, t)
                     fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
                 end
                 return nothing
             end
         elseif tune_parameters
             l_parameters = length(prob.p)
-            base_f = f_wrapped
             f_wrapped = @closure (
                 du,
                 u,
@@ -192,7 +190,7 @@ function SciMLBase.__init(
                 t,
             ) -> begin
                 @inbounds @views begin
-                    base_f(du, u, u[(end - l_parameters + 1):end], t)
+                    prob.f(du, u, u[(end - l_parameters + 1):end], t)
                     fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
                 end
                 return nothing
@@ -269,6 +267,7 @@ function SciMLBase.solve!(
     (abstol, adaptive, controller, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
+    length_u = cache.in_size
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
