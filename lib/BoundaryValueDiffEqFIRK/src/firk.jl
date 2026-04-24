@@ -1346,7 +1346,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
+    copyto!(eval_sol.u, y_)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -1359,7 +1359,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [r for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
+    copyto!(eval_sol.u, y_)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -1419,7 +1419,7 @@ end
         u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol, trait
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    eval_sol.u[1:end] .= y_
+    copyto!(eval_sol.u, y_)
     resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     resid_co = Φ(cache, y_, u, trait)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
