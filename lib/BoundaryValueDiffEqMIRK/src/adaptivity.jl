@@ -310,14 +310,14 @@ The input sol has length of `n + 1`. Divide the original mesh and u from origina
 """
 function halve_sol(sol::AbstractVectorOfArray{T}, mesh) where {T}
     new_sol = copy(sol)
-    n = length(sol) - 1
+    n = length(sol.u) - 1
     resize!(new_sol, 2 * n + 1)
-    new_sol[2n + 1] = sol[n + 1]
+    new_sol.u[2n + 1] = sol.u[n + 1]
     for i in (2n - 1):-2:1
-        new_sol[i] = new_sol[(i + 1) ÷ 2]
+        new_sol.u[i] = new_sol.u[(i + 1) ÷ 2]
     end
     @simd for i in (2n):-2:2
-        new_sol[i] = (new_sol[i + 1] + new_sol[i - 1]) ./ T(2)
+        new_sol.u[i] = (new_sol.u[i + 1] + new_sol.u[i - 1]) ./ T(2)
     end
     new_mesh = deepcopy(mesh)
     resize!(new_mesh, 2 * n + 1)

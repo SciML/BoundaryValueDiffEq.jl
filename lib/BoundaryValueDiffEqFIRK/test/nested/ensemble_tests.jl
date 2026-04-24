@@ -11,7 +11,7 @@
         residual[2] = u(1.0)[1]
     end
 
-    prob_func(prob, i, repeat) = remake(prob, p = [rand()])
+    prob_func(prob, ctx, repeat) = remake(prob, p = [rand()])
 
     u0 = [0.0, 1.0]
     tspan = (0, pi / 2)
