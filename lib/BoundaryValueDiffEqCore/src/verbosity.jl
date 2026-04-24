@@ -355,3 +355,10 @@ end
 end
 
 @inline _process_verbose_param(verbose::BVPVerbosity) = verbose
+
+# A foreign AbstractVerbositySpecifier (e.g. DiffEqBase.DEVerbosity) can flow in
+# through DiffEqBase's `solve`/`init` default kwargs (`verbose = DEFAULT_VERBOSE`,
+# which is a `DEVerbosity`). BVPVerbosity's toggles differ from DEVerbosity's, so
+# we cannot meaningfully translate it; fall back to BVP's own default rather than
+# dispatch-missing at precompile time.
+@inline _process_verbose_param(::SciMLLogging.AbstractVerbositySpecifier) = DEFAULT_VERBOSE

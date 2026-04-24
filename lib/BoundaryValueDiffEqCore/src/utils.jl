@@ -196,7 +196,7 @@ function eval_bc_residual!(
         resid::AbstractArray{<:AbstractArray},
         ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t
     ) where {BC}
-    M = length(sol[1])
+    M = length(sol.u[1])
     res_bc = vcat(resid[1], resid[2])
     bc!(res_bc, dsol, sol, p, t)
     copyto!(resid[1], res_bc[1:M])
@@ -472,8 +472,8 @@ end
 
 # Restructure Solution
 function __restructure_sol(sol::AbstractVectorOfArray, u_size)
-    (size(first(sol)) == u_size) && return sol
-    return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
+    (size(first(sol.u)) == u_size) && return sol
+    return VectorOfArray(map(Base.Fix2(reshape, u_size), sol.u))
 end
 function __restructure_sol(sol::AbstractArray{<:AbstractArray}, u_size)
     (size(first(sol)) == u_size) && return sol
@@ -586,7 +586,7 @@ Returns the length of the initial guess. If the initial guess is a function or n
 guess is supplied, it returns `-1`.
 """
 @inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
-@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
+@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀.u)
 @inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
 @inline __initial_guess_length(u₀::SciMLBase.ODESolution) = length(u₀.t)
 @inline __initial_guess_length(u₀::F) where {F} = -1
