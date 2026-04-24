@@ -308,13 +308,13 @@ Here, the `ki_interp`` is the stages in one subinterval.
             __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
         end
         if r > 1
-            for j in eachindex(k_interp)
+            for j in eachindex(k_interp.u)
                 __maybe_matmul!(
                     new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
                 )
             end
         end
-        for i in eachindex(new_stages)
+        for i in eachindex(new_stages.u)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                 (1 - v_star[r]) .* vec(y[i].du) .+
                 v_star[r] .* vec(y[i + 1].du)
@@ -345,13 +345,13 @@ end
             __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
         end
         if r > 1
-            for j in eachindex(k_interp)
+            for j in eachindex(k_interp.u)
                 __maybe_matmul!(
                     new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
                 )
             end
         end
-        for i in eachindex(new_stages)
+        for i in eachindex(new_stages.u)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                 (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
             if iip

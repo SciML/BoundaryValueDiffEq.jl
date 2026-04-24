@@ -592,9 +592,13 @@ function __construct_problem(
     resid_collocation = safe_similar(y, L_f_prototype * (N - 1))
 
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = AutoSparse(
@@ -604,10 +608,13 @@ function __construct_problem(
     )
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -674,9 +681,13 @@ function __construct_problem(
     resid_prototype = vcat(resid_bc, resid_collocation)
 
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
@@ -707,10 +718,13 @@ function __construct_problem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -845,9 +859,13 @@ function __construct_problem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     jac_prototype = if iip
@@ -908,9 +926,13 @@ function __construct_problem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     jac_prototype = if iip

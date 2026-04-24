@@ -224,9 +224,13 @@ function __construct_nlproblem(
     end
 
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
@@ -241,10 +245,13 @@ function __construct_nlproblem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -314,9 +321,13 @@ function __construct_nlproblem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     jac_prototype = if iip

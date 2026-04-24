@@ -344,9 +344,13 @@ function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
     end
 
     jac_cache = if iip
-        DI.prepare_jacobian(loss, resid_prototype, diffmode, lz, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid_prototype, diffmode, lz, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, lz, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, diffmode, lz, Constant(cache.p); strict = Val(false)
+        )
     end
 
     jac_prototype = if iip
