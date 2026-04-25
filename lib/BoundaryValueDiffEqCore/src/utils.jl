@@ -617,15 +617,15 @@ as the mesh of the `DiffEqArray`.
 end
 @inline function __initial_guess_on_mesh(u₀::VectorOfArray, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return copy(u₀)
+    return deepcopy(u₀)
 end
 @inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p; tune_parameters = false)
     tune_parameters && return DiffEqArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return copy(u₀)
+    return deepcopy(u₀)
 end
 @inline function __initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return copy(VectorOfArray(u₀.u))
+    return deepcopy(VectorOfArray(u₀.u))
 end
 @inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u₀), __tunable_part(p)) for _ in mesh])
