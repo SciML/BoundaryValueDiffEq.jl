@@ -648,6 +648,31 @@ end
     @test_nowarn sol = solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 end
 
+# https://github.com/SciML/BoundaryValueDiffEq.jl/pull/473
+@testitem "StandardBVProblem optimize path without user lcons/ucons" begin
+    # Regression test: previously, `__extract_lcons_ucons` in the Nothing-
+    # f_prototype dispatch returned vectors of length N*M (decision-variable
+    # length) instead of the actual constraint length L_bc + M*(N-1). This
+    # caused a BoundsError in downstream optimizers (e.g. AugLag) that index
+    # the constraint Jacobian using `eachindex(lcons)`.
+    using BoundaryValueDiffEqMIRK, OptimizationIpopt
+
+    tspan = (0.0, pi / 2)
+    function simplependulum!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -9.81 * sin(u[1])
+    end
+    function bc!(residual, u, p, t)
+        residual[1] = u(pi / 4)[1] + pi / 2
+        residual[2] = u(pi / 2)[1] - pi / 2
+    end
+    # StandardBVProblem, no lcons/ucons — hits the fallback branch.
+    prob = BVProblem(
+        simplependulum!, bc!, [pi / 2, pi / 2], tspan
+    )
+    @test_nowarn solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
+end
+
 @testitem "Test initial guess" begin
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
