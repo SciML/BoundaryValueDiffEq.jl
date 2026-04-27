@@ -43,7 +43,7 @@ function SciMLBase.__solve(
         M = length(bcresid_prototype)
     end
 
-    internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
+    internal_ode_kwargs = (; kwargs..., odesolve_kwargs..., save_end = true)
 
     solve_internal_odes! = @closure (
         resid_nodes,

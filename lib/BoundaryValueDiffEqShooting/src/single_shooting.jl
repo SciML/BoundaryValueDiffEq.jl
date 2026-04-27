@@ -30,7 +30,7 @@ function SciMLBase.__solve(
     resid_prototype = __vec(bcresid_prototype)
 
     # Construct the residual function
-    actual_ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
+    actual_ode_kwargs = (; kwargs..., odesolve_kwargs...)
     # For TwoPointBVPs we don't need to save every step
     if prob.problem_type isa TwoPointBVProblem
         ode_kwargs = (; save_everystep = false, actual_ode_kwargs...)
