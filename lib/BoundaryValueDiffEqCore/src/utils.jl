@@ -149,8 +149,8 @@ end
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
         sol::SciMLBase.ODESolution, p, t
     ) where {BC}
-    ua = first(sol)
-    ub = last(sol)
+    ua = sol.u[1]
+    ub = sol.u[end]
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
@@ -659,7 +659,7 @@ function __build_solution(prob::AbstractBVProblem, odesol, nlsol::SciMLBase.Nonl
 end
 function __build_solution(prob::AbstractBVProblem, odesol, optsol::SciMLBase.OptimizationSolution)
     retcode = ifelse(SciMLBase.successful_retcode(optsol), odesol.retcode, optsol.retcode)
-    return SciMLBase.solution_new_original_retcode(odesol, optsol, retcode, zeros(length(first(odesol)))) # Need a patch in SciMLBase
+    return SciMLBase.solution_new_original_retcode(odesol, optsol, retcode, zeros(length(first(odesol.u)))) # Need a patch in SciMLBase
 end
 
 # Fix3

@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqMIRKN"
 uuid = "9255f1d6-53bf-473e-b6bd-23f1ff009da4"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.14.0"
+version = "1.15.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -33,7 +33,7 @@ ArrayInterface = "7.18"
 BandedMatrices = "1.7.5"
 BoundaryValueDiffEqCore = "2.0"
 ConcreteStructs = "0.2.3"
-DiffEqDevTools = "2.44"
+DiffEqDevTools = "2.44, 3"
 DifferentiationInterface = "0.7"
 FastAlmostBandedMatrices = "0.1.4"
 FastClosures = "0.3.2"
