@@ -252,7 +252,7 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     __resize!(cache.k_interp.u, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
     __resize!(cache.y₀.u, Nₙ, cache.M)
-    __resize!(cache.residual.u, Nₙ, cache.M)
+    __resize!(cache.residual, Nₙ, cache.M)
     __resize!(cache.errors.u, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __resize!(cache.new_stages.u, Nₙ - 1, cache.M)
     return cache

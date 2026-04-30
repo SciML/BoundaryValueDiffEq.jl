@@ -526,11 +526,12 @@ end
 
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
-    u0_ = __initial_guess_on_mesh(u0, nodes, p)
+    u0_ = __extract_u0(u0, p, tspan[1])
+    guess = __initial_guess_on_mesh(u0, nodes, p)
 
-    N = length(first(u0_))
-    u_at_nodes = similar(first(u0_), (nshoots + 1) * N)
-    recursive_flatten!(u_at_nodes, u0_.u)
+    N = length(u0_)
+    u_at_nodes = similar(u0_, (nshoots + 1) * N)
+    recursive_flatten!(u_at_nodes, guess.u)
 
     return u_at_nodes
 end
