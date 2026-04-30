@@ -174,6 +174,7 @@ function __maybe_allocate_diffcache(x, chunksize, jac_alg)
     return __needs_diffcache(jac_alg) ?
         DiffCache(x, chunksize; warn_on_resize = false) : x
 end
+
 function __maybe_allocate_diffcache(x::DiffCache, chunksize)
     return DiffCache(zero(x.du), chunksize; warn_on_resize = false)
 end

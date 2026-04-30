@@ -19,7 +19,7 @@ end
     T = eltype(u)
     for i in eachindex(k_discrete)
         K = get_tmp(k_discrete[i], u)
-        residᵢ = residual[i]
+        residᵢ = _maybe_get_tmp(residual[i], u)
         h = mesh_dt[i]
 
         yᵢ = get_tmp(y[i], u)
@@ -51,7 +51,7 @@ end
     T = eltype(u)
     for i in eachindex(k_discrete)
         K = get_tmp(k_discrete[i], u)
-        residᵢ = residual[i]
+        residᵢ = _maybe_get_tmp(residual[i], u)
         h = mesh_dt[i]
 
         yᵢ = get_tmp(y[i], u)
@@ -77,7 +77,7 @@ end
     )
     (; c, v, x, b) = TU
 
-    tmp = similar(fᵢ_cache)
+    tmp = fᵢ_cache
     T = eltype(u)
     for i in eachindex(k_discrete)
         K = k_discrete[i]

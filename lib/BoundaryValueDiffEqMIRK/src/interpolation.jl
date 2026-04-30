@@ -377,9 +377,9 @@ always update the intermediate solution with discrete solution + discrete stages
 (Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
 """
 @views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
-    eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
-    eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
-    eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
+    copyto!(eval_sol.u, __restructure_sol(y_, cache.in_size))
+    copyto!(eval_sol.cache.k_discrete, cache.k_discrete)
+    copyto!(eval_sol.cache.k_interp.u, cache.k_interp.u)
     interp_setup!(eval_sol.cache)
     return nothing
 end
