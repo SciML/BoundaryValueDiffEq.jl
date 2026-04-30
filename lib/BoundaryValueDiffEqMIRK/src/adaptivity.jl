@@ -561,7 +561,7 @@ end
         errors.u,
         [
             ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])), err.u[i], err.u[i + 1])
-                for i in 1:(length(err) - 1)
+                for i in 1:(length(err.u) - 1)
         ]
     )
 end
