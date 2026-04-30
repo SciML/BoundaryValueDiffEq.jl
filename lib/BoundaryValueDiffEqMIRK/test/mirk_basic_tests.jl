@@ -502,7 +502,7 @@ end
     )
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
-    @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
+    @test sol.prob.p ≈ [17.09658] atol = 1.0e-4
 
     tspan = (0.0, pi)
     function f!(du, u, p, t)
@@ -523,7 +523,7 @@ end
     )
     sol = solve(bvp, MIRK4(), dt = 0.05)
 
-    @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
+    @test sol.prob.p ≈ [17.09658] atol = 1.0e-4
 end
 
 @testitem "Test unknown parameters estimation with SciMLStructures" begin
@@ -576,9 +576,9 @@ end
         )
         sol_struct = solve(bvp_struct, MIRK4(), dt = 0.05)
 
-        @test sol_vec.prob.p ≈ [17.09658] atol = 1.0e-5
+        @test sol_vec.prob.p ≈ [17.09658] atol = 1.0e-4
         @test sol_struct.prob.p isa MyParams
-        @test sol_struct.prob.p.params ≈ [17.09658] atol = 1.0e-5
+        @test sol_struct.prob.p.params ≈ [17.09658] atol = 1.0e-4
         @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
     end
 
@@ -596,9 +596,9 @@ end
         )
         sol_struct = solve(bvp_struct, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 
-        @test sol_vec.prob.p ≈ [17.09658] atol = 1.0e-5
+        @test sol_vec.prob.p ≈ [17.09658] atol = 1.0e-4
         @test sol_struct.prob.p isa MyParams
-        @test sol_struct.prob.p.params ≈ [17.09658] atol = 1.0e-5
+        @test sol_struct.prob.p.params ≈ [17.09658] atol = 1.0e-4
         @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
     end
 end

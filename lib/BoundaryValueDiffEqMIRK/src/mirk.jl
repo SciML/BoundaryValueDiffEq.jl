@@ -307,7 +307,7 @@ function SciMLBase.solve!(
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlprob = __construct_problem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
