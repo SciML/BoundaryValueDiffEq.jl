@@ -625,7 +625,7 @@ end
 end
 @inline function __initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return VectorOfArray([deepcopy(u) for u in u₀.u])
+    return VectorOfArray(deepcopy(u₀.u))
 end
 @inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u₀), __tunable_part(p)) for _ in mesh])

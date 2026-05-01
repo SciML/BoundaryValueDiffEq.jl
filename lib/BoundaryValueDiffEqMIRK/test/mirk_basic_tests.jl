@@ -714,5 +714,5 @@ end
 
     # Ensure the initial guess is not modified in-place
     sol2 = solve(bvp2, MIRK4(), dt = 0.1, adaptive = false)
-    @test bvp2.u0 == u_guess
+    @test bvp2.u0.u == u_guess
 end
