@@ -36,46 +36,31 @@
     return cost_fun
 end
 
+"""
+    __extract_lcons_ucons(prob, T, constraint_length)
+
+Build the `lcons` / `ucons` vectors for the equality-constrained optimization
+problem constructed from a BVP. Length must match the actual constraint vector
+(`resid_prototype`) passed to the solver — not a reconstruction from
+`(M, N, bcresid_prototype, f_prototype)`, which has a different formula per
+discretization (MIRK: `L_bc + M*(N-1)`; FIRK Expanded: `L_bc + M*(N-1)*(stage+1)`;
+MIRKN: `L_bc + M*2*(N-1)`; shooting: `L_bc`). Callers pass `length(resid_prototype)`
+directly.
+"""
 @inline function __extract_lcons_ucons(
-        prob::AbstractBVProblem, ::Type{T}, M, N, bcresid_prototype, f_prototype
+        prob::AbstractBVProblem, ::Type{T}, constraint_length::Int
     ) where {T}
-    L_f_prototype = length(f_prototype)
-    L_bcresid_prototype = length(bcresid_prototype)
     lcons = if isnothing(prob.lcons)
-        zeros(T, L_bcresid_prototype + (N - 1) * L_f_prototype)
+        zeros(T, constraint_length)
     else
         lcons_length = length(prob.lcons)
-        vcat(prob.lcons, zeros(T, N * M - lcons_length))
+        vcat(prob.lcons, zeros(T, constraint_length - lcons_length))
     end
     ucons = if isnothing(prob.ucons)
-        zeros(T, L_bcresid_prototype + (N - 1) * L_f_prototype)
+        zeros(T, constraint_length)
     else
         ucons_length = length(prob.ucons)
-        vcat(prob.ucons, zeros(T, N * M - ucons_length))
-    end
-    return lcons, ucons
-end
-
-@inline function __extract_lcons_ucons(
-        prob::AbstractBVProblem, ::Type{T}, M, N, bcresid_prototype, ::Nothing
-    ) where {T}
-    lcons = zeros(T, N * M)
-    ucons = zeros(T, N * M)
-    return lcons, ucons
-end
-
-@inline function __extract_lcons_ucons(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
-    lcons = if isnothing(prob.lcons)
-        zeros(T, N * M)
-    else
-        lcons_length = length(prob.lcons)
-        vcat(prob.lcons, zeros(T, N * M - lcons_length))
-    end
-    ucons = if isnothing(prob.ucons)
-        zeros(T, N * M)
-    else
-        ucons_length = length(prob.ucons)
-        vcat(prob.ucons, zeros(T, N * M - ucons_length))
+        vcat(prob.ucons, zeros(T, constraint_length - ucons_length))
     end
     return lcons, ucons
 end
@@ -129,7 +114,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -161,7 +146,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -194,7 +179,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -237,7 +222,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -268,7 +253,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N, bcresid_prototype, f_prototype)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -301,7 +286,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
@@ -332,7 +317,7 @@ function __construct_internal_problem(
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
         )
-        lcons, ucons = __extract_lcons_ucons(prob, T, M, N)
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(

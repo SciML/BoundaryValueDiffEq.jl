@@ -168,7 +168,6 @@ function SciMLBase.__init(
         if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
             tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
             l_parameters = length(tunable_part)
-            base_f = f_wrapped
             f_wrapped = @closure (
                 du,
                 u,
@@ -177,14 +176,13 @@ function SciMLBase.__init(
             ) -> begin
                 @inbounds @views begin
                     _p = repack(u[(end - l_parameters + 1):end])
-                    base_f(du, u, _p, t)
+                    prob.f(du, u, _p, t)
                     fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
                 end
                 return nothing
             end
         elseif tune_parameters
             l_parameters = length(prob.p)
-            base_f = f_wrapped
             f_wrapped = @closure (
                 du,
                 u,
@@ -192,7 +190,7 @@ function SciMLBase.__init(
                 t,
             ) -> begin
                 @inbounds @views begin
-                    base_f(du, u, u[(end - l_parameters + 1):end], t)
+                    prob.f(du, u, u[(end - l_parameters + 1):end], t)
                     fill!(du[(end - l_parameters + 1):end], zero(eltype(du)))
                 end
                 return nothing
@@ -251,12 +249,12 @@ match the length of the new mesh.
 function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_both}
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M)
-    __resize!(cache.k_interp, Nₙ - 1, cache.M)
+    __resize!(cache.k_interp.u, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
-    __resize!(cache.y₀, Nₙ, cache.M)
+    __resize!(cache.y₀.u, Nₙ, cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
-    __resize!(cache.errors, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
-    __resize!(cache.new_stages, Nₙ - 1, cache.M)
+    __resize!(cache.errors.u, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
+    __resize!(cache.new_stages.u, Nₙ - 1, cache.M)
     return cache
 end
 
@@ -269,6 +267,7 @@ function SciMLBase.solve!(
     (abstol, adaptive, controller, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
+    length_u = cache.in_size
 
     # We do the first iteration outside the loop to preserve type-stability of the
     # `original` field of the solution
@@ -308,7 +307,7 @@ function SciMLBase.solve!(
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlprob = __construct_problem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
@@ -337,7 +336,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
             mesh, mesh_dt, _, info = mesh_selector!(cache, controller)
             if info == ReturnCode.Success
                 (length(mesh) < length(cache.mesh)) &&
-                    __resize!(cache.y₀, length(cache.mesh), cache.M)
+                    __resize!(cache.y₀.u, length(cache.mesh), cache.M)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end
