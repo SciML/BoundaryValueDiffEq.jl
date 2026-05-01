@@ -137,7 +137,7 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
 end
 
 function __perform_mirkn_iteration(cache::MIRKNCache)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlprob = __construct_nlproblem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,

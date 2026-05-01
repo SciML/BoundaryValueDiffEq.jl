@@ -716,3 +716,39 @@ end
     sol2 = solve(bvp2, MIRK4(), dt = 0.1, adaptive = false)
     @test bvp2.u0.u == u_guess
 end
+
+# https://github.com/SciML/BoundaryValueDiffEq.jl/issues/484
+# Adaptive mesh refinement on a sufficiently nonlinear BVP must not throw
+# UndefRefError. The torus geodesic system is smooth and nonlinear enough
+# that the solver decides to refine the mesh.
+@testitem "Adaptive mesh refinement (issue 484)" begin
+    using BoundaryValueDiffEqMIRK
+
+    R = 3.0
+    r = 2.0
+
+    function f!(du, u, p, t)
+        sinθ, cosθ = sincos(u[1])
+        R_θ = R + r * cosθ
+        du[1] = u[3]
+        du[2] = u[4]
+        du[3] = -u[4]^2 * R_θ * sinθ / r
+        du[4] = 2 * r * sinθ / R_θ * u[3] * u[4]
+    end
+
+    a1 = [0.5, -1.2]
+    a2 = [-0.5, 0.3]
+
+    function bc!(residual, u, p, t)
+        ua = u(0.0)
+        ub = u(1.0)
+        residual[1:2] = ua[1:2] - a1
+        residual[3:4] = ub[1:2] - a2
+    end
+
+    prob = BVProblem(f!, bc!, vcat(a1, zero(a1)), (0.0, 1.0))
+    sol = solve(prob, MIRK4(); dt = 0.05)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.u[1][1:2] ≈ a1 atol = 1.0e-8
+    @test sol.u[end][1:2] ≈ a2 atol = 1.0e-8
+end
