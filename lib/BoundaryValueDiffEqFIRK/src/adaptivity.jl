@@ -260,7 +260,7 @@ Generate new mesh based on the defect.
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in defect]  # Broadcasting breaks GPU Compilation
+    ŝ = [maximum(abs, d) for d in defect.u]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)

@@ -444,9 +444,9 @@ function __expand_cache!(cache::FIRKCacheExpand)
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
     __resize!(cache.y, Nₙ, cache.M, cache.TU)
-    __resize!(cache.y₀, Nₙ, cache.M, cache.TU)
+    __resize!(cache.y₀.u, Nₙ, cache.M, cache.TU)
     __resize!(cache.residual, Nₙ, cache.M, cache.TU)
-    __resize!(cache.defect, Nₙ - 1, cache.M)
+    __resize!(cache.defect.u, Nₙ - 1, cache.M)
     return cache
 end
 
@@ -454,9 +454,9 @@ function __expand_cache!(cache::FIRKCacheNested)
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
-    __resize!(cache.y₀, Nₙ, cache.M)
+    __resize!(cache.y₀.u, Nₙ, cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
-    __resize!(cache.defect, Nₙ - 1, cache.M)
+    __resize!(cache.defect.u, Nₙ - 1, cache.M)
     return cache
 end
 
@@ -552,7 +552,7 @@ function SciMLBase.solve!(
 end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlprob = __construct_problem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
@@ -579,7 +579,7 @@ function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache)
             if info == ReturnCode.Success
-                __resize!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
+                __resize!(cache.y₀.u, length(cache.mesh), cache.M, cache.TU)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end

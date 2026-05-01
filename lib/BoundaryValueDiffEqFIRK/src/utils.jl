@@ -1,4 +1,4 @@
-function BoundaryValueDiffEqCore.__resize!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTableau{false})
+function BoundaryValueDiffEqCore.__resize!(x::AbstractVector{<:AbstractArray}, n, _, TU) #::FIRKTableau{false}) # TODO: remove the TU argument and just use s = length(TU.c)
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x

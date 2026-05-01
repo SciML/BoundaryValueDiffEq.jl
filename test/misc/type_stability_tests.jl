@@ -23,6 +23,7 @@
     bcresid_prototype = (zeros(1), zeros(1))
 
     jac_alg = BVPJacobianAlgorithm(AutoForwardDiff(; chunksize = 2))
+    verbosity = DEFAULT_VERBOSE
 
     # BVProblem constructor type stability (issue #454)
     # Explicit {iip} constructors should be type-stable
@@ -56,8 +57,8 @@
                     MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
                     MIRK5(; jac_alg), MIRK6(; jac_alg),
                 )
-                @inferred solve(mpbvp_iip, solver; dt = 0.2)
-                @inferred solve(mpbvp_oop, solver; dt = 0.2)
+                @inferred solve(mpbvp_iip, solver; dt = 0.2, verbose = verbosity)
+                @inferred solve(mpbvp_oop, solver; dt = 0.2, verbose = verbosity)
             end
         end
     end
@@ -84,8 +85,8 @@
                     MIRK2(; jac_alg), MIRK3(; jac_alg), MIRK4(; jac_alg),
                     MIRK5(; jac_alg), MIRK6(; jac_alg),
                 )
-                @inferred solve(tpbvp_iip, solver; dt = 0.2)
-                @inferred solve(tpbvp_oop, solver; dt = 0.2)
+                @inferred solve(tpbvp_iip, solver; dt = 0.2, verbose = verbosity)
+                @inferred solve(tpbvp_oop, solver; dt = 0.2, verbose = verbosity)
             end
         end
     end
