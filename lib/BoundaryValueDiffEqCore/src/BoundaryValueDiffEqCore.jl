@@ -20,7 +20,7 @@ using SciMLBase: SciMLBase, AbstractBVProblem, AbstractDiffEqInterpolation,
     StandardBVProblem, StandardSecondOrderBVProblem, __solve, _unwrap_val
 using SciMLLogging: SciMLLogging, @SciMLMessage, Silent, DebugLevel,
     InfoLevel, WarnLevel, ErrorLevel, @verbosity_specifier, AbstractVerbositySpecifier,
-    None, Minimal, Standard, Detailed, All, AbstractMessageLevel
+    None, Minimal, Standard, Detailed, All
 using Setfield: @set!, @set
 using SparseArrays: sparse
 using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector

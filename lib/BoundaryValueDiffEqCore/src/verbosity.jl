@@ -1,7 +1,5 @@
 @verbosity_specifier BVPVerbosity begin
     toggles = (
-        :nonlinear_verbosity,
-        :optimization_verbosity,
         :bvpsol_convergence,
         :bvpsol_integrator,
         :bvpsol_linear_solver,
@@ -19,6 +17,8 @@
         :convergence_result,
         :deprecations,
     )
+
+    sub_specifiers = (:nonlinear_verbosity, :optimization_verbosity)
 
     presets = (
         None = (
