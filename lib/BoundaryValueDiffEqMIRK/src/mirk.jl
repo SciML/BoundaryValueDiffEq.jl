@@ -21,6 +21,10 @@
     k_interp                   # Stage information associated with the discrete Runge-Kutta method
     y
     y₀
+    y₀_flat                    # Flat Vector{T} mirror of y₀ used as nlprob u0 to keep
+                               # LinearSolve / NonlinearSolveBase happy (they require a
+                               # concrete `Vector{T}`, not the `Base.ReshapedArray` that
+                               # `vec(::VectorOfArray)` returns under RAT v4).
     residual
     # The following 2 caches are never resized
     fᵢ_cache
@@ -75,6 +79,7 @@ function SciMLBase.__init(
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
+    y₀_flat = collect(vec(y₀))
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)
@@ -235,7 +240,7 @@ function SciMLBase.__init(
     return MIRKCache{iip, T, use_both, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, N, size(u0), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
-        y₀, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
+        y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
         , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
     )
 end
@@ -252,6 +257,7 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     __resize!(cache.k_interp.u, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
     __resize!(cache.y₀.u, Nₙ, cache.M)
+    resize!(cache.y₀_flat, Nₙ * cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
     __resize!(cache.errors.u, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __resize!(cache.new_stages.u, Nₙ - 1, cache.M)
@@ -307,7 +313,10 @@ function SciMLBase.solve!(
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
-    nlprob = __construct_problem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
+    # Refresh the flat mirror from the structured guess (in-place; no fresh allocation
+    # per outer iteration). NonlinearSolve / LinearSolve still see a `Vector{T}`.
+    copyto!(cache.y₀_flat, vec(cache.y₀))
+    nlprob = __construct_problem(cache, cache.y₀_flat, copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
