@@ -307,7 +307,9 @@ function SciMLBase.solve!(
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
-    nlprob = __construct_problem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
+    # TODO: Need to fix the reshaped array issue, we can just store the flattened version in cache
+    # e.g. #486
+    nlprob = __construct_problem(cache, reduce(vcat, cache.y₀.u), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
@@ -360,7 +362,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
 end
 
 # Constructing the Nonlinear Problem
-function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
+function __construct_problem(cache::MIRKCache{iip}, y, y₀::AbstractVectorOfArray) where {iip}
     constraint = (!isnothing(cache.prob.f.inequality)) ||
         (!isnothing(cache.prob.f.equality)) ||
         (!isnothing(cache.prob.lb)) ||
@@ -369,7 +371,7 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::Abs
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y::AbstractVector,
+        cache::MIRKCache{iip}, y,
         y₀::AbstractVectorOfArray, constraint
     ) where {iip}
     pt = cache.problem_type
