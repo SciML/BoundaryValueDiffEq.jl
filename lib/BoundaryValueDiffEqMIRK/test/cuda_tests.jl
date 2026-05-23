@@ -1,4 +1,5 @@
 @testitem "GPU accelerated MIRK tests" begin
+    using CUDA, BoundaryValueDiffEqMIRK, CUDSS
     @inline function f!(du, u, p, t)
         du[1] = u[2]
         du[2] = -u[1]

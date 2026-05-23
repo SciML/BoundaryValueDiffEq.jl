@@ -78,6 +78,8 @@ julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 Hwloc = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
@@ -93,4 +95,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OptimizationIpopt", "OrdinaryDiffEqRosenbrock", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
+test = ["Aqua", "CUDA", "CUDSS", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OptimizationIpopt", "OrdinaryDiffEqRosenbrock", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
