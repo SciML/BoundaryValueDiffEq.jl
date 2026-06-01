@@ -22,9 +22,9 @@
     y
     y₀
     y₀_flat                    # Flat Vector{T} mirror of y₀ used as nlprob u0 to keep
-                               # LinearSolve / NonlinearSolveBase happy (they require a
-                               # concrete `Vector{T}`, not the `Base.ReshapedArray` that
-                               # `vec(::VectorOfArray)` returns under RAT v4).
+    # LinearSolve / NonlinearSolveBase happy (they require a
+    # concrete `Vector{T}`, not the `Base.ReshapedArray` that
+    # `vec(::VectorOfArray)` returns under RAT v4).
     residual
     # The following 2 caches are never resized
     fᵢ_cache

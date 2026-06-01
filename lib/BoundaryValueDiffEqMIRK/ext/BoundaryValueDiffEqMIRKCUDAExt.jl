@@ -103,7 +103,7 @@ end
 
 function BoundaryValueDiffEqMIRK.__construct_problem(
         cache::MIRKCache{iip, T, UB, DC, tune_parameters}, y::CuArray{T, 1, D}, loss_bc::BC, loss_collocation::C, loss::LF,
-        ::SciMLBase.StandardBVProblem, constraint::Val{true}
+        ::SciMLBase.StandardBVProblem, constraint::Val{false}
     ) where {iip, T, UB, DC, tune_parameters, BC, C, LF, D}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
@@ -115,6 +115,9 @@ function BoundaryValueDiffEqMIRK.__construct_problem(
     L_f_prototype = length(f_prototype)
     resid_collocation = safe_similar(y, L_f_prototype * (N - 1))
 
+    # Prepare Jacobian caches for BC on CPU only
+    y_cpu = Array(y)
+    resid_bc_cpu = Array(resid_bc)
     cache_bc = if iip
         DI.prepare_jacobian(
             loss_bc, resid_bc, bc_diffmode, y, DI.Constant(cache.p); strict = Val(false)
@@ -142,14 +145,15 @@ function BoundaryValueDiffEqMIRK.__construct_problem(
     end
 
     J_bc = if iip
-        DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, DI.Constant(cache.p))
+        DI.jacobian(loss_bc, resid_bc_cpu, cache_bc, bc_diffmode, y, DI.Constant(cache.p))
     else
-        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y, DI.Constant(cache.p))
+        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y_cpu, DI.Constant(cache.p))
     end
+    J_bc = adapt(backend, J_bc)
     J_c = if iip
         DI.jacobian(
             loss_collocation, resid_collocation, cache_collocation,
-            nonbc_diffmode, y, Constant(cache.p)
+            nonbc_diffmode, y, DI.Constant(cache.p)
         )
     else
         DI.jacobian(
