@@ -38,6 +38,7 @@
     prob2_iip = BVProblem(f!, bc!, u0, tspan)
     prob2_oop = BVProblem(f, bc, u0, tspan)
 
+    # TODO: Stalled on GPU with small stepsize, investigate further
     sol1_iip = solve(prob1_iip, MIRK4(); dt = 0.01f0, adaptive = false)
     @test_nowarn SciMLBase.successful_retcode(sol1_iip)
     sol1_oop = solve(prob1_oop, MIRK4(); dt = 0.01f0, adaptive = false)

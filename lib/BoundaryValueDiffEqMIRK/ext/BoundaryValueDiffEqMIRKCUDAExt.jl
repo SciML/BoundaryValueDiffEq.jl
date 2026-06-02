@@ -431,7 +431,7 @@ function _gpu_collocation!(resids_slice, cache::MIRKCache, y_, u)
     b_tuple = _tuple_from(cache.TU.b, stage)
     x_tuple = _matrix_tuple(cache.TU.x, stage)
 
-    kernel! = gpu_collocation_kernel!(backend, 256)
+    kernel! = gpu_collocation_kernel!(backend, intervals)
     kernel!(
         resid_dev, k_dev, tmp_dev, y_dev, mesh_dev, meshdt_dev,
         c_tuple, v_tuple, x_tuple, b_tuple, stage, cache.f.f, cache.p;
