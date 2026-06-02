@@ -22,9 +22,9 @@
     y
     y₀
     y₀_flat                    # Flat Vector{T} mirror of y₀ used as nlprob u0 to keep
-                               # LinearSolve / NonlinearSolveBase happy (they require a
-                               # concrete `Vector{T}`, not the `Base.ReshapedArray` that
-                               # `vec(::VectorOfArray)` returns under RAT v4).
+    # LinearSolve / NonlinearSolveBase happy (they require a
+    # concrete `Vector{T}`, not the `Base.ReshapedArray` that
+    # `vec(::VectorOfArray)` returns under RAT v4).
     residual
     # The following 2 caches are never resized
     fᵢ_cache
@@ -369,7 +369,7 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
 end
 
 # Constructing the Nonlinear Problem
-function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
+function __construct_problem(cache::MIRKCache{iip}, y, y₀::AbstractVectorOfArray) where {iip}
     constraint = (!isnothing(cache.prob.f.inequality)) ||
         (!isnothing(cache.prob.f.equality)) ||
         (!isnothing(cache.prob.lb)) ||
@@ -378,7 +378,7 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::Abs
 end
 
 function __construct_problem(
-        cache::MIRKCache{iip}, y::AbstractVector,
+        cache::MIRKCache{iip}, y,
         y₀::AbstractVectorOfArray, constraint
     ) where {iip}
     pt = cache.problem_type

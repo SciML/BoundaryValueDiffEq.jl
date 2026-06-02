@@ -23,15 +23,28 @@ SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[weakdeps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
+GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+
 [sources]
 BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
 
+[extensions]
+BoundaryValueDiffEqMIRKCUDAExt = ["CUDA", "CUDSS"]
+
 [compat]
 ADTypes = "1.14"
+Adapt = "3, 4"
 Aqua = "0.8"
 ArrayInterface = "7.18"
 BandedMatrices = "1.7.5"
 BoundaryValueDiffEqCore = "2.2"
+CUDA = "6.1.0"
+CUDSS = "0.7.0"
 ConcreteStructs = "0.2.3"
 DiffEqDevTools = "2.44, 3"
 DifferentiationInterface = "0.7"
@@ -39,8 +52,10 @@ Enzyme = "0.13.33"
 FastAlmostBandedMatrices = "0.1.4"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
+GPUArraysCore = "0.2"
 Hwloc = "3"
 InteractiveUtils = "<0.0.1, 1"
+KernelAbstractions = "0.9"
 LinearAlgebra = "1.10"
 LinearSolve = "2.36.2, 3"
 Mooncake = "0.4, 0.5"
@@ -63,6 +78,8 @@ julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 Hwloc = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
@@ -78,4 +95,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OptimizationIpopt", "OrdinaryDiffEqRosenbrock", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
+test = ["Aqua", "CUDA", "CUDSS", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OptimizationIpopt", "OrdinaryDiffEqRosenbrock", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
