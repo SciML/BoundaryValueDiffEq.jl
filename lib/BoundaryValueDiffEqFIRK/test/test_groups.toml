@@ -1,5 +1,0 @@
-[EXPANDED]
-versions = ["1.11", "lts"]
-
-[NESTED]
-versions = ["1.11", "lts"]
