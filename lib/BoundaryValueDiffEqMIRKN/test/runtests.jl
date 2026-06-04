@@ -2,7 +2,12 @@ using ReTestItems, BoundaryValueDiffEqMIRKN, Hwloc, InteractiveUtils
 
 @info sprint(InteractiveUtils.versioninfo)
 
-const GROUP = lowercase(get(ENV, "GROUP", "All"))
+# Under the centralized sublibrary CI the root test/runtests.jl activates this
+# sublibrary and sets BVDE_TEST_GROUP to the group name (Core) parsed from the
+# matrix `group`. "core"/"all" run every test item; any other value filters by
+# that tag. When run directly, honor GROUP or default to All.
+const GROUP = lowercase(get(ENV, "BVDE_TEST_GROUP", get(ENV, "GROUP", "All")))
+const TEST_TAGS = (GROUP == "all" || GROUP == "core") ? nothing : [Symbol(GROUP)]
 
 const RETESTITEMS_NWORKERS = parse(
     Int,
@@ -22,6 +27,6 @@ const RETESTITEMS_NWORKER_THREADS = parse(
 @info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
 
 ReTestItems.runtests(
-    BoundaryValueDiffEqMIRKN; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
+    BoundaryValueDiffEqMIRKN; tags = TEST_TAGS,
     nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS
 )

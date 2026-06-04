@@ -1,0 +1,2 @@
+[Core]
+versions = ["1.11", "lts"]
