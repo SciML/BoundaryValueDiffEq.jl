@@ -43,6 +43,7 @@ BoundaryValueDiffEqMIRKN = "1"
 BoundaryValueDiffEqShooting = "1"
 DiffEqBase = "6.183, 7"
 DiffEqDevTools = "2.48, 3"
+DifferentiationInterface = "0.7.13"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
 Hwloc = "3.3"
@@ -69,6 +70,7 @@ julia = "1.10"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
+DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 Hwloc = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
@@ -87,4 +89,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Hwloc", "InteractiveUtils", "LinearSolve", "NonlinearSolveFirstOrder", "ODEInterface", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
+test = ["Aqua", "DiffEqDevTools", "DifferentiationInterface", "Hwloc", "InteractiveUtils", "LinearSolve", "NonlinearSolveFirstOrder", "ODEInterface", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "ReTestItems", "RecursiveArrayTools", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
