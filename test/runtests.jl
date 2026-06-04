@@ -17,7 +17,7 @@ function _detect_sublibrary_group(group, lib_dir)
             return (group[1:(i - 1)], group[(i + 1):end])
         end
     end
-    return (group, "")
+    return (group, "Core")
 end
 
 const _BASE_GROUP, _TEST_GROUP = _detect_sublibrary_group(GROUP_RAW, _LIB_DIR)

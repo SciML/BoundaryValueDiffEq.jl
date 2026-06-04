@@ -2,18 +2,10 @@ using InteractiveUtils, Test
 
 @info sprint(InteractiveUtils.versioninfo)
 
-# Standard sublibrary test groups (Core / QA). The centralized sublibrary CI
-# routes the emitted matrix `group` here via BVDE_TEST_GROUP (Core / QA). When
-# run directly with GROUP set, honor the standard `<pkg>` / `<pkg>_<GROUP>`
-# naming via the prefix-strip shim. Core runs functional/correctness tests; QA
-# runs the Aqua quality checks.
-const _SUB = "BoundaryValueDiffEqCore"
-const _G = get(ENV, "GROUP", "All")
-const GROUP = get(
-    ENV, "BVDE_TEST_GROUP",
-    _G == _SUB ? "Core" :
-        (startswith(_G, _SUB * "_") ? _G[(length(_SUB) + 2):end] : _G)
-)
+# Standard sublibrary test groups (Core / QA). The root test/runtests.jl
+# activates this sublibrary and sets BVDE_TEST_GROUP to the standard group name.
+# Core runs functional/correctness tests; QA runs the Aqua quality checks.
+const GROUP = get(ENV, "BVDE_TEST_GROUP", "All")
 
 @testset "BoundaryValueDiffEqCore.jl" begin
     if GROUP in ("QA", "All")
