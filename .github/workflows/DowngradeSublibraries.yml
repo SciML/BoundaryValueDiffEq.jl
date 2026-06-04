@@ -1,5 +1,4 @@
 name: Downgrade Sublibraries
-
 on:
   pull_request:
     branches:
@@ -11,18 +10,36 @@ on:
       - master
     paths-ignore:
       - 'docs/**'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
-
 jobs:
-  downgrade-sublibraries:
+  test:
     if: false # Disabled: waiting on upstream compat fixes. See #417
-    name: "Downgrade Sublibraries"
-    uses: "SciML/.github/.github/workflows/sublibrary-downgrade.yml@v1"
-    secrets: "inherit"
-    with:
-      julia-version: "1.11"
-      skip: "Pkg,TOML"
-      allow-reresolve: false
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        downgrade_mode: ['alldeps']
+        julia-version: ['1.11']
+        project:
+          - 'lib/BoundaryValueDiffEqAscher'
+          - 'lib/BoundaryValueDiffEqCore'
+          - 'lib/BoundaryValueDiffEqFIRK'
+          - 'lib/BoundaryValueDiffEqMIRK'
+          - 'lib/BoundaryValueDiffEqMIRKN'
+          - 'lib/BoundaryValueDiffEqShooting'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia-version }}
+      - uses: julia-actions/julia-downgrade-compat@v2
+        with:
+          project: ${{ matrix.project }}
+          skip: Pkg,TOML
+          julia_version: ${{ matrix.julia-version }}
+      - uses: julia-actions/julia-buildpkg@v1
+        with:
+          project: ${{ matrix.project }}
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          project: ${{ matrix.project }}
+          ALLOW_RERESOLVE: false

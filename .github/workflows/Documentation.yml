@@ -16,4 +16,6 @@ jobs:
   build-and-deploy-docs:
     name: "Documentation"
     uses: "SciML/.github/.github/workflows/documentation.yml@v1"
+    with:
+      julia-version: "1.10"
     secrets: "inherit"
