@@ -1,5 +1,8 @@
+using BoundaryValueDiffEqAscher
+using Test
+
 # Standard test BVDAE problem from the URI M. ASCHER and RAYMOND J. SPITERI paper
-@testitem "Test Ascher solver on example problem 1" begin
+@testset "Test Ascher solver on example problem 1" begin
     using BoundaryValueDiffEqAscher, SciMLBase
     function f1!(du, u, p, t)
         e = 2.7
@@ -79,7 +82,7 @@ end
 ### Another BVDAE problem ###
 # Comes from "Boundary value problems for differential-algebraic equations"
 # by Leonid V. Kalachev and Robert E. O'Malley
-@testitem "Test Ascher solver on example problem 2" begin
+@testset "Test Ascher solver on example problem 2" begin
     using BoundaryValueDiffEqAscher, SciMLBase
 
     function f2!(du, u, p, t)
@@ -134,7 +137,7 @@ end
     end
 end
 
-@testitem "Test Ascher solver on example problem 3" begin
+@testset "Test Ascher solver on example problem 3" begin
     using BoundaryValueDiffEqAscher, SciMLBase
     function f3!(du, u, p, t)
         du[1] = -u[3]

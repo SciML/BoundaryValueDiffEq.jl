@@ -1,4 +1,7 @@
-@testitem "Lambert's Problem" begin
+using BoundaryValueDiffEqShooting
+using Test
+
+@testset "Lambert's Problem" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqLowOrderRK, LinearAlgebra
 
     y0 = [

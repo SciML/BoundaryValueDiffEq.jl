@@ -1,4 +1,5 @@
-@testsetup module FIRKNestedConvergenceTests
+using BoundaryValueDiffEqFIRK
+using Test
 
 using BoundaryValueDiffEqFIRK
 
@@ -27,34 +28,34 @@ end
 # First order test
 function f1!(du, u, p, t)
     du[1] = u[2]
-    du[2] = 0
+    return du[2] = 0
 end
 f1(u, p, t) = [u[2], 0]
 
 # Second order linear test
 function f2!(du, u, p, t)
     du[1] = u[2]
-    du[2] = -u[1]
+    return du[2] = -u[1]
 end
 f2(u, p, t) = [u[2], -u[1]]
 
 function boundary!(residual, u, p, t)
     residual[1] = u(0.0)[1] - 5
-    residual[2] = u(5.0)[1]
+    return residual[2] = u(5.0)[1]
 end
 boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
 
 function boundary_indexing!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
-    residual[2] = u[:, end][1]
+    return residual[2] = u[:, end][1]
 end
 boundary_indexing(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
 
 function boundary_two_point_a!(resida, ua, p)
-    resida[1] = ua[1] - 5
+    return resida[1] = ua[1] - 5
 end
 function boundary_two_point_b!(residb, ub, p)
-    residb[1] = ub[1]
+    return residb[1] = ub[1]
 end
 
 boundary_two_point_a(ua, p) = [ua[1] - 5]
@@ -110,12 +111,10 @@ testTol = 0.25
 affineTol = 1.0e-2
 dts = 1 .// 2 .^ (5:-1:3)
 
-export probArr, testTol, affineTol, dts, lobattoIIIa_solver, lobattoIIIb_solver,
-    lobattoIIIc_solver, radau_solver, nested
+lobattoIIIc_solver, radau_solver, nested
 
-end
 
-@testitem "Affineness" setup = [FIRKNestedConvergenceTests] begin
+@testset "Affineness" begin
     using LinearAlgebra
 
     @testset "Problem: $i" for i in (1, 2, 7, 8)
@@ -161,7 +160,7 @@ end
 
 # JET tests have been moved to the separate QA test group (test/qa/)
 
-@testitem "Convergence on Linear" setup = [FIRKNestedConvergenceTests] begin
+@testset "Convergence on Linear" begin
     using LinearAlgebra, DiffEqDevTools
 
     @testset "Problem: $i" for i in (3, 4, 9, 10)
@@ -224,7 +223,7 @@ end
 end
 
 # FIXME: This is a really bad test. Needs interpolation
-@testitem "Simple Pendulum" begin
+@testset "Simple Pendulum" begin
     using StaticArrays
 
     tspan = (0.0, π / 2)
@@ -277,7 +276,7 @@ end
     @test_nowarn solve(bvp1, RadauIIa7(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
 end
 
-@testitem "Interpolation" setup = [FIRKNestedConvergenceTests] begin
+@testset "Interpolation" begin
     using LinearAlgebra
 
     λ = 1
@@ -401,7 +400,7 @@ end
     @test_nowarn solve(prob, RadauIIa5(nested_nlsolve = true); dt = 0.01)
 end =#
 
-@testitem "Solve using Continuation" begin
+@testset "Solve using Continuation" begin
     using RecursiveArrayTools
 
     g = 9.81
@@ -442,7 +441,7 @@ end =#
     SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(; nested_nlsolve = true), dt = 0.05))
 end
 
-@testitem "Nested nlsolve kwargs in FIRK" setup = [FIRKNestedConvergenceTests] begin
+@testset "Nested nlsolve kwargs in FIRK" begin
     tspan = (0.0, π / 2)
     function simplependulum!(du, u, p, t)
         g, L, θ, dθ = 9.81, 1.0, u[1], u[2]
@@ -505,7 +504,7 @@ end
     end
 end
 
-@testitem "Test unknown parameters estimation" setup = [FIRKNestedConvergenceTests] begin
+@testset "Test unknown parameters estimation" begin
     tspan = (0.0, pi)
     function f!(du, u, p, t)
         du[1] = u[2]
@@ -551,7 +550,7 @@ end
     @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 end
 
-@testitem "Test unknown parameters estimation with SciMLStructures" begin
+@testset "Test unknown parameters estimation with SciMLStructures" begin
     using BoundaryValueDiffEqFIRK, SciMLStructures
 
     # Define a custom struct that wraps parameters
@@ -608,7 +607,7 @@ end
     @test sol_struct.prob.p.params ≈ sol_vec.prob.p atol = 1.0e-10
 end
 
-@testitem "Test initial guess" begin
+@testset "Test initial guess" begin
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
         cond = 0.002

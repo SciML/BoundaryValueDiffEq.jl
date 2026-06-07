@@ -1,4 +1,5 @@
-@testsetup module FIRKNestedNLLSTests
+using BoundaryValueDiffEqFIRK
+using Test
 
 using BoundaryValueDiffEqFIRK, LinearAlgebra
 
@@ -85,7 +86,7 @@ function hat(y)
 end
 
 function inv_hat(skew)
-    [skew[3, 2]; skew[1, 3]; skew[2, 1]]
+    return [skew[3, 2]; skew[1, 3]; skew[2, 1]]
 end
 
 function rod_ode!(dy, y, p, t, Kse_inv, Kbt_inv, rho, A, g)
@@ -100,7 +101,7 @@ function rod_ode!(dy, y, p, t, Kse_inv, Kbt_inv, rho, A, g)
     @views dy[1:3] .= ps
     @views dy[4:12] .= vec(R * hat(u))
     @views dy[13:15] .= -rho * A * g
-    @views dy[16:18] .= -hat(ps) * n
+    return @views dy[16:18] .= -hat(ps) * n
 end
 
 function bc_a!(residual, y, p)
@@ -177,11 +178,8 @@ UnderconstrainedProbArr = [
     BVProblem(BVPFunction(rod_ode!, bc!; bcresid_prototype = zeros(12)), y0, rod_tspan, p),
 ]
 
-export OverconstrainedProbArr, UnderconstrainedProbArr, SOLVERS, SOLVERS_NAMES, bc1
 
-end
-
-@testitem "Overconstrained BVP" setup = [FIRKNestedNLLSTests] begin
+@testset "Overconstrained BVP" begin
     using LinearAlgebra, BoundaryValueDiffEqFIRK
 
     @testset "Problem: $i" for i in 1:4
@@ -195,7 +193,7 @@ end
 
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
-@testitem "Underconstrained BVP" setup = [FIRKNestedNLLSTests] begin
+@testset "Underconstrained BVP" begin
     using LinearAlgebra, BoundaryValueDiffEqFIRK, SciMLBase
 
     @testset "Problem: $i" for i in 1:2

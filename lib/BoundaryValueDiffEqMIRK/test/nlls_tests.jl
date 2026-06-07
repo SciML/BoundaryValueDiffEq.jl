@@ -1,4 +1,7 @@
-@testitem "Overconstrained BVP" begin
+using BoundaryValueDiffEqMIRK
+using Test
+
+@testset "Overconstrained BVP" begin
     using BoundaryValueDiffEqMIRK, LinearAlgebra
 
     SOLVERS = [
@@ -95,7 +98,7 @@ end
 
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
-@testitem "Underconstrained BVP: Rod BVP" begin
+@testset "Underconstrained BVP: Rod BVP" begin
     using LinearAlgebra, BoundaryValueDiffEqMIRK
 
     # Force normal form for GN

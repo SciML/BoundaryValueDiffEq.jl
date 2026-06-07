@@ -1,4 +1,7 @@
-@testitem "Singular BVP" tags = [:singular] begin
+using BoundaryValueDiffEqMIRK
+using Test
+
+@testset "Singular BVP" begin
     using BoundaryValueDiffEqMIRK
     using LinearAlgebra
 

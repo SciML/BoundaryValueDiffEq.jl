@@ -1,4 +1,5 @@
-@testsetup module ODEInterfaceWrapperTestSetup
+using BoundaryValueDiffEq
+using Test
 
 using BoundaryValueDiffEq, LinearAlgebra, ODEInterface, Random, RecursiveArrayTools
 
@@ -25,28 +26,26 @@ u0 = [0.5, 1.0]
 p = [0.1]
 tspan = (-π / 2, π / 2)
 
-export ex7_f!, ex7_2pbc1!, ex7_2pbc2!, u0, p, tspan
 
-end
-
-@testitem "BVPM2" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] skip = true begin
-    using ODEInterface, RecursiveArrayTools, LinearAlgebra
-
-    tpprob = TwoPointBVProblem(
-        ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
-        p; bcresid_prototype = (zeros(1), zeros(1))
-    )
-
-    sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
-    @test SciMLBase.successful_retcode(sol_bvpm2)
-    resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
-    ex7_2pbc1!(resid_f[1], sol_bvpm2(tspan[1]), nothing)
-    ex7_2pbc2!(resid_f[2], sol_bvpm2(tspan[2]), nothing)
-    @test norm(resid_f, Inf) < 1.0e-6
-end
+# The BVPM2 wrapper case is intentionally not run here. It carried `skip = true`
+# under the previous ReTestItems harness (BVPM2 single-shooting wrapper is broken
+# upstream); preserving that skip rather than enabling a known-failing case.
+#
+# @testset "BVPM2" begin
+#     tpprob = TwoPointBVProblem(
+#         ex7_f!, (ex7_2pbc1!, ex7_2pbc2!), u0, tspan,
+#         p; bcresid_prototype = (zeros(1), zeros(1))
+#     )
+#     sol_bvpm2 = solve(tpprob, BVPM2(); dt = π / 20)
+#     @test SciMLBase.successful_retcode(sol_bvpm2)
+#     resid_f = (Array{Float64, 1}(undef, 1), Array{Float64, 1}(undef, 1))
+#     ex7_2pbc1!(resid_f[1], sol_bvpm2(tspan[1]), nothing)
+#     ex7_2pbc2!(resid_f[2], sol_bvpm2(tspan[2]), nothing)
+#     @test norm(resid_f, Inf) < 1.0e-6
+# end
 
 # Just test that it runs. BVPSOL only works with linearly separable BCs.
-@testitem "BVPSOL" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] begin
+@testset "BVPSOL" begin
     using ODEInterface, OrdinaryDiffEqTsit5, RecursiveArrayTools, NonlinearSolveFirstOrder
 
     tpprob = TwoPointBVProblem(
@@ -100,7 +99,7 @@ end
     @test sol_bvpsol isa SciMLBase.ODESolution
 end
 
-@testitem "COLNEW" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] begin
+@testset "COLNEW" begin
     using ODEInterface, RecursiveArrayTools
 
     function f!(du, u, p, t)
@@ -122,7 +121,7 @@ end
     @test SciMLBase.successful_retcode(sol_colnew)
 end
 
-@testitem "COLNEW for multi-points BVP" setup = [ODEInterfaceWrapperTestSetup] tags = [:wrappers] begin
+@testset "COLNEW for multi-points BVP" begin
     using ODEInterface, RecursiveArrayTools
 
     function f!(du, u, p, t)

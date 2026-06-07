@@ -1,4 +1,7 @@
-@testitem "Default Solvers" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Default Solvers" begin
     using BoundaryValueDiffEq, Test
 
     function f(du, u, p, t)

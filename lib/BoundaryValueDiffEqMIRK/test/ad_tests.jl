@@ -1,4 +1,7 @@
-@testitem "Different AD compatibility" begin
+using BoundaryValueDiffEqMIRK
+using Test
+
+@testset "Different AD compatibility" begin
     using BoundaryValueDiffEqMIRK
     using ForwardDiff, Enzyme, Mooncake
 

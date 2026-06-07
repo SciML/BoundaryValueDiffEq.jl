@@ -1,4 +1,7 @@
-@testitem "EnsembleProblem" begin
+using BoundaryValueDiffEqMIRK
+using Test
+
+@testset "EnsembleProblem" begin
     using BoundaryValueDiffEqMIRK
     using Random
 

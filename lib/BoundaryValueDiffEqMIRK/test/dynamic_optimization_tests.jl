@@ -1,4 +1,7 @@
-@testitem "Rocket launching problem" begin
+using BoundaryValueDiffEqMIRK
+using Test
+
+@testset "Rocket launching problem" begin
     using BoundaryValueDiffEqMIRK, OptimizationIpopt
     h_0 = 1                      # Initial height
     v_0 = 0                      # Initial velocity

@@ -23,4 +23,9 @@ jobs:
     secrets: "inherit"
     with:
       julia-version: "1.11"
-      skip: "Pkg,TOML"
+      # Skip stdlibs and the in-repo path-sourced sibling sublibraries (their
+      # compat bounds are irrelevant when developed locally). Every lib/*
+      # sublibrary is auto-discovered and downgrade-tested.
+      skip: "Pkg,TOML,Statistics,LinearAlgebra,SparseArrays,InteractiveUtils,BoundaryValueDiffEqCore,BoundaryValueDiffEqMIRK,BoundaryValueDiffEqMIRKN,BoundaryValueDiffEqFIRK,BoundaryValueDiffEqShooting,BoundaryValueDiffEqAscher"
+      group-env-name: "BOUNDARYVALUEDIFFEQ_TEST_GROUP"
+      group-env-value: "Core"

@@ -1,25 +1,15 @@
-using InteractiveUtils, Test
+using InteractiveUtils, SafeTestsets, Test
 
 @info sprint(InteractiveUtils.versioninfo)
 
-@testset "BoundaryValueDiffEqCore.jl" begin
-    @testset "Aqua" begin
-        using Aqua, BoundaryValueDiffEqCore
+const TEST_GROUP = get(ENV, "BOUNDARYVALUEDIFFEQ_TEST_GROUP", "All")
 
-        Aqua.test_all(BoundaryValueDiffEqCore; piracies = false, ambiguities = false, stale_deps = false)
-        Aqua.test_stale_deps(BoundaryValueDiffEqCore; ignore = [:TimerOutputs])
-        Aqua.test_piracies(BoundaryValueDiffEqCore)
-        Aqua.test_ambiguities(BoundaryValueDiffEqCore; recursive = false)
+@time begin
+    if TEST_GROUP == "Core" || TEST_GROUP == "All"
+        @time @safetestset "Utility Tests" include("util_tests.jl")
     end
 
-    @testset "_process_verbose_param foreign AbstractVerbositySpecifier" begin
-        # DiffEqBase.DEVerbosity is a foreign AbstractVerbositySpecifier that
-        # can flow in via DiffEqBase's `solve`/`init` default `verbose` kwarg.
-        # It must not hit a MethodError at precompile time; it should fall
-        # back to BVP's own DEFAULT_VERBOSE (a BVPVerbosity).
-        using BoundaryValueDiffEqCore, DiffEqBase
-        result = BoundaryValueDiffEqCore._process_verbose_param(DiffEqBase.DEFAULT_VERBOSE)
-        @test result isa BoundaryValueDiffEqCore.BVPVerbosity
-        @test result === BoundaryValueDiffEqCore.DEFAULT_VERBOSE
+    if (TEST_GROUP == "QA" || TEST_GROUP == "All") && isempty(VERSION.prerelease)
+        @time @safetestset "Quality Assurance" include("qa_tests.jl")
     end
 end

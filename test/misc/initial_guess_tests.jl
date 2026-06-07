@@ -1,4 +1,7 @@
-@testitem "Initial guess providing" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Initial guess providing" begin
     using BoundaryValueDiffEq, RecursiveArrayTools
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)

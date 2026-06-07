@@ -1,4 +1,5 @@
-@testsetup module MIRKNConvergenceTests
+using BoundaryValueDiffEqMIRKN
+using Test
 
 using BoundaryValueDiffEqMIRKN
 
@@ -8,30 +9,30 @@ for order in (4, 6)
 end
 
 function f!(ddu, du, u, p, t)
-    ddu[1] = u[1]
+    return ddu[1] = u[1]
 end
 function f(du, u, p, t)
     return u[1]
 end
 function bc!(res, du, u, p, t)
     res[1] = u(0.0)[1] - 1
-    res[2] = u(1.0)[1]
+    return res[2] = u(1.0)[1]
 end
 function bc(du, u, p, t)
     return [u(0.0)[1] - 1, u(1.0)[1]]
 end
 function bc_indexing!(res, du, u, p, t)
     res[1] = u[:, 1][1] - 1
-    res[2] = u[:, end][1]
+    return res[2] = u[:, end][1]
 end
 function bc_indexing(du, u, p, t)
     return [u[:, 1][1] - 1, u[:, end][1]]
 end
 function bc_a!(res, du, u, p)
-    res[1] = u[1] - 1
+    return res[1] = u[1] - 1
 end
 function bc_b!(res, du, u, p)
-    res[1] = u[1]
+    return res[1] = u[1]
 end
 function bc_a(du, u, p)
     return [u[1] - 1]
@@ -66,11 +67,8 @@ probArr = [
 ]
 dts = 1 .// 2 .^ (3:-1:1)
 
-export probArr, dts, testTol, mirkn_solver
 
-end
-
-@testitem "Convergence on Linear" setup = [MIRKNConvergenceTests] begin
+@testset "Convergence on Linear" begin
     using LinearAlgebra, DiffEqDevTools
 
     @testset "Problem: $i" for i in (1, 2, 3, 4, 5, 6)
@@ -86,7 +84,7 @@ end
 
 # JET tests have been moved to the separate QA test group (test/qa/)
 
-@testitem "Example problem from paper" begin
+@testset "Example problem from paper" begin
     using BoundaryValueDiffEqMIRKN
 
     for order in (4, 6)
@@ -176,7 +174,7 @@ end
     end
 end
 
-@testitem "Test initial guess" begin
+@testset "Test initial guess" begin
     function f!(ddu, du, u, p, t)
         ε = 0.1
         ddu[1] = u[2]

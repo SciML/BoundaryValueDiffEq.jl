@@ -1,28 +1,17 @@
-using ReTestItems, BoundaryValueDiffEqShooting, Hwloc, InteractiveUtils
+using InteractiveUtils, SafeTestsets, Test
 
 @info sprint(InteractiveUtils.versioninfo)
 
-const GROUP = lowercase(get(ENV, "GROUP", "All"))
+const TEST_GROUP = get(ENV, "BOUNDARYVALUEDIFFEQ_TEST_GROUP", "All")
 
-const RETESTITEMS_NWORKERS = parse(
-    Int,
-    get(
-        ENV, "RETESTITEMS_NWORKERS",
-        string(min(ifelse(Sys.iswindows(), 0, Hwloc.num_physical_cores()), 4))
-    )
-)
-const RETESTITEMS_NWORKER_THREADS = parse(
-    Int,
-    get(
-        ENV, "RETESTITEMS_NWORKER_THREADS",
-        string(max(Hwloc.num_virtual_cores() ÷ max(RETESTITEMS_NWORKERS, 1), 1))
-    )
-)
+@time begin
+    if TEST_GROUP == "Core" || TEST_GROUP == "All"
+        @time @safetestset "Shooting Basic Problems Tests" include("basic_problems_tests.jl")
+        @time @safetestset "Shooting NLLS Tests" include("nlls_tests.jl")
+        @time @safetestset "Shooting Orbital Tests" include("orbital_tests.jl")
+    end
 
-@info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
-
-ReTestItems.runtests(
-    BoundaryValueDiffEqShooting; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS,
-    testitem_timeout = 5 * 60 * 60
-)
+    if (TEST_GROUP == "QA" || TEST_GROUP == "All") && isempty(VERSION.prerelease)
+        @time @safetestset "Quality Assurance" include("qa_tests.jl")
+    end
+end

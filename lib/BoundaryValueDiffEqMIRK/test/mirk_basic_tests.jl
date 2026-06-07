@@ -1,4 +1,5 @@
-@testsetup module MIRKConvergenceTests
+using BoundaryValueDiffEqMIRK
+using Test
 
 using BoundaryValueDiffEqMIRK
 
@@ -10,35 +11,35 @@ end
 # First order test
 function f1!(du, u, p, t)
     du[1] = u[2]
-    du[2] = 0
+    return du[2] = 0
 end
 f1(u, p, t) = [u[2], 0]
 
 # Second order linear test
 function f2!(du, u, p, t)
     du[1] = u[2]
-    du[2] = -u[1]
+    return du[2] = -u[1]
 end
 f2(u, p, t) = [u[2], -u[1]]
 
 function boundary!(residual, u, p, t)
     residual[1] = u(0.0)[1] - 5
-    residual[2] = u(5.0)[1]
+    return residual[2] = u(5.0)[1]
 end
 boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
 
 # Array indexing for boundary conditions
 function boundary_indexing!(residual, u, p, t)
     residual[1] = u[:, 1][1] - 5
-    residual[2] = u[:, end][1]
+    return residual[2] = u[:, end][1]
 end
 boundary_indexing(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
 
 function boundary_two_point_a!(resida, ua, p)
-    resida[1] = ua[1] - 5
+    return resida[1] = ua[1] - 5
 end
 function boundary_two_point_b!(residb, ub, p)
-    residb[1] = ub[1]
+    return residb[1] = ub[1]
 end
 
 boundary_two_point_a(ua, p) = [ua[1] - 5]
@@ -94,11 +95,8 @@ testTol = 0.4
 affineTol = 1.0e-2
 dts = 1 .// 2 .^ (3:-1:1)
 
-export probArr, testTol, affineTol, dts, mirk_solver
 
-end
-
-@testitem "Affineness" setup = [MIRKConvergenceTests] begin
+@testset "Affineness" begin
     using LinearAlgebra
 
     @testset "Problem: $i" for i in (1, 2, 7, 8)
@@ -117,7 +115,7 @@ end
 
 # JET tests have been moved to the separate QA test group (test/qa/)
 
-@testitem "Convergence on Linear" setup = [MIRKConvergenceTests] begin
+@testset "Convergence on Linear" begin
     using LinearAlgebra, DiffEqDevTools
 
     @testset "Problem: $i" for i in (3, 4, 5, 6, 9, 10)
@@ -137,7 +135,7 @@ end
 end
 
 # FIXME: This is a really bad test. Needs interpolation
-@testitem "Simple Pendulum" begin
+@testset "Simple Pendulum" begin
     using StaticArrays
 
     tspan = (0.0, π / 2)
@@ -168,7 +166,7 @@ end
     @test_nowarn solve(bvp1, MIRK6I(; jac_alg); dt = 0.05)
 end
 
-@testitem "Interpolation" begin
+@testset "Interpolation" begin
     using LinearAlgebra
     testTol = 1.0e-6
 
@@ -310,7 +308,7 @@ end
     end
 end
 
-@testitem "Swirling Flow III" begin
+@testset "Swirling Flow III" begin
     # Reported in https://github.com/SciML/BoundaryValueDiffEq.jl/issues/153
     eps = 0.01
     function swirling_flow!(du, u, p, t)
@@ -341,7 +339,7 @@ end
     @test_nowarn solve(prob, MIRK4(); dt = 0.01, abstol = 1.0e-4)
 end
 
-@testitem "Solve using Continuation" begin
+@testset "Solve using Continuation" begin
     using RecursiveArrayTools
 
     g = 9.81
@@ -382,7 +380,7 @@ end
     @test SciMLBase.successful_retcode(solve(bvp5, MIRK4(), dt = 0.05))
 end
 
-@testitem "Compatibility with StaticArrays" begin
+@testset "Compatibility with StaticArrays" begin
     using StaticArrays
     const g = 9.81
     L = 1.0
@@ -409,7 +407,7 @@ end
     @test SciMLBase.successful_retcode(sol_SA.retcode)
 end
 
-@testitem "Error Control Adaptivity" begin
+@testset "Error Control Adaptivity" begin
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)
         θ = u[1]
@@ -433,7 +431,7 @@ end
 end
 
 # https://github.com/SciML/BoundaryValueDiffEq.jl/issues/319
-@testitem "Test interpolant evaluation with big defect" setup = [MIRKConvergenceTests] begin
+@testset "Test interpolant evaluation with big defect" begin
     function lotka!(du, u, p, t)
         x = u[1]
         y = u[2]
@@ -452,7 +450,7 @@ end
     end
 end
 
-@testitem "Test maxsol and minsol" setup = [MIRKConvergenceTests] begin
+@testset "Test maxsol and minsol" begin
     function prob_mp_analytic(u, p, t)
         return [
             sin(t),
@@ -480,7 +478,7 @@ end
     end
 end
 
-@testitem "Test unknown parameters estimation" setup = [MIRKConvergenceTests] begin
+@testset "Test unknown parameters estimation" begin
     tspan = (0.0, pi)
     function f!(du, u, p, t)
         du[1] = u[2]
@@ -526,7 +524,7 @@ end
     @test sol.prob.p ≈ [17.09658] atol = 1.0e-4
 end
 
-@testitem "Test unknown parameters estimation with SciMLStructures" begin
+@testset "Test unknown parameters estimation with SciMLStructures" begin
     using BoundaryValueDiffEqMIRK, SciMLStructures, OptimizationIpopt
 
     # Define a custom struct that wraps parameters
@@ -603,7 +601,7 @@ end
     end
 end
 
-@testitem "Convergence with optimization based solver" setup = [MIRKConvergenceTests] begin
+@testset "Convergence with optimization based solver" begin
     using LinearAlgebra, DiffEqDevTools, OptimizationIpopt
 
     # Only test on inplace problems
@@ -627,7 +625,7 @@ end
     end
 end
 
-@testitem "BVP with inequality constraints" begin
+@testset "BVP with inequality constraints" begin
     using BoundaryValueDiffEqMIRK, OptimizationIpopt
 
     tspan = (0.0, pi / 2)
@@ -649,7 +647,7 @@ end
 end
 
 # https://github.com/SciML/BoundaryValueDiffEq.jl/pull/473
-@testitem "StandardBVProblem optimize path without user lcons/ucons" begin
+@testset "StandardBVProblem optimize path without user lcons/ucons" begin
     # Regression test: previously, `__extract_lcons_ucons` in the Nothing-
     # f_prototype dispatch returned vectors of length N*M (decision-variable
     # length) instead of the actual constraint length L_bc + M*(N-1). This
@@ -673,7 +671,7 @@ end
     @test_nowarn solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
 end
 
-@testitem "Test initial guess" begin
+@testset "Test initial guess" begin
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
         cond = 0.002
@@ -721,7 +719,7 @@ end
 # Adaptive mesh refinement on a sufficiently nonlinear BVP must not throw
 # UndefRefError. The torus geodesic system is smooth and nonlinear enough
 # that the solver decides to refine the mesh.
-@testitem "Adaptive mesh refinement (issue 484)" begin
+@testset "Adaptive mesh refinement (issue 484)" begin
     using BoundaryValueDiffEqMIRK
 
     R = 3.0

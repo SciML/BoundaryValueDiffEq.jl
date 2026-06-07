@@ -1,4 +1,7 @@
-@testitem "Mesh redistribution in adaptivity" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Mesh redistribution in adaptivity" begin
     using BoundaryValueDiffEq
 
     function f!(du, u, p, t)

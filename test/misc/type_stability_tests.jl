@@ -1,4 +1,7 @@
-@testitem "Type Stability" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Type Stability" begin
     using LinearAlgebra, BoundaryValueDiffEq, OrdinaryDiffEqTsit5, SciMLBase
 
     f(u, p, t) = [p[1] * u[1] - p[2] * u[1] * u[2], p[3] * u[1] * u[2] - p[4] * u[2]]

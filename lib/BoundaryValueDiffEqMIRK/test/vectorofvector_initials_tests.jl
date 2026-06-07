@@ -1,4 +1,7 @@
-@testitem "VectorOfVector Initial Condition" begin
+using BoundaryValueDiffEqMIRK
+using Test
+
+@testset "VectorOfVector Initial Condition" begin
     using BoundaryValueDiffEqMIRK, OrdinaryDiffEqRosenbrock
     #System Constants
     ss = 1 #excitatory parameter

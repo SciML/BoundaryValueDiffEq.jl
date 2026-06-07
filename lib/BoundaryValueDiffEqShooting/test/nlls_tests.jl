@@ -1,4 +1,7 @@
-@testitem "Overconstrained BVP" begin
+using BoundaryValueDiffEqShooting
+using Test
+
+@testset "Overconstrained BVP" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, LinearAlgebra
 
     # JET tests have been moved to the separate QA test group (test/qa/)

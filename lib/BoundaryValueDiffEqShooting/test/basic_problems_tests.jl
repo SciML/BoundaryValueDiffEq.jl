@@ -1,4 +1,7 @@
-@testitem "Basic Shooting" begin
+using BoundaryValueDiffEqShooting
+using Test
+
+@testset "Basic Shooting" begin
     using BoundaryValueDiffEqShooting, LinearAlgebra, OrdinaryDiffEqTsit5
 
     # JET tests have been moved to the separate QA test group (test/qa/)
@@ -107,7 +110,7 @@
     end
 end
 
-@testitem "Shooting with Complex Values" begin
+@testset "Shooting with Complex Values" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
 
     SOLVERS = [
@@ -144,7 +147,7 @@ end
     end
 end
 
-@testitem "Flow in a Channel" begin
+@testset "Flow in a Channel" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock,
         LinearAlgebra
 
@@ -202,7 +205,7 @@ end
     end
 end
 #FIXME: MultipleShooting fails for large out-of-place BVP systems
-@testitem "Ray Tracing" begin
+@testset "Ray Tracing" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock,
         LinearAlgebra
 
@@ -376,7 +379,7 @@ end
     end
 end
 
-@testitem "Shooting with heterogeneous initial guess" begin
+@testset "Shooting with heterogeneous initial guess" begin
     using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
     g = 9.81
     L = 1.0
