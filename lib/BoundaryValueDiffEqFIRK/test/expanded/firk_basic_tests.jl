@@ -1,8 +1,6 @@
 using BoundaryValueDiffEqFIRK
 using Test
 
-using BoundaryValueDiffEqFIRK
-
 nested = false
 
 for stage in (2, 3, 4, 5)
@@ -111,9 +109,6 @@ probArr = [
 testTol = 0.3
 affineTol = 1.0e-2
 dts = 1 .// 2 .^ (5:-1:3)
-
-lobattoIIIc_solver, radau_solver
-
 
 @testset "Affineness" begin
     using LinearAlgebra
