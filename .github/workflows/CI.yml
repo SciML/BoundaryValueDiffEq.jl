@@ -12,67 +12,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
-  test:
-    permissions:
-      actions: write
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        # Root BoundaryValueDiffEq's own test groups only. The lib/* sublibraries
-        # are covered by SublibraryCI.yml (project model); do not double-test them
-        # through the root matrix.
-        group:
-          - Misc
-          - Wrappers
-          - QA
-        version:
-          - 'lts'
-          - '1'
-          - 'pre'
-        exclude:
-          # QA (Aqua + JET) runs on release + LTS Julia only (not pre-release).
-          - group: QA
-            version: 'pre'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v3
-      - name: Develop local path deps (Julia < 1.11)
-        shell: julia --color=yes --project=. {0}
-        run: |
-          using Pkg
-          if VERSION < v"1.11.0-DEV.0"
-            toml = Pkg.TOML.parsefile("Project.toml")
-            if haskey(toml, "sources")
-              specs = Pkg.PackageSpec[]
-              for (dep, spec) in toml["sources"]
-                if spec isa Dict && haskey(spec, "path") && isdir(spec["path"])
-                  @info "Developing" dep spec["path"]
-                  push!(specs, Pkg.PackageSpec(path=spec["path"]))
-                end
-              end
-              # Batch the develop call so Pkg resolves all path deps together.
-              isempty(specs) || Pkg.develop(specs)
-            end
-          end
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          coverage: true
-          check_bounds: auto
-        env:
-          GROUP: ${{ matrix.group }}
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-      - uses: codecov/codecov-action@v6
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.info
-          fail_ci_if_error: false
-          disable_safe_directory: true
+  tests:
+    uses: "SciML/.github/.github/workflows/grouped-tests.yml@v1"
+    with:
+      check-bounds: auto
+    secrets: "inherit"
