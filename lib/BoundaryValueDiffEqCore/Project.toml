@@ -42,6 +42,7 @@ LinearAlgebra = "1.10"
 NonlinearSolveBase = "2.11.2"
 NonlinearSolveFirstOrder = "1.2, 2"
 OptimizationBase = "5.1"
+Pkg = "1.10.0"
 PreallocationTools = "1.2"
 RecursiveArrayTools = "3.27.0, 4"
 Reexport = "1.2"
@@ -58,7 +59,8 @@ julia = "1.10"
 [extras]
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["InteractiveUtils", "Test", "SafeTestsets"]
+test = ["InteractiveUtils", "Pkg", "Test", "SafeTestsets"]
