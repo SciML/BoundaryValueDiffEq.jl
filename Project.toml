@@ -34,7 +34,6 @@ BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
 
 [compat]
 ADTypes = "1.14"
-Aqua = "0.8.11"
 BoundaryValueDiffEqAscher = "1"
 BoundaryValueDiffEqCore = "2"
 BoundaryValueDiffEqFIRK = "1"
@@ -47,7 +46,6 @@ DifferentiationInterface = "0.7.13"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
 InteractiveUtils = "<0.0.1, 1"
-JET = "0.9, 0.10, 0.11"
 LinearAlgebra = "1.10"
 LinearSolve = "3.12"
 NonlinearSolveBase = "2"
@@ -68,11 +66,9 @@ Test = "1.10"
 julia = "1.10"
 
 [extras]
-Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 NonlinearSolveBase = "be0214bd-f91f-a760-ac4e-3421ce2b2da0"
 NonlinearSolveFirstOrder = "5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
@@ -89,4 +85,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "DifferentiationInterface", "InteractiveUtils", "JET", "LinearSolve", "NonlinearSolveFirstOrder", "ODEInterface", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
+test = ["DiffEqDevTools", "DifferentiationInterface", "InteractiveUtils", "LinearSolve", "NonlinearSolveFirstOrder", "ODEInterface", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]

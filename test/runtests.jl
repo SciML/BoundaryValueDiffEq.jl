@@ -6,6 +6,27 @@ using InteractiveUtils
 
 const GROUP = get(ENV, "GROUP", "All")
 
+function activate_qa_env()
+    Pkg.activate(joinpath(@__DIR__, "qa"))
+    # On Julia < 1.11, the [sources] section in Project.toml is not honored.
+    # Manually Pkg.develop the local path dependencies (root + sublibraries) so
+    # QA tests the PR branch code.
+    if VERSION < v"1.11.0-DEV.0"
+        repo_root = dirname(@__DIR__)
+        lib = joinpath(repo_root, "lib")
+        Pkg.develop([
+            Pkg.PackageSpec(path = repo_root),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqAscher")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqCore")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqFIRK")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRK")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRKN")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqShooting"))
+        ])
+    end
+    return Pkg.instantiate()
+end
+
 @time begin
     # Detect sublibrary test groups.
     # GROUP can be a bare sublibrary name (its Core test group) or
@@ -79,7 +100,9 @@ const GROUP = get(ENV, "GROUP", "All")
         end
 
         if (GROUP == "All" || GROUP == "QA") && isempty(VERSION.prerelease)
-            @time @safetestset "Quality Assurance" include("qa/qa_tests.jl")
+            activate_qa_env()
+            @time @safetestset "Quality Assurance" include("qa/qa.jl")
+            @time @safetestset "JET" include("qa/jet.jl")
         end
     end
 end
