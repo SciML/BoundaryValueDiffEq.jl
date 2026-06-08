@@ -1,5 +1,6 @@
 name = "BoundaryValueDiffEqFIRK"
 uuid = "85d9eb09-370e-4000-bb32-543851f73618"
+authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
 version = "1.17.0"
 
 [deps]
@@ -28,8 +29,8 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
 
 [compat]
+SafeTestsets = "0.1.0"
 ADTypes = "1.14"
-Aqua = "0.8"
 ArrayInterface = "7.18"
 BandedMatrices = "1.7.5"
 BoundaryValueDiffEqCore = "2.2"
@@ -40,17 +41,16 @@ Enzyme = "0.13.33"
 FastAlmostBandedMatrices = "0.1.4"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
-Hwloc = "3"
 InteractiveUtils = "<0.0.1, 1"
 LinearAlgebra = "1.10"
 LinearSolve = "2.36.2, 3"
 Mooncake = "0.4.146, 0.5"
 OrdinaryDiffEqRosenbrock = "1.15.1, 2"
+Pkg = "1.10.0"
 PreallocationTools = "0.4, 1"
 PrecompileTools = "1.2"
 Preferences = "1.4"
 Random = "1.10"
-ReTestItems = "1.23.1"
 RecursiveArrayTools = "3.27.0, 4"
 Reexport = "1.2"
 SciMLBase = "3"
@@ -62,19 +62,18 @@ Test = "1.10"
 julia = "1.10"
 
 [extras]
-Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-Hwloc = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DiffEqDevTools", "Enzyme", "Hwloc", "InteractiveUtils", "LinearSolve", "Mooncake", "OrdinaryDiffEqRosenbrock", "Random", "ReTestItems", "RecursiveArrayTools", "StaticArrays", "Test"]
+test = ["DiffEqDevTools", "Enzyme", "InteractiveUtils", "LinearSolve", "Mooncake", "OrdinaryDiffEqRosenbrock", "Pkg", "Random", "RecursiveArrayTools", "StaticArrays", "Test", "SafeTestsets"]

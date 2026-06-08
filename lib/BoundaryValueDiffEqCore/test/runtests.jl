@@ -1,25 +1,27 @@
-using InteractiveUtils, Test
+using Pkg
+using InteractiveUtils, SafeTestsets, Test
 
 @info sprint(InteractiveUtils.versioninfo)
 
-@testset "BoundaryValueDiffEqCore.jl" begin
-    @testset "Aqua" begin
-        using Aqua, BoundaryValueDiffEqCore
+const TEST_GROUP = get(ENV, "BOUNDARYVALUEDIFFEQ_TEST_GROUP", "All")
 
-        Aqua.test_all(BoundaryValueDiffEqCore; piracies = false, ambiguities = false, stale_deps = false)
-        Aqua.test_stale_deps(BoundaryValueDiffEqCore; ignore = [:TimerOutputs])
-        Aqua.test_piracies(BoundaryValueDiffEqCore)
-        Aqua.test_ambiguities(BoundaryValueDiffEqCore; recursive = false)
+function activate_qa_env()
+    Pkg.activate(joinpath(@__DIR__, "qa"))
+    # On Julia < 1.11, the [sources] section in Project.toml is not honored.
+    # Manually Pkg.develop the local path dependency so QA tests the PR branch code.
+    if VERSION < v"1.11.0-DEV.0"
+        Pkg.develop(Pkg.PackageSpec(path = joinpath(@__DIR__, "..")))
+    end
+    return Pkg.instantiate()
+end
+
+@time begin
+    if TEST_GROUP == "Core" || TEST_GROUP == "All"
+        @time @safetestset "Utility Tests" include("Core/util_tests.jl")
     end
 
-    @testset "_process_verbose_param foreign AbstractVerbositySpecifier" begin
-        # DiffEqBase.DEVerbosity is a foreign AbstractVerbositySpecifier that
-        # can flow in via DiffEqBase's `solve`/`init` default `verbose` kwarg.
-        # It must not hit a MethodError at precompile time; it should fall
-        # back to BVP's own DEFAULT_VERBOSE (a BVPVerbosity).
-        using BoundaryValueDiffEqCore, DiffEqBase
-        result = BoundaryValueDiffEqCore._process_verbose_param(DiffEqBase.DEFAULT_VERBOSE)
-        @test result isa BoundaryValueDiffEqCore.BVPVerbosity
-        @test result === BoundaryValueDiffEqCore.DEFAULT_VERBOSE
+    if (TEST_GROUP == "QA" || TEST_GROUP == "All") && isempty(VERSION.prerelease)
+        activate_qa_env()
+        @time @safetestset "Quality Assurance" include("qa/qa.jl")
     end
 end

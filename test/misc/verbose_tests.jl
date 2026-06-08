@@ -1,4 +1,7 @@
-@testitem "Verbose field in caches" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Verbose field in caches" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: @SciMLMessage, SciMLLogging
 
@@ -89,7 +92,7 @@
     end
 end
 
-@testitem "Verbose field in MIRKN cache" begin
+@testset "Verbose field in MIRKN cache" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: @SciMLMessage, SciMLLogging
 
@@ -125,7 +128,7 @@ end
     end
 end
 
-@testitem "Verbose persistence through solve" begin
+@testset "Verbose persistence through solve" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: @SciMLMessage, SciMLLogging
 
@@ -160,7 +163,7 @@ end
     end
 end
 
-@testitem "Internal solver verbosity integration" begin
+@testset "Internal solver verbosity integration" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: SciMLLogging
 
@@ -244,7 +247,7 @@ end
     end
 end
 
-@testitem "Verbosity propagation via cache inspection" begin
+@testset "Verbosity propagation via cache inspection" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: __concrete_kwargs, SciMLLogging
     using NonlinearSolveFirstOrder: NewtonRaphson
@@ -409,7 +412,7 @@ end
     end
 end
 
-@testitem "Solve problems with various verbosity settings" begin
+@testset "Solve problems with various verbosity settings" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: SciMLLogging
     using NonlinearSolveFirstOrder: NewtonRaphson

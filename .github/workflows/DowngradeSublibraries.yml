@@ -22,5 +22,6 @@ jobs:
     uses: "SciML/.github/.github/workflows/sublibrary-downgrade.yml@v1"
     secrets: "inherit"
     with:
-      julia-version: "1.11"
-      skip: "Pkg,TOML"
+      julia-version: "lts"
+      group-env-name: "BOUNDARYVALUEDIFFEQ_TEST_GROUP"
+      group-env-value: "Core"

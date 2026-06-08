@@ -1,4 +1,7 @@
-@testitem "Manifolds.jl Integration" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Manifolds.jl Integration" begin
     using LinearAlgebra, OrdinaryDiffEqTsit5
 
     struct EmbeddedTorus

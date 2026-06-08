@@ -1,28 +1,36 @@
-using ReTestItems, BoundaryValueDiffEqMIRK, Hwloc, InteractiveUtils
+using Pkg
+using InteractiveUtils, SafeTestsets, Test
 
 @info sprint(InteractiveUtils.versioninfo)
 
-const GROUP = lowercase(get(ENV, "GROUP", "All"))
+const TEST_GROUP = get(ENV, "BOUNDARYVALUEDIFFEQ_TEST_GROUP", "All")
 
-const RETESTITEMS_NWORKERS = parse(
-    Int,
-    get(
-        ENV, "RETESTITEMS_NWORKERS",
-        string(min(ifelse(Sys.iswindows(), 0, Hwloc.num_physical_cores()), 4))
-    )
-)
-const RETESTITEMS_NWORKER_THREADS = parse(
-    Int,
-    get(
-        ENV, "RETESTITEMS_NWORKER_THREADS",
-        string(max(Hwloc.num_virtual_cores() ÷ max(RETESTITEMS_NWORKERS, 1), 1))
-    )
-)
+function activate_qa_env()
+    Pkg.activate(joinpath(@__DIR__, "qa"))
+    # On Julia < 1.11, the [sources] section in Project.toml is not honored.
+    # Manually Pkg.develop the local path dependencies so QA tests the PR branch code.
+    if VERSION < v"1.11.0-DEV.0"
+        Pkg.develop([
+            Pkg.PackageSpec(path = joinpath(@__DIR__, "..")),
+            Pkg.PackageSpec(path = joinpath(@__DIR__, "..", "..", "BoundaryValueDiffEqCore"))
+        ])
+    end
+    return Pkg.instantiate()
+end
 
-@info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
+@time begin
+    if TEST_GROUP == "Core" || TEST_GROUP == "All"
+        @time @safetestset "MIRK Basic Tests" include("Core/mirk_basic_tests.jl")
+        @time @safetestset "MIRK NLLS Tests" include("Core/nlls_tests.jl")
+        @time @safetestset "MIRK Ensemble Tests" include("Core/ensemble_tests.jl")
+        @time @safetestset "MIRK AD Tests" include("Core/ad_tests.jl")
+        @time @safetestset "MIRK Singular BVP Tests" include("Core/singular_bvp_tests.jl")
+        @time @safetestset "MIRK VectorOfVector Initials Tests" include("Core/vectorofvector_initials_tests.jl")
+        @time @safetestset "MIRK Dynamic Optimization Tests" include("Core/dynamic_optimization_tests.jl")
+    end
 
-ReTestItems.runtests(
-    BoundaryValueDiffEqMIRK; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS, nworker_threads = RETESTITEMS_NWORKER_THREADS,
-    testitem_timeout = 5 * 60 * 60
-)
+    if (TEST_GROUP == "QA" || TEST_GROUP == "All") && isempty(VERSION.prerelease)
+        activate_qa_env()
+        @time @safetestset "Quality Assurance" include("qa/qa.jl")
+    end
+end

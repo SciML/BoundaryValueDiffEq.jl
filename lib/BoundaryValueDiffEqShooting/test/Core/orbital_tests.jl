@@ -1,0 +1,124 @@
+using BoundaryValueDiffEqShooting
+using Test
+
+@testset "Lambert's Problem" begin
+    using BoundaryValueDiffEqShooting, OrdinaryDiffEqLowOrderRK, LinearAlgebra
+
+    y0 = [
+        -4.7763169762853989e+6, -3.838639870444152e+5, -5.3500183933132319e+6,
+        -5528.612564911408, 1216.8442360202787, 4845.114446429901,
+    ]
+    init_val = [
+        -4.7763169762853989e+6, -3.838639870444152e+5, -5.3500183933132319e+6,
+        7.0526926403748598e+6, -7.9650476230388973e+5, -1.191112886366643e+6,
+    ]
+    J2 = 1.08262668e-3
+    req = 6378137
+    my = 398600.4418e+9
+    t0 = 86400 * 2.3577475462484435e+4
+    t1 = 86400 * 2.3577522023524125e+4
+    tspan = (t0, t1)
+
+    # ODE solver
+    function orbital!(dy, y, p, t)
+        r2 = (y[1]^2 + y[2]^2 + y[3]^2)
+        r3 = r2^(3 / 2)
+        w = 1 + 1.5J2 * (req * req / r2) * (1 - 5y[3] * y[3] / r2)
+        w2 = 1 + 1.5J2 * (req * req / r2) * (3 - 5y[3] * y[3] / r2)
+        dy[1] = y[4]
+        dy[2] = y[5]
+        dy[3] = y[6]
+        dy[4] = -my * y[1] * w / r3
+        dy[5] = -my * y[2] * w / r3
+        dy[6] = -my * y[3] * w2 / r3
+    end
+
+    function bc!_generator(resid, sol, init_val)
+        resid[1] = sol(t0)[1] - init_val[1]
+        resid[2] = sol(t0)[2] - init_val[2]
+        resid[3] = sol(t0)[3] - init_val[3]
+        resid[4] = sol(t1)[1] - init_val[4]
+        resid[5] = sol(t1)[2] - init_val[5]
+        resid[6] = sol(t1)[3] - init_val[6]
+    end
+
+    function bc!_generator_2p_a(resid0, ua, init_val)
+        resid0[1] = ua[1] - init_val[1]
+        resid0[2] = ua[2] - init_val[2]
+        resid0[3] = ua[3] - init_val[3]
+    end
+    function bc!_generator_2p_b(resid1, ub, init_val)
+        resid1[1] = ub[1] - init_val[4]
+        resid1[2] = ub[2] - init_val[5]
+        resid1[3] = ub[3] - init_val[6]
+    end
+
+    cur_bc! = (resid, sol, p, t) -> bc!_generator(resid, sol, init_val)
+    cur_bc_2point_a! = (resid, sol, p) -> bc!_generator_2p_a(resid, sol, init_val)
+    cur_bc_2point_b! = (resid, sol, p) -> bc!_generator_2p_b(resid, sol, init_val)
+
+    bvp = BVProblem(orbital!, cur_bc!, y0, tspan; nlls = Val(false))
+    for autodiff in
+        (
+            AutoForwardDiff(; chunksize = 6), AutoFiniteDiff(; fdtype = Val(:central)),
+            AutoSparse(AutoForwardDiff(; chunksize = 6)),
+            AutoFiniteDiff(; fdtype = Val(:forward)), AutoSparse(AutoFiniteDiff()),
+        )
+        nlsolve = TrustRegion(; autodiff)
+
+        jac_alg = BVPJacobianAlgorithm(;
+            nonbc_diffmode = autodiff,
+            bc_diffmode = BoundaryValueDiffEqShooting.__get_non_sparse_ad(autodiff)
+        )
+
+        sol = solve(
+            bvp, Shooting(DP5(); nlsolve, jac_alg); force_dtmin = true,
+            abstol = 1.0e-6, reltol = 1.0e-6, verbose = false,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
+        )
+
+        @test SciMLBase.successful_retcode(sol)
+        @test norm(sol.resid, Inf) < 1.0e-6
+
+        sol = solve(
+            bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+            force_dtmin = true, abstol = 1.0e-6, reltol = 1.0e-6,
+            verbose = false, odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
+        )
+
+        @test SciMLBase.successful_retcode(sol)
+        @test norm(sol.resid, Inf) < 1.0e-6
+    end
+
+    bvp = TwoPointBVProblem(
+        orbital!, (cur_bc_2point_a!, cur_bc_2point_b!), y0, tspan;
+        bcresid_prototype = (Array{Float64}(undef, 3), Array{Float64}(undef, 3)),
+        nlls = Val(false)
+    )
+    for autodiff in (
+            AutoForwardDiff(; chunksize = 6), AutoSparse(AutoFiniteDiff()),
+            AutoFiniteDiff(; fdtype = Val(:central)), AutoFiniteDiff(; fdtype = Val(:forward)),
+            AutoSparse(AutoForwardDiff(; chunksize = 6)),
+        )
+        nlsolve = TrustRegion(; autodiff)
+        jac_alg = BVPJacobianAlgorithm(; nonbc_diffmode = autodiff, bc_diffmode = autodiff)
+
+        sol = solve(
+            bvp, Shooting(DP5(); nlsolve, jac_alg); force_dtmin = true,
+            abstol = 1.0e-6, reltol = 1.0e-6, verbose = false,
+            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
+        )
+
+        @test SciMLBase.successful_retcode(sol)
+        @test norm(sol.resid, Inf) < 1.0e-6
+
+        sol = solve(
+            bvp, MultipleShooting(10, DP5(); nlsolve, jac_alg);
+            force_dtmin = true, abstol = 1.0e-6, reltol = 1.0e-6,
+            verbose = false, odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-6, adaptive = false, dt = 10000)
+        )
+
+        @test SciMLBase.successful_retcode(sol)
+        @test norm(sol.resid, Inf) < 1.0e-6
+    end
+end

@@ -1,4 +1,7 @@
-@testitem "BigFloat compatibility" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "BigFloat compatibility" begin
     using BoundaryValueDiffEq
     # Need Sparspak for BigFloat
     using Sparspak

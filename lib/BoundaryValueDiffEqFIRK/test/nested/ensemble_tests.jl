@@ -1,4 +1,7 @@
-@testitem "EnsembleProblem" begin
+using BoundaryValueDiffEqFIRK
+using Test
+
+@testset "EnsembleProblem" begin
     using BoundaryValueDiffEqFIRK, Random
 
     function ode!(du, u, p, t)
