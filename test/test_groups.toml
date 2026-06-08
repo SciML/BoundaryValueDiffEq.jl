@@ -1,0 +1,20 @@
+# Test group matrix for the root BoundaryValueDiffEq package. The root is driven
+# by its own CI.yml matrix (not the SciML sublibrary-project-tests reusable
+# workflow), but the groups are declared here for parity with the lib/*
+# sublibraries and to keep CI.yml and the declared matrix in sync.
+#
+# Misc: the package's own integration tests in test/misc/, run in the light main
+#   test environment as part of the default "All" run.
+# Wrappers: ODEInterface wrapper tests; adds ODEInterface via test/wrappers/
+#   Project.toml, so it is excluded from "All" and activates its own env.
+# QA: Aqua + JET; adds those deps via test/qa/Project.toml, is excluded from
+#   "All", and runs on release + LTS Julia only.
+
+[Misc]
+versions = ["lts", "1", "pre"]
+
+[Wrappers]
+versions = ["lts", "1", "pre"]
+
+[QA]
+versions = ["lts", "1"]

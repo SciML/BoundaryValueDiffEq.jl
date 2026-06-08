@@ -30,15 +30,10 @@ jobs:
           - QA
         version:
           - 'lts'
-          - '1.11'
           - '1'
           - 'pre'
         exclude:
-          # QA (Aqua + JET) runs only on release Julia.
-          - group: QA
-            version: 'lts'
-          - group: QA
-            version: '1.11'
+          # QA (Aqua + JET) runs on release + LTS Julia only (not pre-release).
           - group: QA
             version: 'pre'
     steps:

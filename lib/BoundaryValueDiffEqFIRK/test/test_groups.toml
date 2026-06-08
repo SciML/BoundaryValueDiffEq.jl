@@ -2,7 +2,7 @@
 # (expanded vs nested FIRK formulations) rather than the default single "Core"
 # group, so the real group names must be declared here for the sublibrary CI
 # matrix discovery. runtests.jl dispatches on BOUNDARYVALUEDIFFEQ_TEST_GROUP
-# matching these names. QA (Aqua) runs on release Julia only.
+# matching these names. QA (Aqua) runs on release + LTS Julia only.
 #
 # The downgrade workflow passes a uniform "Core" group to every sublibrary;
 # runtests.jl maps "Core" to the basic FIRK solve tests of both formulations.
@@ -11,12 +11,12 @@
 # only duplicate them across the full version matrix.
 
 [EXPANDED]
-versions = ["lts", "1.11", "1", "pre"]
+versions = ["lts", "1", "pre"]
 timeout = 240
 
 [NESTED]
-versions = ["lts", "1.11", "1", "pre"]
+versions = ["lts", "1", "pre"]
 timeout = 240
 
 [QA]
-versions = ["1"]
+versions = ["lts", "1"]
