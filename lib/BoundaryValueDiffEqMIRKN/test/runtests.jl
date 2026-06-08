@@ -20,7 +20,7 @@ end
 
 @time begin
     if TEST_GROUP == "Core" || TEST_GROUP == "All"
-        @time @safetestset "MIRKN Basic Tests" include("mirkn_basic_tests.jl")
+        @time @safetestset "MIRKN Basic Tests" include("Core/mirkn_basic_tests.jl")
     end
 
     if (TEST_GROUP == "QA" || TEST_GROUP == "All") && isempty(VERSION.prerelease)
