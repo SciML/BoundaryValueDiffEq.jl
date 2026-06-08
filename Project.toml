@@ -72,7 +72,6 @@ InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 NonlinearSolveBase = "be0214bd-f91f-a760-ac4e-3421ce2b2da0"
 NonlinearSolveFirstOrder = "5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
-ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 OrdinaryDiffEqLowOrderRK = "1344f307-1e59-4825-a18e-ace9aa3fa4c6"
 OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 OptimizationBase = "bca83a33-5cc9-4baa-983d-23429ab6bcbb"
@@ -85,4 +84,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqDevTools", "DifferentiationInterface", "InteractiveUtils", "LinearSolve", "NonlinearSolveFirstOrder", "ODEInterface", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
+test = ["DiffEqDevTools", "DifferentiationInterface", "InteractiveUtils", "LinearSolve", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]

@@ -6,24 +6,32 @@ using InteractiveUtils
 
 const GROUP = get(ENV, "GROUP", "All")
 
-function activate_qa_env()
-    Pkg.activate(joinpath(@__DIR__, "qa"))
+function develop_local_path_deps()
     # On Julia < 1.11, the [sources] section in Project.toml is not honored.
     # Manually Pkg.develop the local path dependencies (root + sublibraries) so
-    # QA tests the PR branch code.
-    if VERSION < v"1.11.0-DEV.0"
-        repo_root = dirname(@__DIR__)
-        lib = joinpath(repo_root, "lib")
-        Pkg.develop([
-            Pkg.PackageSpec(path = repo_root),
-            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqAscher")),
-            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqCore")),
-            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqFIRK")),
-            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRK")),
-            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRKN")),
-            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqShooting"))
-        ])
-    end
+    # the sub-environment tests the PR branch code.
+    repo_root = dirname(@__DIR__)
+    lib = joinpath(repo_root, "lib")
+    return Pkg.develop([
+        Pkg.PackageSpec(path = repo_root),
+        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqAscher")),
+        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqCore")),
+        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqFIRK")),
+        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRK")),
+        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRKN")),
+        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqShooting"))
+    ])
+end
+
+function activate_qa_env()
+    Pkg.activate(joinpath(@__DIR__, "qa"))
+    VERSION < v"1.11.0-DEV.0" && develop_local_path_deps()
+    return Pkg.instantiate()
+end
+
+function activate_wrappers_env()
+    Pkg.activate(joinpath(@__DIR__, "wrappers"))
+    VERSION < v"1.11.0-DEV.0" && develop_local_path_deps()
     return Pkg.instantiate()
 end
 
@@ -95,7 +103,9 @@ end
         end
 
         if GROUP == "Wrappers"
-            # Wrapper tests must be explicitly requested (external deps: ODEInterface).
+            # Wrapper tests run in their own sub-environment (adds ODEInterface)
+            # and are excluded from "All".
+            activate_wrappers_env()
             @time @safetestset "ODEInterface Wrapper Tests" include("wrappers/odeinterface_tests.jl")
         end
 
