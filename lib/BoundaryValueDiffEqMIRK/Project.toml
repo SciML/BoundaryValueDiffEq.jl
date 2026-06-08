@@ -1,5 +1,6 @@
 name = "BoundaryValueDiffEqMIRK"
 uuid = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
+authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
 version = "1.17.0"
 
 [deps]
