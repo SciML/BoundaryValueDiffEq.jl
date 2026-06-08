@@ -5,6 +5,15 @@ using InteractiveUtils, SafeTestsets, Test
 const TEST_GROUP = get(ENV, "BOUNDARYVALUEDIFFEQ_TEST_GROUP", "All")
 
 @time begin
+    if TEST_GROUP == "Core"
+        # Representative light FIRK set covering both formulations' basic solves.
+        # Targeted by the uniform "Core" downgrade value. The full EXPANDED/NESTED
+        # groups below already include these basic tests, and "All" runs those
+        # groups, so "Core" is kept separate from "All" to avoid double execution.
+        @time @safetestset "FIRK Expanded Basic Tests" include("expanded/firk_basic_tests.jl")
+        @time @safetestset "FIRK Nested Basic Tests" include("nested/firk_basic_tests.jl")
+    end
+
     if TEST_GROUP == "EXPANDED" || TEST_GROUP == "All"
         @time @safetestset "FIRK Expanded Basic Tests" include("expanded/firk_basic_tests.jl")
         @time @safetestset "FIRK Expanded NLLS Tests" include("expanded/nlls_tests.jl")

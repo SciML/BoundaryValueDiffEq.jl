@@ -3,6 +3,12 @@
 # group, so the real group names must be declared here for the sublibrary CI
 # matrix discovery. runtests.jl dispatches on BOUNDARYVALUEDIFFEQ_TEST_GROUP
 # matching these names. QA (Aqua) runs on release Julia only.
+#
+# The downgrade workflow passes a uniform "Core" group to every sublibrary;
+# runtests.jl maps "Core" to the basic FIRK solve tests of both formulations.
+# "Core" is intentionally NOT listed below: those basic tests already run inside
+# the EXPANDED and NESTED matrix groups, so adding a "Core" matrix entry would
+# only duplicate them across the full version matrix.
 
 [EXPANDED]
 versions = ["lts", "1.11", "1", "pre"]
