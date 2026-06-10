@@ -12,15 +12,17 @@ function develop_local_path_deps()
     # the sub-environment tests the PR branch code.
     repo_root = dirname(@__DIR__)
     lib = joinpath(repo_root, "lib")
-    return Pkg.develop([
-        Pkg.PackageSpec(path = repo_root),
-        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqAscher")),
-        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqCore")),
-        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqFIRK")),
-        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRK")),
-        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRKN")),
-        Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqShooting"))
-    ])
+    return Pkg.develop(
+        [
+            Pkg.PackageSpec(path = repo_root),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqAscher")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqCore")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqFIRK")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRK")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqMIRKN")),
+            Pkg.PackageSpec(path = joinpath(lib, "BoundaryValueDiffEqShooting")),
+        ]
+    )
 end
 
 function activate_qa_env()

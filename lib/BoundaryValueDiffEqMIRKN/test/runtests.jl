@@ -10,10 +10,12 @@ function activate_qa_env()
     # On Julia < 1.11, the [sources] section in Project.toml is not honored.
     # Manually Pkg.develop the local path dependencies so QA tests the PR branch code.
     if VERSION < v"1.11.0-DEV.0"
-        Pkg.develop([
-            Pkg.PackageSpec(path = joinpath(@__DIR__, "..")),
-            Pkg.PackageSpec(path = joinpath(@__DIR__, "..", "..", "BoundaryValueDiffEqCore"))
-        ])
+        Pkg.develop(
+            [
+                Pkg.PackageSpec(path = joinpath(@__DIR__, "..")),
+                Pkg.PackageSpec(path = joinpath(@__DIR__, "..", "..", "BoundaryValueDiffEqCore"))
+            ]
+        )
     end
     return Pkg.instantiate()
 end
