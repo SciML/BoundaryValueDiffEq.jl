@@ -5,6 +5,7 @@ using BoundaryValueDiffEqCore: __extract_u0, __initial_guess_length, __extract_m
     __flatten_initial_guess, __get_bcresid_prototype,
     __has_initial_guess, __initial_guess, _process_verbose_param, BVPVerbosity, @SciMLMessage
 using SciMLBase: SciMLBase, BVProblem, TwoPointBVProblem, ReturnCode
+using ODEInterface: ODEInterface
 using ODEInterface: OptionsODE, OPT_ATOL, OPT_RTOL, OPT_METHODCHOICE, OPT_DIAGNOSTICOUTPUT,
     OPT_ERRORCONTROL, OPT_SINGULARTERM, OPT_MAXSTEPS, OPT_BVPCLASS,
     OPT_SOLMETHOD, OPT_RHS_CALLMODE, OPT_COLLOCATIONPTS, OPT_ADDGRIDPOINTS,
@@ -15,6 +16,19 @@ using ODEInterface: colnew
 
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff
+
+function __init__()
+    # ODEInterface.loadODESolvers does `@eval using ODEInterface_jll` and then
+    # reads bindings from that module within the same world age. Under the
+    # Julia 1.12 binding world-age semantics the new binding is not visible
+    # yet, so every solver records an UndefVarError(:ODEInterface_jll) on the
+    # first call. Failed solvers are retried on later calls, and a second call
+    # in a newer world (via invokelatest) resolves the binding and loads all
+    # solvers. Harmless no-op on older Julia where the first call succeeds.
+    ODEInterface.loadODESolvers()
+    Base.invokelatest(ODEInterface.loadODESolvers)
+    return nothing
+end
 
 #------
 # BVPM2
