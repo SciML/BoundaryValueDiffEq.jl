@@ -566,3 +566,42 @@ end
     @test bvp2.u0 == u_guess
 end
 =#
+
+# https://github.com/SciML/BoundaryValueDiffEq.jl/issues/500
+# An initial-guess object (previous solution, VectorOfArray, ...) must be
+# stripped to a plain vector before being stored in the cache's problem.
+# Under RecursiveArrayTools v4 solutions are `AbstractArray`s, so without the
+# explicit strip the entire solution type gets embedded in the cache type and
+# every downstream method recompiles against it (~20x compile-time blowup).
+@testset "Initial-guess object does not leak into cache type (issue 500)" begin
+    using SciMLBase, RecursiveArrayTools
+
+    tspan = (0.0, 1.0)
+    function f!(du, u, p, t)
+        du[1] = -u[2] / p[1]
+        du[2] = p[2]
+        du[3] = 0.0
+    end
+    function bca!(res_a, u_a, p)
+        res_a[1] = u_a[2]
+        res_a[2] = u_a[1] - 100.0
+    end
+    function bcb!(res_b, u_b, p)
+        res_b[1] = u_b[3] * (u_b[1] - 20.0) - u_b[2]
+    end
+    u_guess = [[100.0 - 0.5 * i, 0.02 * i, 0.006666666666666668] for i in 0:10]
+    p = [0.002, 0.2]
+    bvp1 = TwoPointBVProblem(
+        f!, (bca!, bcb!), u_guess, tspan, p; bcresid_prototype = (zeros(2), zeros(1))
+    )
+    sol1 = solve(bvp1, RadauIIa5(), dt = 0.1, adaptive = false)
+    @test SciMLBase.successful_retcode(sol1)
+
+    bvp2 = remake(bvp1, p = [0.0015, 0.03], u0 = sol1)
+    for nested in (true, false)
+        cache = init(bvp2, RadauIIa5(; nested_nlsolve = nested), dt = 0.1, adaptive = false)
+        @test cache.prob.u0 isa Vector{Float64}
+    end
+    sol2 = solve(bvp2, RadauIIa5(), dt = 0.1, adaptive = false)
+    @test SciMLBase.successful_retcode(sol2)
+end
