@@ -382,7 +382,7 @@ end
 
 @testset "Compatibility with StaticArrays" begin
     using StaticArrays
-    const g = 9.81
+    g = 9.81
     L = 1.0
     tspan = (0.0, pi / 2)
     function simplependulum!(du, u, p, t)
