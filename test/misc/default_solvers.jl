@@ -3,6 +3,7 @@ using Test
 
 @testset "Default Solvers" begin
     using BoundaryValueDiffEq, Test
+    using OrdinaryDiffEqTsit5: Tsit5
 
     function f(du, u, p, t)
         (x, v) = u
