@@ -113,7 +113,16 @@ function SciMLBase.__init(
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
+    # Initial guess objects (`ODESolution`, `VectorOfArray`, functions, ...) must be
+    # stripped down to the extracted `u0` vector here: under RecursiveArrayTools v4
+    # `AbstractVectorOfArray <: AbstractArray`, so a plain `isa AbstractArray` check
+    # would embed e.g. an entire previous solution's type in the cache and force
+    # recompilation of all downstream code against it (issue #500).
+    prob_ = if !(prob.u0 isa AbstractArray) || prob.u0 isa AbstractVectorOfArray
+        remake(prob; u0 = u0)
+    else
+        prob
+    end
 
     return MIRKNCache{iip, T}(
         alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type,
