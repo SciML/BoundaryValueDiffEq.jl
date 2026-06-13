@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqAscher"
 uuid = "7227322d-7511-4e07-9247-ad6ff830280e"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.15.0"
+version = "1.15.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -31,7 +31,7 @@ ForwardDiff = "0.10.38, 1"
 InteractiveUtils = "<0.0.1, 1"
 LinearAlgebra = "1.10"
 Pkg = "1.10.0"
-PreallocationTools = "0.4, 1"
+PreallocationTools = "1.2"
 Random = "1.10"
 RecursiveArrayTools = "3.27.0, 4"
 Reexport = "1.2"

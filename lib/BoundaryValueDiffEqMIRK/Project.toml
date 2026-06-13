@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqMIRK"
 uuid = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.17.0"
+version = "1.17.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -46,7 +46,7 @@ Mooncake = "0.4, 0.5"
 OptimizationIpopt = "1"
 OrdinaryDiffEqRosenbrock = "1, 2"
 Pkg = "1.10.0"
-PreallocationTools = "0.4, 1"
+PreallocationTools = "1.2"
 PrecompileTools = "1.2"
 Preferences = "1.4"
 Random = "1.10"

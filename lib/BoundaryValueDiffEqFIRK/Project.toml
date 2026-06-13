@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqFIRK"
 uuid = "85d9eb09-370e-4000-bb32-543851f73618"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.17.0"
+version = "1.17.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -47,7 +47,7 @@ LinearSolve = "2.36.2, 3"
 Mooncake = "0.4.146, 0.5"
 OrdinaryDiffEqRosenbrock = "1.15.1, 2"
 Pkg = "1.10.0"
-PreallocationTools = "0.4, 1"
+PreallocationTools = "1.2"
 PrecompileTools = "1.2"
 Preferences = "1.4"
 Random = "1.10"
