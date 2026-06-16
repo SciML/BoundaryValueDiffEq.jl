@@ -271,7 +271,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     _gpu_collocation!(resids[2:end], cache, y_, u)
-    soly_ = _boundary_condition_input(pt, cache, y_, u, mesh)
+    soly_ = __boundary_condition_input(pt, cache, y_, u, mesh)
     eval_bc_residual!(resids[1], pt, bc!, soly_, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -283,7 +283,7 @@ end
     ) where {BC, T, D}
     y_ = recursive_unflatten!(y, u)
     _gpu_collocation!(residual[2:end], cache, y_, u)
-    soly_ = _boundary_condition_input(pt, cache, y_, u, mesh)
+    soly_ = __boundary_condition_input(pt, cache, y_, u, mesh)
     eval_bc_residual!(residual[1], pt, bc!, soly_, p, mesh)
     recursive_flatten!(resid, residual)
     return nothing
@@ -480,46 +480,24 @@ function _boundary_values_on_host(cache::MIRKCache, y_, u)
     return y_host, k_host
 end
 
-function _boundary_condition_input(
+function __boundary_condition_input(
         pt::SciMLBase.StandardBVProblem, cache::MIRKCache, y_, u,
         mesh
     )
-    if first(y_) isa AbstractGPUArray
-        y_host, k_host = _boundary_values_on_host(cache, y_, u)
-        return HostEvalSol(
-            mesh, __restructure_sol(y_host, cache.in_size), cache.alg,
-            cache.stage, k_host
-        )
-    end
-    return EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
-end
-
-function _boundary_condition_input(
-        ::SciMLBase.TwoPointBVProblem, cache::MIRKCache, y_, u,
-        mesh
-    )
-    if first(y_) isa AbstractGPUArray
-        y_host, _ = _boundary_values_on_host(cache, y_, u)
-        return VectorOfArray(y_host)
-    end
-    return VectorOfArray(y_)
-end
-
-function _boundary_condition_input_cpu(
-        pt::SciMLBase.StandardBVProblem, cache::MIRKCache, y_, u, mesh
-    )
-    y_host = Array.(y_)
-    k_host = [Array(get_tmp(cache.k_discrete[i], u)) for i in 1:(length(mesh) - 1)]
+    y_host, k_host = _boundary_values_on_host(cache, y_, u)
     return HostEvalSol(
         mesh, __restructure_sol(y_host, cache.in_size), cache.alg,
         cache.stage, k_host
     )
+    return EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
 end
 
-function _boundary_condition_input_cpu(
-        ::SciMLBase.TwoPointBVProblem, cache::MIRKCache, y_, u, mesh
+function __boundary_condition_input(
+        ::SciMLBase.TwoPointBVProblem, cache::MIRKCache, y_, u,
+        mesh
     )
-    return VectorOfArray(Array.(y_))
+    y_host, _ = _boundary_values_on_host(cache, y_, u)
+    return VectorOfArray(y_host)
 end
 
 """
