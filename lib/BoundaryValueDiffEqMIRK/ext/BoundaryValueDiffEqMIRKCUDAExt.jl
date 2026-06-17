@@ -270,7 +270,7 @@ end
     ) where {BC, T, D}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    _gpu_collocation!(resids[2:end], cache, y_, u)
+    __gpu_collocation!(resids[2:end], cache, y_, u)
     soly_ = __boundary_condition_input(pt, cache, y_, u, mesh)
     eval_bc_residual!(resids[1], pt, bc!, soly_, p, mesh)
     recursive_flatten!(resid, resids)
@@ -282,7 +282,7 @@ end
         cache, _, trait::NoDiffCacheNeeded, constraint,
     ) where {BC, T, D}
     y_ = recursive_unflatten!(y, u)
-    _gpu_collocation!(residual[2:end], cache, y_, u)
+    __gpu_collocation!(residual[2:end], cache, y_, u)
     soly_ = __boundary_condition_input(pt, cache, y_, u, mesh)
     eval_bc_residual!(residual[1], pt, bc!, soly_, p, mesh)
     recursive_flatten!(resid, residual)
@@ -296,7 +296,7 @@ function BoundaryValueDiffEqMIRK.__mirk_loss!(
     ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
-    _gpu_collocation!(resids[2:end], cache, y_, u)
+    __gpu_collocation!(resids[2:end], cache, y_, u)
     len_a = prod(cache.resid_size[1])
     len_b = prod(cache.resid_size[2])
     bc_tmp_host = Array(resids[1])
@@ -305,7 +305,7 @@ function BoundaryValueDiffEqMIRK.__mirk_loss!(
     ua_host = Array(first(y_))
     ub_host = Array(last(y_))
     resida_host = copy(@view bc_tmp_host[1:len_a])
-    residb_host = copy(@view bc_tmp_host[(len_a + 1):(len_a + len_b)])
+    residb_host = copy(@view bc_tmp_host[(len_a + 1):end])
     first(bc!)(resida_host, ua_host, p)
     last(bc!)(residb_host, ub_host, p)
     copyto!(resids[1], 1, resida_host, 1, len_a)
@@ -411,7 +411,7 @@ end
     end
 end
 
-function _gpu_collocation!(resids_slice, cache::MIRKCache, y_, u)
+function __gpu_collocation!(resids_slice, cache::MIRKCache, y_, u)
     intervals = length(cache.mesh) - 1
     intervals <= 0 && return
     M = cache.M
@@ -489,7 +489,6 @@ function __boundary_condition_input(
         mesh, __restructure_sol(y_host, cache.in_size), cache.alg,
         cache.stage, k_host
     )
-    return EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
 end
 
 function __boundary_condition_input(
