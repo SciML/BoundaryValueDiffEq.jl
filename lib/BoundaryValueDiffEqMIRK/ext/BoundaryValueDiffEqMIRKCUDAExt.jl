@@ -76,7 +76,7 @@ function BoundaryValueDiffEqMIRK.__construct_problem(
             p,
         ) -> BoundaryValueDiffEqMIRK.__mirk_loss!(
             du, u, p, cache.y, pt, cache.bc, cache.residual,
-            cache.mesh, cache, eval_sol, trait, constraint, 11
+            cache.mesh, cache, eval_sol, trait, constraint
         )
     else
         @closure (
@@ -290,10 +290,11 @@ end
 end
 
 
-function BoundaryValueDiffEqMIRK.__mirk_loss!(
-        resid, u, p, y, pt::SciMLBase.TwoPointBVProblem, bc!::Tuple{BC1, BC2},
-        residual, mesh, cache, _, trait::DiffCacheNeeded, constraint, tt
-    ) where {BC1, BC2}
+@views function BoundaryValueDiffEqMIRK.__mirk_loss!(
+        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, mesh, cache, _,
+        trait::DiffCacheNeeded, constraint
+    ) where {BC1, BC2, T, D}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     __gpu_collocation!(resids[2:end], cache, y_, u)
@@ -323,6 +324,49 @@ function BoundaryValueDiffEqMIRK.__mirk_loss!(
     end
     copyto!(resid_host, idx, residb_host, 1, len_b)
     copyto!(resid, 1, resid_host, 1, length(resid_host))
+    return nothing
+end
+
+@views function BoundaryValueDiffEqMIRK.__mirk_loss!(
+        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, mesh, cache, _,
+        trait::NoDiffCacheNeeded, constraint
+    ) where {BC1, BC2, T, D}
+    y_ = recursive_unflatten!(y, u)
+    __gpu_collocation!(residual[2:end], cache, y_, u)
+    len_a = prod(cache.resid_size[1])
+    len_b = prod(cache.resid_size[2])
+    bc_tmp_host = Array(residual[1])
+
+    ua_host = Array(first(y_))
+    ub_host = Array(last(y_))
+    resida_host = copy(@view bc_tmp_host[1:len_a])
+    residb_host = copy(@view bc_tmp_host[(len_a + 1):end])
+    first(bc!)(resida_host, ua_host, p)
+    last(bc!)(residb_host, ub_host, p)
+
+    resid_host = Vector{eltype(resid)}(undef, length(resid))
+    copyto!(resid_host, 1, resida_host, 1, len_a)
+    idx = len_a + 1
+    for r in residual[2:end]
+        ri_host = Array(r)
+        n = length(ri_host)
+        copyto!(resid_host, idx, ri_host, 1, n)
+        idx += n
+    end
+    copyto!(resid_host, idx, residb_host, 1, len_b)
+    copyto!(resid, 1, resid_host, 1, length(resid_host))
+    return nothing
+end
+
+@views function BoundaryValueDiffEqMIRK.__mirk_loss!(
+        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, bcresid_prototype, mesh, cache, _,
+        trait, constraint
+    ) where {BC1, BC2, T, D}
+    BoundaryValueDiffEqMIRK.__mirk_loss!(
+        resid, u, p, y, pt, bc!, residual, mesh, cache, nothing, trait, constraint
+    )
     return nothing
 end
 
