@@ -762,7 +762,7 @@ function vwblok(
         wi[id, id] = T(1)
     end
 
-    # calculuate local basis
+    # calculate local basis
     ha = hrho .* acol
 
     @views jac(df, zyval, p, xcol)

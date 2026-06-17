@@ -109,6 +109,11 @@ probArr = [
 testTol = 0.3
 affineTol = 1.0e-2
 dts = 1 .// 2 .^ (5:-1:3)
+# Stage-4 Lobatto methods reach ~1e-14 error (the double-precision floor) at the
+# finest `dts` step, which corrupts the Richardson order estimate. A coarser step
+# range keeps the finest error above the round-off floor (~1e-12) so the measured
+# order reflects the true order 6 rather than floating-point noise.
+dts_stage4 = 1 .// 2 .^ (4:-1:2)
 
 @testset "Affineness" begin
     using LinearAlgebra
@@ -145,8 +150,9 @@ end
         prob = probArr[i]
 
         @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1.0e-8)
-            if (stage == 5) || (((i == 9) || (i == 10)) && stage == 4)
+            stepsizes = stage == 4 ? dts_stage4 : dts
+            @time sim = test_convergence(stepsizes, prob, lobattoIIIa_solver(Val(stage)); abstol = 1.0e-8)
+            if stage == 5
                 @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             else
                 @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
@@ -154,25 +160,23 @@ end
         end
 
         @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
+            stepsizes = stage == 4 ? dts_stage4 : dts
             @time sim = test_convergence(
-                dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
+                stepsizes, prob, lobattoIIIb_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
             )
-            if (stage == 5) || (stage == 4 && i == 10)
+            if stage == 5
                 @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            elseif stage == 4
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = 0.6
             else
                 @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             end
         end
 
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
+            stepsizes = stage == 4 ? dts_stage4 : dts
             @time sim = test_convergence(
-                dts, prob, lobattoIIIc_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
+                stepsizes, prob, lobattoIIIc_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
             )
-            if stage == 4
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            elseif first(sim.errors[:final]) < 1.0e-12
+            if stage != 4 && first(sim.errors[:final]) < 1.0e-12
                 @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
             else
                 @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
