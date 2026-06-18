@@ -265,9 +265,9 @@ function BoundaryValueDiffEqMIRK.__construct_problem(
 end
 
 @views function BoundaryValueDiffEqMIRK.__mirk_loss!(
-        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.StandardBVProblem, bc!::BC, residual, mesh,
-        cache, _, trait::DiffCacheNeeded, constraint,
-    ) where {BC, T, D}
+        resid, u, p, y, pt::SciMLBase.StandardBVProblem, bc!::BC, residual, mesh,
+        cache::MIRKCache, _, trait::DiffCacheNeeded, constraint,
+    ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     __gpu_collocation!(resids[2:end], cache, y_, u)
@@ -278,9 +278,9 @@ end
 end
 
 @views function BoundaryValueDiffEqMIRK.__mirk_loss!(
-        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.StandardBVProblem, bc!::BC, residual, mesh,
-        cache, _, trait::NoDiffCacheNeeded, constraint,
-    ) where {BC, T, D}
+        resid, u, p, y, pt::SciMLBase.StandardBVProblem, bc!::BC, residual, mesh,
+        cache::MIRKCache, _, trait::NoDiffCacheNeeded, constraint,
+    ) where {BC}
     y_ = recursive_unflatten!(y, u)
     __gpu_collocation!(residual[2:end], cache, y_, u)
     soly_ = __boundary_condition_input(pt, cache, y_, u, mesh)
@@ -291,10 +291,10 @@ end
 
 
 @views function BoundaryValueDiffEqMIRK.__mirk_loss!(
-        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.TwoPointBVProblem,
-        bc!::Tuple{BC1, BC2}, residual, mesh, cache, _,
+        resid, u, p, y, pt::SciMLBase.TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, mesh, cache::MIRKCache, _,
         trait::DiffCacheNeeded, constraint
-    ) where {BC1, BC2, T, D}
+    ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     __gpu_collocation!(resids[2:end], cache, y_, u)
@@ -328,10 +328,10 @@ end
 end
 
 @views function BoundaryValueDiffEqMIRK.__mirk_loss!(
-        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.TwoPointBVProblem,
-        bc!::Tuple{BC1, BC2}, residual, mesh, cache, _,
+        resid, u, p, y, pt::SciMLBase.TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, mesh, cache::MIRKCache, _,
         trait::NoDiffCacheNeeded, constraint
-    ) where {BC1, BC2, T, D}
+    ) where {BC1, BC2}
     y_ = recursive_unflatten!(y, u)
     __gpu_collocation!(residual[2:end], cache, y_, u)
     len_a = prod(cache.resid_size[1])
@@ -360,10 +360,10 @@ end
 end
 
 @views function BoundaryValueDiffEqMIRK.__mirk_loss!(
-        resid, u, p, y::CuArray{T, 1, D}, pt::SciMLBase.TwoPointBVProblem,
-        bc!::Tuple{BC1, BC2}, residual, bcresid_prototype, mesh, cache, _,
+        resid, u, p, y, pt::SciMLBase.TwoPointBVProblem,
+        bc!::Tuple{BC1, BC2}, residual, bcresid_prototype, mesh, cache::MIRKCache, _,
         trait, constraint
-    ) where {BC1, BC2, T, D}
+    ) where {BC1, BC2}
     BoundaryValueDiffEqMIRK.__mirk_loss!(
         resid, u, p, y, pt, bc!, residual, mesh, cache, nothing, trait, constraint
     )
