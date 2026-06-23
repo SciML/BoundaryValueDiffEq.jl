@@ -21,7 +21,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SimpleBoundaryValueDiffEq = "be0294bd-f90f-4760-ac4e-3421ce2b2da0"
 
 [sources]
-BoundaryValueDiffEq = {path = "/home/runner/work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl"}
+BoundaryValueDiffEq = {path = "/home/chrisrackauckas/github-runners/demeter4-20/_work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl"}
 BoundaryValueDiffEqAscher = {path = "../lib/BoundaryValueDiffEqAscher"}
 BoundaryValueDiffEqCore = {path = "../lib/BoundaryValueDiffEqCore"}
 BoundaryValueDiffEqFIRK = {path = "../lib/BoundaryValueDiffEqFIRK"}
