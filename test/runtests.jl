@@ -99,10 +99,10 @@ else
         qa = (;
             env = joinpath(@__DIR__, "qa"),
             body = function ()
-                # QA (Aqua + JET) runs on release + LTS Julia only; skip on prerelease.
+                # QA (Aqua + JET + ExplicitImports) runs on release + LTS Julia only;
+                # skip on prerelease.
                 isempty(VERSION.prerelease) || return nothing
-                @time @safetestset "Quality Assurance" include("qa/qa.jl")
-                return @time @safetestset "JET" include("qa/jet.jl")
+                return @time @safetestset "Quality Assurance" include("qa/qa.jl")
             end,
         ),
         # The original ran the Misc and QA groups for the default GROUP="All", but

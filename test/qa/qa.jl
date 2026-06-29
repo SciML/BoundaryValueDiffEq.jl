@@ -1,11 +1,14 @@
+using SciMLTesting
 using BoundaryValueDiffEq
-using Aqua
 using SciMLBase
+using JET
 using Test
 
-@testset "Aqua" begin
-    Aqua.test_all(
-        BoundaryValueDiffEq; ambiguities = false,
-        piracies = (broken = false, treat_as_own = [SciMLBase.BVProblem])
-    )
-end
+run_qa(
+    BoundaryValueDiffEq;
+    explicit_imports = true,
+    aqua_kwargs = (;
+        ambiguities = false,
+        piracies = (; treat_as_own = [SciMLBase.BVProblem]),
+    ),
+)
