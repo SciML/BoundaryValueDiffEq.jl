@@ -6,10 +6,13 @@ run_qa(
     BoundaryValueDiffEqShooting;
     explicit_imports = true,
     aqua_kwargs = (; persistent_tasks = false),
-    # Pre-existing ExplicitImports findings, tracked in SciML/BoundaryValueDiffEq.jl#519.
-    ei_broken = (
-        :no_implicit_imports, :no_stale_explicit_imports,
-        :all_explicit_imports_via_owners,
-        :all_qualified_accesses_are_public, :all_explicit_imports_are_public,
+    ei_kwargs = (;
+        # All external internals with no public replacement:
+        #   - StandardBVProblem: SciMLBase-owned BVP problem type, not public.
+        #   - overloaded_input_type: DifferentiationInterface internal.
+        #   - pickchunksize: ForwardDiff internal.
+        all_explicit_imports_are_public = (;
+            ignore = (:StandardBVProblem, :overloaded_input_type, :pickchunksize),
+        ),
     ),
 )
