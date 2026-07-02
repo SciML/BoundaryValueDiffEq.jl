@@ -44,6 +44,7 @@ run_tests(;
             @time @safetestset "FIRK Expanded NLLS Tests" include("expanded/nlls_tests.jl")
             @time @safetestset "FIRK Expanded Ensemble Tests" include("expanded/ensemble_tests.jl")
             @time @safetestset "FIRK Expanded Singular BVP Tests" include("expanded/singular_bvp_tests.jl")
+            @time @safetestset "FIRK Expanded DAE Tests" include("expanded/dae_tests.jl")
             return @time @safetestset "FIRK Expanded VectorOfVector Initials Tests" include("expanded/vectorofvector_initials_tests.jl")
         end,
         # The nested formulation is split for the same reason as the expanded one, but its
@@ -85,6 +86,7 @@ run_tests(;
             @time @safetestset "FIRK Nested NLLS Tests" include("nested/nlls_tests.jl")
             @time @safetestset "FIRK Nested Underconstrained NLLS Tests" include("nested/nlls_underconstrained_tests.jl")
             @time @safetestset "FIRK Nested Ensemble Tests" include("nested/ensemble_tests.jl")
+            @time @safetestset "FIRK Nested DAE Tests" include("nested/dae_tests.jl")
             return @time @safetestset "FIRK Nested VectorOfVector Initials Tests" include("nested/vectorofvector_initials_tests.jl")
         end,
         # AD: the different-AD-backend compatibility tests. Enzyme and Mooncake are
