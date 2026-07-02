@@ -798,25 +798,46 @@ end
 end
 
 @inline function __apply_algebraic_constraint!(
-        residᵢ, ::Nothing, f!, yᵢ₊₁, p, t, tmp)
+        residᵢ, ::Nothing, f!, yᵢ₊₁, p, t, tmp
+    )
     return nothing
 end
 
 @inline function __apply_algebraic_constraint!(
-        residᵢ, algebraic_indices::Vector{Int}, f!, yᵢ₊₁, p, t, tmp)
+        residᵢ, algebraic_indices::Vector{Int}, f!, yᵢ₊₁, p, t, tmp
+    )
     f!(tmp, yᵢ₊₁, p, t)
     residᵢ[algebraic_indices] .= tmp[algebraic_indices]
     return nothing
 end
 
 @inline function __apply_algebraic_constraint_oop!(
-        residᵢ, ::Nothing, f, yᵢ₊₁, p, t)
+        residᵢ, ::Nothing, f, yᵢ₊₁, p, t
+    )
     return nothing
 end
 
 @inline function __apply_algebraic_constraint_oop!(
-        residᵢ, algebraic_indices::Vector{Int}, f, yᵢ₊₁, p, t)
+        residᵢ, algebraic_indices::Vector{Int}, f, yᵢ₊₁, p, t
+    )
     tmp = f(yᵢ₊₁, p, t)
     residᵢ[algebraic_indices] .= tmp[algebraic_indices]
+    return nothing
+end
+
+@inline __check_dae_adaptivity(::Nothing, adaptive::Bool) = nothing
+
+@inline function __check_dae_adaptivity(::Vector{Int}, adaptive::Bool)
+    if adaptive
+        throw(
+            ArgumentError(
+                "Adaptive mesh refinement is not supported for DAE problems (mass " *
+                    "matrices with zero rows): the collocation interpolant is inaccurate " *
+                    "for algebraic variables, so the defect estimate cannot converge. " *
+                    "Pass `adaptive = false`, or use a solver from " *
+                    "BoundaryValueDiffEqAscher.jl, which supports mesh adaptivity for DAEs."
+            )
+        )
+    end
     return nothing
 end

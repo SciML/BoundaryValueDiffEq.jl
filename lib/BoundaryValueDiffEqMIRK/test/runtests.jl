@@ -9,6 +9,7 @@ run_tests(;
         @time @safetestset "MIRK Ensemble Tests" include("Core/ensemble_tests.jl")
         @time @safetestset "MIRK AD Tests" include("Core/ad_tests.jl")
         @time @safetestset "MIRK Singular BVP Tests" include("Core/singular_bvp_tests.jl")
+        @time @safetestset "MIRK DAE Tests" include("Core/dae_tests.jl")
         @time @safetestset "MIRK VectorOfVector Initials Tests" include("Core/vectorofvector_initials_tests.jl")
         return @time @safetestset "MIRK Dynamic Optimization Tests" include("Core/dynamic_optimization_tests.jl")
     end,
