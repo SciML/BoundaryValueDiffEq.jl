@@ -278,6 +278,7 @@ function init_nested(
     nestprob_p = zeros(T, M + 2)
 
     algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
+    __check_dae_adaptivity(algebraic_indices, adaptive)
 
     mm = prob.f.mass_matrix
 
@@ -453,7 +454,7 @@ function init_expanded(
     end
 
     algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
-
+    __check_dae_adaptivity(algebraic_indices, adaptive)
 
     return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,

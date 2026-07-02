@@ -302,7 +302,7 @@ function Φ(cache::FIRKCacheNested, y, u, trait)
         cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
         cache.p, cache.mass_matrix, cache.algebraic_indices,
         cache.mesh, cache.mesh_dt, cache.stage, cache, trait
-        )
+    )
 end
 
 @views function Φ(
@@ -398,7 +398,6 @@ end
     )
     (; b) = TU
     (; nest_prob, alg) = cache
-    tmp1 = similar(get_tmp(y[1], u))
 
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
 
@@ -422,7 +421,7 @@ end
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp1)
+        __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1])
     end
     return residuals
 end
@@ -434,7 +433,6 @@ end
     )
     (; b) = TU
     (; nest_prob, alg) = cache
-    tmp1 = similar(y[1])
 
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
 
@@ -458,7 +456,7 @@ end
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp1)
+        __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1])
     end
     return residuals
 end
