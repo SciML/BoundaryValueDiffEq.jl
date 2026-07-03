@@ -35,13 +35,11 @@ BoundaryValueDiffEqCore = "2.2"
 ConcreteStructs = "0.2.3"
 DiffEqDevTools = "2.44, 3"
 DifferentiationInterface = "0.7.15"
-Enzyme = "0.13.33"
 FastAlmostBandedMatrices = "0.1.4"
 FastClosures = "0.3.2"
 ForwardDiff = "0.10.38, 1"
 LinearAlgebra = "1.10"
 LinearSolve = "2.36.2, 3"
-Mooncake = "0.4, 0.5"
 OptimizationIpopt = "1"
 OrdinaryDiffEqRosenbrock = "1, 2"
 PreallocationTools = "1.2"
@@ -62,9 +60,7 @@ julia = "1.10"
 
 [extras]
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
-Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 OptimizationIpopt = "43fad042-7963-4b32-ab19-e2a4f9a67124"
 OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -75,4 +71,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqDevTools", "Enzyme", "LinearSolve", "Mooncake", "OptimizationIpopt", "OrdinaryDiffEqRosenbrock", "Random", "RecursiveArrayTools", "SafeTestsets", "SciMLTesting", "StaticArrays", "Test"]
+test = ["DiffEqDevTools", "LinearSolve", "OptimizationIpopt", "OrdinaryDiffEqRosenbrock", "Random", "RecursiveArrayTools", "SafeTestsets", "SciMLTesting", "StaticArrays", "Test"]
