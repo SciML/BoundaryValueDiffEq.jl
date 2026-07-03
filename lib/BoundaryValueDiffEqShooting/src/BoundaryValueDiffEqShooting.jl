@@ -1,37 +1,38 @@
 module BoundaryValueDiffEqShooting
 
-using ADTypes
+using ADTypes: ADTypes, AutoForwardDiff, AutoSparse
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
-    recursive_flatten, recursive_flatten!, recursive_unflatten!,
-    __concrete_solve_algorithm, diff!, __any_sparse_ad,
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+    AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+    recursive_flatten!,
+    __concrete_solve_algorithm,
     __cache_trait, concrete_jacobian_algorithm, eval_bc_residual,
-    eval_bc_residual!, get_tmp, __maybe_matmul!,
+    eval_bc_residual!,
     __concrete_kwargs, __extract_problem_details,
-    __initial_guess, __construct_internal_problem,
-    __default_coloring_algorithm, __default_sparsity_detector,
+    __construct_internal_problem,
+    __default_coloring_algorithm,
     __maybe_allocate_diffcache, __get_bcresid_prototype,
-    safe_similar, __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!,
+    __vec,
     __materialize_jacobian_algorithm, __default_nonsparse_ad,
-    recursive_flatten_twopoint!, __internal_nlsolve_problem,
-    NoDiffCacheNeeded, DiffCacheNeeded, __extract_mesh,
-    __extract_u0, __has_initial_guess, __initial_guess_length,
-    __initial_guess_on_mesh, __flatten_initial_guess,
-    __get_non_sparse_ad, __build_solution, __Fix3, get_dense_ad,
-    __internal_solve, _process_verbose_param, BVPVerbosity, @SciMLMessage
+    NoDiffCacheNeeded, DiffCacheNeeded,
+    __extract_u0,
+    __initial_guess_on_mesh,
+    __get_non_sparse_ad, __build_solution, get_dense_ad,
+    __internal_solve, _process_verbose_param, BVPVerbosity, _unwrap_val
 
 using ConcreteStructs: @concrete
-using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian,
+using DifferentiationInterface: DifferentiationInterface,
     overloaded_input_type
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
-using LinearAlgebra
+using LinearAlgebra: LinearAlgebra
 using Reexport: @reexport
-using RecursiveArrayTools: ArrayPartition, DiffEqArray, VectorOfArray
-using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
-    _unwrap_val, solve
-using Setfield: @set!, @set
+using SciMLBase: SciMLBase, BVProblem, EnsembleSerial, EnsembleThreads,
+    NonlinearFunction, ODEProblem, StandardBVProblem, TwoPointBVProblem,
+    __solve, isinplace, remake, solve, solve!
+using SciMLLogging: @SciMLMessage
+using Setfield: @set
 using SparseArrays: sparse
 using OrdinaryDiffEqTsit5: Tsit5
 using PrecompileTools: @compile_workload, @setup_workload

@@ -3,27 +3,27 @@ module BoundaryValueDiffEqFIRK
 using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+    AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
-    recursive_flatten, recursive_flatten!, recursive_unflatten!,
+    DEFAULT_VERBOSE, DefectControl, GaussNewton, LevenbergMarquardt,
+    _process_verbose_param,
+    recursive_flatten!, recursive_unflatten!,
     __concrete_solve_algorithm, diff!, EvalSol,
     concrete_jacobian_algorithm, eval_bc_residual, interval,
-    eval_bc_residual!, get_tmp, __maybe_matmul!, __resize!,
-    __extract_problem_details, __initial_guess, nodual_value,
+    eval_bc_residual!, __maybe_matmul!, __resize!,
+    __extract_problem_details, nodual_value,
     __maybe_allocate_diffcache, __restructure_sol,
     __get_bcresid_prototype, __vec, __vec_f, __vec_f!, __vec_bc,
     __vec_bc!, recursive_flatten_twopoint!, __concrete_kwargs,
-    __internal_nlsolve_problem, __extract_mesh, __extract_u0,
-    __default_coloring_algorithm, __maybe_allocate_diffcache,
-    __restructure_sol, __get_bcresid_prototype, safe_similar,
-    __vec, __vec_f, __vec_f!, __vec_bc, __vec_bc!, __cache_trait,
-    recursive_flatten_twopoint!, __internal_nlsolve_problem,
-    __extract_mesh, __extract_u0, DiffCacheNeeded,
-    NoDiffCacheNeeded, __has_initial_guess,
-    __construct_internal_problem, __initial_guess_length,
-    __initial_guess_on_mesh, __flatten_initial_guess,
-    __build_solution, __Fix3, __split_kwargs, _sparse_like,
-    get_dense_ad, __internal_optimization_problem,
+    __extract_mesh,
+    __default_coloring_algorithm, safe_similar, __cache_trait,
+    DiffCacheNeeded,
+    NoDiffCacheNeeded,
+    __construct_internal_problem,
+    __initial_guess_on_mesh,
+    __build_solution, __split_kwargs, _sparse_like,
+    get_dense_ad,
     __internal_solve, __default_sparsity_detector, __build_cost,
     __tunable_part, __add_singular_term!
 
@@ -32,17 +32,18 @@ using DifferentiationInterface: DifferentiationInterface, Constant
 using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
     finish_part_setindex!
 using FastClosures: @closure
-using ForwardDiff: ForwardDiff, pickchunksize, Dual
-using LinearAlgebra
-using RecursiveArrayTools: AbstractVectorOfArray, AbstractVectorOfArray, DiffEqArray,
+using ForwardDiff: ForwardDiff, pickchunksize
+using LinearAlgebra: LinearAlgebra
+using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray,
     VectorOfArray, recursivecopy, recursivefill!
 using Reexport: @reexport
-using PreallocationTools: PreallocationTools, DiffCache
+using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
-using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
-    _unwrap_val
-using Setfield: @set!, @set
+using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, BVPFunction, BVProblem,
+    NonlinearProblem, ReturnCode, StandardBVProblem, TwoPointBVProblem,
+    __solve, isinplace, remake, solve
+using Setfield: @set!
 using SparseArrays: sparse
 using SciMLStructures: SciMLStructures
 using StaticArrays: SMatrix, SVector

@@ -1,3 +1,6 @@
+_unwrap_val(::Val{B}) where {B} = B
+_unwrap_val(B) = B
+
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
