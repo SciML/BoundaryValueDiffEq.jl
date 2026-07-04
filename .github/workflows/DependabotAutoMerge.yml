@@ -5,5 +5,10 @@ permissions:
   pull-requests: write
 jobs:
   automerge:
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
     uses: "SciML/.github/.github/workflows/dependabot-automerge.yml@v1"
     secrets: "inherit"
