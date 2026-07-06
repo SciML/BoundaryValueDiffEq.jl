@@ -42,8 +42,8 @@ end
 
 @inline function interpolation(
         tvals, id::FIRKNestedInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -66,8 +66,8 @@ end
 
 @inline function interpolation!(
         vals, tvals, id::FIRKNestedInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -82,8 +82,8 @@ end
 
 @inline function interpolation(
         tval::Number, id::FIRKNestedInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     z = similar(id.cache.fᵢ₂_cache)
     interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
@@ -186,8 +186,8 @@ end
 ## Expanded
 @inline function interpolation(
         tvals, id::FIRKExpandInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     (; t, u, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -210,8 +210,8 @@ end
 
 @inline function interpolation!(
         vals, tvals, id::FIRKExpandInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     (; t, cache) = id
     tdir = sign(t[end] - t[1])
     idx = sortperm(tvals, rev = tdir < 0)
@@ -226,8 +226,8 @@ end
 
 @inline function interpolation(
         tval::Number, id::FIRKExpandInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     z = similar(id.cache.fᵢ₂_cache)
     interpolant!(z, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
