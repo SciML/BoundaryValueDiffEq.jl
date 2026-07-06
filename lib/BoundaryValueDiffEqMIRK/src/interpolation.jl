@@ -19,9 +19,9 @@ function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol 
 end
 
 @inline function interpolation(
-        tvals, id::MIRKInterpolation, idxs, deriv::D,
+        tvals, id::MIRKInterpolation, idxs, deriv
         p, continuity::Symbol = :left
-    ) where {D}
+    )
     (; t, u, cache) = id
     (; mesh, mesh_dt) = cache
     tdir = sign(t[end] - t[1])
@@ -45,8 +45,8 @@ end
 
 @inline function interpolation!(
         vals, tvals, id::MIRKInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     (; t, cache) = id
     (; mesh, mesh_dt) = cache
     tdir = sign(t[end] - t[1])
@@ -62,8 +62,8 @@ end
 
 @inline function interpolation(
         tval::Number, id::MIRKInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     z = similar(id.u[1])
     interpolant!(z, id, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
