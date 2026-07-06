@@ -19,7 +19,7 @@ function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol 
 end
 
 @inline function interpolation(
-        tvals, id::MIRKInterpolation, idxs, deriv
+        tvals, id::MIRKInterpolation, idxs, deriv,
         p, continuity::Symbol = :left
     )
     (; t, u, cache) = id
