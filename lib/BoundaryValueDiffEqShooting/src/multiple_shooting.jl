@@ -12,7 +12,7 @@ function SciMLBase.__solve(
                              `EnsembleThreads`!"))
     end
 
-    ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
+    ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1 * oneunit(first(tspan)))
     has_initial_guess = _unwrap_val(ig)
 
     @assert u0 isa AbstractVector "Non-Vector Inputs for Multiple-Shooting hasn't been implemented yet!"
