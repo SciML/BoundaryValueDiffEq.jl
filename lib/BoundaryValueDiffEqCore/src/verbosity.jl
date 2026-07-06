@@ -63,7 +63,11 @@
         ),
         Standard = (
             nonlinear_verbosity = Standard(),
-            optimization_verbosity = Standard(),
+            # BVP forwards common tolerances (e.g. `abstol`) into the inner optimizer as
+            # plumbing; whether a given backend consumes them (Ipopt ignores `abstol`) is
+            # not something the BVP user chose, so the default preset silences the
+            # `:unsupported_kwargs` notice. Higher presets (Detailed/All) still surface it.
+            optimization_verbosity = OptimizationVerbosity(; preset = Standard(), unsupported_kwargs = Silent()),
             bvpsol_convergence = WarnLevel(),
             bvpsol_integrator = WarnLevel(),
             bvpsol_linear_solver = WarnLevel(),

@@ -18,5 +18,13 @@ timeout = 240
 versions = ["lts", "1", "pre"]
 timeout = 240
 
+# AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy
+# optional backends live in test/AD/Project.toml (kept out of the main test env so
+# the Downgrade lane does not force a joint at-floor resolve of them). Matches the
+# EXPANDED/NESTED version matrix.
+[AD]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
 [QA]
 versions = ["lts", "1"]
