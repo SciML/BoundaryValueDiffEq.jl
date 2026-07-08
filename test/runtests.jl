@@ -71,6 +71,7 @@ else
             @time @safetestset "Default Solvers Tests" include("misc/default_solvers.jl")
             @time @safetestset "Type Stability Tests" include("misc/type_stability_tests.jl")
             @time @safetestset "Verbose Tests" include("misc/verbose_tests.jl")
+            @time @safetestset "Public API Package Splits" include("misc/public_api_package_split.jl")
             return @time @safetestset "Manifolds Tests" include("misc/manifolds_tests.jl")
         end,
         groups = Dict(
@@ -93,6 +94,7 @@ else
                 @time @safetestset "Default Solvers Tests" include("misc/default_solvers.jl")
                 @time @safetestset "Type Stability Tests" include("misc/type_stability_tests.jl")
                 @time @safetestset "Verbose Tests" include("misc/verbose_tests.jl")
+                @time @safetestset "Public API Package Splits" include("misc/public_api_package_split.jl")
                 return @time @safetestset "Manifolds Tests" include("misc/manifolds_tests.jl")
             end,
         ),
