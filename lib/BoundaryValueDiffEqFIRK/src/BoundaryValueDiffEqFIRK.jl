@@ -1,6 +1,6 @@
 module BoundaryValueDiffEqFIRK
 
-using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using ADTypes: ADTypes, AutoSparse, AutoForwardDiff, AutoEnzyme
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
@@ -17,7 +17,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __get_bcresid_prototype, __vec, __vec_f, __vec_f!, __vec_bc,
     __vec_bc!, recursive_flatten_twopoint!, __concrete_kwargs,
     __extract_mesh,
-    __default_coloring_algorithm, safe_similar, __cache_trait,
+    __default_coloring_algorithm, safe_similar, __needs_diffcache,
     DiffCacheNeeded,
     NoDiffCacheNeeded,
     __construct_internal_problem,

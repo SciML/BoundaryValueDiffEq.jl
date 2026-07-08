@@ -5,8 +5,8 @@
 # These are not meant to be user facing and we should delete these once those issues are
 # resolved
 function __FastShortcutBVPCompatibleNLLSPolyalg(
-        ::Type{T} = Float64; concrete_jac = nothing,
-        linsolve = nothing, autodiff = nothing, kwargs...
+        ::Type{T} = Float64; concrete_jac = Val(true),
+        linsolve = nothing, autodiff = AutoFiniteDiff(), kwargs...
     ) where {T}
     if T <: Complex
         algs = (
@@ -29,8 +29,8 @@ function __FastShortcutBVPCompatibleNLLSPolyalg(
 end
 
 function __FastShortcutBVPCompatibleNonlinearPolyalg(
-        ::Type{T} = Float64; concrete_jac = nothing,
-        linsolve = nothing, autodiff = nothing
+        ::Type{T} = Float64; concrete_jac = Val(true),
+        linsolve = nothing, autodiff = AutoFiniteDiff()
     ) where {T}
     if T <: Complex
         algs = (NewtonRaphson(; concrete_jac, linsolve, autodiff),)

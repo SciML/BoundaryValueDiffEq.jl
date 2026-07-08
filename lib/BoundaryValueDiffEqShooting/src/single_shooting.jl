@@ -54,7 +54,8 @@ function SciMLBase.__solve(
     )
 
     loss_fnₚ = __single_shooting_make_loss_p(
-        iip, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size
+        iip, prob.p, ode_cache_jac_fn, bc, u0_size, prob.problem_type, resid_size,
+        __cache_trait(diffmode)
     )
 
     jac_prototype = __single_shooting_compute_jac_prototype(
@@ -109,6 +110,14 @@ end
 
 # Jacobian cache creation
 function __single_shooting_make_jac_cache(::Val{true}, y_, diffmode, u0)
+    return __single_shooting_make_jac_cache(__cache_trait(diffmode), y_, diffmode, u0)
+end
+
+function __single_shooting_make_jac_cache(::DiffCacheNeeded, y_, diffmode, u0)
+    return DI.prepare_jacobian(nothing, diffmode, vec(u0); strict = Val(false))
+end
+
+function __single_shooting_make_jac_cache(::NoDiffCacheNeeded, y_, diffmode, u0)
     return DI.prepare_jacobian(nothing, y_, diffmode, vec(u0); strict = Val(false))
 end
 
@@ -118,7 +127,19 @@ end
 
 # Loss function for jacobian computation (with fixed p)
 function __single_shooting_make_loss_p(
-        ::Val{true}, p, ode_cache, bc, u0_size, problem_type, resid_size
+        ::Val{true}, p, ode_cache, bc, u0_size, problem_type, resid_size,
+        trait::DiffCacheNeeded
+    )
+    return @closure (
+        u,
+    ) -> __single_shooting_loss_iip_ad(
+        u, p, ode_cache, bc, u0_size, problem_type, resid_size
+    )
+end
+
+function __single_shooting_make_loss_p(
+        ::Val{true}, p, ode_cache, bc, u0_size, problem_type, resid_size,
+        trait::NoDiffCacheNeeded
     )
     return @closure (
         du,
@@ -129,7 +150,7 @@ function __single_shooting_make_loss_p(
 end
 
 function __single_shooting_make_loss_p(
-        ::Val{false}, p, ode_cache, bc, u0_size, problem_type, resid_size
+        ::Val{false}, p, ode_cache, bc, u0_size, problem_type, resid_size, trait
     )
     return @closure (u) -> __single_shooting_loss(
         u, p, ode_cache, bc, u0_size, problem_type
@@ -139,6 +160,20 @@ end
 # Jacobian prototype computation
 function __single_shooting_compute_jac_prototype(
         ::Val{true}, loss_fnₚ, y_, jac_cache, diffmode, u0
+    )
+    return __single_shooting_compute_jac_prototype(
+        __cache_trait(diffmode), loss_fnₚ, y_, jac_cache, diffmode, u0
+    )
+end
+
+function __single_shooting_compute_jac_prototype(
+        ::DiffCacheNeeded, loss_fnₚ, y_, jac_cache, diffmode, u0
+    )
+    return DI.jacobian(loss_fnₚ, jac_cache, diffmode, vec(u0))
+end
+
+function __single_shooting_compute_jac_prototype(
+        ::NoDiffCacheNeeded, loss_fnₚ, y_, jac_cache, diffmode, u0
     )
     return DI.jacobian(loss_fnₚ, y_, jac_cache, diffmode, vec(u0))
 end
@@ -152,6 +187,22 @@ end
 # Jacobian function creation
 function __single_shooting_make_jac_fn(
         ::Val{true}, jac_cache, diffmode, loss_fnₚ, y_, jac_prototype
+    )
+    return __single_shooting_make_jac_fn(
+        __cache_trait(diffmode), jac_cache, diffmode, loss_fnₚ, y_
+    )
+end
+
+function __single_shooting_make_jac_fn(
+        ::DiffCacheNeeded, jac_cache, diffmode, loss_fnₚ, y_
+    )
+    return @closure (
+        J, u, p,
+    ) -> __single_shooting_jacobian(J, u, jac_cache, diffmode, loss_fnₚ)
+end
+
+function __single_shooting_make_jac_fn(
+        ::NoDiffCacheNeeded, jac_cache, diffmode, loss_fnₚ, y_
     )
     return @closure (
         J, u, p,
@@ -205,6 +256,20 @@ function __single_shooting_loss(u, p, cache, bc::BC, u0_size, pt) where {BC}
     SciMLBase.reinit!(cache, reshape(u, u0_size))
     odesol = solve!(cache)
     return __vec(eval_bc_residual(pt, bc, odesol, p))
+end
+
+function __single_shooting_resid_length(::TwoPointBVProblem, (resida_size, residb_size))
+    return prod(resida_size) + prod(residb_size)
+end
+
+__single_shooting_resid_length(::StandardBVProblem, resid_size) = prod(resid_size)
+
+function __single_shooting_loss_iip_ad(
+        u0_, p, cache, bc::BC, u0_size, pt, resid_size
+    ) where {BC}
+    resid = similar(u0_, __single_shooting_resid_length(pt, resid_size))
+    __single_shooting_loss!(resid, u0_, p, cache, bc, u0_size, pt, resid_size)
+    return resid
 end
 
 function __single_shooting_jacobian!(J, u, jac_cache, diffmode, loss_fn::L, fu) where {L}

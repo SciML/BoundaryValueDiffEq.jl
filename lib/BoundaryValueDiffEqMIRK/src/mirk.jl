@@ -574,6 +574,14 @@ end
     return eval_bc_residual(pt, bc!, soly_, p, mesh)
 end
 
+@views function __mirk_loss_bc_iip_ad(
+        u, p, pt::StandardBVProblem, bc!::BC, y, mesh, cache::MIRKCache, trait
+    ) where {BC}
+    resid = similar(u, length(cache.bcresid_prototype))
+    __mirk_loss_bc!(resid, u, p, pt, bc!, y, mesh, cache, trait)
+    return resid
+end
+
 @views function __mirk_loss_collocation!(
         resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded, constraint
     )
@@ -613,16 +621,17 @@ function __construct_problem(
     L = length(resid_bc)
     L_f_prototype = length(f_prototype)
     resid_collocation = safe_similar(y, L_f_prototype * (N - 1))
-
-    cache_bc = if iip
-        DI.prepare_jacobian(
-            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+    loss_bc_ad = if iip
+        @closure (u, p) -> __mirk_loss_bc_iip_ad(
+            u, p, StandardBVProblem(), cache.bc, cache.y, cache.mesh, cache, __cache_trait(jac_alg)
         )
     else
-        DI.prepare_jacobian(
-            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
-        )
+        loss_bc
     end
+
+    cache_bc = DI.prepare_jacobian(
+        loss_bc_ad, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+    )
 
     nonbc_diffmode = AutoSparse(
         get_dense_ad(jac_alg.nonbc_diffmode),
@@ -640,11 +649,7 @@ function __construct_problem(
         )
     end
 
-    J_bc = if iip
-        DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
-    else
-        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
-    end
+    J_bc = DI.jacobian(loss_bc_ad, cache_bc, bc_diffmode, y, Constant(cache.p))
     J_c = if iip
         DI.jacobian(
             loss_collocation, resid_collocation, cache_collocation,
@@ -662,9 +667,9 @@ function __construct_problem(
             J,
             u,
             p,
-        ) -> __mirk_mpoint_jacobian!(
+        ) -> __mirk_mpoint_jacobian_bc_oop!(
             J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
-            loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p
+            loss_bc_ad, loss_collocation, resid_collocation, L, cache.p
         )
     else
         @closure (
@@ -702,16 +707,17 @@ function __construct_problem(
     L = length(resid_bc)
     resid_collocation = safe_similar(y, cache.M * (N - 1))
     resid_prototype = vcat(resid_bc, resid_collocation)
-
-    cache_bc = if iip
-        DI.prepare_jacobian(
-            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+    loss_bc_ad = if iip
+        @closure (u, p) -> __mirk_loss_bc_iip_ad(
+            u, p, StandardBVProblem(), cache.bc, cache.y, cache.mesh, cache, __cache_trait(jac_alg)
         )
     else
-        DI.prepare_jacobian(
-            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
-        )
+        loss_bc
     end
+
+    cache_bc = DI.prepare_jacobian(
+        loss_bc_ad, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+    )
 
     nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
         if L < cache.M
@@ -750,11 +756,7 @@ function __construct_problem(
         )
     end
 
-    J_bc = if iip
-        DI.jacobian(loss_bc, resid_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
-    else
-        DI.jacobian(loss_bc, cache_bc, bc_diffmode, y, Constant(cache.p))
-    end
+    J_bc = DI.jacobian(loss_bc_ad, cache_bc, bc_diffmode, y, Constant(cache.p))
     J_c = if iip
         DI.jacobian(
             loss_collocation, resid_collocation, cache_collocation,
@@ -777,9 +779,9 @@ function __construct_problem(
             J,
             u,
             p,
-        ) -> __mirk_mpoint_jacobian!(
+        ) -> __mirk_mpoint_jacobian_bc_oop!(
             J, J_c, u, bc_diffmode, nonbc_diffmode, cache_bc, cache_collocation,
-            loss_bc, loss_collocation, resid_bc, resid_collocation, L, cache.p
+            loss_bc_ad, loss_collocation, resid_collocation, L, cache.p
         )
     else
         @closure (
@@ -800,6 +802,34 @@ function __construct_problem(
         prob, cache.problem_type, cache.alg, loss, jac, jac_prototype, resid_prototype,
         bcresid_prototype, f_prototype, y, cache.p, cache.M, N, cost_fun
     )
+end
+
+function __mirk_mpoint_jacobian_bc_oop!(
+        J, _, x, bc_diffmode, nonbc_diffmode, bc_diffcache, nonbc_diffcache,
+        loss_bc::BC, loss_collocation::C, resid_collocation, L::Int, p
+    ) where {BC, C}
+    DI.jacobian!(loss_bc, @view(J[1:L, :]), bc_diffcache, bc_diffmode, x, Constant(p))
+    DI.jacobian!(
+        loss_collocation, resid_collocation, @view(J[(L + 1):end, :]),
+        nonbc_diffcache, nonbc_diffmode, x, Constant(p)
+    )
+    return nothing
+end
+
+function __mirk_mpoint_jacobian_bc_oop!(
+        J::AlmostBandedMatrix, J_c, x, bc_diffmode, nonbc_diffmode,
+        bc_diffcache, nonbc_diffcache, loss_bc::BC, loss_collocation::C,
+        resid_collocation, L::Int, p
+    ) where {BC, C}
+    J_bc = fillpart(J)
+    DI.jacobian!(
+        loss_collocation, resid_collocation, J_c,
+        nonbc_diffcache, nonbc_diffmode, x, Constant(p)
+    )
+    DI.jacobian!(loss_bc, J_bc, bc_diffcache, bc_diffmode, x, Constant(p))
+    exclusive_bandpart(J) .= J_c
+    finish_part_setindex!(J)
+    return nothing
 end
 
 function __mirk_mpoint_jacobian!(

@@ -128,7 +128,7 @@ function init_nested(
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm doesn't support adaptivity. Please choose a higher order algorithm.")
     end
-    diffcache = __cache_trait(alg.jac_alg)
+    diffcache = __firk_iip_cache_trait(Val(iip), alg.jac_alg)
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
     if tune_parameters
         prob.p isa SciMLBase.NullParameters &&
@@ -149,7 +149,9 @@ function init_nested(
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(M * (Nig - 1))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __firk_iip_maybe_allocate_diffcache(
+        vec(x), chunksize, Val(iip), alg.jac_alg
+    )
 
     fᵢ_cache = __alloc(zero(u0))
     fᵢ₂_cache = vec(zero(u0))
@@ -165,12 +167,16 @@ function init_nested(
 
     k_discrete = if !constraint
         [
-            __maybe_allocate_diffcache(safe_similar(u0, M, stage), chunksize, alg.jac_alg)
+            __firk_iip_maybe_allocate_diffcache(
+                    safe_similar(u0, M, stage), chunksize, Val(iip), alg.jac_alg
+                )
                 for _ in 1:Nig
         ]
     else
         [
-            __maybe_allocate_diffcache(safe_similar(u0, L_f_prototype, stage), chunksize, alg.jac_alg)
+            __firk_iip_maybe_allocate_diffcache(
+                    safe_similar(u0, L_f_prototype, stage), chunksize, Val(iip), alg.jac_alg
+                )
                 for _ in 1:Nig
         ]
     end
@@ -308,7 +314,7 @@ function init_expanded(
     if adaptive && isa(alg, FIRKNoAdaptivity)
         error("Algorithm $(alg) doesn't support adaptivity. Please choose a higher order algorithm.")
     end
-    diffcache = __cache_trait(alg.jac_alg)
+    diffcache = __firk_iip_cache_trait(Val(iip), alg.jac_alg)
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
     if tune_parameters
         prob.p isa SciMLBase.NullParameters &&
@@ -333,7 +339,9 @@ function init_expanded(
     L_f_prototype = isnothing(f_prototype) ? M : length(f_prototype)
 
     chunksize = pickchunksize(M + M * Nig * (stage + 1))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(x), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __firk_iip_maybe_allocate_diffcache(
+        vec(x), chunksize, Val(iip), alg.jac_alg
+    )
 
     fᵢ_cache = __alloc(zero(u0)) # Runtime dispatch
     fᵢ₂_cache = vec(zero(u0))
@@ -345,12 +353,16 @@ function init_expanded(
 
     k_discrete = if !constraint
         [
-            __maybe_allocate_diffcache(safe_similar(u0, M, stage), chunksize, alg.jac_alg)
+            __firk_iip_maybe_allocate_diffcache(
+                    safe_similar(u0, M, stage), chunksize, Val(iip), alg.jac_alg
+                )
                 for _ in 1:Nig
         ] # Runtime dispatch
     else
         [
-            __maybe_allocate_diffcache(safe_similar(u0, L_f_prototype, stage), chunksize, alg.jac_alg)
+            __firk_iip_maybe_allocate_diffcache(
+                    safe_similar(u0, L_f_prototype, stage), chunksize, Val(iip), alg.jac_alg
+                )
                 for _ in 1:Nig
         ] # Runtime dispatch
     end
@@ -644,6 +656,25 @@ function __construct_problem(
     return __construct_problem(cache, y, y₀, Val(constraint))
 end
 
+__firk_iip_ad_diffmode(::Val{true}, ::AutoEnzyme) = AutoForwardDiff()
+__firk_iip_ad_diffmode(_, diffmode) = diffmode
+
+__firk_iip_needs_diffcache(iip, diffmode::AutoSparse) = __firk_iip_needs_diffcache(
+    iip, get_dense_ad(diffmode)
+)
+__firk_iip_needs_diffcache(iip, diffmode) = __needs_diffcache(__firk_iip_ad_diffmode(iip, diffmode))
+function __firk_iip_needs_diffcache(iip, jac_alg::BVPJacobianAlgorithm)
+    return __firk_iip_needs_diffcache(iip, jac_alg.diffmode) ||
+        __firk_iip_needs_diffcache(iip, jac_alg.bc_diffmode) ||
+        __firk_iip_needs_diffcache(iip, jac_alg.nonbc_diffmode)
+end
+__firk_iip_cache_trait(iip, jac_alg) = __firk_iip_needs_diffcache(iip, jac_alg) ?
+    DiffCacheNeeded() : NoDiffCacheNeeded()
+function __firk_iip_maybe_allocate_diffcache(x, chunksize, iip, jac_alg)
+    return __firk_iip_needs_diffcache(iip, jac_alg) ?
+        DiffCache(x, chunksize; warn_on_resize = false) : x
+end
+
 # Constructing the Nonlinear Problem
 function __construct_problem(
         cache::Union{FIRKCacheNested{iip}, FIRKCacheExpand{iip}},
@@ -654,7 +685,7 @@ function __construct_problem(
 
     eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
-    trait = __cache_trait(jac_alg)
+    trait = __firk_iip_cache_trait(Val(iip), jac_alg)
 
     loss_bc = if iip
         @closure (
@@ -742,7 +773,7 @@ function __construct_problem(
     end
 
     nonbc_diffmode = AutoSparse(
-        get_dense_ad(jac_alg.nonbc_diffmode),
+        __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.nonbc_diffmode)),
         sparsity_detector = __default_sparsity_detector(jac_alg.nonbc_diffmode),
         coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
     )
@@ -851,13 +882,13 @@ function __construct_problem(
             )
         end
         AutoSparse(
-            get_dense_ad(jac_alg.nonbc_diffmode);
+            __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.nonbc_diffmode));
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
         )
     else
         J_full_band = nothing
-        jac_alg.nonbc_diffmode
+        __firk_iip_ad_diffmode(Val(iip), jac_alg.nonbc_diffmode)
     end
 
     cache_collocation = if iip
@@ -943,12 +974,12 @@ function __construct_problem(
 
     diffmode = if jac_alg.diffmode isa AutoSparse
         AutoSparse(
-            get_dense_ad(jac_alg.diffmode);
+            __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.diffmode));
             sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
-        jac_alg.diffmode
+        __firk_iip_ad_diffmode(Val(iip), jac_alg.diffmode)
     end
 
     diffcache = if iip
@@ -1025,12 +1056,12 @@ function __construct_problem(
             cache.M, N
         )
         AutoSparse(
-            get_dense_ad(jac_alg.diffmode);
+            __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.diffmode));
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
-        jac_alg.diffmode
+        __firk_iip_ad_diffmode(Val(iip), jac_alg.diffmode)
     end
 
     diffcache = if iip
@@ -1096,7 +1127,7 @@ function __construct_problem(
     end
 
     nonbc_diffmode = AutoSparse(
-        get_dense_ad(jac_alg.nonbc_diffmode),
+        __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.nonbc_diffmode)),
         sparsity_detector = __default_sparsity_detector(jac_alg.nonbc_diffmode),
         coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
     )
@@ -1198,13 +1229,13 @@ function __construct_problem(
             )
         end
         AutoSparse(
-            get_dense_ad(jac_alg.nonbc_diffmode);
+            __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.nonbc_diffmode));
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
         )
     else
         J_full_band = nothing
-        jac_alg.nonbc_diffmode
+        __firk_iip_ad_diffmode(Val(iip), jac_alg.nonbc_diffmode)
     end
 
     cache_collocation = if iip
@@ -1287,12 +1318,12 @@ function __construct_problem(
 
     diffmode = if jac_alg.diffmode isa AutoSparse
         AutoSparse(
-            get_dense_ad(jac_alg.diffmode);
+            __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.diffmode));
             sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
-        jac_alg.diffmode
+        __firk_iip_ad_diffmode(Val(iip), jac_alg.diffmode)
     end
 
     diffcache = if iip
@@ -1357,12 +1388,12 @@ function __construct_problem(
             cache.M, N
         )
         AutoSparse(
-            get_dense_ad(jac_alg.diffmode);
+            __firk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.diffmode));
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
-        jac_alg.diffmode
+        __firk_iip_ad_diffmode(Val(iip), jac_alg.diffmode)
     end
 
     diffcache = if iip
@@ -1423,8 +1454,8 @@ end
         cache, eval_sol, trait::NoDiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait, constraint)
+    resids = residual
+    Φ!(view(resids, 2:lastindex(resids)), cache, y_, u, trait, constraint)
     eval_sol.u[1:end] .= y_
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
@@ -1534,7 +1565,7 @@ end
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
+    resids = view(residual, 2:lastindex(residual))
     Φ!(resids, cache, y_, u, trait, constraint)
     recursive_flatten!(resid, resids)
     return nothing
