@@ -9,6 +9,11 @@ function SciMLBase.interp_summary(interp::MIRKInterpolation)
     return "MIRK Order $(interp.cache.order) Interpolation"
 end
 
+__has_control_variables(cache::MIRKCache, length_z) = !isnothing(cache.f_prototype) &&
+    length(cache.f_prototype) < length_z
+__state_variable_count(cache::MIRKCache, length_z) = __has_control_variables(cache, length_z) ?
+    length(cache.f_prototype) : length_z
+
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
     return interpolation(tvals, id, idxs, deriv, p, continuity)
 end
@@ -99,10 +104,10 @@ end
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
 
-    has_control = !isnothing(cache.prob.f.f_prototype)
+    has_control = __has_control_variables(cache, length(z))
 
     # state variables have their interpolation polynomials
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
+    length_z = __state_variable_count(cache, length(z))
     z .= zero(z)
     __maybe_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
     __maybe_matmul!(
@@ -128,8 +133,8 @@ end
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
 
-    has_control = !isnothing(cache.prob.f.f_prototype)
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
+    has_control = __has_control_variables(cache, length(z))
+    length_z = __state_variable_count(cache, length(z))
 
     z .= zero(z)
     __maybe_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
@@ -155,8 +160,8 @@ end
     ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
-    has_control = !isnothing(cache.prob.f.f_prototype)
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
+    has_control = __has_control_variables(cache, length(z′))
+    length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
     __maybe_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
@@ -167,7 +172,7 @@ end
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* id.u[i + 1] .+ (1 - τ) .* id.u[i]
+        inc = (id.u[i + 1] .- id.u[i]) ./ cache.mesh_dt[i]
         copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
     end
 
@@ -179,8 +184,8 @@ end
     ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
-    has_control = !isnothing(cache.prob.f.f_prototype)
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
+    has_control = __has_control_variables(cache, length(z′))
+    length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
     __maybe_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
@@ -191,7 +196,7 @@ end
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* id.u[i + 1] .+ (1 - τ) .* id.u[i]
+        inc = (id.u[i + 1] .- id.u[i]) ./ cache.mesh_dt[i]
         copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
     end
 
@@ -213,9 +218,8 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
     z = zero(last(u))
-    f_prototype = cache.prob.f.f_prototype
-    has_control = !isnothing(f_prototype)
-    length_z = has_control ? length(f_prototype) : length(z)
+    has_control = __has_control_variables(cache, length(z))
+    length_z = __state_variable_count(cache, length(z))
     ii = interval(t, tval)
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
@@ -243,9 +247,8 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     (; alg, stage, k_discrete, k_interp, mesh_dt, M) = cache
     # Quick handle for the case where tval is at the boundary
     zvals = [zero(last(u)) for _ in tvals]
-    f_prototype = cache.prob.f.f_prototype
-    has_control = !isnothing(f_prototype)
-    length_z = has_control ? length(f_prototype) : length(first(zvals))
+    has_control = __has_control_variables(cache, length(first(zvals)))
+    length_z = __state_variable_count(cache, length(first(zvals)))
     for (i, tval) in enumerate(tvals)
         (tval == t[1]) && return first(u)
         (tval == t[end]) && return last(u)

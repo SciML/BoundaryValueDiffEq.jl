@@ -64,3 +64,26 @@ using Test
     sol = solve(rocket_launch_prob_tp, MIRK4(; optimize = IpoptOptimizer()); dt = Δt, adaptive = false)
     @test SciMLBase.successful_retcode(sol)
 end
+
+@testset "Constrained interpolation without control variables" begin
+    using OptimizationIpopt
+
+    function constrained_f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = u[1]
+    end
+
+    function constrained_bc!(res, u, p, t)
+        res[1] = u(0.0)[1] - 1
+        res[2] = u(1.0)[1]
+    end
+
+    constrained_fun = BVPFunction(constrained_f!, constrained_bc!; f_prototype = zeros(2))
+    constrained_prob = BVProblem(
+        constrained_fun, [0.0, 0.0], (0.0, 1.0); lb = [-10.0, -10.0], ub = [10.0, 10.0]
+    )
+    sol = solve(constrained_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.01)
+
+    @test SciMLBase.successful_retcode(sol)
+    @test sol(0.5) ≈ [sinh(0.5) / sinh(1.0), -cosh(0.5) / sinh(1.0)] rtol = 1.0e-4
+end
