@@ -224,8 +224,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     w, _ = interp_weights(τ, alg)
-    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
-        @view(k_discrete[ii][:, 1:stage])
+    K = __mirk_discrete_stage_view(cache, ii, stage)
     KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
     __maybe_matmul!(@view(z[1:length_z]), K, @view(w[1:stage]))
     __maybe_matmul!(@view(z[1:length_z]), KI, @view(w[(stage + 1):cache.ITU.s_star]), true, true)
@@ -256,8 +255,7 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
         dt = mesh_dt[ii]
         τ = (tval - t[ii]) / dt
         w, _ = interp_weights(τ, alg)
-        K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
-            @view(k_discrete[ii][:, 1:stage])
+        K = __mirk_discrete_stage_view(cache, ii, stage)
         KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
         __maybe_matmul!(@view(zvals[i][1:length_z]), K, @view(w[1:stage]))
         __maybe_matmul!(
@@ -283,12 +281,24 @@ function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     dt = mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    __maybe_matmul!(z′, __mirk_discrete_stage_view(cache, ii, stage), @view(w′[1:stage]))
     __maybe_matmul!(
         z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
         true, true
     )
     return z′
+end
+
+@inline function __mirk_discrete_stage_view(
+        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded}, ii, stage
+    ) where {iip, T, use_both}
+    return @view(cache.k_discrete[ii].du[:, 1:stage])
+end
+
+@inline function __mirk_discrete_stage_view(
+        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded}, ii, stage
+    ) where {iip, T, use_both}
+    return @view(cache.k_discrete[ii][:, 1:stage])
 end
 
 """

@@ -1,16 +1,16 @@
 _unwrap_val(::Val{B}) where {B} = B
 _unwrap_val(B) = B
 
-recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
+recursive_length(x::AbstractVector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
-function recursive_flatten(x::Vector{<:AbstractArray})
+function recursive_flatten(x::AbstractVector{<:AbstractArray})
     y = zero(first(x), recursive_length(x))
     recursive_flatten!(y, x)
     return y
 end
 
-@views function recursive_flatten!(y::AbstractVector, x::Vector{<:AbstractArray})
+@views function recursive_flatten!(y::AbstractVector, x::AbstractVector{<:AbstractArray})
     i = 0
     for xᵢ in x
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
@@ -18,7 +18,7 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::AbstractVector{<:AbstractArray}, sizes)
     x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])
@@ -30,7 +30,7 @@ end
     return y
 end
 
-@views function recursive_unflatten!(y::Vector{<:AbstractArray}, x::AbstractVector)
+@views function recursive_unflatten!(y::AbstractVector{<:AbstractArray}, x::AbstractVector)
     i = 0
     for yᵢ in y
         copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])

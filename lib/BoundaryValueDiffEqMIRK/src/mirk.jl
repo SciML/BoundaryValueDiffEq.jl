@@ -51,7 +51,7 @@ function SciMLBase.__init(
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
-    diffcache = __cache_trait(alg.jac_alg)
+    diffcache = __mirk_iip_cache_trait(Val(iip), alg.jac_alg)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
 
     tune_parameters = haskey(prob.kwargs, :tune_parameters)
@@ -74,7 +74,9 @@ function SciMLBase.__init(
     mesh_dt = diff(mesh)
 
     chunksize = pickchunksize(N * (Nig - 1))
-    __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
+    __alloc = @closure x -> __mirk_iip_maybe_allocate_diffcache(
+        vec(zero(x)), chunksize, Val(iip), alg.jac_alg
+    )
 
     fᵢ_cache = __alloc(zero(u0))
     fᵢ₂_cache = vec(zero(u0))
@@ -91,12 +93,16 @@ function SciMLBase.__init(
 
     k_discrete = if !constraint
         [
-            __maybe_allocate_diffcache(safe_similar(u0, N, stage), chunksize, alg.jac_alg)
+            __mirk_iip_maybe_allocate_diffcache(
+                    safe_similar(u0, N, stage), chunksize, Val(iip), alg.jac_alg
+                )
                 for _ in 1:Nig
         ]
     else
         [
-            __maybe_allocate_diffcache(safe_similar(u0, L_f_prototype, stage), chunksize, alg.jac_alg)
+            __mirk_iip_maybe_allocate_diffcache(
+                    safe_similar(u0, L_f_prototype, stage), chunksize, Val(iip), alg.jac_alg
+                )
                 for _ in 1:Nig
         ]
     end
@@ -391,6 +397,33 @@ function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::Abs
     return __construct_problem(cache, y, y₀, Val(constraint))
 end
 
+__mirk_iip_ad_diffmode(::Val{true}, ::AutoEnzyme) = AutoForwardDiff()
+__mirk_iip_ad_diffmode(::Val{true}, ::AutoMooncake) = AutoForwardDiff()
+function __mirk_iip_ad_diffmode(iip, diffmode::AutoSparse)
+    return AutoSparse(
+        __mirk_iip_ad_diffmode(iip, get_dense_ad(diffmode));
+        sparsity_detector = __default_sparsity_detector(diffmode),
+        coloring_algorithm = __default_coloring_algorithm(diffmode)
+    )
+end
+__mirk_iip_ad_diffmode(_, diffmode) = diffmode
+
+__mirk_iip_needs_diffcache(iip, diffmode::AutoSparse) = __mirk_iip_needs_diffcache(
+    iip, get_dense_ad(diffmode)
+)
+__mirk_iip_needs_diffcache(iip, diffmode) = __needs_diffcache(__mirk_iip_ad_diffmode(iip, diffmode))
+function __mirk_iip_needs_diffcache(iip, jac_alg::BVPJacobianAlgorithm)
+    return __mirk_iip_needs_diffcache(iip, jac_alg.diffmode) ||
+        __mirk_iip_needs_diffcache(iip, jac_alg.bc_diffmode) ||
+        __mirk_iip_needs_diffcache(iip, jac_alg.nonbc_diffmode)
+end
+__mirk_iip_cache_trait(iip, jac_alg) = __mirk_iip_needs_diffcache(iip, jac_alg) ?
+    DiffCacheNeeded() : NoDiffCacheNeeded()
+function __mirk_iip_maybe_allocate_diffcache(x, chunksize, iip, jac_alg)
+    return __mirk_iip_needs_diffcache(iip, jac_alg) ?
+        DiffCache(x, chunksize; warn_on_resize = false) : x
+end
+
 function __construct_problem(
         cache::MIRKCache{iip}, y::AbstractVector,
         y₀::AbstractVectorOfArray, constraint
@@ -400,7 +433,7 @@ function __construct_problem(
 
     eval_sol = EvalSol(__restructure_sol(y₀.u, cache.in_size), cache.mesh, cache)
 
-    trait = __cache_trait(jac_alg)
+    trait = __mirk_iip_cache_trait(Val(iip), jac_alg)
 
     loss_bc = if iip
         @closure (
@@ -614,7 +647,7 @@ function __construct_problem(
     ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = __mirk_iip_ad_diffmode(Val(iip), jac_alg.bc_diffmode)
     N = length(cache.mesh)
 
     resid_bc = bcresid_prototype
@@ -623,7 +656,8 @@ function __construct_problem(
     resid_collocation = safe_similar(y, L_f_prototype * (N - 1))
     loss_bc_ad = if iip
         @closure (u, p) -> __mirk_loss_bc_iip_ad(
-            u, p, StandardBVProblem(), cache.bc, cache.y, cache.mesh, cache, __cache_trait(jac_alg)
+            u, p, StandardBVProblem(), cache.bc, cache.y, cache.mesh, cache,
+            __mirk_iip_cache_trait(Val(iip), jac_alg)
         )
     else
         loss_bc
@@ -634,7 +668,7 @@ function __construct_problem(
     )
 
     nonbc_diffmode = AutoSparse(
-        get_dense_ad(jac_alg.nonbc_diffmode),
+        __mirk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.nonbc_diffmode)),
         sparsity_detector = __default_sparsity_detector(jac_alg.nonbc_diffmode),
         coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
     )
@@ -700,7 +734,7 @@ function __construct_problem(
     ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = __mirk_iip_ad_diffmode(Val(iip), jac_alg.bc_diffmode)
     N = length(cache.mesh)
 
     resid_bc = bcresid_prototype
@@ -709,7 +743,8 @@ function __construct_problem(
     resid_prototype = vcat(resid_bc, resid_collocation)
     loss_bc_ad = if iip
         @closure (u, p) -> __mirk_loss_bc_iip_ad(
-            u, p, StandardBVProblem(), cache.bc, cache.y, cache.mesh, cache, __cache_trait(jac_alg)
+            u, p, StandardBVProblem(), cache.bc, cache.y, cache.mesh, cache,
+            __mirk_iip_cache_trait(Val(iip), jac_alg)
         )
     else
         loss_bc
@@ -736,13 +771,13 @@ function __construct_problem(
             )
         end
         AutoSparse(
-            get_dense_ad(jac_alg.nonbc_diffmode);
+            __mirk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.nonbc_diffmode));
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
         )
     else
         J_full_band = nothing
-        jac_alg.nonbc_diffmode
+        __mirk_iip_ad_diffmode(Val(iip), jac_alg.nonbc_diffmode)
     end
 
     cache_collocation = if iip
@@ -903,12 +938,12 @@ function __construct_problem(
 
     diffmode = if jac_alg.diffmode isa AutoSparse
         AutoSparse(
-            get_dense_ad(jac_alg.diffmode);
+            __mirk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.diffmode));
             sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
-        jac_alg.diffmode
+        __mirk_iip_ad_diffmode(Val(iip), jac_alg.diffmode)
     end
 
     diffcache = if iip
@@ -970,12 +1005,12 @@ function __construct_problem(
             @view(bcresid_prototype[(prod(cache.resid_size[1]) + 1):end]), cache.M, N
         )
         AutoSparse(
-            get_dense_ad(jac_alg.diffmode);
+            __mirk_iip_ad_diffmode(Val(iip), get_dense_ad(jac_alg.diffmode));
             sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
-        jac_alg.diffmode
+        __mirk_iip_ad_diffmode(Val(iip), jac_alg.diffmode)
     end
 
     diffcache = if iip

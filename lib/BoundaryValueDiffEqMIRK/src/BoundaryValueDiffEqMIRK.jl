@@ -1,6 +1,6 @@
 module BoundaryValueDiffEqMIRK
 
-using ADTypes: ADTypes, AutoForwardDiff, AutoSparse
+using ADTypes: ADTypes, AutoForwardDiff, AutoSparse, AutoEnzyme, AutoMooncake
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
@@ -45,7 +45,7 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, BVPFunction, BVProblem,
     __solve, isinplace, remake, solve
 using Setfield: @set!
 using Reexport: @reexport
-using PreallocationTools: PreallocationTools, get_tmp
+using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 using SparseArrays: sparse
