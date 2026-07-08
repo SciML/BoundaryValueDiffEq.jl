@@ -1,6 +1,7 @@
 function Φ!(residual, cache::FIRKCacheExpand, y, u, trait, constraint)
     return Φ!(
         residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
+        cache.mass_matrix, cache.algebraic_indices,
         cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, cache.singular_term, trait, constraint
     )
 end
@@ -8,12 +9,14 @@ end
 function Φ!(residual, cache::FIRKCacheNested, y, u, trait, constraint)
     return Φ!(
         residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache, trait, constraint
+        cache.p, cache.mass_matrix, cache.algebraic_indices,
+        cache.mesh, cache.mesh_dt, cache.stage, cache, trait, constraint
     )
 end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
+        mass_matrix, algebraic_indices,
         mesh, mesh_dt, stage::Int, f_prototype, singular_term, ::DiffCacheNeeded, ::Val{true}
     )
     (; c, a, b) = TU
@@ -24,6 +27,7 @@ end
 
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
     T = eltype(u)
+    tmp2 = similar(tmp1)
     ctr = 1
 
     for i in eachindex(mesh_dt)
@@ -46,25 +50,28 @@ end
             @. tmpu = uᵢ
             __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
             f!(residual[ctr + r], vcat(tmp1, tmpu), p, mesh[i] + c[r] * h)
-            residual[ctr + r] .-= K[:, r]
+            __subtract_mass_stage!(residual[ctr + r], mass_matrix, K[:, r], tmp2)
         end
 
         # Update mesh point residual
         residᵢ = residual[ctr]
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K, b, -h, T(1))
+        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, vcat(yᵢ₊₁, uᵢ₊₁), p, mesh[i + 1], tmp2)
         ctr += stage + 1
     end
 end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
+        mass_matrix, algebraic_indices,
         mesh, mesh_dt, stage::Int, _, singular_term, ::DiffCacheNeeded, ::Val{false}
     )
     (; c, a, b) = TU
     tmp1 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
     T = eltype(u)
+    tmp2 = similar(tmp1)
     ctr = 1
 
     for i in eachindex(mesh_dt)
@@ -84,25 +91,28 @@ end
             t = mesh[i] + c[r] * h
             f!(residual[ctr + r], tmp1, p, t)
             __add_singular_term!(residual[ctr + r], singular_term, tmp1, t)
-            residual[ctr + r] .-= K[:, r]
+            __subtract_mass_stage!(residual[ctr + r], mass_matrix, K[:, r], tmp2)
         end
 
         # Update mesh point residual
         residᵢ = residual[ctr]
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K, b, -h, T(1))
+        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp2)
         ctr += stage + 1
     end
 end
 
 @views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p, mesh,
-        mesh_dt, stage::Int, _, singular_term, ::NoDiffCacheNeeded, ::Val{false}
+        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
+        mass_matrix, algebraic_indices,
+        mesh, mesh_dt, stage::Int, _, singular_term, ::NoDiffCacheNeeded, ::Val{false}
     )
     (; c, a, b) = TU
     tmp1 = similar(fᵢ_cache)
     K = similar(k_discrete[1])
     T = eltype(u)
+    tmp2 = similar(tmp1)
     ctr = 1
 
     for i in eachindex(mesh_dt)
@@ -122,18 +132,19 @@ end
             t = mesh[i] + c[r] * h
             f!(residual[ctr + r], tmp1, p, t)
             __add_singular_term!(residual[ctr + r], singular_term, tmp1, t)
-            residual[ctr + r] .-= K[:, r]
+            __subtract_mass_stage!(residual[ctr + r], mass_matrix, K[:, r], tmp2)
         end
 
         # Update mesh point residual
         residᵢ = residual[ctr]
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K, b, -h, T(1))
+        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp2)
         ctr += stage + 1
     end
 end
 
-function FIRK_nlsolve!(res, K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
+function FIRK_nlsolve!(res, K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!, mass_matrix)
     (; a, c, s) = TU
     mesh_i = p_nlsolve[1]
     h = p_nlsolve[2]
@@ -141,18 +152,19 @@ function FIRK_nlsolve!(res, K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
 
     T = promote_type(eltype(K), eltype(yᵢ))
     tmp1 = similar(K, T, size(K, 1))
+    tmp2 = similar(tmp1)
 
     for r in 1:s
         @. tmp1 = T.(yᵢ)
         __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
 
         f!(@view(res[:, r]), tmp1, p_f!, mesh_i + c[r] * h)
-        @views res[:, r] .-= K[:, r]
+        @views __subtract_mass_stage!(res[:, r], mass_matrix, K[:, r], tmp2)
     end
     return nothing
 end
 
-function FIRK_nlsolve(K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
+function FIRK_nlsolve(K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!, mass_matrix)
     (; a, c, s) = TU
     mesh_i = p_nlsolve[1]
     h = p_nlsolve[2]
@@ -160,23 +172,26 @@ function FIRK_nlsolve(K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
 
     T = promote_type(eltype(K), eltype(yᵢ))
     tmp1 = similar(K, T, size(K, 1))
+    tmp2 = similar(tmp1)
     res = similar(K, T, size(K))
 
     for r in 1:s
         @. tmp1 = yᵢ
         __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
         @views res[:, r] = f!(tmp1, p_f!, mesh_i + c[r] * h)
-        @views res[:, r] .-= K[:, r]
+        @views __subtract_mass_stage!(res[:, r], mass_matrix, K[:, r], tmp2)
     end
     return res
 end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mass_matrix, algebraic_indices,
         mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{true}
     )
     (; b) = TU
     (; nest_prob, alg) = cache
+    tmp1 = similar(get_tmp(y[1], u))
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
@@ -200,15 +215,18 @@ end
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
+        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp1)
     end
 end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mass_matrix, algebraic_indices,
         mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{false}
     )
     (; b) = TU
     (; nest_prob, alg) = cache
+    tmp1 = similar(get_tmp(y[1], u))
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
@@ -232,15 +250,18 @@ end
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
+        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp1)
     end
 end
 
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mass_matrix, algebraic_indices,
         mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded, ::Val{false}
     )
     (; b) = TU
     (; nest_prob, alg) = cache
+    tmp1 = similar(y[1])
 
     T = eltype(u)
     nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])
@@ -264,32 +285,37 @@ end
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
+        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmp1)
     end
 end
 
 function Φ(cache::FIRKCacheExpand, y, u, trait)
     return Φ(
         cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait
+        cache.p, cache.mass_matrix, cache.algebraic_indices,
+        cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait
     )
 end
 
 function Φ(cache::FIRKCacheNested, y, u, trait)
     return Φ(
         cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache, trait
+        cache.p, cache.mass_matrix, cache.algebraic_indices,
+        cache.mesh, cache.mesh_dt, cache.stage, cache, trait
     )
 end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
-        u, p, mesh, mesh_dt, stage::Int, singular_term, ::DiffCacheNeeded
+        u, p, mass_matrix, algebraic_indices,
+        mesh, mesh_dt, stage::Int, singular_term, ::DiffCacheNeeded
     )
     (; c, a, b) = TU
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp1 = get_tmp(fᵢ_cache, u)
     K = get_tmp(k_discrete[1], u) # Not optimal # TODO
     T = eltype(u)
+    tmp2 = similar(tmp1)
     ctr = 1
 
     for i in eachindex(mesh_dt)
@@ -309,13 +335,14 @@ end
             t = mesh[i] + c[r] * h
             residuals[ctr + r] = f(tmp1, p, t)
             __add_singular_term!(residuals[ctr + r], singular_term, tmp1, t)
-            residuals[ctr + r] .-= K[:, r]
+            __subtract_mass_stage!(residuals[ctr + r], mass_matrix, K[:, r], tmp2)
         end
 
         # Update mesh point residual
         residᵢ = residuals[ctr]
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K, b, -h, T(1))
+        __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f, yᵢ₊₁, p, mesh[i + 1])
         ctr += stage + 1
     end
     return residuals
@@ -323,13 +350,15 @@ end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
-        u, p, mesh, mesh_dt, stage::Int, singular_term, ::NoDiffCacheNeeded
+        u, p, mass_matrix, algebraic_indices,
+        mesh, mesh_dt, stage::Int, singular_term, ::NoDiffCacheNeeded
     )
     (; c, a, b) = TU
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     tmp1 = similar(fᵢ_cache)
     K = similar(k_discrete[1])
     T = eltype(u)
+    tmp2 = similar(tmp1)
     ctr = 1
 
     for i in eachindex(mesh_dt)
@@ -349,13 +378,14 @@ end
             t = mesh[i] + c[r] * h
             residuals[ctr + r] = f(tmp1, p, t)
             __add_singular_term!(residuals[ctr + r], singular_term, tmp1, t)
-            residuals[ctr + r] .-= K[:, r]
+            __subtract_mass_stage!(residuals[ctr + r], mass_matrix, K[:, r], tmp2)
         end
 
         # Update mesh point residual
         residᵢ = residuals[ctr]
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K, b, -h, T(1))
+        __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f, yᵢ₊₁, p, mesh[i + 1])
         ctr += stage + 1
     end
     return residuals
@@ -363,7 +393,8 @@ end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u,
-        p, mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded
+        p, mass_matrix, algebraic_indices,
+        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded
     )
     (; b) = TU
     (; nest_prob, alg) = cache
@@ -390,12 +421,14 @@ end
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
+        __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1])
     end
     return residuals
 end
 
 @views function Φ(
         fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
+        mass_matrix, algebraic_indices,
         mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded
     )
     (; b) = TU
@@ -423,6 +456,7 @@ end
 
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
+        __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1])
     end
     return residuals
 end

@@ -5,6 +5,8 @@
     M::Int                     # The number of equations
     in_size
     f
+    mass_matrix
+    algebraic_indices
     bc
     prob                       # BVProblem
     problem_type               # StandardBVProblem
@@ -246,8 +248,11 @@ function SciMLBase.__init(
         prob
     end
 
+    algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+
     return MIRKCache{iip, T, use_both, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, N, size(u0), f, bc, prob_, prob.problem_type, prob.p, alg,
+        alg_order(alg), stage, N, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
         y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
         , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec

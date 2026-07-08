@@ -767,3 +767,80 @@ end
     end
     return nothing
 end
+
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::UniformScaling, tmp)
+    # Identity matrix - no modification needed
+    return nothing
+end
+
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::AbstractMatrix, tmp)
+    # Apply M * residᵢ, using tmp as workspace
+    mul!(tmp, mass_matrix, residᵢ)
+    copyto!(residᵢ, tmp)
+    return nothing
+end
+
+@inline function __get_algebraic_indices(mass_matrix::UniformScaling)
+    return nothing
+end
+
+@inline function __get_algebraic_indices(mass_matrix::AbstractMatrix)
+    indices = [i for i in axes(mass_matrix, 1) if iszero(@view mass_matrix[i, :])]
+    return isempty(indices) ? nothing : indices
+end
+
+@inline function __subtract_mass_stage!(res, ::UniformScaling, K_r, tmp)
+    res .-= K_r
+    return nothing
+end
+
+@inline function __subtract_mass_stage!(res, M::AbstractMatrix, K_r, tmp)
+    mul!(tmp, M, K_r)
+    res .-= tmp
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, ::Nothing, f!, yᵢ₊₁, p, t, tmp
+    )
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices::Vector{Int}, f!, yᵢ₊₁, p, t, tmp
+    )
+    f!(tmp, yᵢ₊₁, p, t)
+    residᵢ[algebraic_indices] .= tmp[algebraic_indices]
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint_oop!(
+        residᵢ, ::Nothing, f, yᵢ₊₁, p, t
+    )
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint_oop!(
+        residᵢ, algebraic_indices::Vector{Int}, f, yᵢ₊₁, p, t
+    )
+    tmp = f(yᵢ₊₁, p, t)
+    residᵢ[algebraic_indices] .= tmp[algebraic_indices]
+    return nothing
+end
+
+@inline __check_dae_adaptivity(::Nothing, adaptive::Bool) = nothing
+
+@inline function __check_dae_adaptivity(::Vector{Int}, adaptive::Bool)
+    if adaptive
+        throw(
+            ArgumentError(
+                "Adaptive mesh refinement is not supported for DAE problems (mass " *
+                    "matrices with zero rows): the collocation interpolant is inaccurate " *
+                    "for algebraic variables, so the defect estimate cannot converge. " *
+                    "Pass `adaptive = false`, or use a solver from " *
+                    "BoundaryValueDiffEqAscher.jl, which supports mesh adaptivity for DAEs."
+            )
+        )
+    end
+    return nothing
+end
