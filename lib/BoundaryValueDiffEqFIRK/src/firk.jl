@@ -657,6 +657,14 @@ function __construct_problem(
 end
 
 __firk_iip_ad_diffmode(::Val{true}, ::AutoEnzyme) = AutoForwardDiff()
+__firk_iip_ad_diffmode(::Val{true}, ::AutoMooncake) = AutoForwardDiff()
+function __firk_iip_ad_diffmode(iip, diffmode::AutoSparse)
+    return AutoSparse(
+        __firk_iip_ad_diffmode(iip, get_dense_ad(diffmode));
+        sparsity_detector = __default_sparsity_detector(diffmode),
+        coloring_algorithm = __default_coloring_algorithm(diffmode)
+    )
+end
 __firk_iip_ad_diffmode(_, diffmode) = diffmode
 
 __firk_iip_needs_diffcache(iip, diffmode::AutoSparse) = __firk_iip_needs_diffcache(
@@ -754,7 +762,7 @@ function __construct_problem(
     ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = __firk_iip_ad_diffmode(Val(iip), jac_alg.bc_diffmode)
     N = length(cache.mesh)
 
     resid_bc = cache.bcresid_prototype
@@ -844,7 +852,7 @@ function __construct_problem(
     ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; prob, alg, stage, bcresid_prototype, f_prototype) = cache
     (; jac_alg) = alg
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = __firk_iip_ad_diffmode(Val(iip), jac_alg.bc_diffmode)
     N = length(cache.mesh)
 
     resid_bc = cache.bcresid_prototype
@@ -1110,7 +1118,7 @@ function __construct_problem(
         loss::LF, ::StandardBVProblem, ::Val{true}
     ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = __firk_iip_ad_diffmode(Val(iip), jac_alg.bc_diffmode)
     (; bcresid_prototype, f_prototype) = cache
     N = length(cache.mesh)
     resid_bc = cache.bcresid_prototype
@@ -1196,7 +1204,7 @@ function __construct_problem(
         loss::LF, ::StandardBVProblem, ::Val{false}
     ) where {iip, T, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = __firk_iip_ad_diffmode(Val(iip), jac_alg.bc_diffmode)
     (; bcresid_prototype, f_prototype, prob) = cache
     N = length(cache.mesh)
     resid_bc = cache.bcresid_prototype
