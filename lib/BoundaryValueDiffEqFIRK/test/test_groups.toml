@@ -17,7 +17,35 @@ timeout = 240
 versions = ["lts", "1", "pre"]
 timeout = 240
 
-[EXPANDED_PENDULUM]
+[EXPANDED_PENDULUM_LOBATTO_A]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_LOBATTO_B]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_LOBATTO_C]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_RADAU_1]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_RADAU_2]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_RADAU_3]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_RADAU_5]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM_RADAU_7]
 versions = ["lts", "1", "pre"]
 timeout = 240
 
@@ -65,7 +93,35 @@ timeout = 240
 versions = ["lts", "1", "pre"]
 timeout = 240
 
-[NESTED_PENDULUM]
+[NESTED_PENDULUM_LOBATTO_A]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_LOBATTO_B]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_LOBATTO_C]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_RADAU_1]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_RADAU_2]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_RADAU_3]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_RADAU_5]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM_RADAU_7]
 versions = ["lts", "1", "pre"]
 timeout = 240
 

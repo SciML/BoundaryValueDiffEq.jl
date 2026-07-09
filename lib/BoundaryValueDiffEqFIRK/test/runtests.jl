@@ -17,6 +17,51 @@ expanded_pendulum() = @time @safetestset "FIRK Expanded Pendulum Tests" begin
         include("expanded/firk_basic_tests.jl")
     end
 end
+expanded_pendulum_lobatto_a() = @time @safetestset "FIRK Expanded Pendulum Lobatto IIIA Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_LOBATTO_A") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_lobatto_b() = @time @safetestset "FIRK Expanded Pendulum Lobatto IIIB Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_LOBATTO_B") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_lobatto_c() = @time @safetestset "FIRK Expanded Pendulum Lobatto IIIC Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_LOBATTO_C") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_radau() = @time @safetestset "FIRK Expanded Pendulum Radau Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_radau_1() = @time @safetestset "FIRK Expanded Pendulum Radau 1 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_1") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_radau_2() = @time @safetestset "FIRK Expanded Pendulum Radau 2 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_2") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_radau_3() = @time @safetestset "FIRK Expanded Pendulum Radau 3 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_3") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_radau_5() = @time @safetestset "FIRK Expanded Pendulum Radau 5 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_5") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
+expanded_pendulum_radau_7() = @time @safetestset "FIRK Expanded Pendulum Radau 7 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_7") do
+        include("expanded/firk_basic_tests.jl")
+    end
+end
 expanded_interpolation() = @time @safetestset "FIRK Expanded Interpolation Tests" begin
     withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "INTERPOLATION") do
         include("expanded/firk_basic_tests.jl")
@@ -46,7 +91,14 @@ expanded_vector_initials() = @time @safetestset "FIRK Expanded VectorOfVector In
 function expanded_all()
     expanded_affineness()
     expanded_convergence()
-    expanded_pendulum()
+    expanded_pendulum_lobatto_a()
+    expanded_pendulum_lobatto_b()
+    expanded_pendulum_lobatto_c()
+    expanded_pendulum_radau_1()
+    expanded_pendulum_radau_2()
+    expanded_pendulum_radau_3()
+    expanded_pendulum_radau_5()
+    expanded_pendulum_radau_7()
     expanded_interpolation()
     expanded_nonlinear()
     expanded_parameters()
@@ -71,6 +123,51 @@ nested_convergence() = @time @safetestset "FIRK Nested Convergence Tests" begin
 end
 nested_pendulum() = @time @safetestset "FIRK Nested Pendulum Tests" begin
     withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_lobatto_a() = @time @safetestset "FIRK Nested Pendulum Lobatto IIIA Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_LOBATTO_A") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_lobatto_b() = @time @safetestset "FIRK Nested Pendulum Lobatto IIIB Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_LOBATTO_B") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_lobatto_c() = @time @safetestset "FIRK Nested Pendulum Lobatto IIIC Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_LOBATTO_C") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_radau() = @time @safetestset "FIRK Nested Pendulum Radau Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_radau_1() = @time @safetestset "FIRK Nested Pendulum Radau 1 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_1") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_radau_2() = @time @safetestset "FIRK Nested Pendulum Radau 2 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_2") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_radau_3() = @time @safetestset "FIRK Nested Pendulum Radau 3 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_3") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_radau_5() = @time @safetestset "FIRK Nested Pendulum Radau 5 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_5") do
+        include("nested/firk_basic_tests.jl")
+    end
+end
+nested_pendulum_radau_7() = @time @safetestset "FIRK Nested Pendulum Radau 7 Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP" => "PENDULUM_RADAU_7") do
         include("nested/firk_basic_tests.jl")
     end
 end
@@ -107,7 +204,14 @@ nested_vector_initials() = @time @safetestset "FIRK Nested VectorOfVector Initia
 function nested_all()
     nested_affineness()
     nested_convergence()
-    nested_pendulum()
+    nested_pendulum_lobatto_a()
+    nested_pendulum_lobatto_b()
+    nested_pendulum_lobatto_c()
+    nested_pendulum_radau_1()
+    nested_pendulum_radau_2()
+    nested_pendulum_radau_3()
+    nested_pendulum_radau_5()
+    nested_pendulum_radau_7()
     nested_interpolation()
     nested_nonlinear()
     nested_kwargs()
@@ -135,6 +239,15 @@ run_tests(;
         "EXPANDED_AFFINENESS" => expanded_affineness,
         "EXPANDED_CONVERGENCE" => expanded_convergence,
         "EXPANDED_PENDULUM" => expanded_pendulum,
+        "EXPANDED_PENDULUM_LOBATTO_A" => expanded_pendulum_lobatto_a,
+        "EXPANDED_PENDULUM_LOBATTO_B" => expanded_pendulum_lobatto_b,
+        "EXPANDED_PENDULUM_LOBATTO_C" => expanded_pendulum_lobatto_c,
+        "EXPANDED_PENDULUM_RADAU" => expanded_pendulum_radau,
+        "EXPANDED_PENDULUM_RADAU_1" => expanded_pendulum_radau_1,
+        "EXPANDED_PENDULUM_RADAU_2" => expanded_pendulum_radau_2,
+        "EXPANDED_PENDULUM_RADAU_3" => expanded_pendulum_radau_3,
+        "EXPANDED_PENDULUM_RADAU_5" => expanded_pendulum_radau_5,
+        "EXPANDED_PENDULUM_RADAU_7" => expanded_pendulum_radau_7,
         "EXPANDED_INTERPOLATION" => expanded_interpolation,
         "EXPANDED_NONLINEAR" => expanded_nonlinear,
         "EXPANDED_PARAMETERS" => expanded_parameters,
@@ -149,6 +262,15 @@ run_tests(;
         "NESTED_AFFINENESS" => nested_affineness,
         "NESTED_CONVERGENCE" => nested_convergence,
         "NESTED_PENDULUM" => nested_pendulum,
+        "NESTED_PENDULUM_LOBATTO_A" => nested_pendulum_lobatto_a,
+        "NESTED_PENDULUM_LOBATTO_B" => nested_pendulum_lobatto_b,
+        "NESTED_PENDULUM_LOBATTO_C" => nested_pendulum_lobatto_c,
+        "NESTED_PENDULUM_RADAU" => nested_pendulum_radau,
+        "NESTED_PENDULUM_RADAU_1" => nested_pendulum_radau_1,
+        "NESTED_PENDULUM_RADAU_2" => nested_pendulum_radau_2,
+        "NESTED_PENDULUM_RADAU_3" => nested_pendulum_radau_3,
+        "NESTED_PENDULUM_RADAU_5" => nested_pendulum_radau_5,
+        "NESTED_PENDULUM_RADAU_7" => nested_pendulum_radau_7,
         "NESTED_INTERPOLATION" => nested_interpolation,
         "NESTED_NONLINEAR" => nested_nonlinear,
         "NESTED_KWARGS" => nested_kwargs,
@@ -182,7 +304,14 @@ run_tests(;
     all = [
         "EXPANDED_AFFINENESS",
         "EXPANDED_CONVERGENCE",
-        "EXPANDED_PENDULUM",
+        "EXPANDED_PENDULUM_LOBATTO_A",
+        "EXPANDED_PENDULUM_LOBATTO_B",
+        "EXPANDED_PENDULUM_LOBATTO_C",
+        "EXPANDED_PENDULUM_RADAU_1",
+        "EXPANDED_PENDULUM_RADAU_2",
+        "EXPANDED_PENDULUM_RADAU_3",
+        "EXPANDED_PENDULUM_RADAU_5",
+        "EXPANDED_PENDULUM_RADAU_7",
         "EXPANDED_INTERPOLATION",
         "EXPANDED_NONLINEAR",
         "EXPANDED_PARAMETERS",
@@ -194,7 +323,14 @@ run_tests(;
         "EXPANDED_VECTOR_INITIALS",
         "NESTED_AFFINENESS",
         "NESTED_CONVERGENCE",
-        "NESTED_PENDULUM",
+        "NESTED_PENDULUM_LOBATTO_A",
+        "NESTED_PENDULUM_LOBATTO_B",
+        "NESTED_PENDULUM_LOBATTO_C",
+        "NESTED_PENDULUM_RADAU_1",
+        "NESTED_PENDULUM_RADAU_2",
+        "NESTED_PENDULUM_RADAU_3",
+        "NESTED_PENDULUM_RADAU_5",
+        "NESTED_PENDULUM_RADAU_7",
         "NESTED_INTERPOLATION",
         "NESTED_NONLINEAR",
         "NESTED_KWARGS",

@@ -4,7 +4,7 @@ using Test
 nested = false
 
 firk_basic_group() = get(ENV, "BOUNDARYVALUEDIFFEQ_FIRK_BASIC_GROUP", "ALL")
-run_firk_basic_group(group) = firk_basic_group() in ("ALL", group)
+run_firk_basic_group(groups...) = firk_basic_group() == "ALL" || firk_basic_group() in groups
 
 for stage in (2, 3, 4, 5)
     s = Symbol("LobattoIIIa$(stage)")
@@ -204,7 +204,11 @@ if run_firk_basic_group("CONVERGENCE")
 end
 
 # FIXME: This is a really bad test. Needs interpolation
-if run_firk_basic_group("PENDULUM")
+if run_firk_basic_group(
+        "PENDULUM", "PENDULUM_LOBATTO_A", "PENDULUM_LOBATTO_B", "PENDULUM_LOBATTO_C",
+        "PENDULUM_RADAU", "PENDULUM_RADAU_1", "PENDULUM_RADAU_2", "PENDULUM_RADAU_3",
+        "PENDULUM_RADAU_5", "PENDULUM_RADAU_7",
+    )
     @testset "Simple Pendulum" begin
         using StaticArrays
 
@@ -230,32 +234,84 @@ if run_firk_basic_group("PENDULUM")
         nested = false
 
         # Using ForwardDiff might lead to Cache expansion warnings
-        @test_nowarn solve(bvp1, LobattoIIIa2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIa3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIa4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+        if run_firk_basic_group("PENDULUM", "PENDULUM_LOBATTO_A")
+            @testset "LobattoIIIa" begin
+                @test_nowarn solve(bvp1, LobattoIIIa2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIa3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIa4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+            end
+        end
 
-        @test_nowarn solve(
-            bvp1, LobattoIIIb2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false
-        )
-        @test_nowarn solve(bvp1, LobattoIIIb3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIb4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIb5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+        if run_firk_basic_group("PENDULUM", "PENDULUM_LOBATTO_B")
+            @testset "LobattoIIIb" begin
+                @test_nowarn solve(
+                    bvp1, LobattoIIIb2(; nlsolve, jac_alg, nested_nlsolve = nested);
+                    dt = 0.005, adaptive = false
+                )
+                @test_nowarn solve(bvp1, LobattoIIIb3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIb4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIb5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+            end
+        end
 
-        @test_nowarn solve(
-            bvp1, LobattoIIIc2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false
-        )
-        @test_nowarn solve(bvp1, LobattoIIIc3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIc4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, LobattoIIIc5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+        if run_firk_basic_group("PENDULUM", "PENDULUM_LOBATTO_C")
+            @testset "LobattoIIIc" begin
+                @test_nowarn solve(
+                    bvp1, LobattoIIIc2(; nlsolve, jac_alg, nested_nlsolve = nested);
+                    dt = 0.005, adaptive = false
+                )
+                @test_nowarn solve(bvp1, LobattoIIIc3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIc4(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+                @test_nowarn solve(bvp1, LobattoIIIc5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
+            end
+        end
 
-        @test_nowarn solve(
-            bvp1, RadauIIa1(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005, adaptive = false
-        )
-        @test_nowarn solve(bvp1, RadauIIa2(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, RadauIIa3(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.005)
-        @test_nowarn solve(bvp1, RadauIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
-        @test_nowarn solve(bvp1, RadauIIa7(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
+        if run_firk_basic_group(
+                "PENDULUM", "PENDULUM_RADAU", "PENDULUM_RADAU_1", "PENDULUM_RADAU_2",
+                "PENDULUM_RADAU_3", "PENDULUM_RADAU_5", "PENDULUM_RADAU_7",
+            )
+            @testset "RadauIIa" begin
+                if run_firk_basic_group("PENDULUM", "PENDULUM_RADAU", "PENDULUM_RADAU_1")
+                    @testset "RadauIIa1" begin
+                        @test_nowarn solve(
+                            bvp1, RadauIIa1(; nlsolve, jac_alg, nested_nlsolve = nested);
+                            dt = 0.05, adaptive = false
+                        )
+                    end
+                end
+
+                if run_firk_basic_group("PENDULUM", "PENDULUM_RADAU", "PENDULUM_RADAU_2")
+                    @testset "RadauIIa2" begin
+                        @test_nowarn solve(
+                            bvp1, RadauIIa2(; nlsolve, jac_alg, nested_nlsolve = nested);
+                            dt = 0.05, adaptive = false
+                        )
+                    end
+                end
+
+                if run_firk_basic_group("PENDULUM", "PENDULUM_RADAU", "PENDULUM_RADAU_3")
+                    @testset "RadauIIa3" begin
+                        @test_nowarn solve(
+                            bvp1, RadauIIa3(; nlsolve, jac_alg, nested_nlsolve = nested);
+                            dt = 0.05, adaptive = false
+                        )
+                    end
+                end
+
+                if run_firk_basic_group("PENDULUM", "PENDULUM_RADAU", "PENDULUM_RADAU_5")
+                    @testset "RadauIIa5" begin
+                        @test_nowarn solve(bvp1, RadauIIa5(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
+                    end
+                end
+
+                if run_firk_basic_group("PENDULUM", "PENDULUM_RADAU", "PENDULUM_RADAU_7")
+                    @testset "RadauIIa7" begin
+                        @test_nowarn solve(bvp1, RadauIIa7(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
+                    end
+                end
+            end
+        end
     end
 end
 
