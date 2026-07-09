@@ -24,7 +24,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
             u0 = [pi / 2, pi / 2]
             tspan = (0.0, pi / 2)
             prob = BVProblem(simplependulum!, bc!, u0, tspan)
-            dt = 0.5
+            dt = 1.0
 
             if run_mirk_ad_backend("FORWARDDIFF")
                 using ForwardDiff
@@ -78,7 +78,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
             u0 = [pi / 2, pi / 2]
             tspan = (0.0, pi / 2)
             prob = BVProblem(simplependulum!, bc!, u0, tspan)
-            dt = 0.5
+            dt = 1.0
 
             if run_mirk_ad_backend("FORWARDDIFF")
                 using ForwardDiff
@@ -138,7 +138,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                 odef!, (boundary_two_point_a!, boundary_two_point_b!),
                 u0, tspan; bcresid_prototype, nlls = Val(false)
             )
-            dt = 0.5
+            dt = 1.0
 
             if run_mirk_ad_backend("FORWARDDIFF")
                 using ForwardDiff
