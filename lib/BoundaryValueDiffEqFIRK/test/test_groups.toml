@@ -9,7 +9,31 @@
 # the split expanded and nested matrix groups, so adding a "Core" matrix entry would
 # only duplicate them across the full version matrix.
 
-[EXPANDED_BASIC]
+[EXPANDED_AFFINENESS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_CONVERGENCE]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PENDULUM]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_INTERPOLATION]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_NONLINEAR]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_PARAMETERS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_INITIAL_GUESS]
 versions = ["lts", "1", "pre"]
 timeout = 240
 
@@ -33,7 +57,35 @@ timeout = 240
 versions = ["lts", "1", "pre"]
 timeout = 240
 
-[NESTED_BASIC]
+[NESTED_AFFINENESS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_CONVERGENCE]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PENDULUM]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_INTERPOLATION]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_NONLINEAR]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_KWARGS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_PARAMETERS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_INITIAL_GUESS]
 versions = ["lts", "1", "pre"]
 timeout = 240
 
