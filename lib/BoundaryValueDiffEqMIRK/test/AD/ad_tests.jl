@@ -164,7 +164,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         )
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
                 @test SciMLBase.successful_retcode(sol)
             end
         end
