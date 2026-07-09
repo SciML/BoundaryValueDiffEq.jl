@@ -117,7 +117,6 @@ run_tests(;
             body = mirk_ad_multipoint_grid,
         ),
         "AD_MULTIPOINT_GRID_FORWARDDIFF" => (;
-            env = MIRK_AD_ENV,
             body = mirk_ad_multipoint_grid_forwarddiff,
         ),
         "AD_MULTIPOINT_GRID_ENZYME" => (;
@@ -133,7 +132,6 @@ run_tests(;
             body = mirk_ad_multipoint_interpolation,
         ),
         "AD_MULTIPOINT_INTERPOLATION_FORWARDDIFF" => (;
-            env = MIRK_AD_ENV,
             body = mirk_ad_multipoint_interpolation_forwarddiff,
         ),
         "AD_MULTIPOINT_INTERPOLATION_ENZYME" => (;
@@ -149,7 +147,6 @@ run_tests(;
             body = mirk_ad_twopoint,
         ),
         "AD_TWOPOINT_FORWARDDIFF" => (;
-            env = MIRK_AD_ENV,
             body = mirk_ad_twopoint_forwarddiff,
         ),
         "AD_TWOPOINT_ENZYME" => (;
