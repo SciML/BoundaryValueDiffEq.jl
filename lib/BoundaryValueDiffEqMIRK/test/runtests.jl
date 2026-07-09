@@ -1,6 +1,9 @@
 using SafeTestsets, Test
 using SciMLTesting
 
+# Split AD shards should compile only the backend they actually load.
+ENV["JULIA_PKG_PRECOMPILE_AUTO"] = "0"
+
 const MIRK_AD_ENV = joinpath(@__DIR__, "AD")
 
 mirk_ad_all() = @time @safetestset "MIRK AD Tests" include("AD/ad_tests.jl")
