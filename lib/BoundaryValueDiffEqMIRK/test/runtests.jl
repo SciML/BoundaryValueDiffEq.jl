@@ -1,6 +1,25 @@
 using SafeTestsets, Test
 using SciMLTesting
 
+const MIRK_AD_ENV = joinpath(@__DIR__, "AD")
+
+mirk_ad_all() = @time @safetestset "MIRK AD Tests" include("AD/ad_tests.jl")
+mirk_ad_multipoint_grid() = @time @safetestset "MIRK AD Multipoint Grid Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_GRID") do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_multipoint_interpolation() = @time @safetestset "MIRK AD Multipoint Interpolation Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_INTERPOLATION") do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_twopoint() = @time @safetestset "MIRK AD TwoPoint Tests" begin
+    withenv("BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "TWOPOINT") do
+        include("AD/ad_tests.jl")
+    end
+end
+
 run_tests(;
     env = "BOUNDARYVALUEDIFFEQ_TEST_GROUP",
     core = function ()
@@ -18,10 +37,20 @@ run_tests(;
         # large joint at-floor resolve on the Downgrade lane); they live in this
         # group's own test/AD/Project.toml, auto-activated before the body runs.
         "AD" => (;
-            env = joinpath(@__DIR__, "AD"),
-            body = function ()
-                return @time @safetestset "MIRK AD Tests" include("AD/ad_tests.jl")
-            end,
+            env = MIRK_AD_ENV,
+            body = mirk_ad_all,
+        ),
+        "AD_MULTIPOINT_GRID" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_grid,
+        ),
+        "AD_MULTIPOINT_INTERPOLATION" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_interpolation,
+        ),
+        "AD_TWOPOINT" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_twopoint,
         ),
     ),
     qa = (;
@@ -32,5 +61,5 @@ run_tests(;
             return @time @safetestset "Quality Assurance" include("qa/qa.jl")
         end,
     ),
-    all = ["Core", "AD", "QA"],
+    all = ["Core", "AD_MULTIPOINT_GRID", "AD_MULTIPOINT_INTERPOLATION", "AD_TWOPOINT", "QA"],
 )

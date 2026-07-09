@@ -12,7 +12,13 @@ versions = ["lts", "1", "pre"]
 # AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy
 # optional backends live in test/AD/Project.toml (kept out of the main test env so
 # the Downgrade lane does not force a joint at-floor resolve of them).
-[AD]
+[AD_MULTIPOINT_GRID]
+versions = ["lts", "1", "pre"]
+
+[AD_MULTIPOINT_INTERPOLATION]
+versions = ["lts", "1", "pre"]
+
+[AD_TWOPOINT]
 versions = ["lts", "1", "pre"]
 
 [QA]
