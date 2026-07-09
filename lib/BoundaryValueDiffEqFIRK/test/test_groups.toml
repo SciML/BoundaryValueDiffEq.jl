@@ -1,27 +1,62 @@
-# BoundaryValueDiffEqFIRK splits its solver tests into two expensive groups
-# (expanded vs nested FIRK formulations) rather than the default single "Core"
-# group, so the real group names must be declared here for the sublibrary CI
-# matrix discovery. runtests.jl dispatches on BOUNDARYVALUEDIFFEQ_TEST_GROUP
-# matching these names. QA (Aqua) runs on release + LTS Julia only.
+# BoundaryValueDiffEqFIRK splits its solver tests by formulation and test file so
+# no single CI job has to carry the whole expensive expanded/nested suite.
+# runtests.jl dispatches on BOUNDARYVALUEDIFFEQ_TEST_GROUP matching these names.
+# QA (Aqua) runs on release + LTS Julia only.
 #
 # The downgrade workflow passes a uniform "Core" group to every sublibrary;
 # runtests.jl maps "Core" to the basic FIRK solve tests of both formulations.
 # "Core" is intentionally NOT listed below: those basic tests already run inside
-# the EXPANDED and NESTED matrix groups, so adding a "Core" matrix entry would
+# the split expanded and nested matrix groups, so adding a "Core" matrix entry would
 # only duplicate them across the full version matrix.
 
-[EXPANDED]
+[EXPANDED_BASIC]
 versions = ["lts", "1", "pre"]
 timeout = 240
 
-[NESTED]
+[EXPANDED_NLLS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_ENSEMBLE]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_SINGULAR]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_DAE]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[EXPANDED_VECTOR_INITIALS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_BASIC]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_NLLS]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_ENSEMBLE]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_DAE]
+versions = ["lts", "1", "pre"]
+timeout = 240
+
+[NESTED_VECTOR_INITIALS]
 versions = ["lts", "1", "pre"]
 timeout = 240
 
 # AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy
 # optional backends live in test/AD/Project.toml (kept out of the main test env so
 # the Downgrade lane does not force a joint at-floor resolve of them). Matches the
-# EXPANDED/NESTED version matrix.
+# expanded/nested version matrix.
 [AD]
 versions = ["lts", "1", "pre"]
 timeout = 240
