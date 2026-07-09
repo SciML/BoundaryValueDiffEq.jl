@@ -9,13 +9,85 @@ mirk_ad_multipoint_grid() = @time @safetestset "MIRK AD Multipoint Grid Tests" b
         include("AD/ad_tests.jl")
     end
 end
+mirk_ad_multipoint_grid_forwarddiff() = @time @safetestset "MIRK AD Multipoint Grid ForwardDiff Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_GRID",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "FORWARDDIFF"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_multipoint_grid_enzyme() = @time @safetestset "MIRK AD Multipoint Grid Enzyme Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_GRID",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "ENZYME"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_multipoint_grid_mooncake() = @time @safetestset "MIRK AD Multipoint Grid Mooncake Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_GRID",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "MOONCAKE"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
 mirk_ad_multipoint_interpolation() = @time @safetestset "MIRK AD Multipoint Interpolation Tests" begin
     withenv("BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_INTERPOLATION") do
         include("AD/ad_tests.jl")
     end
 end
+mirk_ad_multipoint_interpolation_forwarddiff() = @time @safetestset "MIRK AD Multipoint Interpolation ForwardDiff Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_INTERPOLATION",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "FORWARDDIFF"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_multipoint_interpolation_enzyme() = @time @safetestset "MIRK AD Multipoint Interpolation Enzyme Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_INTERPOLATION",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "ENZYME"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_multipoint_interpolation_mooncake() = @time @safetestset "MIRK AD Multipoint Interpolation Mooncake Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "MULTIPOINT_INTERPOLATION",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "MOONCAKE"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
 mirk_ad_twopoint() = @time @safetestset "MIRK AD TwoPoint Tests" begin
     withenv("BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "TWOPOINT") do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_twopoint_forwarddiff() = @time @safetestset "MIRK AD TwoPoint ForwardDiff Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "TWOPOINT",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "FORWARDDIFF"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_twopoint_enzyme() = @time @safetestset "MIRK AD TwoPoint Enzyme Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "TWOPOINT",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "ENZYME"
+    ) do
+        include("AD/ad_tests.jl")
+    end
+end
+mirk_ad_twopoint_mooncake() = @time @safetestset "MIRK AD TwoPoint Mooncake Tests" begin
+    withenv(
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP" => "TWOPOINT",
+        "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND" => "MOONCAKE"
+    ) do
         include("AD/ad_tests.jl")
     end
 end
@@ -44,13 +116,49 @@ run_tests(;
             env = MIRK_AD_ENV,
             body = mirk_ad_multipoint_grid,
         ),
+        "AD_MULTIPOINT_GRID_FORWARDDIFF" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_grid_forwarddiff,
+        ),
+        "AD_MULTIPOINT_GRID_ENZYME" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_grid_enzyme,
+        ),
+        "AD_MULTIPOINT_GRID_MOONCAKE" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_grid_mooncake,
+        ),
         "AD_MULTIPOINT_INTERPOLATION" => (;
             env = MIRK_AD_ENV,
             body = mirk_ad_multipoint_interpolation,
         ),
+        "AD_MULTIPOINT_INTERPOLATION_FORWARDDIFF" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_interpolation_forwarddiff,
+        ),
+        "AD_MULTIPOINT_INTERPOLATION_ENZYME" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_interpolation_enzyme,
+        ),
+        "AD_MULTIPOINT_INTERPOLATION_MOONCAKE" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_multipoint_interpolation_mooncake,
+        ),
         "AD_TWOPOINT" => (;
             env = MIRK_AD_ENV,
             body = mirk_ad_twopoint,
+        ),
+        "AD_TWOPOINT_FORWARDDIFF" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_twopoint_forwarddiff,
+        ),
+        "AD_TWOPOINT_ENZYME" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_twopoint_enzyme,
+        ),
+        "AD_TWOPOINT_MOONCAKE" => (;
+            env = MIRK_AD_ENV,
+            body = mirk_ad_twopoint_mooncake,
         ),
     ),
     qa = (;

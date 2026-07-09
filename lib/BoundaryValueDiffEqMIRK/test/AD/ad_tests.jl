@@ -3,10 +3,11 @@ using Test
 
 mirk_ad_group() = get(ENV, "BOUNDARYVALUEDIFFEQ_MIRK_AD_GROUP", "ALL")
 run_mirk_ad_group(group) = mirk_ad_group() in ("ALL", group)
+mirk_ad_backend() = get(ENV, "BOUNDARYVALUEDIFFEQ_MIRK_AD_BACKEND", "ALL")
+run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
 
 @testset "Different AD compatibility" begin
     using BoundaryValueDiffEqMIRK
-    using ForwardDiff, Enzyme, Mooncake
 
     if run_mirk_ad_group("MULTIPOINT_GRID")
         @testset "Test different AD on multipoint BVP" begin
@@ -23,22 +24,38 @@ run_mirk_ad_group(group) = mirk_ad_group() in ("ALL", group)
             u0 = [pi / 2, pi / 2]
             tspan = (0.0, pi / 2)
             prob = BVProblem(simplependulum!, bc!, u0, tspan)
-            jac_alg_forwarddiff = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
-            )
-            jac_alg_enzyme = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(
-                    AutoEnzyme(
-                        mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated
+
+            if run_mirk_ad_backend("FORWARDDIFF")
+                using ForwardDiff
+                jac_alg = BVPJacobianAlgorithm(
+                    bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
+                )
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                @test SciMLBase.successful_retcode(sol)
+            end
+            if run_mirk_ad_backend("ENZYME")
+                using Enzyme
+                jac_alg = BVPJacobianAlgorithm(
+                    bc_diffmode = AutoSparse(
+                        AutoEnzyme(
+                            mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated
+                        )
+                    ),
+                    nonbc_diffmode = AutoEnzyme(
+                        mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
                     )
-                ),
-                nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
-            )
-            jac_alg_mooncake = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-                nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
-            )
-            for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
+                )
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                @test SciMLBase.successful_retcode(sol)
+            end
+            if run_mirk_ad_backend("MOONCAKE")
+                using Enzyme, Mooncake
+                jac_alg = BVPJacobianAlgorithm(
+                    bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
+                    nonbc_diffmode = AutoEnzyme(
+                        mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
+                    )
+                )
                 sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
                 @test SciMLBase.successful_retcode(sol)
             end
@@ -60,22 +77,38 @@ run_mirk_ad_group(group) = mirk_ad_group() in ("ALL", group)
             u0 = [pi / 2, pi / 2]
             tspan = (0.0, pi / 2)
             prob = BVProblem(simplependulum!, bc!, u0, tspan)
-            jac_alg_forwarddiff = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
-            )
-            jac_alg_enzyme = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(
-                    AutoEnzyme(
-                        mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated
+
+            if run_mirk_ad_backend("FORWARDDIFF")
+                using ForwardDiff
+                jac_alg = BVPJacobianAlgorithm(
+                    bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
+                )
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                @test SciMLBase.successful_retcode(sol)
+            end
+            if run_mirk_ad_backend("ENZYME")
+                using Enzyme
+                jac_alg = BVPJacobianAlgorithm(
+                    bc_diffmode = AutoSparse(
+                        AutoEnzyme(
+                            mode = Enzyme.Reverse, function_annotation = Enzyme.Duplicated
+                        )
+                    ),
+                    nonbc_diffmode = AutoEnzyme(
+                        mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
                     )
-                ),
-                nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
-            )
-            jac_alg_mooncake = BVPJacobianAlgorithm(
-                bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
-                nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
-            )
-            for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
+                )
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                @test SciMLBase.successful_retcode(sol)
+            end
+            if run_mirk_ad_backend("MOONCAKE")
+                using Enzyme, Mooncake
+                jac_alg = BVPJacobianAlgorithm(
+                    bc_diffmode = AutoSparse(AutoMooncake(; config = nothing)),
+                    nonbc_diffmode = AutoEnzyme(
+                        mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
+                    )
+                )
                 sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
                 @test SciMLBase.successful_retcode(sol)
             end
@@ -103,22 +136,34 @@ run_mirk_ad_group(group) = mirk_ad_group() in ("ALL", group)
                 odef!, (boundary_two_point_a!, boundary_two_point_b!),
                 u0, tspan; bcresid_prototype, nlls = Val(false)
             )
-            jac_alg_forwarddiff = BVPJacobianAlgorithm(AutoSparse(AutoForwardDiff()))
-            jac_alg_enzyme = BVPJacobianAlgorithm(
-                AutoSparse(
-                    AutoEnzyme(
-                        mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
+
+            if run_mirk_ad_backend("FORWARDDIFF")
+                using ForwardDiff
+                jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoForwardDiff()))
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
+                @test SciMLBase.successful_retcode(sol)
+            end
+            if run_mirk_ad_backend("ENZYME")
+                using Enzyme
+                jac_alg = BVPJacobianAlgorithm(
+                    AutoSparse(
+                        AutoEnzyme(
+                            mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
+                        )
                     )
                 )
-            )
-            jac_alg_mooncake = BVPJacobianAlgorithm(
-                AutoSparse(
-                    AutoMooncake(;
-                        config = nothing
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
+                @test SciMLBase.successful_retcode(sol)
+            end
+            if run_mirk_ad_backend("MOONCAKE")
+                using Mooncake
+                jac_alg = BVPJacobianAlgorithm(
+                    AutoSparse(
+                        AutoMooncake(;
+                            config = nothing
+                        )
                     )
                 )
-            )
-            for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
                 sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
                 @test SciMLBase.successful_retcode(sol)
             end

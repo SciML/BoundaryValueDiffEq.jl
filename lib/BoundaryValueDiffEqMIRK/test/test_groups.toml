@@ -12,14 +12,43 @@ versions = ["lts", "1", "pre"]
 # AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy
 # optional backends live in test/AD/Project.toml (kept out of the main test env so
 # the Downgrade lane does not force a joint at-floor resolve of them).
+# The lts/pre aggregate shards pass in CI; Julia 1 is split further by backend to
+# avoid runner termination during the combined AD compile/solve path.
 [AD_MULTIPOINT_GRID]
-versions = ["lts", "1", "pre"]
+versions = ["lts", "pre"]
+
+[AD_MULTIPOINT_GRID_FORWARDDIFF]
+versions = ["1"]
+
+[AD_MULTIPOINT_GRID_ENZYME]
+versions = ["1"]
+
+[AD_MULTIPOINT_GRID_MOONCAKE]
+versions = ["1"]
 
 [AD_MULTIPOINT_INTERPOLATION]
-versions = ["lts", "1", "pre"]
+versions = ["lts", "pre"]
+
+[AD_MULTIPOINT_INTERPOLATION_FORWARDDIFF]
+versions = ["1"]
+
+[AD_MULTIPOINT_INTERPOLATION_ENZYME]
+versions = ["1"]
+
+[AD_MULTIPOINT_INTERPOLATION_MOONCAKE]
+versions = ["1"]
 
 [AD_TWOPOINT]
-versions = ["lts", "1", "pre"]
+versions = ["lts", "pre"]
+
+[AD_TWOPOINT_FORWARDDIFF]
+versions = ["1"]
+
+[AD_TWOPOINT_ENZYME]
+versions = ["1"]
+
+[AD_TWOPOINT_MOONCAKE]
+versions = ["1"]
 
 [QA]
 versions = ["lts", "1"]
