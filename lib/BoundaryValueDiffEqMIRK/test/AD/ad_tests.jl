@@ -24,13 +24,14 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
             u0 = [pi / 2, pi / 2]
             tspan = (0.0, pi / 2)
             prob = BVProblem(simplependulum!, bc!, u0, tspan)
+            dt = 0.5
 
             if run_mirk_ad_backend("FORWARDDIFF")
                 using ForwardDiff
                 jac_alg = BVPJacobianAlgorithm(
                     bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
             if run_mirk_ad_backend("ENZYME")
@@ -45,7 +46,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
             if run_mirk_ad_backend("MOONCAKE")
@@ -56,7 +57,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
         end
@@ -77,13 +78,14 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
             u0 = [pi / 2, pi / 2]
             tspan = (0.0, pi / 2)
             prob = BVProblem(simplependulum!, bc!, u0, tspan)
+            dt = 0.5
 
             if run_mirk_ad_backend("FORWARDDIFF")
                 using ForwardDiff
                 jac_alg = BVPJacobianAlgorithm(
                     bc_diffmode = AutoSparse(AutoForwardDiff()), nonbc_diffmode = AutoForwardDiff()
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
             if run_mirk_ad_backend("ENZYME")
@@ -98,7 +100,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
             if run_mirk_ad_backend("MOONCAKE")
@@ -109,7 +111,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
         end
@@ -136,11 +138,12 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                 odef!, (boundary_two_point_a!, boundary_two_point_b!),
                 u0, tspan; bcresid_prototype, nlls = Val(false)
             )
+            dt = 0.5
 
             if run_mirk_ad_backend("FORWARDDIFF")
                 using ForwardDiff
                 jac_alg = BVPJacobianAlgorithm(AutoSparse(AutoForwardDiff()))
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
             if run_mirk_ad_backend("ENZYME")
@@ -152,7 +155,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         )
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.01)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
             if run_mirk_ad_backend("MOONCAKE")
@@ -164,7 +167,7 @@ run_mirk_ad_backend(backend) = mirk_ad_backend() in ("ALL", backend)
                         )
                     )
                 )
-                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = 0.05)
+                sol = solve(prob, MIRK4(; jac_alg = jac_alg), dt = dt)
                 @test SciMLBase.successful_retcode(sol)
             end
         end
