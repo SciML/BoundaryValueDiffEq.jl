@@ -14,6 +14,17 @@ __has_control_variables(cache::MIRKCache, length_z) = !isnothing(cache.f_prototy
 __state_variable_count(cache::MIRKCache, length_z) = __has_control_variables(cache, length_z) ?
     length(cache.f_prototype) : length_z
 
+@views function __mirk_matmul!(z, A, b, α = one(eltype(z)), β = zero(eltype(z)))
+    for (iz, ia) in zip(eachindex(z), axes(A, 1))
+        acc = zero(promote_type(eltype(A), eltype(b)))
+        for (ja, bj) in zip(axes(A, 2), b)
+            acc += A[ia, ja] * bj
+        end
+        z[iz] = α * acc + β * z[iz]
+    end
+    return z
+end
+
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
     return interpolation(tvals, id, idxs, deriv, p, continuity)
 end
@@ -109,8 +120,8 @@ end
     # state variables have their interpolation polynomials
     length_z = __state_variable_count(cache, length(z))
     z .= zero(z)
-    __maybe_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
-    __maybe_matmul!(
+    __mirk_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
+    __mirk_matmul!(
         z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true
     )
@@ -137,8 +148,8 @@ end
     length_z = __state_variable_count(cache, length(z))
 
     z .= zero(z)
-    __maybe_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
-    __maybe_matmul!(
+    __mirk_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
+    __mirk_matmul!(
         z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true
     )
@@ -164,8 +175,8 @@ end
     length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
-    __maybe_matmul!(
+    __mirk_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
+    __mirk_matmul!(
         z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
     )
@@ -188,8 +199,8 @@ end
     length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
-    __maybe_matmul!(
+    __mirk_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
+    __mirk_matmul!(
         z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
     )
@@ -244,8 +255,8 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     w, _ = interp_weights(τ, alg)
     K = @view(__stage_values(k_discrete[ii], z)[:, 1:stage])
     KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
-    __maybe_matmul!(@view(z[1:length_z]), K, @view(w[1:stage]))
-    __maybe_matmul!(@view(z[1:length_z]), KI, @view(w[(stage + 1):cache.ITU.s_star]), true, true)
+    __mirk_matmul!(@view(z[1:length_z]), K, @view(w[1:stage]))
+    __mirk_matmul!(@view(z[1:length_z]), KI, @view(w[(stage + 1):cache.ITU.s_star]), true, true)
 
     # control variable just use linear interpolation
     if has_control
@@ -275,8 +286,8 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
         w, _ = interp_weights(τ, alg)
         K = @view(__stage_values(k_discrete[ii], zvals[i])[:, 1:stage])
         KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
-        __maybe_matmul!(@view(zvals[i][1:length_z]), K, @view(w[1:stage]))
-        __maybe_matmul!(
+        __mirk_matmul!(@view(zvals[i][1:length_z]), K, @view(w[1:stage]))
+        __mirk_matmul!(
             @view(zvals[i][1:length_z]), KI, @view(w[(stage + 1):cache.ITU.s_star]), true, true
         )
 
@@ -300,8 +311,8 @@ function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
     _, w′ = interp_weights(τ, alg)
     K = __stage_values(k_discrete[ii], last(u))
     z′ = __stage_weighted_zero(last(u), K, w′)
-    __maybe_matmul!(z′, @view(K[:, 1:stage]), @view(w′[1:stage]))
-    __maybe_matmul!(
+    __mirk_matmul!(z′, @view(K[:, 1:stage]), @view(w′[1:stage]))
+    __mirk_matmul!(
         z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
         true, true
     )
@@ -325,11 +336,11 @@ Here, the `ki_interp`` is the stages in one subinterval.
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
         for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
+            __mirk_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
         end
         if r > 1
             for j in eachindex(k_interp.u)
-                __maybe_matmul!(
+                __mirk_matmul!(
                     new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
                 )
             end
@@ -362,11 +373,11 @@ end
         idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
         idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
         for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
+            __mirk_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
         end
         if r > 1
             for j in eachindex(k_interp.u)
-                __maybe_matmul!(
+                __mirk_matmul!(
                     new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
                 )
             end
