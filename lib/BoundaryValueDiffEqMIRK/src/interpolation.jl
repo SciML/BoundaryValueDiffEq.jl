@@ -15,12 +15,12 @@ __state_variable_count(cache::MIRKCache, length_z) = __has_control_variables(cac
     length(cache.f_prototype) : length_z
 
 @views function __mirk_matmul!(z, A, b, α = one(eltype(z)), β = zero(eltype(z)))
-    for (iz, ia) in zip(eachindex(z), axes(A, 1))
+    for (z_index, a_index) in zip(eachindex(z), axes(A, 1))
         acc = zero(promote_type(eltype(A), eltype(b)))
-        for (ja, bj) in zip(axes(A, 2), b)
-            acc += A[ia, ja] * bj
+        for (column, b_value) in zip(axes(A, 2), b)
+            acc += A[a_index, column] * b_value
         end
-        z[iz] = α * acc + β * z[iz]
+        z[z_index] = α * acc + β * z[z_index]
     end
     return z
 end
