@@ -1,15 +1,30 @@
+"""
+    _unwrap_val(x)
+
+Return the value carried by `Val(x)`, or return `x` unchanged for non-`Val` inputs.
+"""
 _unwrap_val(::Val{B}) where {B} = B
 _unwrap_val(B) = B
 
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
+"""
+    recursive_flatten(x)
+
+Flatten a vector of array-like states into a single vector.
+"""
 function recursive_flatten(x::Vector{<:AbstractArray})
     y = zero(first(x), recursive_length(x))
     recursive_flatten!(y, x)
     return y
 end
 
+"""
+    recursive_flatten!(y, x)
+
+Flatten a vector of array-like states into the preallocated vector `y`.
+"""
 @views function recursive_flatten!(y::AbstractVector, x::Vector{<:AbstractArray})
     i = 0
     for xᵢ in x
@@ -18,6 +33,12 @@ end
     end
     return y
 end
+
+"""
+    recursive_flatten_twopoint!(y, x, sizes)
+
+Flatten a two-point boundary value state vector while preserving the endpoint block sizes.
+"""
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
@@ -30,6 +51,11 @@ end
     return y
 end
 
+"""
+    recursive_unflatten!(y, x)
+
+Copy a flattened vector `x` back into the array-like storage `y`.
+"""
 @views function recursive_unflatten!(y::Vector{<:AbstractArray}, x::AbstractVector)
     i = 0
     for yᵢ in y
@@ -52,6 +78,11 @@ end
     return y
 end
 
+"""
+    diff!(dx, x)
+
+Write the forward differences of `x` into `dx`.
+"""
 function diff!(dx, x)
     for i in eachindex(dx)
         dx[i] = x[i + 1] - x[i]
@@ -59,6 +90,12 @@ function diff!(dx, x)
     return dx
 end
 
+"""
+    __maybe_matmul!(z, A, b, alpha = one(eltype(z)), beta = zero(eltype(z)))
+
+Compute `z = alpha * A * b + beta * z`, using a fallback loop for array types where
+`mul!` is not appropriate.
+"""
 function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
     return mul!(z, A, b, α, β)
 end
@@ -84,6 +121,12 @@ function interval(mesh, t)
 end
 
 ## Easier to dispatch
+"""
+    eval_bc_residual(problem_type, bc, sol, p, t)
+
+Evaluate an out-of-place boundary condition residual for standard, two-point, and
+second-order boundary value problem forms.
+"""
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(
@@ -105,6 +148,12 @@ function eval_bc_residual(
     return (resida, residb)
 end
 
+"""
+    eval_bc_residual!(resid, problem_type, bc!, sol, p, t)
+
+Evaluate an in-place boundary condition residual into `resid` for standard, two-point,
+and second-order boundary value problem forms.
+"""
 function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
@@ -272,6 +321,12 @@ function __resize!(x::AbstractVectorOfArray, n, M)
 end
 
 ## Problem with Initial Guess
+"""
+    __extract_problem_details(prob; kwargs...)
+
+Extract solver setup information from a BVP, including in-place status, state element type,
+state dimension, subinterval count, and starting state.
+"""
 function __extract_problem_details(prob; kwargs...)
     return __extract_problem_details(prob, prob.u0; kwargs...)
 end
@@ -332,6 +387,11 @@ function __extract_problem_details(
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
 end
 
+"""
+    __initial_guess(f, p, t; tune_parameters = false)
+
+Evaluate an initial guess function with the supported `(p, t)` calling convention.
+"""
 function __initial_guess(f::F, p::P, t::T; tune_parameters = false) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
         tune_parameters && return vcat(f(p, t), __tunable_part(p))
@@ -350,6 +410,12 @@ function __initial_guess(f::F, p::P, t::T; tune_parameters = false) where {F, P,
     end
 end
 
+"""
+    __tunable_part(p)
+
+Return the SciMLStructures tunable portion of `p`, or `p` itself for plain parameter
+containers.
+"""
 function __tunable_part(p)
     if SciMLStructures.isscimlstructure(p)
         part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
@@ -359,6 +425,11 @@ function __tunable_part(p)
     end
 end
 
+"""
+    __get_bcresid_prototype(prob, u)
+
+Construct the boundary condition residual prototype and its shape metadata for `prob`.
+"""
 function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
@@ -390,6 +461,11 @@ function __get_bcresid_prototype(::StandardSecondOrderBVProblem, prob::BVProblem
     return prototype, size(prototype)
 end
 
+"""
+    safe_similar(x, dims...)
+
+Allocate `similar(x, dims...)` and initialize numeric storage with zeros.
+"""
 @inline function safe_similar(x::AbstractArray{<:T}, args...) where {T <: Number}
     y = similar(x, args...)
     fill!(y, T(0))
@@ -408,6 +484,11 @@ end
 @inline __safe_vec(x) = vec(x)
 @inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
 
+"""
+    __vec(x)
+
+Convert scalar, array, or tuple states to a vector representation.
+"""
 @inline __vec(x::Number) = [x]
 @inline __vec(x::AbstractArray) = vec(x)
 @inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
@@ -422,13 +503,29 @@ end
 @inline __maybe_scalar_state(x) = x
 
 # Restructure Non-Vector Inputs
+"""
+    __vec_f!(du, u, p, t, f!, u_size)
+
+Call an in-place problem function on reshaped non-vector state storage.
+"""
 function __vec_f!(du, u, p, t, f!, u_size)
     f!(reshape(du, u_size), reshape(u, u_size), p, t)
     return nothing
 end
 
+"""
+    __vec_f(u, p, t, f, u_size)
+
+Call an out-of-place problem function on reshaped non-vector state storage and vectorize
+the result.
+"""
 __vec_f(u, p, t, f, u_size) = vec(f(reshape(u, u_size), p, t))
 
+"""
+    __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
+
+Call an in-place boundary condition on reshaped non-vector residual and state storage.
+"""
 function __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
     bc!(reshape(resid, resid_size), sol, p, t)
     return nothing
@@ -439,6 +536,12 @@ function __vec_bc!(resid, sol, p, bc!, resid_size, u_size)
     return nothing
 end
 
+"""
+    __vec_bc(sol, p, t, bc, u_size)
+
+Call an out-of-place boundary condition on reshaped non-vector state storage and vectorize
+the result.
+"""
 __vec_bc(sol, p, t, bc, u_size) = vec(bc(sol, p, t))
 __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
@@ -450,6 +553,11 @@ end
 
 __vec_f(du, u, p, t, f, u_size) = vec(f(reshape(du, u_size), reshape(u, u_size), p, t))
 
+"""
+    __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
+
+Call an in-place second-order boundary condition on reshaped derivative and state storage.
+"""
 function __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
     bc!(
         reshape(resid, resid_size), __restructure_sol(dsol, u_size),
@@ -463,6 +571,12 @@ function __vec_so_bc!(resid, dsol, sol, p, bc!, resid_size, u_size)
     return nothing
 end
 
+"""
+    __vec_so_bc(dsol, sol, p, t, bc, u_size)
+
+Call an out-of-place second-order boundary condition on reshaped derivative and state
+storage and vectorize the result.
+"""
 function __vec_so_bc(dsol, sol, p, t, bc, u_size)
     return vec(bc(__restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t))
 end
@@ -470,10 +584,20 @@ function __vec_so_bc(dsol, sol, p, bc, u_size)
     return vec(bc(reshape(dsol, u_size), reshape(sol, u_size), p))
 end
 
+"""
+    __get_non_sparse_ad(ad)
+
+Return the dense AD backend inside `AutoSparse`, or return non-sparse backends unchanged.
+"""
 @inline __get_non_sparse_ad(ad::AbstractADType) = ad
 @inline __get_non_sparse_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
 # Restructure Solution
+"""
+    __restructure_sol(sol, u_size)
+
+Reshape stored solution values to the original non-vector state shape `u_size`.
+"""
 function __restructure_sol(sol::AbstractVectorOfArray, u_size)
     (size(first(sol.u)) == u_size) && return sol
     return VectorOfArray(map(Base.Fix2(reshape, u_size), sol.u))
@@ -483,7 +607,12 @@ function __restructure_sol(sol::AbstractArray{<:AbstractArray}, u_size)
     return map(Base.Fix2(reshape, u_size), sol)
 end
 
-# Construct the internal NonlinearProblem
+"""
+    __internal_nlsolve_problem(prob, resid_prototype, u0, args...; kwargs...)
+
+Construct the internal `NonlinearProblem` or `NonlinearLeastSquaresProblem` for a BVP
+discretization.
+"""
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
         u0, args...; kwargs...
@@ -522,7 +651,11 @@ end
     return NonlinearProblem(args...; kwargs...)
 end
 
-# Construct the internal OptimizationProblem
+"""
+    __internal_optimization_problem(prob, args...; kwargs...)
+
+Construct the internal `OptimizationProblem` for optimization-based BVP solves.
+"""
 @inline function __internal_optimization_problem(
         ::BVProblem{uType, tType, iip}, args...; kwargs...
     ) where {uType, tType, iip}
@@ -656,6 +789,12 @@ end
 end
 
 # Construct BVP Solution
+"""
+    __build_solution(prob, odesol, nonlinear_or_optimization_solution)
+
+Combine the interpolating ODE-style solution with the internal nonlinear or optimization
+solver result and propagate the appropriate retcode.
+"""
 function __build_solution(prob::AbstractBVProblem, odesol, nlsol::SciMLBase.NonlinearSolution)
     retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
     return SciMLBase.solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
@@ -666,6 +805,11 @@ function __build_solution(prob::AbstractBVProblem, odesol, optsol::SciMLBase.Opt
 end
 
 # Fix3
+"""
+    __Fix3(f, x)
+
+Callable helper that fixes the third argument of a three-argument function.
+"""
 @concrete struct __Fix3
     f
     x
@@ -673,12 +817,23 @@ end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
 
+"""
+    get_dense_ad(ad)
+
+Return the dense AD backend for `AutoSparse` wrappers, preserving `nothing` and dense AD
+backends unchanged.
+"""
 get_dense_ad(::Nothing) = nothing
 get_dense_ad(ad) = ad
 get_dense_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
 # traits for forward or reverse mode AutoForwardDiff
 
+"""
+    _sparse_like(I, J, x, m = maximum(I), n = maximum(J))
+
+Build a sparse matrix with index storage adapted to `x` and values shaped like `x`.
+"""
 function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     I′ = adapt(parameterless_type(x), I)
     J′ = adapt(parameterless_type(x), J)
@@ -686,6 +841,11 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     return sparse(I′, J′, V, m, n)
 end
 
+"""
+    nodual_value(x)
+
+Strip ForwardDiff and SparseConnectivityTracer dual numbers from scalars or arrays.
+"""
 nodual_value(x) = x
 nodual_value(x::ForwardDiff.Dual) = ForwardDiff.value(x)
 nodual_value(x::AbstractArray{<:ForwardDiff.Dual}) = map(ForwardDiff.value, x)
@@ -694,10 +854,22 @@ function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
     return map(SparseConnectivityTracer.primal, x)
 end
 
+"""
+    __split_kwargs(; abstol, adaptive, controller, verbose = DEFAULT_VERBOSE, kwargs...)
+
+Split BVP solve keywords into cache fields and the keyword set forwarded to internal
+solvers.
+"""
 function __split_kwargs(; abstol, adaptive, controller, verbose = DEFAULT_VERBOSE, kwargs...)
     return ((abstol, adaptive, controller, verbose), (; abstol, adaptive, kwargs...))
 end
 
+"""
+    __concrete_kwargs(nlsolve, optimize, nlsolve_kwargs, optimize_kwargs[, bvp_verbose])
+
+Select and normalize the keyword arguments forwarded to the active internal nonlinear or
+optimization solver.
+"""
 @inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
     nlsolve_kwargs...,
 )

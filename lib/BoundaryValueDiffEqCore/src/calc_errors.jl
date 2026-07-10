@@ -115,5 +115,10 @@ struct REErrorControl <: GlobalErrorControlMethod end
 
 # Some utils for error control adaptivity
 # If error control use both defect and global error or not
+"""
+    __use_both_error_control(controller) -> Bool
+
+Return whether an error controller combines defect and global error control.
+"""
 @inline __use_both_error_control(::HybridErrorControl) = true
 @inline __use_both_error_control(_) = false

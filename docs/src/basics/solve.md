@@ -1,5 +1,9 @@
 # [Common Solver Options (Solve Keyword Arguments)](@id solver_options)
 
+```@docs
+integral
+```
+
   - `abstol::Number`: The absolute tolerance. Defaults to `1e-6`.
   - `adaptive::Bool`: Whether the error control adaptivity is on, default as `true`.
   - `controller`: Error controller for collocation methods, default as `DefectControl()`, more controller options in [Error Control Adaptivity](@ref error_control).

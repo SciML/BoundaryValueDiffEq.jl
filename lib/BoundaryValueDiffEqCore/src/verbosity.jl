@@ -348,8 +348,20 @@ Groups for convenient toggle control:
 """
 function BVPVerbosity end
 
+"""
+    DEFAULT_VERBOSE
+
+Default `BVPVerbosity()` value used by BoundaryValueDiffEq solvers when `verbose` is not
+specified.
+"""
 const DEFAULT_VERBOSE = BVPVerbosity()
 
+"""
+    _process_verbose_param(verbose) -> BVPVerbosity
+
+Convert supported verbosity presets, booleans, and `BVPVerbosity` values to the concrete
+verbosity configuration used by solver caches.
+"""
 @inline function _process_verbose_param(verbose::SciMLLogging.AbstractVerbosityPreset)
     return BVPVerbosity(verbose)
 end

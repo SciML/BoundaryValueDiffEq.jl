@@ -4,6 +4,8 @@ using SciMLBase
 using JET
 using Test
 
+include("public_api_docs.jl")
+
 run_qa(
     BoundaryValueDiffEq;
     explicit_imports = true,
