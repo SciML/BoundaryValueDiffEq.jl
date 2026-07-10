@@ -1395,12 +1395,12 @@ end
 
 @views function __firk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
-        cache, eval_sol, trait::DiffCacheNeeded, constraint
+        cache, _, trait::DiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -1408,12 +1408,12 @@ end
 
 @views function __firk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
-        cache, eval_sol, trait::NoDiffCacheNeeded, constraint
+        cache, _, trait::NoDiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resids = [r for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -1470,10 +1470,10 @@ end
 end
 
 @views function __firk_loss(
-        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol, trait
+        u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, _, trait
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    eval_sol.u[1:end] .= y_
+    eval_sol = EvalSol(__restructure_sol(y_, cache.in_size), mesh, cache)
     resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     resid_co = Φ(cache, y_, u, trait)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
