@@ -1411,7 +1411,7 @@ end
         cache, eval_sol, trait::NoDiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual]
+    resids = residual
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
     eval_sol.u[1:end] .= y_
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
@@ -1508,23 +1508,49 @@ end
     return eval_bc_residual(pt, bc!, eval_sol, p, mesh)
 end
 
+function __firk_recursive_unflatten!(y::Vector{<:AbstractArray}, x::AbstractVector)
+    i = firstindex(x)
+    for yᵢ in y
+        for j in eachindex(yᵢ)
+            yᵢ[j] = x[i]
+            i += 1
+        end
+    end
+    return y
+end
+
+function __firk_recursive_unflatten!(y::Vector{<:DiffCache}, x::AbstractVector)
+    return __firk_recursive_unflatten!(get_tmp.(y, (x,)), x)
+end
+
+function __firk_recursive_flatten!(y::AbstractVector, x)
+    i = firstindex(y)
+    for xᵢ in x
+        for j in eachindex(xᵢ)
+            y[i] = xᵢ[j]
+            i += 1
+        end
+    end
+    return y
+end
+
 @views function __firk_loss_collocation!(
         resid, u, p, y, mesh, residual, cache, trait::DiffCacheNeeded, constraint
     )
-    y_ = recursive_unflatten!(y, u)
+    y_ = __firk_recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual[2:end]]
     Φ!(resids, cache, y_, u, trait, constraint)
-    recursive_flatten!(resid, resids)
+    __firk_recursive_flatten!(resid, resids)
     return nothing
 end
 
 @views function __firk_loss_collocation!(
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
-    y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
+    y_ = __firk_recursive_unflatten!(y, u)
+    resids = residual[2:end]
     Φ!(resids, cache, y_, u, trait, constraint)
-    recursive_flatten!(resid, resids)
+    __firk_recursive_flatten!(resid, resids)
     return nothing
 end
 
