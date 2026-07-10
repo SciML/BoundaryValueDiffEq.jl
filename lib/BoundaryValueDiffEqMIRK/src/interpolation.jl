@@ -218,8 +218,10 @@ function __stage_weighted_zero(prototype, k, weights)
     return fill!(similar(prototype, T), zero(T))
 end
 
-@inline __primal_value(x) = x
-@inline __primal_value(x::ForwardDiff.Dual) = __primal_value(ForwardDiff.value(x))
+@inline function __primal_value(x)
+    y = nodual_value(x)
+    return y === x ? y : __primal_value(y)
+end
 
 """
     EvalSol
