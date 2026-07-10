@@ -45,6 +45,7 @@ function SciMLBase.__solve(
 
     internal_ode_kwargs = (; kwargs..., odesolve_kwargs..., save_end = true)
 
+    odecache_by_eltype = Dict{Tuple{Any, Int}, Any}()
     solve_internal_odes! = @closure (
         resid_nodes,
         us,
@@ -52,9 +53,15 @@ function SciMLBase.__solve(
         cur_nshoot,
         nodes,
         odecache,
-    ) -> __multiple_shooting_solve_internal_odes!(
-        resid_nodes, us, cur_nshoot, odecache, nodes, u0_size, N, ensemblealg, tspan
-    )
+    ) -> begin
+        odecache_ = __multiple_shooting_odecache_for_eltype(
+            odecache, odecache_by_eltype, ensemblealg, prob, alg.ode_alg, us, cur_nshoot,
+            u0_size, N, internal_ode_kwargs
+        )
+        __multiple_shooting_solve_internal_odes!(
+            resid_nodes, us, cur_nshoot, odecache_, nodes, u0_size, N, ensemblealg, tspan
+        )
+    end
 
     # This gets all the nshoots except the final SingleShooting case
     all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
@@ -357,9 +364,27 @@ function __multiple_shooting_init_jacobian_odecache(
     )
     T_dual = eltype(overloaded_input_type(jac_cache))
     xduals = zeros(T_dual, size(u))
+    prob = remake(prob; tspan = T_dual.(prob.tspan))
     return __multiple_shooting_init_odecache(
         ensemblealg, prob, alg, xduals, nshoots; kwargs...
     )
+end
+
+function __multiple_shooting_odecache_for_eltype(
+        odecache, odecache_by_eltype, ensemblealg, prob, ode_alg, us, nshoots, u0_size, N,
+        internal_ode_kwargs
+    )
+    cache = odecache isa Vector ? first(odecache) : odecache
+    eltype(cache.u) === eltype(us) && return odecache
+
+    key = (eltype(us), nshoots)
+    return get!(odecache_by_eltype, key) do
+        u0 = copy(reshape(@view(us[1:N]), u0_size))
+        prob = remake(prob; tspan = eltype(us).(prob.tspan))
+        __multiple_shooting_init_odecache(
+            ensemblealg, prob, ode_alg, u0, nshoots; internal_ode_kwargs...
+        )
+    end
 end
 
 # Not using `EnsembleProblem` since it is hard to initialize the cache and stuff
@@ -367,7 +392,7 @@ function __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoots::Int, odecache,
         nodes, u0_size, N::Int, ::EnsembleSerial, tspan
     )
-    ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
+    ts_ = Vector{typeof(odecache.sol.t)}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
 
     for i in 1:cur_nshoots
@@ -389,7 +414,7 @@ function __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoots::Int, odecache::Vector,
         nodes, u0_size, N::Int, ::EnsembleThreads, tspan
     )
-    ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
+    ts_ = Vector{typeof(first(odecache).sol.t)}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
 
     n_splits = min(cur_nshoots, Threads.nthreads())
