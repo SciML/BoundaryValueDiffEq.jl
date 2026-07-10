@@ -84,7 +84,11 @@ function SciMLBase.__init(
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructMIRK(alg, T)
     stage = alg_stage(alg)
-    f_prototype = isnothing(prob.f.f_prototype) ? nothing : __vec(prob.f.f_prototype)
+    f_prototype = if isnothing(prob.f.f_prototype)
+        constraint ? __vec(u0) : nothing
+    else
+        __vec(prob.f.f_prototype)
+    end
     L_f_prototype = isnothing(f_prototype) ? N : length(f_prototype)
 
     k_discrete = if !constraint

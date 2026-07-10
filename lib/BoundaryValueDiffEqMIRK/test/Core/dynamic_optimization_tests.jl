@@ -78,12 +78,16 @@ end
         res[2] = u(1.0)[1]
     end
 
-    constrained_fun = BVPFunction(constrained_f!, constrained_bc!; f_prototype = zeros(2))
-    constrained_prob = BVProblem(
-        constrained_fun, [0.0, 0.0], (0.0, 1.0); lb = [-10.0, -10.0], ub = [10.0, 10.0]
-    )
-    sol = solve(constrained_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.01)
+    for constrained_fun in (
+            BVPFunction(constrained_f!, constrained_bc!),
+            BVPFunction(constrained_f!, constrained_bc!; f_prototype = zeros(2)),
+        )
+        constrained_prob = BVProblem(
+            constrained_fun, [0.0, 0.0], (0.0, 1.0); lb = [-10.0, -10.0], ub = [10.0, 10.0]
+        )
+        sol = solve(constrained_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.01)
 
-    @test SciMLBase.successful_retcode(sol)
-    @test sol(0.5) ≈ [sinh(0.5) / sinh(1.0), -cosh(0.5) / sinh(1.0)] rtol = 1.0e-4
+        @test SciMLBase.successful_retcode(sol)
+        @test sol(0.5) ≈ [sinh(0.5) / sinh(1.0), -cosh(0.5) / sinh(1.0)] rtol = 1.0e-4
+    end
 end
