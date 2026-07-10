@@ -1,5 +1,9 @@
 # Automatic Differentiation Backends
 
+```@docs
+BVPJacobianAlgorithm
+```
+
 !!! note
     
     We support ForwardDiff.jl, FiniteDiff.jl, Enzyme.jl, Mooncake.jl and PolyesterForwardDiff.jl(PolyesterForwardDiff only for collocation methods) via DifferentiationInterface.jl. Please refer to

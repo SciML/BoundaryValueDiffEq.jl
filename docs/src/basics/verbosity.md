@@ -70,4 +70,5 @@ sol = solve(prob, MIRK4(optimize = OptimizationOptimJL.BFGS()), dt = 0.1, verbos
 
 ```@docs
 BVPVerbosity
+DEFAULT_VERBOSE
 ```

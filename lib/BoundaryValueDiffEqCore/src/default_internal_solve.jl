@@ -44,6 +44,13 @@ function __FastShortcutBVPCompatibleNonlinearPolyalg(
     return NonlinearSolvePolyAlgorithm(algs)
 end
 
+"""
+    __FastShortcutNonlinearPolyalg(T = Float64; concrete_jac = nothing, linsolve = nothing,
+        autodiff = nothing)
+
+Build the default nonlinear solver polyalgorithm used when a BVP algorithm does not supply
+an explicit nonlinear solver.
+"""
 function __FastShortcutNonlinearPolyalg(
         ::Type{T} = Float64; concrete_jac = nothing,
         linsolve = nothing, autodiff = nothing
@@ -91,7 +98,12 @@ end
     end
 end
 
-# Some optimization algorithms (solvers from interfacing packages) don't support the __solve(prob) interface
+"""
+    __internal_solve(prob, alg; kwargs...)
+
+Dispatch to the appropriate solve entry point for internal nonlinear, nonlinear least
+squares, and optimization problems.
+"""
 @inline __internal_solve(
     prob::Union{SciMLBase.NonlinearProblem, SciMLBase.NonlinearLeastSquaresProblem},
     alg; kwargs...

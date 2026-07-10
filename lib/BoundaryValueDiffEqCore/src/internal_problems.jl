@@ -1,5 +1,12 @@
 @inline __default_cost(::Nothing) = (x, p) -> 0.0
 @inline __default_cost(f) = f
+
+"""
+    __build_cost(fun, cache, mesh, M; tune_parameters = false, p = nothing)
+
+Build the objective function used by optimization-based BVP solves from a user supplied
+cost functional.
+"""
 @inline __build_cost(::Nothing, cache, mesh, M; kwargs...) = (x, p) -> 0.0
 @inline function __build_cost(fun, cache, mesh, M; tune_parameters = false, p = nothing)
     if tune_parameters && SciMLStructures.isscimlstructure(p)
@@ -79,6 +86,12 @@ end
     return lb, ub
 end
 
+"""
+    integral(fun, domain)
+
+Evaluate a one-dimensional integral over `domain` using the default `Integrals.QuadGKJL`
+backend.
+"""
 function integral(fun, domain)
     prob = IntegralProblem(fun, domain)
     sol = SciMLBase.solve(prob, Integrals.QuadGKJL())
