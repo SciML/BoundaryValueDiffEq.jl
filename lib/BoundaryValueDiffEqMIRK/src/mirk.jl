@@ -469,7 +469,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache, u)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -481,7 +481,7 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait, constraint)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache, u)
     eval_bc_residual!(residual[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, residual)
     return nothing
@@ -541,7 +541,7 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, trait)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache, u)
     resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
@@ -605,7 +605,7 @@ function __construct_problem(
     ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = get_dense_ad(jac_alg.bc_diffmode)
     N = length(cache.mesh)
 
     resid_bc = bcresid_prototype
@@ -694,7 +694,7 @@ function __construct_problem(
     ) where {iip, T, UB, DC, tune_parameters, BC, C, LF}
     (; jac_alg) = cache.alg
     (; f_prototype, bcresid_prototype, prob) = cache
-    (; bc_diffmode) = jac_alg
+    bc_diffmode = get_dense_ad(jac_alg.bc_diffmode)
     N = length(cache.mesh)
 
     resid_bc = bcresid_prototype

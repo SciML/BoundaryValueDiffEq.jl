@@ -205,6 +205,22 @@ end
 
 @inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
 
+@inline __stage_values(k, prototype) = k
+@inline __stage_values(k::PreallocationTools.DiffCache, prototype) = get_tmp(k, prototype)
+
+@inline __copy_stage_values(k, prototype) = copy(k)
+@inline __copy_stage_values(k::PreallocationTools.DiffCache, prototype) = copy(get_tmp(k, prototype))
+
+@inline __stage_weight_eltype(k, weights) = typeof(zero(eltype(k)) * zero(eltype(weights)))
+
+function __stage_weighted_zero(prototype, k, weights)
+    T = __stage_weight_eltype(k, weights)
+    return fill!(similar(prototype, T), zero(T))
+end
+
+@inline __primal_value(x) = x
+@inline __primal_value(x::ForwardDiff.Dual) = __primal_value(ForwardDiff.value(x))
+
 """
     EvalSol
 
@@ -224,8 +240,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     w, _ = interp_weights(τ, alg)
-    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
-        @view(k_discrete[ii][:, 1:stage])
+    K = @view(__stage_values(k_discrete[ii], z)[:, 1:stage])
     KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
     __maybe_matmul!(@view(z[1:length_z]), K, @view(w[1:stage]))
     __maybe_matmul!(@view(z[1:length_z]), KI, @view(w[(stage + 1):cache.ITU.s_star]), true, true)
@@ -256,8 +271,7 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
         dt = mesh_dt[ii]
         τ = (tval - t[ii]) / dt
         w, _ = interp_weights(τ, alg)
-        K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
-            @view(k_discrete[ii][:, 1:stage])
+        K = @view(__stage_values(k_discrete[ii], zvals[i])[:, 1:stage])
         KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
         __maybe_matmul!(@view(zvals[i][1:length_z]), K, @view(w[1:stage]))
         __maybe_matmul!(
@@ -276,14 +290,15 @@ end
 
 # Intermediate derivative solution for evaluating derivative boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
-    (; t, cache) = s
+    (; t, u, cache) = s
     (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
-    z′ = zeros(typeof(tval), cache.M)
     ii = interval(t, tval)
     dt = mesh_dt[ii]
     τ = (tval - t[ii]) / dt
     _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    K = __stage_values(k_discrete[ii], last(u))
+    z′ = __stage_weighted_zero(last(u), K, w′)
+    __maybe_matmul!(z′, @view(K[:, 1:stage]), @view(w′[1:stage]))
     __maybe_matmul!(
         z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
         true, true
@@ -372,19 +387,48 @@ end
 end
 
 """
-    update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
+    update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache, u)
 
 Update the intermediate solution `eval_sol` with the new flattened solution `y_` and the cache.
 When evaluating boundary conditions with new solution during nonlinear solving, we should
 always update the intermediate solution with discrete solution + discrete stages + new stages
 (Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
 """
-@views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
-    eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
+@views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache, u)
+    y = __restructure_sol(y_, cache.in_size)
+    T_y = eltype(u)
+    if eltype(first(eval_sol.u)) !== T_y || T_y !== eltype(cache)
+        eval_cache = __mirk_eval_cache(cache, y, u)
+        interp_setup!(eval_cache)
+        return EvalSol(y, cache.mesh, eval_cache)
+    end
+    eval_sol.u[1:end] .= y
     eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
     interp_setup!(eval_sol.cache)
-    return nothing
+    return eval_sol
+end
+
+function __zeroed_similar_vector_of_array(x::AbstractVectorOfArray, prototype)
+    T = eltype(prototype)
+    z = zero(first(prototype))
+    return VectorOfArray([fill!(similar(xᵢ, T), z) for xᵢ in x.u])
+end
+
+function __mirk_eval_cache(
+        cache::MIRKCache{iip, T, use_both, DC, tune_parameters}, y, u
+    ) where {iip, T, use_both, DC, tune_parameters}
+    k_discrete = [__copy_stage_values(k, u) for k in cache.k_discrete]
+    k_interp = __zeroed_similar_vector_of_array(cache.k_interp, u)
+    new_stages = __zeroed_similar_vector_of_array(cache.new_stages, u)
+    return MIRKCache{iip, T, use_both, NoDiffCacheNeeded, tune_parameters}(
+        cache.order, cache.stage, cache.M, cache.in_size, cache.f, cache.bc, cache.prob,
+        cache.problem_type, cache.p, cache.alg, cache.TU, cache.ITU, cache.f_prototype,
+        cache.bcresid_prototype, cache.mesh, cache.mesh_dt, k_discrete, k_interp, y,
+        cache.y₀, cache.y₀_flat, cache.residual, cache.fᵢ_cache, cache.fᵢ₂_cache,
+        cache.errors, new_stages, cache.resid_size, cache.singular_term, cache.nlsolve_kwargs,
+        cache.optimize_kwargs, cache.kwargs, cache.verbose
+    )
 end
 
 """
@@ -399,7 +443,7 @@ function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) wher
     nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
     nlsolve_alg = __FastShortcutNonlinearPolyalg(eltype(sol.cache))
     for i in 1:n
-        f = @closure (t, p) -> sol(t, Val{1})[i]
+        f = @closure (t, p) -> __primal_value(sol(t, Val{1})[i])
         nlprob = NonlinearProblem(f, sol.cache.prob.u0[i], tspan)
         nlsols[i] = solve(nlprob, nlsolve_alg)
     end

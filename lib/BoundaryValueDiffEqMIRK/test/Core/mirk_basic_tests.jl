@@ -476,6 +476,19 @@ end
         sol = solve(prob, mirk_solver(Val(order)), dt = 0.001)
         @test SciMLBase.successful_retcode(sol)
     end
+
+    extrema_tspan = (0.0, pi / 2)
+    function extrema_pendulum!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -9.81 * sin(u[1])
+    end
+    function extrema_bc!(residual, sol, p, t)
+        residual[1] = maxsol(sol, extrema_tspan) - 5.0496477654230745
+        residual[2] = minsol(sol, extrema_tspan) + 4.8161991710010925
+    end
+    extrema_prob = BVProblem(extrema_pendulum!, extrema_bc!, [pi / 2, pi / 2], extrema_tspan)
+    extrema_sol = solve(extrema_prob, MIRK4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(extrema_sol)
 end
 
 @testset "Test unknown parameters estimation" begin
