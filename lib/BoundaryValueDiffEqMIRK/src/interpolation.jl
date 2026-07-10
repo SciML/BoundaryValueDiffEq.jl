@@ -206,7 +206,7 @@ end
 @inline __build_interpolation(cache::MIRKCache, u::AbstractVector) = MIRKInterpolation(cache.mesh, u, cache)
 
 @inline __stage_values(k, prototype) = k
-@inline __stage_values(k::PreallocationTools.DiffCache, prototype) = get_tmp(k, prototype)
+@inline __stage_values(k::PreallocationTools.DiffCache, prototype) = k.du
 
 @inline __copy_stage_values(k, prototype) = copy(k)
 @inline __copy_stage_values(k::PreallocationTools.DiffCache, prototype) = copy(get_tmp(k, prototype))
