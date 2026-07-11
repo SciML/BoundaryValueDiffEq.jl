@@ -1528,7 +1528,10 @@ end
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
+    resids = Vector{eltype(residual)}(undef, length(residual) - 1)
+    for i in eachindex(resids)
+        resids[i] = residual[i + 1]
+    end
     Φ!(resids, cache, y_, u, trait, constraint)
     recursive_flatten!(resid, resids)
     return nothing
