@@ -2,6 +2,9 @@ using SciMLTesting
 using BoundaryValueDiffEqCore
 using Test
 
+const DOCS_SRC = normpath(joinpath(@__DIR__, "..", "..", "..", "..", "docs", "src"))
+const UPSTREAM_REEXPORTS_WITH_DOC_OWNERSHIP = (:pickchunksize,)
+
 run_qa(
     BoundaryValueDiffEqCore;
     explicit_imports = true,
@@ -33,5 +36,11 @@ run_qa(
                 :Tunable, :canonicalize, :isscimlstructure, :replace,
             ),
         ),
+    ),
+    api_docs_kwargs = (;
+        rendered = true,
+        docs_src = DOCS_SRC,
+        ignore = UPSTREAM_REEXPORTS_WITH_DOC_OWNERSHIP,
+        rendered_ignore = UPSTREAM_REEXPORTS_WITH_DOC_OWNERSHIP,
     ),
 )

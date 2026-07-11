@@ -6,13 +6,12 @@ SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
-BoundaryValueDiffEqAscher = {path = "../.."}
 BoundaryValueDiffEqCore = {path = "../../../BoundaryValueDiffEqCore"}
 
 [compat]
 Aqua = "0.8"
 BoundaryValueDiffEqAscher = "1"
 BoundaryValueDiffEqCore = "2"
-SciMLTesting = "1.6"
+SciMLTesting = "2.1"
 Test = "1.10"
 julia = "1.10"
