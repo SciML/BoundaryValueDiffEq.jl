@@ -1393,6 +1393,15 @@ function __construct_problem(
     )
 end
 
+@inline function __firk_eval_sol!(eval_sol::EvalSol, y_, cache)
+    u = __restructure_sol(y_, cache.in_size)
+    if eltype(first(u)) <: eltype(first(eval_sol.u))
+        eval_sol.u[1:end] .= u
+        return eval_sol
+    end
+    return EvalSol(u, eval_sol.t, cache)
+end
+
 @views function __firk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
         cache, eval_sol, trait::DiffCacheNeeded, constraint
@@ -1400,8 +1409,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
-    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
+    eval_bc_residual!(resids[1], pt, bc!, __firk_eval_sol!(eval_sol, y_, cache), p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -1413,8 +1421,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [r for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
-    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
+    eval_bc_residual!(resids[1], pt, bc!, __firk_eval_sol!(eval_sol, y_, cache), p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -1473,8 +1480,7 @@ end
         u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol, trait
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    eval_sol.u[1:end] .= y_
-    resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
+    resid_bc = eval_bc_residual(pt, bc, __firk_eval_sol!(eval_sol, y_, cache), p, mesh)
     resid_co = Φ(cache, y_, u, trait)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
