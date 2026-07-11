@@ -195,7 +195,7 @@ end
 
         K = get_tmp(k_discrete[i], u)
 
-        _nestprob = remake(nest_prob, p = nestprob_p)
+        _nestprob = remake(nest_prob, p = nodual_value(nestprob_p))
         nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
@@ -227,7 +227,7 @@ end
 
         K = get_tmp(k_discrete[i], u)
 
-        _nestprob = remake(nest_prob, p = nestprob_p)
+        _nestprob = remake(nest_prob, p = nodual_value(nestprob_p))
         nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
