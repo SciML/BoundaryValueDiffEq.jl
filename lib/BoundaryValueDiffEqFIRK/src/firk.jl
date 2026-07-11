@@ -73,6 +73,33 @@ end
 
 Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
+# Julia 1.12+ exposes Enzyme/Mooncake failures in expanded FIRK collocation AD.
+const FIRK_EXPANDED_AD_FALLBACK = VERSION >= v"1.12.0-DEV.0"
+
+@inline __firk_expanded_diffmode(ad) = ad
+@inline function __firk_expanded_diffmode(ad::AutoEnzyme)
+    return FIRK_EXPANDED_AD_FALLBACK ? AutoForwardDiff() : ad
+end
+@inline function __firk_expanded_diffmode(ad::AutoMooncake)
+    return FIRK_EXPANDED_AD_FALLBACK ? AutoForwardDiff() : ad
+end
+@inline function __firk_expanded_diffmode(ad::AutoSparse)
+    dense_ad = __firk_expanded_diffmode(ADTypes.dense_ad(ad))
+    dense_ad === ADTypes.dense_ad(ad) && return ad
+    return AutoSparse(
+        dense_ad;
+        sparsity_detector = ADTypes.sparsity_detector(ad),
+        coloring_algorithm = ADTypes.coloring_algorithm(ad)
+    )
+end
+
+function __firk_expanded_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm)
+    nonbc_diffmode = __firk_expanded_diffmode(jac_alg.nonbc_diffmode)
+    diffmode = __firk_expanded_diffmode(jac_alg.diffmode)
+    (nonbc_diffmode === jac_alg.nonbc_diffmode && diffmode === jac_alg.diffmode) && return jac_alg
+    return BVPJacobianAlgorithm(jac_alg.bc_diffmode, nonbc_diffmode, diffmode)
+end
+
 function extend_y(y, N::Int, stage::Int)
     y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)
     for (i, ctr) in enumerate(2:(stage + 1):((N - 1) * (stage + 1) + 1))
@@ -294,6 +321,7 @@ function init_expanded(
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    @set! alg.jac_alg = __firk_expanded_jacobian_algorithm(alg.jac_alg)
     iip = isinplace(prob)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)

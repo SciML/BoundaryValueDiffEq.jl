@@ -201,17 +201,39 @@ function get_S_coeffs(h, yᵢ, yᵢ₊₁, dyᵢ, dyᵢ₊₁, ymid, dymid)
 end
 
 # S forward Interpolation
+function __firk_matvec!(y, A, b)
+    length(y) == size(A, 1) ||
+        throw(DimensionMismatch("y has length $(length(y)), but A has $(size(A, 1)) rows"))
+    length(b) == size(A, 2) ||
+        throw(DimensionMismatch("b has length $(length(b)), but A has $(size(A, 2)) columns"))
+
+    T = typeof(zero(eltype(A)) * zero(eltype(b)))
+    for (y_index, row) in zip(eachindex(y), axes(A, 1))
+        acc = zero(T)
+        for (b_index, col) in zip(eachindex(b), axes(A, 2))
+            @inbounds acc += A[row, col] * b[b_index]
+        end
+        @inbounds y[y_index] = acc
+    end
+    return y
+end
+
+function __firk_matvec(A, b)
+    y = similar(b, typeof(zero(eltype(A)) * zero(eltype(b))), size(A, 1))
+    return __firk_matvec!(y, A, b)
+end
+
 function S_interpolate!(y::AbstractArray, t, coeffs)
     ts = [t^(i - 1) for i in axes(coeffs, 2)]
-    return y .= coeffs * ts
+    return __firk_matvec!(y, coeffs, ts)
 end
 
 function dS_interpolate!(dy::AbstractArray, t, S_coeffs)
-    ts = zeros(size(S_coeffs, 2))
+    ts = zeros(promote_type(eltype(S_coeffs), typeof(t)), size(S_coeffs, 2))
     for i in 2:size(S_coeffs, 2)
         ts[i] = (i - 1) * t^(i - 2)
     end
-    return dy .= S_coeffs * ts
+    return __firk_matvec!(dy, S_coeffs, ts)
 end
 
 """
@@ -577,7 +599,7 @@ end
 end
 
 function get_q_coeffs(A, ki, h)
-    coeffs = A * ki
+    coeffs = __firk_matvec(A, ki)
     for i in axes(coeffs, 1)
         coeffs[i] = coeffs[i] / (h^(i - 1))
     end

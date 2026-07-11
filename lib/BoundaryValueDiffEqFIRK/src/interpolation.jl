@@ -386,7 +386,7 @@ function (s::EvalSol{C})(tval::Number) where {C <: FIRKCacheExpand}
 end
 
 function get_q_coeffs_interp(A, ki, h)
-    coeffs = A * ki
+    coeffs = __firk_matvec(A, ki)
     for i in axes(coeffs, 1)
         coeffs[i] = coeffs[i] / (h^(i - 1))
     end
