@@ -38,7 +38,11 @@ end
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
         __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
-        __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], tmpy)
+        # The RHS expects the stacked [states; controls] node vector, so the
+        # algebraic rows must be evaluated at the full right endpoint.
+        __apply_algebraic_constraint!(
+            residᵢ, algebraic_indices, f!, vcat(yᵢ₊₁, uᵢ₊₁), p, mesh[i + 1], tmpy
+        )
     end
 end
 
