@@ -96,17 +96,34 @@ end
 Compute `z = alpha * A * b + beta * z`, using a fallback loop for array types where
 `mul!` is not appropriate.
 """
-function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
+function __maybe_matmul!(
+        z::AbstractArray{T}, A, b, α = one(T), β = zero(T)
+    ) where {T <: Union{AbstractFloat, Complex{<:AbstractFloat}}}
     return mul!(z, A, b, α, β)
 end
 
-# NOTE: We can implement it as mul! as above but then we pay the cost of moving
-#       `w` to the GPU too many times. Instead if we iterate of w and w′ we save
-#       that cost. Our main cost is anyways going to be due to a large `u0` and
-#       we are going to use GPUs for that
-@views function __maybe_matmul!(z, A, b, α = eltype(z)(1), β = eltype(z)(0))
-    @simd ivdep for j in eachindex(b)
-        @inbounds @. z = α * A[:, j] * b[j] + β * z
+# Fallback for non-float element types (sparsity-detection tracers, duals, ...):
+# `mul!` routes through `LinearAlgebra.generic_matvecmul!`, which branches on
+# `iszero` of the elements — undefined for global sparsity tracers. Iterate the
+# columns instead, with no value-dependent branches. `β === false` keeps `mul!`'s
+# strong-zero semantics (write-only, never reads possibly-undef `z`); otherwise
+# `β` scales `z` exactly once before accumulation (the call sites pass `β = one(T)`).
+# The column slice is bound before the broadcast on purpose: inside `@.` the indexing
+# expression would itself be broadcast, which yields the wrong shape.
+@views function __maybe_matmul!(z::AbstractArray, A, b, α = true, β = false)
+    if β === false
+        isempty(b) && return fill!(z, zero(eltype(z)))
+        j₀ = firstindex(b)
+        Aⱼ, bⱼ = A[:, j₀], b[j₀]
+        @. z = α * Aⱼ * bⱼ
+        cols = (j₀ + 1):lastindex(b)
+    else
+        @. z = β * z
+        cols = eachindex(b)
+    end
+    for j in cols
+        Aⱼ, bⱼ = A[:, j], b[j]
+        @. z += α * Aⱼ * bⱼ
     end
     return z
 end

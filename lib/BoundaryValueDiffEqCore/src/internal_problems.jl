@@ -125,14 +125,26 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        # Hand OptimizationBase only the full assembled `loss`: it then derives the
+        # constraint-Jacobian prototype and the jacobian values from one DI
+        # preparation, so their nonzero patterns agree by construction. Forwarding
+        # the nlsolve-oriented `cons_j`/`sparse(jac_prototype)` pair here is unsound:
+        # that prototype is materialized numerically at the initial guess (entries
+        # that vanish there — e.g. the control columns of an optimal-control
+        # problem — are dropped), while the refill follows the DI-detected pattern
+        # and inserts the missing entries, breaking the frozen-nnz contract of the
+        # interior-point backends.
+        # The explicit `SecondOrder` core keeps optimizers that need Hessians (e.g.
+        # Ipopt) from warning and wrapping the first-order ADtype themselves.
+        dense_ad = get_dense_ad(alg.jac_alg.nonbc_diffmode)
         optf = OptimizationFunction{true}(
             cost_fun,
-            __optimization_second_order_ad(
-                alg.jac_alg.nonbc_diffmode, alg.jac_alg.diffmode
-            ),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            AutoSparse(
+                SecondOrder(dense_ad, dense_ad),
+                sparsity_detector = __optimization_sparsity_detector(alg.jac_alg.nonbc_diffmode),
+                coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.nonbc_diffmode)
+            );
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -156,12 +168,18 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        # See the StandardBVProblem method above for why `cons_j`/`cons_jac_prototype`
+        # must not be forwarded on the optimization path, and why the AD core is
+        # `SecondOrder`.
+        dense_ad = get_dense_ad(alg.jac_alg.diffmode)
         optf = OptimizationFunction{true}(
             cost_fun,
-            __optimization_second_order_ad(alg.jac_alg.diffmode),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            AutoSparse(
+                SecondOrder(dense_ad, dense_ad),
+                sparsity_detector = __optimization_sparsity_detector(alg.jac_alg.diffmode),
+                coloring_algorithm = __default_coloring_algorithm(alg.jac_alg.diffmode)
+            );
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
