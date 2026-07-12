@@ -7,14 +7,16 @@ using BoundaryValueDiffEqMIRKN
 using BoundaryValueDiffEqShooting
 using Test
 
+const REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+
 const PUBLIC_API_SOURCE_DIRS = Dict(
-    BoundaryValueDiffEq => ["src"],
-    BoundaryValueDiffEqAscher => ["lib/BoundaryValueDiffEqAscher/src"],
-    BoundaryValueDiffEqCore => ["lib/BoundaryValueDiffEqCore/src"],
-    BoundaryValueDiffEqFIRK => ["lib/BoundaryValueDiffEqFIRK/src"],
-    BoundaryValueDiffEqMIRK => ["lib/BoundaryValueDiffEqMIRK/src"],
-    BoundaryValueDiffEqMIRKN => ["lib/BoundaryValueDiffEqMIRKN/src"],
-    BoundaryValueDiffEqShooting => ["lib/BoundaryValueDiffEqShooting/src"],
+    BoundaryValueDiffEq => [joinpath(REPO_ROOT, "src")],
+    BoundaryValueDiffEqAscher => [joinpath(REPO_ROOT, "lib", "BoundaryValueDiffEqAscher", "src")],
+    BoundaryValueDiffEqCore => [joinpath(REPO_ROOT, "lib", "BoundaryValueDiffEqCore", "src")],
+    BoundaryValueDiffEqFIRK => [joinpath(REPO_ROOT, "lib", "BoundaryValueDiffEqFIRK", "src")],
+    BoundaryValueDiffEqMIRK => [joinpath(REPO_ROOT, "lib", "BoundaryValueDiffEqMIRK", "src")],
+    BoundaryValueDiffEqMIRKN => [joinpath(REPO_ROOT, "lib", "BoundaryValueDiffEqMIRKN", "src")],
+    BoundaryValueDiffEqShooting => [joinpath(REPO_ROOT, "lib", "BoundaryValueDiffEqShooting", "src")],
 )
 
 function strip_comment(line)
@@ -93,7 +95,7 @@ end
 
 function docs_entries()
     entries = Set{String}()
-    docs_dir = joinpath("docs", "src")
+    docs_dir = joinpath(REPO_ROOT, "docs", "src")
     for (dir, _, files) in walkdir(docs_dir)
         for file in files
             endswith(file, ".md") || continue
