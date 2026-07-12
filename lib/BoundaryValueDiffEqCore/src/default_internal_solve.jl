@@ -6,7 +6,7 @@
 # resolved
 function __FastShortcutBVPCompatibleNLLSPolyalg(
         ::Type{T} = Float64; concrete_jac = nothing,
-        linsolve = nothing, autodiff = nothing, kwargs...
+        linsolve = nothing, autodiff = AutoFiniteDiff(), kwargs...
     ) where {T}
     if T <: Complex
         algs = (
@@ -30,7 +30,7 @@ end
 
 function __FastShortcutBVPCompatibleNonlinearPolyalg(
         ::Type{T} = Float64; concrete_jac = nothing,
-        linsolve = nothing, autodiff = nothing
+        linsolve = nothing, autodiff = AutoFiniteDiff()
     ) where {T}
     if T <: Complex
         algs = (NewtonRaphson(; concrete_jac, linsolve, autodiff),)
