@@ -17,11 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - {user: SciML, repo: ModelingToolkit.jl, group: All}
+          - {user: SciML, repo: ModelingToolkit.jl, group: InterfaceII, subdir: lib/ModelingToolkitBase, upstream_subdirs: "lib/BoundaryValueDiffEqCore,lib/BoundaryValueDiffEqMIRK,lib/BoundaryValueDiffEqAscher"}
     uses: "SciML/.github/.github/workflows/downstream.yml@v1"
     with:
       owner: "${{ matrix.package.user }}"
       repo: "${{ matrix.package.repo }}"
+      subdir: "${{ matrix.package.subdir }}"
+      upstream-subdirs: "${{ matrix.package.upstream_subdirs }}"
       group: "${{ matrix.package.group }}"
       julia-version: "1.11"
     secrets: "inherit"
