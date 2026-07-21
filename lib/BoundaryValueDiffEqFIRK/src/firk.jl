@@ -1522,10 +1522,19 @@ end
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
+    resids = view(residual, 2:lastindex(residual))
     Φ!(resids, cache, y_, u, trait, constraint)
-    recursive_flatten!(resid, resids)
+    __firk_flatten_residuals!(resid, resids)
     return nothing
+end
+
+@views function __firk_flatten_residuals!(y::AbstractVector, x)
+    i = 0
+    for xᵢ in x
+        copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
+        i += length(xᵢ)
+    end
+    return y
 end
 
 @views function __firk_loss_collocation(u, p, y, mesh, residual, cache, trait)
