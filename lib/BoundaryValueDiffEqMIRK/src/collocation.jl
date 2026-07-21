@@ -31,13 +31,13 @@ end
         for r in 1:stage
             @. tmpy = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
             @. tmpu = (1 - v[r]) * uᵢ + v[r] * uᵢ₊₁
-            __maybe_matmul!(tmpy, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            __mirk_matmul!(tmpy, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             f!(K[:, r], vcat(tmpy, tmpu), p, mesh[i] + c[r] * h)
         end
 
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        __mirk_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 end
 
@@ -59,7 +59,7 @@ end
 
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
-            __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            __mirk_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             t = mesh[i] + c[r] * h
             f!(K[:, r], tmp, p, t)
             __add_singular_term!(K[:, r], singular_term, tmp, t)
@@ -67,7 +67,7 @@ end
 
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        __mirk_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 end
 
@@ -89,7 +89,7 @@ end
 
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
-            __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            __mirk_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             t = mesh[i] + c[r] * h
             f!(K[:, r], tmp, p, t)
             __add_singular_term!(K[:, r], singular_term, tmp, t)
@@ -97,7 +97,7 @@ end
 
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        __mirk_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 end
 
@@ -126,7 +126,7 @@ end
 
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
-            __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            __mirk_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             t = mesh[i] + c[r] * h
             K[:, r] .= f(tmp, p, t)
             __add_singular_term!(K[:, r], singular_term, tmp, t)
@@ -134,7 +134,7 @@ end
 
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        __mirk_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 
     return residuals
@@ -158,7 +158,7 @@ end
 
         for r in 1:stage
             @. tmp = (1 - v[r]) * yᵢ + v[r] * yᵢ₊₁
-            __maybe_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
+            __mirk_matmul!(tmp, K[:, 1:(r - 1)], x[r, 1:(r - 1)], h, T(1))
             t = mesh[i] + c[r] * h
             K[:, r] .= f(tmp, p, t)
             __add_singular_term!(K[:, r], singular_term, tmp, t)
@@ -166,7 +166,7 @@ end
 
         # Update residual
         @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
+        __mirk_matmul!(residᵢ, K[:, 1:stage], b[1:stage], -h, T(1))
     end
 
     return residuals
