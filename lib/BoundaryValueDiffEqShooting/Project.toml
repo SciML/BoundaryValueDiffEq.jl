@@ -23,9 +23,6 @@ SciMLLogging = "a6db7da4-7206-11f0-1eab-35f2a5dbe1d1"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
-[sources.BoundaryValueDiffEqCore]
-path = "../BoundaryValueDiffEqCore"
-
 [compat]
 SafeTestsets = "0.1.0"
 ADTypes = "1.14"
@@ -50,7 +47,7 @@ RecursiveArrayTools = "3.27.0, 4"
 Reexport = "1.2"
 SciMLBase = "3.30"
 SciMLLogging = "1.10.1, 2"
-SciMLTesting = "2.1"
+SciMLTesting = "2.4"
 Setfield = "1.1.1"
 SparseArrays = "1.10"
 StaticArrays = "1.9.8"

@@ -15,14 +15,6 @@ RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[sources]
-BoundaryValueDiffEqAscher = {path = "../../lib/BoundaryValueDiffEqAscher"}
-BoundaryValueDiffEqCore = {path = "../../lib/BoundaryValueDiffEqCore"}
-BoundaryValueDiffEqFIRK = {path = "../../lib/BoundaryValueDiffEqFIRK"}
-BoundaryValueDiffEqMIRK = {path = "../../lib/BoundaryValueDiffEqMIRK"}
-BoundaryValueDiffEqMIRKN = {path = "../../lib/BoundaryValueDiffEqMIRKN"}
-BoundaryValueDiffEqShooting = {path = "../../lib/BoundaryValueDiffEqShooting"}
-
 [compat]
 BoundaryValueDiffEq = "5"
 BoundaryValueDiffEqAscher = "1"

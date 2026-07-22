@@ -1,12 +1,30 @@
 """
     AbstractBoundaryValueDiffEqCache
 
-Abstract Type for all BoundaryValueDiffEqCore Caches.
+Developer-facing abstract type for BoundaryValueDiffEq solver caches.
 
-### Interface Functions
+A solver package's `SciMLBase.__init` implementation returns a concrete subtype of this type.
+The cache must expose a `prob` field so the default `SciMLBase.isinplace(cache)` method can
+delegate to the boundary value problem, and the solver package must implement
+`SciMLBase.solve!(cache)`. This is a versioned interface for solver implementations, not an
+end-user extension point.
 
-  - `SciMLBase.isinplace(cache)`: whether or not the solver is inplace.
-  - `Base.eltype(cache)`: get the element type of the cache.
+# Interface
+
+- `SciMLBase.isinplace(cache)`: determines whether the cache's problem is in-place.
+- `Base.eltype(cache)`: returns the cache element type when the solver needs one.
+
+# Examples
+
+```julia
+using BoundaryValueDiffEqCore, SciMLBase
+
+struct MyBVPCache{P} <: AbstractBoundaryValueDiffEqCache
+    prob::P
+end
+
+SciMLBase.solve!(cache::MyBVPCache) = nothing
+```
 """
 abstract type AbstractBoundaryValueDiffEqCache end
 
