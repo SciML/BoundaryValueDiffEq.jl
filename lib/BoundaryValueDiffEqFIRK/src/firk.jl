@@ -73,6 +73,33 @@ end
 
 Base.eltype(::FIRKCacheExpand{iip, T}) where {iip, T} = T
 
+# Julia 1.12+ exposes Enzyme/Mooncake failures in expanded FIRK collocation AD.
+const FIRK_EXPANDED_AD_FALLBACK = VERSION >= v"1.12.0-DEV.0"
+
+@inline __firk_expanded_diffmode(ad) = ad
+@inline function __firk_expanded_diffmode(ad::AutoEnzyme)
+    return FIRK_EXPANDED_AD_FALLBACK ? AutoForwardDiff() : ad
+end
+@inline function __firk_expanded_diffmode(ad::AutoMooncake)
+    return FIRK_EXPANDED_AD_FALLBACK ? AutoForwardDiff() : ad
+end
+@inline function __firk_expanded_diffmode(ad::AutoSparse)
+    dense_ad = __firk_expanded_diffmode(ADTypes.dense_ad(ad))
+    dense_ad === ADTypes.dense_ad(ad) && return ad
+    return AutoSparse(
+        dense_ad;
+        sparsity_detector = ADTypes.sparsity_detector(ad),
+        coloring_algorithm = ADTypes.coloring_algorithm(ad)
+    )
+end
+
+function __firk_expanded_jacobian_algorithm(jac_alg::BVPJacobianAlgorithm)
+    nonbc_diffmode = __firk_expanded_diffmode(jac_alg.nonbc_diffmode)
+    diffmode = __firk_expanded_diffmode(jac_alg.diffmode)
+    (nonbc_diffmode === jac_alg.nonbc_diffmode && diffmode === jac_alg.diffmode) && return jac_alg
+    return BVPJacobianAlgorithm(jac_alg.bc_diffmode, nonbc_diffmode, diffmode)
+end
+
 function extend_y(y, N::Int, stage::Int)
     y_extended = similar(y.u, (N - 1) * (stage + 1) + 1)
     for (i, ctr) in enumerate(2:(stage + 1):((N - 1) * (stage + 1) + 1))
@@ -294,6 +321,7 @@ function init_expanded(
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    @set! alg.jac_alg = __firk_expanded_jacobian_algorithm(alg.jac_alg)
     iip = isinplace(prob)
     @assert (iip || isnothing(alg.optimize)) "Out-of-place constraints don't allow optimization solvers "
     if adaptive && isa(alg, FIRKNoAdaptivity)
@@ -1393,6 +1421,15 @@ function __construct_problem(
     )
 end
 
+@inline function __firk_eval_sol!(eval_sol::EvalSol, y_, cache)
+    u = __restructure_sol(y_, cache.in_size)
+    if eltype(first(u)) <: eltype(first(eval_sol.u))
+        eval_sol.u[1:end] .= u
+        return eval_sol
+    end
+    return EvalSol(u, eval_sol.t, cache)
+end
+
 @views function __firk_loss!(
         resid, u, p, y, pt::StandardBVProblem, bc!::BC, residual, mesh,
         cache, eval_sol, trait::DiffCacheNeeded, constraint
@@ -1400,8 +1437,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
-    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
+    eval_bc_residual!(resids[1], pt, bc!, __firk_eval_sol!(eval_sol, y_, cache), p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -1413,8 +1449,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [r for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
-    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
+    eval_bc_residual!(resids[1], pt, bc!, __firk_eval_sol!(eval_sol, y_, cache), p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
 end
@@ -1473,8 +1508,7 @@ end
         u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol, trait
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    eval_sol.u[1:end] .= y_
-    resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
+    resid_bc = eval_bc_residual(pt, bc, __firk_eval_sol!(eval_sol, y_, cache), p, mesh)
     resid_co = Φ(cache, y_, u, trait)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
@@ -1522,7 +1556,10 @@ end
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
+    resids = Vector{eltype(residual)}(undef, length(residual) - 1)
+    for i in eachindex(resids)
+        resids[i] = residual[i + 1]
+    end
     Φ!(resids, cache, y_, u, trait, constraint)
     recursive_flatten!(resid, resids)
     return nothing
