@@ -1,5 +1,9 @@
 # Internal Abstract Types
 
+The interfaces on this page are versioned developer APIs for BoundaryValueDiffEq solver
+implementations. They are not end-user extension points: applications should use a documented
+concrete solver algorithm instead of depending on these names.
+
 ## Solvers
 
 ```@docs

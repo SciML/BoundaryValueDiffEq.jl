@@ -1,6 +1,22 @@
 using BoundaryValueDiffEqCore
 using Test
 
+module ExternalBVPAlgorithmExtension
+    using BoundaryValueDiffEqCore
+
+    struct ExternalBVPAlgorithm <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm end
+    struct ExternalBVPCache{P} <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqCache
+        prob::P
+    end
+end
+
+@testset "AbstractBoundaryValueDiffEqAlgorithm extension interface" begin
+    @test ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm <:
+    BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm
+    @test ExternalBVPAlgorithmExtension.ExternalBVPCache <:
+    BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqCache
+end
+
 @testset "__extract_lcons_ucons length" begin
     # Regression test: the function must return vectors matching the actual
     # constraint vector length (= length(resid_prototype)), not a reconstruction
