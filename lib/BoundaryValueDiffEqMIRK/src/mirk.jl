@@ -26,9 +26,11 @@
     # concrete `Vector{T}`, not the `Base.ReshapedArray` that
     # `vec(::VectorOfArray)` returns under RAT v4).
     residual
-    # The following 2 caches are never resized
+    # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
+    # One scratch cache per mesh interval, so backend work items do not alias
+    collocation_cache
     errors
     new_stages
     resid_size
@@ -76,6 +78,7 @@ function SciMLBase.__init(
 
     fᵢ_cache = __alloc(zero(u0))
     fᵢ₂_cache = vec(zero(u0))
+    collocation_cache = [__alloc(zero(u0)) for _ in 1:Nig]
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
@@ -253,8 +256,9 @@ function SciMLBase.__init(
     return MIRKCache{iip, T, use_both, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, N, size(u0), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
-        y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
-        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
+        y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, errors,
+        new_stages, resid₁_size, prob.singular_term, nlsolve_kwargs, optimize_kwargs,
+        (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
     )
 end
 
@@ -272,6 +276,7 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     __resize!(cache.y₀.u, Nₙ, cache.M)
     resize!(cache.y₀_flat, Nₙ * cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
+    __resize!(cache.collocation_cache, Nₙ - 1, cache.M)
     __resize!(cache.errors.u, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __resize!(cache.new_stages.u, Nₙ - 1, cache.M)
     return cache

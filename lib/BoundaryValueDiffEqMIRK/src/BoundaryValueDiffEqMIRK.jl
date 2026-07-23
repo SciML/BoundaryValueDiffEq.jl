@@ -34,6 +34,7 @@ using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart
     finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
+using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
     recursivefill!
@@ -180,6 +181,7 @@ include("sparse_jacobians.jl")
 end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I
+export CPU
 export BVPJacobianAlgorithm
 export maxsol, minsol, integral
 
