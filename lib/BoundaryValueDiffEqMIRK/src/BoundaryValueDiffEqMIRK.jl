@@ -42,7 +42,7 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, BVPFunction, BVProblem,
     __solve, isinplace, remake, solve
 using Setfield: @set!
 using Reexport: @reexport
-using PreallocationTools: PreallocationTools, get_tmp
+using PreallocationTools: PreallocationTools, get_tmp, LazyBufferCache
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 using SparseArrays: sparse

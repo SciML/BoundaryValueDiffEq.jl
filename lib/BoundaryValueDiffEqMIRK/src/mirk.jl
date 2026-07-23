@@ -37,6 +37,11 @@
     optimize_kwargs
     kwargs
     verbose
+    # Element-type-adaptive buffer for the boundary-condition EvalSol. The residual can
+    # be differentiated directly (e.g. a line-search directional derivative), so the
+    # solution handed to the BCs may carry ForwardDiff.Duals; the lazy cache allocates a
+    # matching-eltype buffer on demand and reuses it across calls.
+    eval_sol_cache
 end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
@@ -254,7 +259,8 @@ function SciMLBase.__init(
         alg_order(alg), stage, N, size(u0), f, bc, prob_, prob.problem_type, prob.p, alg,
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
         y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, errors, new_stages, resid₁_size, prob.singular_term
-        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
+        , nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec,
+        LazyBufferCache()
     )
 end
 
@@ -469,7 +475,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -481,7 +487,7 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait, constraint)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache)
     eval_bc_residual!(residual[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, residual)
     return nothing
@@ -541,7 +547,7 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, trait)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache)
     resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
