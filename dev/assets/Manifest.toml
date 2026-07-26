@@ -197,7 +197,7 @@ version = "0.1.10"
 
 [[deps.BoundaryValueDiffEq]]
 deps = ["ADTypes", "BoundaryValueDiffEqAscher", "BoundaryValueDiffEqCore", "BoundaryValueDiffEqFIRK", "BoundaryValueDiffEqMIRK", "BoundaryValueDiffEqMIRKN", "BoundaryValueDiffEqShooting", "DiffEqBase", "FastClosures", "ForwardDiff", "LinearAlgebra", "OrdinaryDiffEqTsit5", "Reexport", "SciMLBase", "SciMLLogging"]
-path = "/home/runner/work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl"
+path = "/home/runner/_work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl"
 uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
 version = "5.23.2"
 
@@ -227,9 +227,9 @@ version = "1.17.2"
 
 [[deps.BoundaryValueDiffEqMIRK]]
 deps = ["ADTypes", "ArrayInterface", "BandedMatrices", "BoundaryValueDiffEqCore", "ConcreteStructs", "DifferentiationInterface", "FastAlmostBandedMatrices", "FastClosures", "ForwardDiff", "LinearAlgebra", "PreallocationTools", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLStructures", "Setfield", "SparseArrays"]
-git-tree-sha1 = "a91b40aff759261a46249e7ad745cf8ab901c255"
+git-tree-sha1 = "cda60aa1a63eea6ca15cd69d20f0da30681320fc"
 uuid = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
-version = "1.17.2"
+version = "1.17.3"
 
 [[deps.BoundaryValueDiffEqMIRKN]]
 deps = ["ADTypes", "BoundaryValueDiffEqCore", "ConcreteStructs", "DifferentiationInterface", "FastClosures", "ForwardDiff", "LinearAlgebra", "PreallocationTools", "Preferences", "RecursiveArrayTools", "Reexport", "SciMLBase", "Setfield"]
@@ -906,9 +906,9 @@ uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "1.0.0"
 
 [[deps.IntegerMathUtils]]
-git-tree-sha1 = "4c1acff2dc6b6967e7e750633c50bc3b8d83e617"
+git-tree-sha1 = "c72458f1962faeb003bf23cbdb75164fe6280906"
 uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.Integrals]]
 deps = ["ArrayInterface", "CommonSolve", "HCubature", "LinearAlgebra", "MonteCarloIntegration", "QuadGK", "Random", "Reexport", "SciMLBase", "SciMLLogging"]
@@ -1100,9 +1100,9 @@ version = "1.3.0"
 
 [[deps.LazyArrays]]
 deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra", "MacroTools", "SparseArrays"]
-git-tree-sha1 = "405e938379dbbdb24c0d93bd5b9600ecce03d11c"
+git-tree-sha1 = "20a6b4ba3cce8ff4046366eb848e131ef6b11d81"
 uuid = "5078a376-72f3-5289-bfd5-ec5146d43c02"
-version = "2.9.10"
+version = "2.10.1"
 
     [deps.LazyArrays.extensions]
     LazyArraysBandedMatricesExt = "BandedMatrices"
@@ -1956,9 +1956,9 @@ version = "1.3.1"
 
 [[deps.RespecializeParams]]
 deps = ["FunctionWrappersWrappers"]
-git-tree-sha1 = "c5181af1dbc89cd14398a365e671b55d3507c088"
+git-tree-sha1 = "b0e50eb973aacb54dfb47e04be2cec6987401679"
 uuid = "9fe22ead-9e00-4db2-8b46-706a60d40f5e"
-version = "1.0.0"
+version = "1.1.0"
 
 [[deps.Rmath]]
 deps = ["Random", "Rmath_jll"]
@@ -2012,9 +2012,9 @@ version = "2025.9.18+0"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FindFirstFunctions", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "PreallocationTools", "PrecompileTools", "Preferences", "Printf", "Random", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLLogging", "SciMLOperators", "SciMLPublic", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
-git-tree-sha1 = "1f700eb54e35b27a021943148780e0c13e1127b6"
+git-tree-sha1 = "32e737a78dae3baa8c469c35f1aba29fe058db35"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "3.37.0"
+version = "3.39.1"
 
     [deps.SciMLBase.extensions]
     SciMLBaseChainRulesCoreExt = "ChainRulesCore"
