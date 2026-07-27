@@ -72,6 +72,14 @@ using Test
         @test norm(sol.resid, Inf) < 1.0e-8
     end
 
+    serial_sol = solve(
+        bvp2, MultipleShooting(10, Tsit5()); abstol = 1.0e-8, reltol = 1.0e-8,
+        odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000,
+        ensemblealg = EnsembleSerial()
+    )
+    @test SciMLBase.successful_retcode(serial_sol)
+    @test norm(serial_sol.resid, Inf) < 1.0e-8
+
     # Inplace
     bc2a!(resid, ua, p) = (resid[1] = ua[1])
     bc2b!(resid, ub, p) = (resid[1] = ub[1] - 1)
