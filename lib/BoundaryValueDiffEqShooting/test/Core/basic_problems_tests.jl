@@ -78,6 +78,74 @@ import SciMLBase
         @test norm(sol.resid, Inf) < 1.0e-8
     end
 
+    serial_sol = solve(
+        bvp2, MultipleShooting(10, Tsit5()); abstol = 1.0e-8, reltol = 1.0e-8,
+        odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000,
+        ensemblealg = EnsembleSerial()
+    )
+    @test SciMLBase.successful_retcode(serial_sol)
+    @test norm(serial_sol.resid, Inf) < 1.0e-8
+
+    # The internal ODE caches are primal-typed, but AD evaluations can hand
+    # tagged states to `solve_internal_odes!`; a matching-typed cache has to be
+    # used for `reinit!`/`solve!` to succeed.
+    @testset "tagged-state ODE caches" begin
+        using ForwardDiff
+        using PreallocationTools: GeneralLazyBufferCache
+        using BoundaryValueDiffEqShooting: __multiple_shooting_init_odecache,
+            __multiple_shooting_matching_odecache,
+            __multiple_shooting_solve_internal_odes!
+
+        nshoots = 4
+        nodes = collect(range(tspan..., length = nshoots + 1))
+        N = length(u0)
+        u_true(t) = [sin(t), cos(t)] # solves f1 with u(0) = u0
+
+        T_dual = ForwardDiff.Dual{Nothing, Float64, 2}
+        us = T_dual.(vcat(u_true.(nodes)...))
+        resid_nodes = zeros(T_dual, nshoots * N)
+
+        for ensemblealg in (EnsembleSerial(), EnsembleThreads())
+            odecache = __multiple_shooting_init_odecache(
+                ensemblealg, bvp2, Tsit5(), u0, nshoots;
+                abstol = 1.0e-10, reltol = 1.0e-10, save_end = true
+            )
+            odecache_for_states = GeneralLazyBufferCache() do us
+                __multiple_shooting_init_odecache(
+                    ensemblealg, bvp2, Tsit5(),
+                    copy(reshape(@view(us[1:N]), size(u0))), nshoots;
+                    abstol = 1.0e-10, reltol = 1.0e-10, save_end = true
+                )
+            end
+
+            matched = __multiple_shooting_matching_odecache(
+                odecache, odecache_for_states, us
+            )
+            @test matched !== odecache
+            fill!(resid_nodes, zero(T_dual))
+            __multiple_shooting_solve_internal_odes!(
+                resid_nodes, us, nshoots, matched, nodes, (N,), N, ensemblealg, tspan
+            )
+            @test norm(ForwardDiff.value.(resid_nodes), Inf) < 1.0e-8
+            # the lazily built cache is reused; primal states keep the primal cache
+            @test __multiple_shooting_matching_odecache(
+                odecache, odecache_for_states, us
+            ) === matched
+            @test __multiple_shooting_matching_odecache(
+                odecache, odecache_for_states, similar(us, Float64)
+            ) === odecache
+        end
+
+        # without the matching-typed cache, `reinit!` of tagged states into the
+        # primal cache errors on conversion (the failure this guards against)
+        odecache = __multiple_shooting_init_odecache(
+            EnsembleSerial(), bvp2, Tsit5(), u0, nshoots; save_end = true
+        )
+        @test_throws MethodError __multiple_shooting_solve_internal_odes!(
+            resid_nodes, us, nshoots, odecache, nodes, (N,), N, EnsembleSerial(), tspan
+        )
+    end
+
     # Inplace
     bc2a!(resid, ua, p) = (resid[1] = ua[1])
     bc2b!(resid, ub, p) = (resid[1] = ub[1] - 1)

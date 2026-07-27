@@ -45,6 +45,19 @@ function SciMLBase.__solve(
 
     internal_ode_kwargs = (; kwargs..., odesolve_kwargs..., save_end = true)
 
+    # This gets all the nshoots except the final SingleShooting case
+    all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
+    u_at_nodes, nodes = similar(u0, 0), typeof(first(tspan))[]
+
+    # Lazily builds an ODE integrator whose state element type matches `us`, for
+    # AD evaluations that pass tagged states into the loss functions
+    odecache_for_states = GeneralLazyBufferCache(
+        @closure us -> __multiple_shooting_init_odecache(
+            ensemblealg, prob, alg.ode_alg,
+            copy(reshape(@view(us[1:N]), u0_size)), maximum(all_nshoots);
+            internal_ode_kwargs...
+        )
+    )
     solve_internal_odes! = @closure (
         resid_nodes,
         us,
@@ -53,12 +66,10 @@ function SciMLBase.__solve(
         nodes,
         odecache,
     ) -> __multiple_shooting_solve_internal_odes!(
-        resid_nodes, us, cur_nshoot, odecache, nodes, u0_size, N, ensemblealg, tspan
+        resid_nodes, us, cur_nshoot,
+        __multiple_shooting_matching_odecache(odecache, odecache_for_states, us),
+        nodes, u0_size, N, ensemblealg, tspan
     )
-
-    # This gets all the nshoots except the final SingleShooting case
-    all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
-    u_at_nodes, nodes = similar(u0, 0), typeof(first(tspan))[]
 
     ode_cache_loss_fn = __multiple_shooting_init_odecache(
         ensemblealg, prob, alg.ode_alg, u0, maximum(all_nshoots); internal_ode_kwargs...
@@ -360,6 +371,11 @@ function __multiple_shooting_init_jacobian_odecache(
     return __multiple_shooting_init_odecache(
         ensemblealg, prob, alg, xduals, nshoots; kwargs...
     )
+end
+
+function __multiple_shooting_matching_odecache(odecache, odecache_for_states, us)
+    cache = odecache isa Vector ? first(odecache) : odecache
+    return eltype(cache.u) === eltype(us) ? odecache : odecache_for_states[us]
 end
 
 # Not using `EnsembleProblem` since it is hard to initialize the cache and stuff
