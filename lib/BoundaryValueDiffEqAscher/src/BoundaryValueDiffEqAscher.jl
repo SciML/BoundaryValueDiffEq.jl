@@ -1,6 +1,6 @@
 module BoundaryValueDiffEqAscher
 
-using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using ADTypes: ADTypes, AutoSparse
 using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
 
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
@@ -20,14 +20,11 @@ using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: LinearAlgebra, I, norm, rank
-using Reexport: @reexport
 using SciMLBase: SciMLBase, BVProblem, ReturnCode, StandardBVProblem,
     TwoPointBVProblem, isinplace, solve
 using Setfield: @set!
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("utils.jl")
