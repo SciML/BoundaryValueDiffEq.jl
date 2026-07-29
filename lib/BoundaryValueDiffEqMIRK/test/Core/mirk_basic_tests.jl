@@ -643,7 +643,8 @@ end
         simplependulum!, bc!, [pi / 2, pi / 2], tspan,
         lcons = [-10.0, -10.0], ucons = [10.0, 10.0]
     )
-    @test_nowarn sol = solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
+    sol = @test_nowarn solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol)
 end
 
 # https://github.com/SciML/BoundaryValueDiffEq.jl/pull/473
@@ -668,7 +669,8 @@ end
     prob = BVProblem(
         simplependulum!, bc!, [pi / 2, pi / 2], tspan
     )
-    @test_nowarn solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
+    sol = @test_nowarn solve(prob, MIRK4(; optimize = IpoptOptimizer()), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol)
 end
 
 @testset "Test initial guess" begin
