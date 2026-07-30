@@ -1,6 +1,21 @@
 using BoundaryValueDiffEqAscher
 using Test
 
+@testset "Public API" begin
+    @test Set(names(BoundaryValueDiffEqAscher)) == Set(
+        (
+            :Ascher1,
+            :Ascher2,
+            :Ascher3,
+            :Ascher4,
+            :Ascher5,
+            :Ascher6,
+            :Ascher7,
+            :BoundaryValueDiffEqAscher,
+        )
+    )
+end
+
 # Standard test BVDAE problem from the URI M. ASCHER and RAYMOND J. SPITERI paper
 @testset "Test Ascher solver on example problem 1" begin
     using BoundaryValueDiffEqAscher, SciMLBase

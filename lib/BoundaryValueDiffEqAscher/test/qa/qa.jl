@@ -2,9 +2,6 @@ using SciMLTesting
 using BoundaryValueDiffEqAscher
 using Test
 
-const DOCS_SRC = normpath(joinpath(@__DIR__, "..", "..", "..", "..", "docs", "src"))
-include(joinpath(@__DIR__, "..", "..", "..", "..", "test", "qa", "reexports.jl"))
-
 run_qa(
     BoundaryValueDiffEqAscher;
     ei_kwargs = (;
@@ -14,10 +11,5 @@ run_qa(
         # ForwardDiff.Dual / ForwardDiff.jacobian! are ForwardDiff internals with
         # no public replacement.
         all_qualified_accesses_are_public = (; ignore = (:Dual, :jacobian!)),
-    ),
-    reexports_allow = ASCHER_REEXPORTS,
-    api_docs_kwargs = (;
-        docs_src = DOCS_SRC, ignore = ASCHER_REEXPORTS,
-        rendered_ignore = ASCHER_REEXPORTS,
     ),
 )
