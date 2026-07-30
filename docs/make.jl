@@ -5,7 +5,7 @@ using BoundaryValueDiffEqCore, BoundaryValueDiffEqMIRK, BoundaryValueDiffEqFIRK,
     BoundaryValueDiffEqMIRKN
 using BoundaryValueDiffEqShooting
 using BoundaryValueDiffEqAscher
-using SciMLBase, DiffEqBase
+using SciMLBase
 using BoundaryValueDiffEq
 using SimpleBoundaryValueDiffEq
 
@@ -27,12 +27,10 @@ makedocs(;
     modules = [
         BoundaryValueDiffEqCore, BoundaryValueDiffEqMIRK, BoundaryValueDiffEqFIRK,
         BoundaryValueDiffEqMIRKN, BoundaryValueDiffEqShooting, BoundaryValueDiffEqAscher,
-        SciMLBase, DiffEqBase, BoundaryValueDiffEq, SimpleBoundaryValueDiffEq,
+        BoundaryValueDiffEq,
     ],
     clean = true,
-    doctest = false,
     checkdocs = :exports,
-    warnonly = [:missing_docs, :cross_references],
     plugins = [bib, interlinks],
     format = Documenter.HTML(
         assets = ["assets/favicon.ico"],

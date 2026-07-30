@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase: BVProblem, solve
 using Test
 
 @testset "Default Solvers" begin

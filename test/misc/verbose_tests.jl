@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase: BVProblem, SecondOrderBVProblem, init, solve
 using Test
 
 @testset "Verbose field in caches" begin

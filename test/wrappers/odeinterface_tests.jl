@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 using Test
 
 using BoundaryValueDiffEq, LinearAlgebra, ODEInterface, Random, RecursiveArrayTools

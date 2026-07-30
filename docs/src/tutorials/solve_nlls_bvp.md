@@ -27,6 +27,7 @@ The test BVP has two state variables but three boundary conditions, which means 
 
 ```@example nlls_overdetermined
 using BoundaryValueDiffEq, Plots
+using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
@@ -80,6 +81,7 @@ y_4' &= 0
 
 ```@example nlls_underdetermined
 using BoundaryValueDiffEq, Plots
+using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = u[3]

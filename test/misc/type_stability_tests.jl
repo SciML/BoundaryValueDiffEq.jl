@@ -1,4 +1,6 @@
 using BoundaryValueDiffEq
+using ADTypes: AutoForwardDiff
+using SciMLBase: BVPFunction, BVProblem, SecondOrderBVProblem, TwoPointBVProblem, solve
 using Test
 
 @testset "Type Stability" begin

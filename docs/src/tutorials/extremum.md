@@ -13,6 +13,8 @@ where `lb=-4.8161991710010925` and `ub=5.0496477654230745`. So the states must c
 
 ```@example inequality
 using BoundaryValueDiffEq
+using ADTypes: AutoFiniteDiff, AutoSparse
+using SciMLBase: BVProblem, solve
 tspan = (0.0, pi / 2)
 function simplependulum!(du, u, p, t)
     θ = u[1]

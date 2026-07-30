@@ -21,6 +21,7 @@ Since this BVP would become difficult to solve when ``0<ε\ll 1``, we start the 
 
 ```@example continuation
 using BoundaryValueDiffEq, Plots
+using SciMLBase: BVProblem, solve
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -t / p * u[2] - pi^2 * cospi(t) - pi * t / p * sinpi(t)

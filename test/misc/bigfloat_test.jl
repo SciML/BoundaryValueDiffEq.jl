@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase: SciMLBase, BVPFunction, BVProblem, SecondOrderBVProblem, solve
 using Test
 
 @testset "BigFloat compatibility" begin

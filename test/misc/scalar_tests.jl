@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase: TwoPointBVProblem, solve
 using Test
 
 @testset "Scalar BVP tests" begin

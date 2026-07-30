@@ -19,6 +19,7 @@ Consider the linear two-point boundary value problem from [standard BVP test pro
 
 ```@example getting_started
 using BoundaryValueDiffEq
+using SciMLBase: BVProblem, SecondOrderBVProblem, TwoPointBVProblem, solve
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = u[1]

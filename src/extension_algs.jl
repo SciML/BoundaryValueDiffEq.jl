@@ -38,6 +38,7 @@ Fortran code for solving two-point boundary value problems. For detailed documen
 
 ```julia
 using BoundaryValueDiffEq, ODEInterface
+using SciMLBase: solve
 
 alg = BVPM2(max_num_subintervals = 5000, method_choice = 4)
 sol = solve(prob, alg)
@@ -107,6 +108,7 @@ For detailed documentation, see
 
 ```julia
 using BoundaryValueDiffEq, ODEInterface
+using SciMLBase: solve
 
 alg = BVPSOL(bvpclass = 1, sol_method = 0)
 sol = solve(prob, alg)
@@ -179,6 +181,7 @@ the linear and nonlinear algebraic equation solvers.
 
 ```julia
 using BoundaryValueDiffEq, ODEInterface
+using SciMLBase: solve
 
 alg = COLNEW(collocationpts = 7, max_num_subintervals = 5000)
 sol = solve(prob, alg)

@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase: BVProblem, TwoPointBVProblem, solve
 using Test
 
 @testset "Mesh redistribution in adaptivity" begin

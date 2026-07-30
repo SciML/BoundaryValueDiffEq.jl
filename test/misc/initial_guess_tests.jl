@@ -1,4 +1,6 @@
 using BoundaryValueDiffEq
+import SciMLBase
+using SciMLBase: BVProblem, solve
 using Test
 
 @testset "Initial guess providing" begin

@@ -1,55 +1,39 @@
 module BoundaryValueDiffEq
 
-using ADTypes: ADTypes
-using BoundaryValueDiffEqAscher: BoundaryValueDiffEqAscher, Ascher1, Ascher2, Ascher3,
-    Ascher4, Ascher5, Ascher6, Ascher7
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
-    AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm, BVPVerbosity,
-    DEFAULT_VERBOSE
-using BoundaryValueDiffEqFIRK: BoundaryValueDiffEqFIRK, LobattoIIIa2, LobattoIIIa3,
-    LobattoIIIa4, LobattoIIIa5, LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5,
-    LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5, RadauIIa1, RadauIIa2,
-    RadauIIa3, RadauIIa5, RadauIIa7
-using BoundaryValueDiffEqMIRK: BoundaryValueDiffEqMIRK, MIRK2, MIRK3, MIRK4, MIRK5,
-    MIRK6, maxsol, minsol
-using BoundaryValueDiffEqMIRKN: BoundaryValueDiffEqMIRKN, MIRKN4, MIRKN6
-using BoundaryValueDiffEqShooting: BoundaryValueDiffEqShooting, MultipleShooting, Shooting
-using DiffEqBase: DiffEqBase, solve
+using BoundaryValueDiffEqAscher: Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6,
+    Ascher7
+using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
+    BVPVerbosity, DEFAULT_VERBOSE
+using BoundaryValueDiffEqFIRK: LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5,
+    LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5, LobattoIIIc2, LobattoIIIc3,
+    LobattoIIIc4, LobattoIIIc5, RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
+using BoundaryValueDiffEqMIRK: MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, maxsol, minsol
+using BoundaryValueDiffEqMIRKN: MIRKN4, MIRKN6
+using BoundaryValueDiffEqShooting: MultipleShooting, Shooting
 using OrdinaryDiffEqTsit5: Tsit5
-using Reexport: @reexport
-using SciMLBase: SciMLBase, BVProblem
+using SciMLBase: SciMLBase
 
-@reexport using ADTypes, SciMLBase
-
-function SciMLBase.__init(prob::BVProblem; kwargs...)
+function SciMLBase.__init(prob::SciMLBase.BVProblem; kwargs...)
     return SciMLBase.__init(prob, Shooting(Tsit5()); kwargs...)
 end
 
-function SciMLBase.__solve(prob::BVProblem; kwargs...)
+function SciMLBase.__solve(prob::SciMLBase.BVProblem; kwargs...)
     return SciMLBase.__solve(prob, Shooting(Tsit5()); kwargs...)
 end
 
 include("extension_algs.jl")
 
+export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
+
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6
-
 export Shooting, MultipleShooting
-
 export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
-
 export MIRKN4, MIRKN6
-
 export Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7
-
-export BVPM2, BVPSOL, COLNEW # From ODEInterface.jl
-
-export BVPJacobianAlgorithm
-
-export BVPVerbosity, DEFAULT_VERBOSE
-
+export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE
 export maxsol, minsol
 
 end

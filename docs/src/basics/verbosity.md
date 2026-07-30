@@ -10,6 +10,7 @@ Pass a `BVPVerbosity` object to `solve` or `init` using the `verbose` keyword ar
 
 ```julia
 using BoundaryValueDiffEq
+using SciMLBase: BVProblem, init, solve
 
 # Define a boundary value problem
 function f!(du, u, p, t)

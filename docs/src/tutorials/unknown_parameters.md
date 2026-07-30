@@ -35,6 +35,7 @@ With BoundaryValueDiffEq.jl, it's easy to solve boundary value problems with unk
 
 ```@example unknown
 using BoundaryValueDiffEq, Plots
+using SciMLBase: TwoPointBVProblem, solve
 tspan = (0.0, pi)
 function f!(du, u, p, t)
     du[1] = u[2]
