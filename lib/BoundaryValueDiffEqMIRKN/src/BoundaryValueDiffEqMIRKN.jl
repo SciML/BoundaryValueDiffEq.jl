@@ -1,6 +1,6 @@
 module BoundaryValueDiffEqMIRKN
 
-using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using ADTypes: ADTypes, AutoSparse
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
@@ -29,14 +29,11 @@ using LinearAlgebra: LinearAlgebra
 using PreallocationTools: PreallocationTools, get_tmp
 using Preferences: Preferences
 using RecursiveArrayTools: AbstractVectorOfArray, ArrayPartition
-using Reexport: @reexport
 using SciMLBase: SciMLBase, ReturnCode, SecondOrderBVProblem,
     StandardSecondOrderBVProblem, TwoPointSecondOrderBVProblem, isinplace, remake
 using Setfield: @set!
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("algorithms.jl")
