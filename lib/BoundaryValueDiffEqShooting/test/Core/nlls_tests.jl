@@ -1,8 +1,14 @@
 using BoundaryValueDiffEqShooting
+using ADTypes: AutoFiniteDiff, AutoForwardDiff
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm
+using NonlinearSolveFirstOrder: GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
+using SciMLBase: BVPFunction, BVProblem, solve
 using Test
 
+import SciMLBase
+
 @testset "Overconstrained BVP" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, LinearAlgebra
+    using OrdinaryDiffEqTsit5, LinearAlgebra
 
     # JET tests have been moved to the separate QA test group (test/qa/)
 
