@@ -1,8 +1,10 @@
 using BoundaryValueDiffEqMIRK
+import SciMLBase
+using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 using Test
 
 @testset "Rocket launching problem" begin
-    using BoundaryValueDiffEqMIRK, OptimizationIpopt
+    using OptimizationIpopt
     h_0 = 1                      # Initial height
     v_0 = 0                      # Initial velocity
     m_0 = 1.0                    # Initial mass

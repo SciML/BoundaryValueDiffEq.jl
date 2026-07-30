@@ -1,8 +1,11 @@
 using BoundaryValueDiffEqMIRK
+using ADTypes: AutoEnzyme, AutoForwardDiff, AutoMooncake, AutoSparse
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm
+import SciMLBase
+using SciMLBase: BVProblem, ODEFunction, TwoPointBVProblem, solve
 using Test
 
 @testset "Different AD compatibility" begin
-    using BoundaryValueDiffEqMIRK
     using ForwardDiff, Enzyme, Mooncake
 
     @testset "Test different AD on multipoint BVP" begin
