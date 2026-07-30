@@ -1,4 +1,7 @@
 using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using SciMLBase
 using Test
 
 @testset "Different AD compatibility" begin

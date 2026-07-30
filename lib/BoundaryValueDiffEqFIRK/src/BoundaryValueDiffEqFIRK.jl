@@ -36,7 +36,6 @@ using ForwardDiff: ForwardDiff, pickchunksize
 using LinearAlgebra: LinearAlgebra
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray,
     VectorOfArray, recursivecopy, recursivefill!
-using Reexport: @reexport
 using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
@@ -49,8 +48,6 @@ using SciMLStructures: SciMLStructures
 using StaticArrays: SMatrix, SVector
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("utils.jl")

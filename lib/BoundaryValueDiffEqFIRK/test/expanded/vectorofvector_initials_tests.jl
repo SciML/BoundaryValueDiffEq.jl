@@ -1,4 +1,5 @@
 using BoundaryValueDiffEqFIRK
+using SciMLBase
 using Test
 
 @testset "VectorOfVector Initial Condition" begin
