@@ -1,13 +1,28 @@
 using BoundaryValueDiffEqCore
+using SciMLBase
 using Test
 
 module ExternalBVPAlgorithmExtension
-    using BoundaryValueDiffEqCore
+    using BoundaryValueDiffEqCore, SciMLBase
 
     struct ExternalBVPAlgorithm <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm end
     struct ExternalBVPCache{P} <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqCache
         prob::P
+        init_arg::Symbol
+        adaptive::Bool
     end
+
+    SciMLBase.__init(
+        prob::SciMLBase.AbstractBVProblem, ::ExternalBVPAlgorithm, init_arg::Symbol;
+        adaptive = true, kwargs...
+    ) = ExternalBVPCache(prob, init_arg, adaptive)
+
+    SciMLBase.solve!(cache::ExternalBVPCache) =
+        (; prob = cache.prob, init_arg = cache.init_arg, adaptive = cache.adaptive)
+
+    struct ExternalCombinedErrorControl <: BoundaryValueDiffEqCore.AbstractErrorControl end
+
+    BoundaryValueDiffEqCore.__use_both_error_control(::ExternalCombinedErrorControl) = true
 end
 
 @testset "AbstractBoundaryValueDiffEqAlgorithm extension interface" begin
@@ -15,6 +30,28 @@ end
     BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm
     @test ExternalBVPAlgorithmExtension.ExternalBVPCache <:
     BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqCache
+
+    f(u, p, t) = u
+    bc(u, p, t) = u
+    prob = SciMLBase.BVProblem(f, bc, [1.0], (0.0, 1.0))
+    sol = SciMLBase.solve(
+        prob, ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm(), :from_solve;
+        adaptive = false
+    )
+
+    @test sol.prob === prob
+    @test sol.init_arg === :from_solve
+    @test !sol.adaptive
+    @test !SciMLBase.isinplace(
+        ExternalBVPAlgorithmExtension.ExternalBVPCache(prob, :test, true)
+    )
+end
+
+@testset "AbstractErrorControl extension interface" begin
+    @test !BoundaryValueDiffEqCore.__use_both_error_control(DefectControl())
+    @test BoundaryValueDiffEqCore.__use_both_error_control(
+        ExternalBVPAlgorithmExtension.ExternalCombinedErrorControl()
+    )
 end
 
 @testset "__extract_lcons_ucons length" begin
