@@ -12,8 +12,35 @@ run_tests(;
         return @time @safetestset "FIRK Nested Basic Tests" include("nested/firk_basic_tests.jl")
     end,
     groups = Dict(
+        # The expanded formulation is split across several matrix groups. Nearly all of
+        # its wall time is Julia compilation: every (problem, solver) pair specializes
+        # the whole FIRK -> NonlinearSolve -> AD stack afresh at ~20 s a piece, and the
+        # solver sweeps run 16 solvers over 4 problems. Run as one group it exceeds two
+        # hours (issue #548), so the two solver sweeps get groups of their own.
+        "EXPANDED_BASIC" => function ()
+            return @time @safetestset "FIRK Expanded Basic Tests" include("expanded/firk_basic_tests.jl")
+        end,
+        "EXPANDED_AFFINENESS" => function ()
+            return @time @safetestset "FIRK Expanded Affineness Tests" include("expanded/firk_affineness_tests.jl")
+        end,
+        "EXPANDED_CONVERGENCE" => function ()
+            return @time @safetestset "FIRK Expanded Convergence Tests" include("expanded/firk_convergence_tests.jl")
+        end,
+        "EXPANDED_NLLS" => function ()
+            return @time @safetestset "FIRK Expanded NLLS Tests" include("expanded/nlls_tests.jl")
+        end,
+        "EXPANDED_MISC" => function ()
+            @time @safetestset "FIRK Expanded Ensemble Tests" include("expanded/ensemble_tests.jl")
+            @time @safetestset "FIRK Expanded Singular BVP Tests" include("expanded/singular_bvp_tests.jl")
+            return @time @safetestset "FIRK Expanded VectorOfVector Initials Tests" include("expanded/vectorofvector_initials_tests.jl")
+        end,
+        # Aggregate of the five EXPANDED_* groups for running the whole formulation
+        # locally in one process. Kept out of the CI matrix and out of `all` so it does
+        # not duplicate them.
         "EXPANDED" => function ()
             @time @safetestset "FIRK Expanded Basic Tests" include("expanded/firk_basic_tests.jl")
+            @time @safetestset "FIRK Expanded Affineness Tests" include("expanded/firk_affineness_tests.jl")
+            @time @safetestset "FIRK Expanded Convergence Tests" include("expanded/firk_convergence_tests.jl")
             @time @safetestset "FIRK Expanded NLLS Tests" include("expanded/nlls_tests.jl")
             @time @safetestset "FIRK Expanded Ensemble Tests" include("expanded/ensemble_tests.jl")
             @time @safetestset "FIRK Expanded Singular BVP Tests" include("expanded/singular_bvp_tests.jl")
@@ -44,7 +71,11 @@ run_tests(;
             return @time @safetestset "Quality Assurance" include("qa/qa.jl")
         end,
     ),
-    # "All" runs EXPANDED + NESTED + AD + QA. "Core" is intentionally excluded: its
-    # basic tests are already covered inside EXPANDED and NESTED.
-    all = ["EXPANDED", "NESTED", "AD", "QA"],
+    # "All" runs the split EXPANDED_* groups + NESTED + AD + QA. "Core" and the
+    # aggregate "EXPANDED" are intentionally excluded: both only re-run tests that the
+    # listed groups already cover.
+    all = [
+        "EXPANDED_BASIC", "EXPANDED_AFFINENESS", "EXPANDED_CONVERGENCE",
+        "EXPANDED_NLLS", "EXPANDED_MISC", "NESTED", "AD", "QA",
+    ],
 )

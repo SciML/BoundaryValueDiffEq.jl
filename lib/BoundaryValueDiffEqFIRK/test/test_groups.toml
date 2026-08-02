@@ -10,9 +10,32 @@
 # the EXPANDED and NESTED matrix groups, so adding a "Core" matrix entry would
 # only duplicate them across the full version matrix.
 
-[EXPANDED]
+# The expanded formulation is split across five groups. Almost all of its runtime is
+# Julia compilation -- each (problem, solver) pair specializes the whole FIRK ->
+# NonlinearSolve -> AD stack from scratch at roughly 20 s -- and the Affineness and
+# Convergence sweeps each run 16 solvers over 4 problems. As a single group it ran past
+# two hours (issue #548). runtests.jl still defines an aggregate "EXPANDED" group for
+# local use; it is deliberately not a matrix entry here.
+
+[EXPANDED_BASIC]
 versions = ["lts", "1", "pre"]
-timeout = 240
+timeout = 120
+
+[EXPANDED_AFFINENESS]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[EXPANDED_CONVERGENCE]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[EXPANDED_NLLS]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[EXPANDED_MISC]
+versions = ["lts", "1", "pre"]
+timeout = 120
 
 [NESTED]
 versions = ["lts", "1", "pre"]
