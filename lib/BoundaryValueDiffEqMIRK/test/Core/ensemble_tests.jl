@@ -1,8 +1,10 @@
 using BoundaryValueDiffEqMIRK
+using ADTypes: AutoFiniteDiff, AutoSparse
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm
+using SciMLBase: BVProblem, EnsembleProblem, remake, solve
 using Test
 
 @testset "EnsembleProblem" begin
-    using BoundaryValueDiffEqMIRK
     using Random
 
     function ode!(du, u, p, t)
