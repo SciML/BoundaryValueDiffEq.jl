@@ -1,7 +1,11 @@
 using BoundaryValueDiffEqMIRK
+using ADTypes: AutoFiniteDiff, AutoSparse
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, DefectControl, GlobalErrorControl,
+    HybridErrorControl, SequentialErrorControl
+using RecursiveArrayTools: DiffEqArray, VectorOfArray
+import SciMLBase
+using SciMLBase: BVProblem, ODEFunction, TwoPointBVProblem, init, remake, solve
 using Test
-
-using BoundaryValueDiffEqMIRK
 
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")
@@ -758,8 +762,6 @@ end
 # explicit strip the entire solution type gets embedded in the cache type and
 # every downstream method recompiles against it (~20x compile-time blowup).
 @testset "Initial-guess object does not leak into cache type (issue 500)" begin
-    using SciMLBase, RecursiveArrayTools
-
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
         du[1] = -u[2] / p[1]
@@ -800,8 +802,6 @@ end
 # `ForwardDiff.Dual`s that must not be written into the `Float64` `EvalSol` buffer. This
 # reproduces the geodesic BVP on an embedded torus from Manifolds.jl (`solve_chart_log_bvp`).
 @testset "Solution-object BC survives Dual residual (issue 566)" begin
-    using SciMLBase
-
     R, r = 3.0, 2.0
     function affine_connection(a, Xc, Yc)
         θ = a[1]

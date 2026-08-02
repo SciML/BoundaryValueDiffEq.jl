@@ -7,7 +7,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
     DEFAULT_VERBOSE, GaussNewton, LevenbergMarquardt, REErrorControl,
-    _process_verbose_param, integral,
+    _process_verbose_param,
     recursive_flatten!, recursive_unflatten!,
     __concrete_solve_algorithm, diff!, EvalSol,
     concrete_jacobian_algorithm, eval_bc_residual,
@@ -41,7 +41,6 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, BVPFunction, BVProblem,
     NonlinearProblem, ReturnCode, StandardBVProblem, TwoPointBVProblem,
     __solve, isinplace, remake, solve
 using Setfield: @set!
-using Reexport: @reexport
 using PreallocationTools: PreallocationTools, get_tmp, LazyBufferCache
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
@@ -49,8 +48,6 @@ using SparseArrays: sparse
 using SciMLStructures: SciMLStructures
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("algorithms.jl")
@@ -180,7 +177,6 @@ include("sparse_jacobians.jl")
 end
 
 export MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I
-export BVPJacobianAlgorithm
-export maxsol, minsol, integral
+export maxsol, minsol
 
 end
