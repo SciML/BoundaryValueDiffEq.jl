@@ -12,9 +12,7 @@ BoundaryValueDiffEq.jl tackles five related types of boundary value problems:
 
 ## Problem Construction Details
 
-```@docs
-BVProblem
-TwoPointBVProblem
-SecondOrderBVProblem
-TwoPointSecondOrderBVProblem
-```
+`BVProblem`, `TwoPointBVProblem`, `SecondOrderBVProblem`, and
+`TwoPointSecondOrderBVProblem` are defined and documented by
+[SciMLBase](https://docs.sciml.ai/SciMLBase/stable/). Use their owner documentation for
+the complete constructor interfaces.

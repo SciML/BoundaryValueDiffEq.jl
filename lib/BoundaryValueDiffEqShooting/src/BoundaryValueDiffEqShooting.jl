@@ -19,7 +19,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __extract_u0,
     __initial_guess_on_mesh,
     __get_non_sparse_ad, __build_solution, get_dense_ad,
-    __internal_solve, _process_verbose_param, BVPVerbosity, _unwrap_val
+    __internal_solve, _process_verbose_param, _unwrap_val
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface,
@@ -27,7 +27,6 @@ using DifferentiationInterface: DifferentiationInterface,
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
 using LinearAlgebra: LinearAlgebra
-using Reexport: @reexport
 using SciMLBase: SciMLBase, BVProblem, EnsembleSerial, EnsembleThreads,
     NonlinearFunction, ODEProblem, StandardBVProblem, TwoPointBVProblem,
     __solve, isinplace, remake, solve, solve!
@@ -39,8 +38,6 @@ using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("algorithms.jl")
 include("single_shooting.jl")

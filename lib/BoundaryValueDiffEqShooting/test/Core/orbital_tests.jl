@@ -1,8 +1,14 @@
 using BoundaryValueDiffEqShooting
+using ADTypes: ADTypes, AutoFiniteDiff, AutoForwardDiff, AutoSparse
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm
+using NonlinearSolveFirstOrder: TrustRegion
+using SciMLBase: BVProblem, TwoPointBVProblem, solve
 using Test
 
+import SciMLBase
+
 @testset "Lambert's Problem" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqLowOrderRK, LinearAlgebra
+    using OrdinaryDiffEqLowOrderRK, LinearAlgebra
 
     y0 = [
         -4.7763169762853989e+6, -3.838639870444152e+5, -5.3500183933132319e+6,
@@ -68,7 +74,7 @@ using Test
 
         jac_alg = BVPJacobianAlgorithm(;
             nonbc_diffmode = autodiff,
-            bc_diffmode = BoundaryValueDiffEqShooting.__get_non_sparse_ad(autodiff)
+            bc_diffmode = ADTypes.dense_ad(autodiff)
         )
 
         sol = solve(

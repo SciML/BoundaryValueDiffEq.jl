@@ -4,26 +4,52 @@ abstract type AbstractShooting <: AbstractBoundaryValueDiffEqAlgorithm end
 """
     Shooting(ode_alg; kwargs...)
     Shooting(ode_alg, nlsolve; kwargs...)
-    Shooting(; ode_alg = nothing, nlsolve = nothing, optimize = nothing, jac_alg = nothing)
+    Shooting(; ode_alg = nothing, nlsolve = nothing, optimize = nothing, jac_alg = nothing) -> Shooting
 
-Single shooting method, reduces BVP to an initial value problem and solves the IVP.
+Configures the single-shooting algorithm for a boundary value problem. Single shooting
+integrates one initial value problem and solves for the initial condition that satisfies the
+boundary conditions.
 
 ## Arguments
 
-  - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
-    SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
-    poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
-  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-    `NonlinearProblem` interface can be used. Note that any autodiff argument for the solver
-    will be ignored and a custom jacobian algorithm will be used.
-  - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
-    `OptimizationProblem` interface can be used. Note that any autodiff argument for the solver
-    will be ignored and a custom jacobian algorithm will be used.
-  - `jac_alg`: Jacobian Algorithm used for the Nonlinear Solver. If this is not set, we
-    check if `nlsolve.ad` exists and is not nothing. If it is, we use that to construct
-    the jacobian. If not, we try to use the best algorithm based on the input types
-    and problem type. If `BVPJacobianAlgorithm` is provided, only `diffmode` is used
-    (defaults to `AutoForwardDiff` if possible else `AutoFiniteDiff`).
+  - `ode_alg`: algorithm used to solve the internal `SciMLBase.ODEProblem`. Pass this as the
+    first positional argument or keyword argument. `nothing` selects a loaded polyalgorithm;
+    otherwise an ODE algorithm must be supplied.
+  - `nlsolve`: nonlinear-solver algorithm for the shooting residual. Its autodiff setting is
+    superseded by `jac_alg` when a Jacobian algorithm is materialized.
+
+## Keywords
+
+  - `ode_alg = nothing`: ODE algorithm, as described above.
+  - `nlsolve = nothing`: nonlinear-solver algorithm, as described above.
+  - `optimize = nothing`: optimization-solver algorithm used when the selected BVP solve path
+    formulates the residual as an optimization problem.
+  - `jac_alg = nothing`: `BVPJacobianAlgorithm` configuration. When omitted, the constructor
+    derives it from `nlsolve` and the problem during solve initialization. For single shooting,
+    only its `diffmode` setting is used; the default is `AutoForwardDiff` when applicable and
+    otherwise `AutoFiniteDiff`.
+
+## Fields
+
+  - `ode_alg`: configured ODE algorithm or `nothing`.
+  - `nlsolve`: configured nonlinear-solver algorithm or `nothing`.
+  - `optimize`: configured optimization-solver algorithm or `nothing`.
+  - `jac_alg::BVPJacobianAlgorithm`: materialized Jacobian-algorithm configuration.
+
+## Returns
+
+  - `Shooting`: an algorithm object accepted by `SciMLBase.solve` for a boundary value problem.
+
+## Examples
+
+```jldoctest
+using BoundaryValueDiffEqShooting: Shooting
+using OrdinaryDiffEqTsit5: Tsit5
+
+alg = Shooting(Tsit5())
+@assert alg isa Shooting
+# output
+```
 """
 @concrete struct Shooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
     ode_alg
@@ -46,28 +72,31 @@ end
 
 """
     MultipleShooting(; nshoots::Int, ode_alg = nothing, nlsolve = nothing,
-        optimize = nothing, grid_coarsening = true, jac_alg = nothing)
+        optimize = nothing, grid_coarsening = true, jac_alg = nothing) -> MultipleShooting
     MultipleShooting(nshoots::Int; kwargs...)
     MultipleShooting(nshoots::Int, ode_alg; kwargs...)
     MultipleShooting(nshoots::Int, ode_alg, nlsolve; kwargs...)
 
-Multiple Shooting method, reduces BVP to an initial value problem and solves the IVP.
-Significantly more stable than Single Shooting.
+Configures the multiple-shooting algorithm for a boundary value problem. Multiple shooting
+integrates an IVP on `nshoots` subintervals and solves for their matching initial conditions;
+it is generally more stable than [`Shooting`](@ref).
 
 ## Arguments
 
-  - `nshoots`: Number of shooting points.
+  - `nshoots::Int`: number of shooting subintervals.
+  - `ode_alg`: algorithm used to solve each internal `SciMLBase.ODEProblem`. Pass this as the
+    second positional argument or keyword argument. `nothing` selects a loaded polyalgorithm;
+    otherwise an ODE algorithm must be supplied.
+  - `nlsolve`: nonlinear-solver algorithm for the multiple-shooting residual.
 
-  - `ode_alg`: ODE algorithm to use for solving the IVP. Any solver which conforms to the
-    SciML `ODEProblem` interface can be used! (Defaults to `nothing` which will use
-    poly-algorithm if `DifferentialEquations.jl` is loaded else this must be supplied)
-  - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-    `NonlinearProblem` interface can be used.
-  - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
-    `OptimizationProblem` interface can be used.
-  - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
-    `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to use based
-    on the input types and problem type.
+## Keywords
+
+  - `ode_alg = nothing`: ODE algorithm, as described above.
+  - `nlsolve = nothing`: nonlinear-solver algorithm, as described above.
+  - `optimize = nothing`: optimization-solver algorithm used when the selected BVP solve path
+    formulates the residual as an optimization problem.
+  - `jac_alg = nothing`: `BVPJacobianAlgorithm` configuration. When omitted, the constructor
+    derives it from `nlsolve` and the problem during solve initialization.
 
       + For `TwoPointBVProblem`, only `diffmode` is used (defaults to
         `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
@@ -75,8 +104,8 @@ Significantly more stable than Single Shooting.
         we default to `AutoSparse(AutoForwardDiff())` if possible else
         `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, we default to `AutoForwardDiff`
         if possible else `AutoFiniteDiff`.
-  - `grid_coarsening`: Coarsening the multiple-shooting grid to generate a stable IVP
-    solution. Possible Choices:
+  - `grid_coarsening = true`: coarsens the multiple-shooting grid while generating a stable
+    IVP solution. Supported values are:
 
       + `true`: Halve the grid size, till we reach a grid size of 1.
       + `false`: Do not coarsen the grid. Solve a Multiple Shooting Problem and finally
@@ -87,6 +116,31 @@ Significantly more stable than Single Shooting.
       + `Function`: Takes the current number of shooting points and returns the next number
         of shooting points. For example, if `nshoots = 10` and
         `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
+
+## Fields
+
+  - `ode_alg`: configured ODE algorithm or `nothing`.
+  - `nlsolve`: configured nonlinear-solver algorithm or `nothing`.
+  - `optimize`: configured optimization-solver algorithm or `nothing`.
+  - `jac_alg::BVPJacobianAlgorithm`: materialized Jacobian-algorithm configuration.
+  - `nshoots::Int`: configured number of shooting subintervals.
+  - `grid_coarsening`: configured grid-coarsening strategy.
+
+## Returns
+
+  - `MultipleShooting`: an algorithm object accepted by `SciMLBase.solve` for a boundary value
+    problem.
+
+## Examples
+
+```jldoctest
+using BoundaryValueDiffEqShooting: MultipleShooting
+using OrdinaryDiffEqTsit5: Tsit5
+
+alg = MultipleShooting(8, Tsit5(); grid_coarsening = true)
+@assert alg isa MultipleShooting
+# output
+```
 """
 @concrete struct MultipleShooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
     ode_alg
