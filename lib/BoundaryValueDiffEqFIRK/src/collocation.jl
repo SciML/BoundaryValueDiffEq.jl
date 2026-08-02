@@ -12,6 +12,11 @@ function Φ!(residual, cache::FIRKCacheNested, y, u, trait, constraint)
     )
 end
 
+@inline function __nested_stage_parameter(cache::FIRKCacheNested, p)
+    length(cache.bcresid_prototype) < cache.M && return nodual_value(p)
+    return p
+end
+
 @views function Φ!(
         residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
         mesh, mesh_dt, stage::Int, f_prototype, singular_term, ::DiffCacheNeeded, ::Val{true}
@@ -195,7 +200,7 @@ end
 
         K = get_tmp(k_discrete[i], u)
 
-        _nestprob = remake(nest_prob, p = nestprob_p)
+        _nestprob = remake(nest_prob, p = __nested_stage_parameter(cache, nestprob_p))
         nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
@@ -227,7 +232,7 @@ end
 
         K = get_tmp(k_discrete[i], u)
 
-        _nestprob = remake(nest_prob, p = nestprob_p)
+        _nestprob = remake(nest_prob, p = __nested_stage_parameter(cache, nestprob_p))
         nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
         @. K = nestsol.u
         @. residᵢ = yᵢ₊₁ - yᵢ
@@ -385,7 +390,7 @@ end
         nestprob_p[2] = T(mesh_dt[i])
         nestprob_p[3:end] = yᵢ
 
-        _nestprob = remake(nest_prob, p = nestprob_p)
+        _nestprob = remake(nest_prob, p = __nested_stage_parameter(cache, nestprob_p))
         nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
 
         @. residᵢ = yᵢ₊₁ - yᵢ
