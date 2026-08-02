@@ -43,7 +43,8 @@ boundary conditions.
 ## Examples
 
 ```julia
-using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5
+using BoundaryValueDiffEqShooting: Shooting
+using OrdinaryDiffEqTsit5: Tsit5
 
 alg = Shooting(Tsit5())
 ```
@@ -131,7 +132,8 @@ it is generally more stable than [`Shooting`](@ref).
 ## Examples
 
 ```julia
-using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5
+using BoundaryValueDiffEqShooting: MultipleShooting
+using OrdinaryDiffEqTsit5: Tsit5
 
 alg = MultipleShooting(8, Tsit5(); grid_coarsening = true)
 ```
