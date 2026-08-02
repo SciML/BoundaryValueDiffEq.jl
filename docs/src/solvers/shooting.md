@@ -10,13 +10,28 @@ Pkg.add("BoundaryValueDiffEqShooting")
 Shooting algorithms operate on problem definitions and solver functions owned by SciMLBase,
 and require an ODE algorithm from its owning solver package:
 
-```julia
+```jldoctest
 using BoundaryValueDiffEqShooting: MultipleShooting, Shooting
 using OrdinaryDiffEqTsit5: Tsit5
-using SciMLBase: BVProblem, TwoPointBVProblem, solve
+using SciMLBase: BVProblem, ReturnCode, solve
 
-# `prob` is a BVProblem or TwoPointBVProblem defined with SciMLBase.
-sol = solve(prob, Shooting(Tsit5()))
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = 0
+end
+
+function bc!(residual, u, p, t)
+    residual[1] = u(0.0)[1] - 1
+    residual[2] = u(1.0)[1]
+end
+
+prob = BVProblem(f!, bc!, [1.0, -1.0], (0.0, 1.0); nlls = Val(false))
+sol = solve(prob, Shooting(Tsit5()); abstol = 1e-8)
+
+@assert sol.retcode == ReturnCode.Success
+@assert isapprox(sol(0.0)[1], 1.0; atol = 1e-6)
+@assert isapprox(sol(1.0)[1], 0.0; atol = 1e-6)
+# output
 ```
 
 ## Full List of Methods

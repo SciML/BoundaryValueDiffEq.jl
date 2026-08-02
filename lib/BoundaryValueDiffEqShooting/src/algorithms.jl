@@ -42,11 +42,13 @@ boundary conditions.
 
 ## Examples
 
-```julia
+```jldoctest
 using BoundaryValueDiffEqShooting: Shooting
 using OrdinaryDiffEqTsit5: Tsit5
 
 alg = Shooting(Tsit5())
+@assert alg isa Shooting
+# output
 ```
 """
 @concrete struct Shooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
@@ -131,11 +133,13 @@ it is generally more stable than [`Shooting`](@ref).
 
 ## Examples
 
-```julia
+```jldoctest
 using BoundaryValueDiffEqShooting: MultipleShooting
 using OrdinaryDiffEqTsit5: Tsit5
 
 alg = MultipleShooting(8, Tsit5(); grid_coarsening = true)
+@assert alg isa MultipleShooting
+# output
 ```
 """
 @concrete struct MultipleShooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
