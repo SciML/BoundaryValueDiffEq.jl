@@ -1,6 +1,6 @@
 module BoundaryValueDiffEqFIRK
 
-using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using ADTypes: ADTypes, AutoSparse, AutoForwardDiff, AutoEnzyme, AutoMooncake
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
