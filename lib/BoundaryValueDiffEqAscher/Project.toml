@@ -15,6 +15,9 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 
+[sources]
+BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
+
 [compat]
 SafeTestsets = "0.1.0"
 ADTypes = "1.14"
