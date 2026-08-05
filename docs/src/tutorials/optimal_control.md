@@ -159,7 +159,7 @@ The inequality constraints for the state variables and control variables are:
 Similar solving for such optimal control problem can be found on JuMP.jl and InfiniteOpt.jl. The detailed parameters are taken from [COPS](https://www.mcs.anl.gov/%7Emore/cops/cops3.pdf).
 
 ```@example rocket_launch
-using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
+using BoundaryValueDiffEqMIRK, SciMLBase, OptimizationIpopt, Plots
 h_0 = 1                      # Initial height
 v_0 = 0                      # Initial velocity
 m_0 = 1.0                    # Initial mass
@@ -278,7 +278,7 @@ The target cost function is defined as the "energy" so the target cost function 
 ```
 
 ```@example cart_pole
-using BoundaryValueDiffEqMIRK, OptimizationIpopt, Plots
+using BoundaryValueDiffEqMIRK, SciMLBase, OptimizationIpopt, Plots
 m_1 = 1.0                      # Cart mass
 m_2 = 0.3                      # Pole mass
 l = 0.5                        # Pole length
