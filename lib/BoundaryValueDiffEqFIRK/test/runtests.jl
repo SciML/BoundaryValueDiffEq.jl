@@ -32,6 +32,7 @@ run_tests(;
         "EXPANDED_MISC" => function ()
             @time @safetestset "FIRK Expanded Ensemble Tests" include("expanded/ensemble_tests.jl")
             @time @safetestset "FIRK Expanded Singular BVP Tests" include("expanded/singular_bvp_tests.jl")
+            @time @safetestset "FIRK Expanded DAE Tests" include("expanded/dae_tests.jl")
             return @time @safetestset "FIRK Expanded VectorOfVector Initials Tests" include("expanded/vectorofvector_initials_tests.jl")
         end,
         # Aggregate of the five EXPANDED_* groups for running the whole formulation
@@ -74,6 +75,7 @@ run_tests(;
         end,
         "NESTED_MISC" => function ()
             @time @safetestset "FIRK Nested Ensemble Tests" include("nested/ensemble_tests.jl")
+            @time @safetestset "FIRK Nested DAE Tests" include("nested/dae_tests.jl")
             return @time @safetestset "FIRK Nested VectorOfVector Initials Tests" include("nested/vectorofvector_initials_tests.jl")
         end,
         # Aggregate of the seven NESTED_* groups, for running the whole formulation locally
