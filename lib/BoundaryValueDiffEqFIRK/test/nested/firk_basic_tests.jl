@@ -1,4 +1,7 @@
 using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using SciMLBase
 using Test
 
 include("firk_test_setup.jl")

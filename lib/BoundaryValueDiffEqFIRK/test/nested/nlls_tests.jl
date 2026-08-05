@@ -1,4 +1,6 @@
 using BoundaryValueDiffEqFIRK
+using BoundaryValueDiffEqCore
+using SciMLBase
 using Test
 
 include("nlls_test_setup.jl")

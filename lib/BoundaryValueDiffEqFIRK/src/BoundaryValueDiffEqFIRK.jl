@@ -36,7 +36,6 @@ using ForwardDiff: ForwardDiff, pickchunksize
 using LinearAlgebra: LinearAlgebra
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray,
     VectorOfArray, recursivecopy, recursivefill!
-using Reexport: @reexport
 using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
@@ -48,9 +47,73 @@ using SparseArrays: sparse
 using SciMLStructures: SciMLStructures
 using StaticArrays: SMatrix, SVector
 
-const DI = DifferentiationInterface
+# The public API `using BoundaryValueDiffEqFIRK` brings into scope (see the second
+# `export` block below): the same bindings the package used to reexport wholesale from
+# ADTypes, BoundaryValueDiffEqCore, and SciMLBase, now listed explicitly so the public
+# surface is reviewable. The names stay owned and documented upstream.
+using ADTypes: ADTypes, AbstractADType, AbstractColoringAlgorithm, AbstractSparsityDetector,
+    AutoChainRules, AutoDiffractor, AutoEnzyme, AutoFastDifferentiation, AutoFiniteDiff,
+    AutoFiniteDifferences, AutoForwardDiff, AutoGTPSA, AutoHyperHessians,
+    AutoModelingToolkit, AutoMooncake, AutoMooncakeForward, AutoPolyesterForwardDiff,
+    AutoReactant, AutoReverseDiff, AutoSparse, AutoSparseFastDifferentiation,
+    AutoSparseFiniteDiff, AutoSparseForwardDiff, AutoSparsePolyesterForwardDiff,
+    AutoSparseReverseDiff, AutoSparseZygote, AutoSymbolics, AutoTapir, AutoTaylorDiff,
+    AutoTracker, AutoZygote, NoAutoDiff, NoAutoDiffSelectedError, column_coloring,
+    hessian_sparsity, jacobian_sparsity, row_coloring, symmetric_coloring
+using BoundaryValueDiffEqCore: AbsNormSafeBestTerminationMode, AbsNormSafeTerminationMode,
+    AbsNormTerminationMode, AbsTerminationMode, AbstractBoundaryValueDiffEqAlgorithm,
+    ArcLengthContinuation, BVPJacobianAlgorithm, BVPVerbosity, BoundaryValueDiffEqCore,
+    DEFAULT_VERBOSE, DampedNewtonDescent, DefectControl, DescentResult, Dogleg,
+    EisenstatWalkerForcing2, FastShortcutNLLSPolyalg, GaussNewton,
+    GeneralizedFirstOrderAlgorithm, GeodesicAcceleration, GlobalErrorControl,
+    HOErrorControl, HomotopyPolyAlgorithm, HomotopySweep, HybridErrorControl,
+    KantorovichHomotopy, LevenbergMarquardt, NewtonDescent, NewtonRaphson, NoErrorControl,
+    NonlinearSolveBase, NonlinearSolveFirstOrder, NonlinearSolvePolyAlgorithm,
+    NonlinearVerbosity, NormTerminationMode, PseudoTransient, REErrorControl,
+    RadiusUpdateSchemes, RelNormSafeBestTerminationMode, RelNormSafeTerminationMode,
+    RelNormTerminationMode, RelTerminationMode, RobustMultiNewton, SequentialErrorControl,
+    SteepestDescent, TraceAll, TraceMinimal, TraceWithJacobianConditionNumber, TrustRegion,
+    _process_verbose_param, integral, pickchunksize
+using SciMLBase: AbstractAnalyticalProblem, AddVector, AffineOperator, AllObserved,
+    AnalyticalProblem, BVPFunction, BVProblem, BatchIntegralFunction, BlockDiagonalOperator,
+    CallbackSet, CheckInit, Clocks, ContinuousCallback, ConvexOptimizationProblem,
+    DAEFunction, DAEProblem, DAESolution, DDEFunction, DDEProblem, DiagonalOperator,
+    DiscreteCallback, DiscreteFunction, DiscreteProblem, DynamicalBVPFunction,
+    DynamicalDDEFunction, DynamicalDDEProblem, DynamicalODEFunction, DynamicalODEProblem,
+    DynamicalSDEFunction, DynamicalSDEProblem, EigenvalueProblem, EigenvalueSolution,
+    EigenvalueTarget, EnsembleAnalysis, EnsembleContext, EnsembleDistributed,
+    EnsembleProblem, EnsembleSerial, EnsembleSolution, EnsembleSplitThreads,
+    EnsembleSummary, EnsembleTestSolution, EnsembleThreads, FunctionOperator,
+    HomotopyNonlinearFunction, HomotopyProblem, IdentityOperator, ImplicitDiscreteFunction,
+    ImplicitDiscreteProblem, IncrementingODEFunction, IncrementingODEProblem,
+    IntegralFunction, IntegralProblem, IntegralSolution, IntervalNonlinearFunction,
+    IntervalNonlinearProblem, InvertibleOperator, LinearAliasSpecifier, LinearProblem,
+    LinearSolution, MatrixOperator, MultiObjectiveOptimizationFunction, NoiseProblem,
+    NonlinearFunction, NonlinearLeastSquaresProblem, NonlinearProblem, NonlinearSolution,
+    NullOperator, ODEAliasSpecifier, ODEFunction, ODEInputFunction, ODEProblem, ODESolution,
+    OptimizationFunction, OptimizationProblem, OptimizationSolution, PDENoTimeSolution,
+    PDEProblem, PDETimeSeriesSolution, RODEFunction, RODEProblem, RODESolution, ReturnCode,
+    SCCNonlinearProblem, SDDEFunction, SDDEProblem, SDEFunction, SDEProblem,
+    SampledIntegralProblem, ScalarOperator, SciMLBase, SciMLOperators, SecondOrderBVProblem,
+    SecondOrderDDEProblem, SecondOrderODEProblem, SplitFunction, SplitODEProblem,
+    SplitSDEFunction, SplitSDEProblem, StaticWOperator, SteadyStateProblem,
+    SteadyStateSolution, TensorProductOperator, TensorSumOperator, TimeDomain,
+    TwoPointBVPFunction, TwoPointBVProblem, TwoPointDynamicalBVPFunction,
+    TwoPointSecondOrderBVProblem, VectorContinuousCallback, WOperator, add_saveat!,
+    add_tstop!, addat!, addat_non_user_cache!, addsteps!, auto_dt_reset!, cache_operator,
+    change_t_via_interpolation!, check_error, check_keywords, concretize, deleteat!,
+    deleteat_non_user_cache!, derivative_discontinuity!, discretize, du_cache, first_tstop,
+    full_cache, get_dt, get_du, get_du!, get_proposed_dt, get_rng, get_tmp_cache,
+    has_adjoint, has_concretization, has_exp, has_expmv, has_expmv!, has_ldiv, has_ldiv!,
+    has_mul, has_mul!, has_rng, has_tstop, init, is_discrete_time_domain, iscached, isclock,
+    isconstant, iscontinuous, isconvertible, isdiscrete, isinplace, islinear,
+    issolverstepclock, issquare, kronsum, pop_tstop!, rand_cache, ratenoise_cache,
+    reeval_internals_due_to_modification!, reinit!, remake, resize_non_user_cache!,
+    savevalues!, set_abstol!, set_proposed_dt!, set_reltol!, set_rng!, set_t!, set_u!,
+    solve, solve!, step!, supports_solve_rng, symbolic_discretize, terminate!, u_cache,
+    u_modified!, update_coefficients, update_coefficients!, user_cache, warn_compat
 
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
+const DI = DifferentiationInterface
 
 include("types.jl")
 include("utils.jl")
@@ -310,5 +373,69 @@ export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
+
+# Reexported ADTypes, BoundaryValueDiffEqCore, and SciMLBase public API; approved via
+# `reexports_allow` in test/qa/qa.jl.
+export ADTypes, AbstractADType, AbstractColoringAlgorithm, AbstractSparsityDetector,
+    AutoChainRules, AutoDiffractor, AutoEnzyme, AutoFastDifferentiation, AutoFiniteDiff,
+    AutoFiniteDifferences, AutoForwardDiff, AutoGTPSA, AutoHyperHessians,
+    AutoModelingToolkit, AutoMooncake, AutoMooncakeForward, AutoPolyesterForwardDiff,
+    AutoReactant, AutoReverseDiff, AutoSparse, AutoSparseFastDifferentiation,
+    AutoSparseFiniteDiff, AutoSparseForwardDiff, AutoSparsePolyesterForwardDiff,
+    AutoSparseReverseDiff, AutoSparseZygote, AutoSymbolics, AutoTapir, AutoTaylorDiff,
+    AutoTracker, AutoZygote, NoAutoDiff, NoAutoDiffSelectedError, column_coloring,
+    hessian_sparsity, jacobian_sparsity, row_coloring, symmetric_coloring
+export AbsNormSafeBestTerminationMode, AbsNormSafeTerminationMode, AbsNormTerminationMode,
+    AbsTerminationMode, AbstractBoundaryValueDiffEqAlgorithm, ArcLengthContinuation,
+    BVPJacobianAlgorithm, BVPVerbosity, BoundaryValueDiffEqCore, DEFAULT_VERBOSE,
+    DampedNewtonDescent, DefectControl, DescentResult, Dogleg, EisenstatWalkerForcing2,
+    FastShortcutNLLSPolyalg, GaussNewton, GeneralizedFirstOrderAlgorithm,
+    GeodesicAcceleration, GlobalErrorControl, HOErrorControl, HomotopyPolyAlgorithm,
+    HomotopySweep, HybridErrorControl, KantorovichHomotopy, LevenbergMarquardt,
+    NewtonDescent, NewtonRaphson, NoErrorControl, NonlinearSolveBase,
+    NonlinearSolveFirstOrder, NonlinearSolvePolyAlgorithm, NonlinearVerbosity,
+    NormTerminationMode, PseudoTransient, REErrorControl, RadiusUpdateSchemes,
+    RelNormSafeBestTerminationMode, RelNormSafeTerminationMode, RelNormTerminationMode,
+    RelTerminationMode, RobustMultiNewton, SequentialErrorControl, SteepestDescent,
+    TraceAll, TraceMinimal, TraceWithJacobianConditionNumber, TrustRegion,
+    _process_verbose_param, integral, pickchunksize
+export AbstractAnalyticalProblem, AddVector, AffineOperator, AllObserved, AnalyticalProblem,
+    BVPFunction, BVProblem, BatchIntegralFunction, BlockDiagonalOperator, CallbackSet,
+    CheckInit, Clocks, ContinuousCallback, ConvexOptimizationProblem, DAEFunction,
+    DAEProblem, DAESolution, DDEFunction, DDEProblem, DiagonalOperator, DiscreteCallback,
+    DiscreteFunction, DiscreteProblem, DynamicalBVPFunction, DynamicalDDEFunction,
+    DynamicalDDEProblem, DynamicalODEFunction, DynamicalODEProblem, DynamicalSDEFunction,
+    DynamicalSDEProblem, EigenvalueProblem, EigenvalueSolution, EigenvalueTarget,
+    EnsembleAnalysis, EnsembleContext, EnsembleDistributed, EnsembleProblem, EnsembleSerial,
+    EnsembleSolution, EnsembleSplitThreads, EnsembleSummary, EnsembleTestSolution,
+    EnsembleThreads, FunctionOperator, HomotopyNonlinearFunction, HomotopyProblem,
+    IdentityOperator, ImplicitDiscreteFunction, ImplicitDiscreteProblem,
+    IncrementingODEFunction, IncrementingODEProblem, IntegralFunction, IntegralProblem,
+    IntegralSolution, IntervalNonlinearFunction, IntervalNonlinearProblem,
+    InvertibleOperator, LinearAliasSpecifier, LinearProblem, LinearSolution, MatrixOperator,
+    MultiObjectiveOptimizationFunction, NoiseProblem, NonlinearFunction,
+    NonlinearLeastSquaresProblem, NonlinearProblem, NonlinearSolution, NullOperator,
+    ODEAliasSpecifier, ODEFunction, ODEInputFunction, ODEProblem, ODESolution,
+    OptimizationFunction, OptimizationProblem, OptimizationSolution, PDENoTimeSolution,
+    PDEProblem, PDETimeSeriesSolution, RODEFunction, RODEProblem, RODESolution, ReturnCode,
+    SCCNonlinearProblem, SDDEFunction, SDDEProblem, SDEFunction, SDEProblem,
+    SampledIntegralProblem, ScalarOperator, SciMLBase, SciMLOperators, SecondOrderBVProblem,
+    SecondOrderDDEProblem, SecondOrderODEProblem, SplitFunction, SplitODEProblem,
+    SplitSDEFunction, SplitSDEProblem, StaticWOperator, SteadyStateProblem,
+    SteadyStateSolution, TensorProductOperator, TensorSumOperator, TimeDomain,
+    TwoPointBVPFunction, TwoPointBVProblem, TwoPointDynamicalBVPFunction,
+    TwoPointSecondOrderBVProblem, VectorContinuousCallback, WOperator, add_saveat!,
+    add_tstop!, addat!, addat_non_user_cache!, addsteps!, auto_dt_reset!, cache_operator,
+    change_t_via_interpolation!, check_error, check_keywords, concretize, deleteat!,
+    deleteat_non_user_cache!, derivative_discontinuity!, discretize, du_cache, first_tstop,
+    full_cache, get_dt, get_du, get_du!, get_proposed_dt, get_rng, get_tmp_cache,
+    has_adjoint, has_concretization, has_exp, has_expmv, has_expmv!, has_ldiv, has_ldiv!,
+    has_mul, has_mul!, has_rng, has_tstop, init, is_discrete_time_domain, iscached, isclock,
+    isconstant, iscontinuous, isconvertible, isdiscrete, isinplace, islinear,
+    issolverstepclock, issquare, kronsum, pop_tstop!, rand_cache, ratenoise_cache,
+    reeval_internals_due_to_modification!, reinit!, remake, resize_non_user_cache!,
+    savevalues!, set_abstol!, set_proposed_dt!, set_reltol!, set_rng!, set_t!, set_u!,
+    solve, solve!, step!, supports_solve_rng, symbolic_discretize, terminate!, u_cache,
+    u_modified!, update_coefficients, update_coefficients!, user_cache, warn_compat
 
 end
