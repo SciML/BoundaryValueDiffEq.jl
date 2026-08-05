@@ -47,6 +47,8 @@ for order in (4, 6)
         ## Examples
 
         ```jldoctest
+        julia> using BoundaryValueDiffEqMIRKN
+
         julia> MIRKN$($order)().max_num_subintervals
         3000
         ```
