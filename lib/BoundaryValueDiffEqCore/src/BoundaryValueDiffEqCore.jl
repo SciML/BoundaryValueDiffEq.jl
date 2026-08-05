@@ -6,6 +6,7 @@ using ADTypes: ADTypes, AbstractADType, AutoSparse, AutoForwardDiff, AutoFiniteD
 using ArrayInterface: parameterless_type
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
+using DifferentiationInterface: SecondOrder
 using ForwardDiff: ForwardDiff, pickchunksize
 using Integrals: Integrals, IntegralProblem
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
