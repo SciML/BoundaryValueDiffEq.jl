@@ -5,6 +5,9 @@ BoundaryValueDiffEqMIRK = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
 SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[sources]
+BoundaryValueDiffEqCore = {path = "../../../BoundaryValueDiffEqCore"}
+
 [compat]
 Aqua = "0.8"
 BoundaryValueDiffEqCore = "2"
