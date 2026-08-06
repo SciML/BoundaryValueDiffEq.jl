@@ -23,6 +23,9 @@ SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[sources]
+BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
+
 [compat]
 ADTypes = "1.14"
 ArrayInterface = "7.18"

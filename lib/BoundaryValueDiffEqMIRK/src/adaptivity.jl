@@ -391,6 +391,7 @@ end
         else
             yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix, similar(z′))
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -401,6 +402,7 @@ end
         else
             yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix, similar(z′))
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -437,6 +439,7 @@ end
         else
             yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix, similar(z′))
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -447,6 +450,7 @@ end
         else
             yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix, similar(z′))
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 

@@ -117,12 +117,16 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        # Explicit `SecondOrder` core so optimizers that need Hessians (e.g. Ipopt)
+        # don't warn and wrap the first-order ADtype themselves
+        dense_ad = get_dense_ad(alg.jac_alg.nonbc_diffmode)
+        adtype = AutoSparse(
+            SecondOrder(dense_ad, dense_ad),
+            sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
+        )
         optf = OptimizationFunction{true}(
             cost_fun,
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            adtype,
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -149,12 +153,14 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        dense_ad = get_dense_ad(alg.jac_alg.diffmode)
+        adtype = AutoSparse(
+            SecondOrder(dense_ad, dense_ad),
+            sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
+        )
         optf = OptimizationFunction{true}(
             cost_fun,
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            adtype,
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -182,12 +188,14 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        dense_ad = get_dense_ad(alg.jac_alg.diffmode)
+        adtype = AutoSparse(
+            SecondOrder(dense_ad, dense_ad),
+            sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
+        )
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            adtype,
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -225,12 +233,14 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        dense_ad = get_dense_ad(alg.jac_alg.nonbc_diffmode)
+        adtype = AutoSparse(
+            SecondOrder(dense_ad, dense_ad),
+            sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
+        )
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            adtype,
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -256,12 +266,14 @@ function __construct_internal_problem(
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
+        dense_ad = get_dense_ad(alg.jac_alg.diffmode)
+        adtype = AutoSparse(
+            SecondOrder(dense_ad, dense_ad),
+            sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
+        )
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            adtype,
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)

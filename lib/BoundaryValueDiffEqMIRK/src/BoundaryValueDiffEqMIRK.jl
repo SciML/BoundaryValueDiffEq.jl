@@ -26,7 +26,10 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
     __concrete_kwargs, __FastShortcutNonlinearPolyalg,
     __construct_internal_problem, __internal_solve,
-    __default_sparsity_detector, __build_cost, __add_singular_term!
+    __default_sparsity_detector, __build_cost, __add_singular_term!,
+    __apply_mass_matrix!,
+    __get_algebraic_indices, __apply_algebraic_constraint!,
+    __apply_algebraic_constraint_oop!, __check_dae_adaptivity
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant

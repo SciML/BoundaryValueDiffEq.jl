@@ -939,3 +939,118 @@ end
     end
     return nothing
 end
+
+"""
+    __apply_mass_matrix!(residᵢ, mass_matrix, tmp)
+
+Overwrite `residᵢ` with `mass_matrix * residᵢ` in place, using `tmp` as workspace. Used in
+defect estimation so that the defect compares `M * z′` against `f(z)` for mass-matrix
+problems. No-op for `UniformScaling` mass matrices, so plain ODEs pay no cost.
+"""
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::UniformScaling, tmp)
+    return nothing
+end
+
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::AbstractMatrix, tmp)
+    mul!(tmp, mass_matrix, residᵢ)
+    copyto!(residᵢ, tmp)
+    return nothing
+end
+
+"""
+    __get_algebraic_indices(mass_matrix)
+
+Return the indices of the zero rows of `mass_matrix`, i.e. the algebraic equations of an
+index-1 DAE, or `nothing` when there are none (always for `UniformScaling`).
+"""
+@inline function __get_algebraic_indices(mass_matrix::UniformScaling)
+    return nothing
+end
+
+@inline function __get_algebraic_indices(mass_matrix::AbstractMatrix)
+    indices = [i for i in axes(mass_matrix, 1) if iszero(@view mass_matrix[i, :])]
+    return isempty(indices) ? nothing : indices
+end
+
+"""
+    __subtract_mass_stage!(res, mass_matrix, K_r, tmp)
+
+Subtract `mass_matrix * K_r` from `res` in place, using `tmp` as workspace. Turns the
+collocation stage residual `f(...) - K_r` into `f(...) - M * K_r`, i.e. collocation of
+`M * u′ = f(u, p, t)`.
+"""
+@inline function __subtract_mass_stage!(res, ::UniformScaling, K_r, tmp)
+    res .-= K_r
+    return nothing
+end
+
+@inline function __subtract_mass_stage!(res, M::AbstractMatrix, K_r, tmp)
+    mul!(tmp, M, K_r)
+    res .-= tmp
+    return nothing
+end
+
+"""
+    __apply_algebraic_constraint!(residᵢ, algebraic_indices, f!, yᵢ₊₁, p, t, tmp)
+
+Overwrite the algebraic rows of the continuity residual `residᵢ` with the DAE constraint
+residual evaluated at the right mesh point `yᵢ₊₁`, following the unprojected collocation
+approach for index-1 DAEs of Ascher & Spiteri (1994). `f!` is evaluated in place into
+`tmp`. No-op when `algebraic_indices === nothing`.
+"""
+@inline function __apply_algebraic_constraint!(
+        residᵢ, ::Nothing, f!, yᵢ₊₁, p, t, tmp
+    )
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices::Vector{Int}, f!, yᵢ₊₁, p, t, tmp
+    )
+    f!(tmp, yᵢ₊₁, p, t)
+    residᵢ[algebraic_indices] .= tmp[algebraic_indices]
+    return nothing
+end
+
+"""
+    __apply_algebraic_constraint_oop!(residᵢ, algebraic_indices, f, yᵢ₊₁, p, t)
+
+Same as [`__apply_algebraic_constraint!`](@ref) for an out-of-place `f`.
+"""
+@inline function __apply_algebraic_constraint_oop!(
+        residᵢ, ::Nothing, f, yᵢ₊₁, p, t
+    )
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint_oop!(
+        residᵢ, algebraic_indices::Vector{Int}, f, yᵢ₊₁, p, t
+    )
+    tmp = f(yᵢ₊₁, p, t)
+    residᵢ[algebraic_indices] .= tmp[algebraic_indices]
+    return nothing
+end
+
+"""
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+
+Throw an `ArgumentError` when mesh adaptivity is requested for a DAE problem
+(`algebraic_indices !== nothing`): the collocation interpolant is inaccurate for algebraic
+variables, so defect-based mesh refinement cannot converge.
+"""
+@inline __check_dae_adaptivity(::Nothing, adaptive::Bool) = nothing
+
+@inline function __check_dae_adaptivity(::Vector{Int}, adaptive::Bool)
+    if adaptive
+        throw(
+            ArgumentError(
+                "Adaptive mesh refinement is not supported for DAE problems (mass " *
+                    "matrices with zero rows): the collocation interpolant is inaccurate " *
+                    "for algebraic variables, so the defect estimate cannot converge. " *
+                    "Pass `adaptive = false`, or use a solver from " *
+                    "BoundaryValueDiffEqAscher.jl, which supports mesh adaptivity for DAEs."
+            )
+        )
+    end
+    return nothing
+end
