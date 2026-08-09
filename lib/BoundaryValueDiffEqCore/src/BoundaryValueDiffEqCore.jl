@@ -2,10 +2,11 @@ module BoundaryValueDiffEqCore
 
 using Adapt: adapt
 using ADTypes: ADTypes, AbstractADType, AutoSparse, AutoForwardDiff, AutoFiniteDiff,
-    AutoPolyesterForwardDiff
+    AutoPolyesterForwardDiff, AutoSymbolics, AutoZygote
 using ArrayInterface: parameterless_type
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
+using DifferentiationInterface: SecondOrder
 using ForwardDiff: ForwardDiff, pickchunksize
 using Integrals: Integrals, IntegralProblem
 using LinearAlgebra: LinearAlgebra, mul!

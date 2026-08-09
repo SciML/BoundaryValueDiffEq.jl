@@ -1,6 +1,19 @@
 @inline __default_cost(::Nothing) = (x, p) -> 0.0
 @inline __default_cost(f) = f
 
+@inline __optimization_second_order_ad(ad) = SecondOrder(ad, ad)
+@inline __optimization_second_order_ad(ad::SecondOrder) = ad
+@inline __optimization_second_order_ad(ad::AutoZygote) = SecondOrder(AutoForwardDiff(), ad)
+@inline __optimization_second_order_ad(ad::AutoSymbolics) = ad
+@inline __optimization_second_order_ad(ad::SciMLBase.NoAD) = ad
+
+@inline function __optimization_ad(diffmode, detector_diffmode = diffmode)
+    return AutoSparse(
+        __optimization_second_order_ad(get_dense_ad(diffmode)),
+        sparsity_detector = __default_sparsity_detector(detector_diffmode)
+    )
+end
+
 """
     __build_cost(fun, cache, mesh, M; tune_parameters = false, p = nothing)
 
@@ -119,10 +132,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{true}(
             cost_fun,
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.nonbc_diffmode, alg.jac_alg.diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -151,10 +161,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{true}(
             cost_fun,
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -184,10 +191,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -227,10 +231,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.nonbc_diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -258,10 +259,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -291,10 +289,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.nonbc_diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -322,10 +317,7 @@ function __construct_internal_problem(
     else
         optf = OptimizationFunction{true}(
             __default_cost(prob.f),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            __optimization_ad(alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
