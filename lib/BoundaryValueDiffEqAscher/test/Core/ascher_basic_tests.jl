@@ -1,8 +1,10 @@
 using BoundaryValueDiffEqAscher
 using Test
 
+include(joinpath(@__DIR__, "..", "..", "..", "..", "test", "qa", "reexports.jl"))
+
 @testset "Public API" begin
-    @test Set(names(BoundaryValueDiffEqAscher)) == Set(
+    ascher_algorithms = Set(
         (
             :Ascher1,
             :Ascher2,
@@ -11,9 +13,12 @@ using Test
             :Ascher5,
             :Ascher6,
             :Ascher7,
-            :BoundaryValueDiffEqAscher,
         )
     )
+    # The reexported surface is defined once in test/qa/reexports.jl and shared with
+    # `reexports_allow` in test/qa/qa.jl, so this assertion cannot drift from it.
+    @test Set(names(BoundaryValueDiffEqAscher)) ==
+        union(ascher_algorithms, Set(ASCHER_REEXPORTS), Set((:BoundaryValueDiffEqAscher,)))
 end
 
 # Standard test BVDAE problem from the URI M. ASCHER and RAYMOND J. SPITERI paper

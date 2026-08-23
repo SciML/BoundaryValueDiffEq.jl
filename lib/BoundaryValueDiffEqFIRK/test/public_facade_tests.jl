@@ -1,5 +1,7 @@
 using Test
 
+include(joinpath(@__DIR__, "..", "..", "..", "test", "qa", "reexports.jl"))
+
 module DocumentedFIRKWorkflow
 
     using BoundaryValueDiffEqFIRK
@@ -53,7 +55,9 @@ end
             :LobattoIIIc2, :LobattoIIIc3, :LobattoIIIc4, :LobattoIIIc5,
         ]
     )
-    documented_facade = Set([:BVProblem, :TwoPointBVProblem, :solve])
+    # The reexported surface is defined once in test/qa/reexports.jl and shared with
+    # `reexports_allow` in test/qa/qa.jl, so this assertion cannot drift from it.
+    documented_facade = Set(FIRK_REEXPORTS)
     actual_exports = Set(names(DocumentedFIRKWorkflow.FIRK))
     delete!(actual_exports, nameof(DocumentedFIRKWorkflow.FIRK))
 
