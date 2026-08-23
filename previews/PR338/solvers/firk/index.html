@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>BoundaryValueDiffEqFIRK · BoundaryValueDiffEq.jl</title><meta name="title" content="BoundaryValueDiffEqFIRK · BoundaryValueDiffEq.jl"/><meta property="og:title" content="BoundaryValueDiffEqFIRK · BoundaryValueDiffEq.jl"/><meta property="twitter:title" content="BoundaryValueDiffEqFIRK · BoundaryValueDiffEq.jl"/><meta name="description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="twitter:description" content="Documentation for BoundaryValueDiffEq.jl."/><meta property="og:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/solvers/firk/"/><meta property="twitter:url" content="https://docs.sciml.ai/BoundaryValueDiffEq/stable/solvers/firk/"/><link rel="canonical" href="https://docs.sciml.ai/BoundaryValueDiffEq/stable/solvers/firk/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="BoundaryValueDiffEq.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">BoundaryValueDiffEq.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">BoundaryValueDiffEq.jl: High-Performance Bounday Value Problem Solvers</a></li><li><a class="tocitem" href="../../tutorials/getting_started/">Getting Started with BVP solving in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/continuation/">Solve BVP with Continuation</a></li><li><a class="tocitem" href="../../tutorials/solve_nlls_bvp/">Solve Overdetermined and Underdetermined BVP</a></li><li><a class="tocitem" href="../../tutorials/extremum/">Solve BVP with Extremum Boundary Conditions</a></li></ul></li><li><span class="tocitem">Basics</span><ul><li><a class="tocitem" href="../../basics/bvp_problem/">Boundary Value Problems</a></li><li><a class="tocitem" href="../../basics/bvp_functions/">BVP Functions and Jacobian Types</a></li><li><a class="tocitem" href="../../basics/solve/">Common Solver Options (Solve Keyword Arguments)</a></li><li><a class="tocitem" href="../../basics/autodiff/">Automatic Differentiation Backends</a></li><li><a class="tocitem" href="../../basics/error_control/">Error Control Adaptivity</a></li></ul></li><li><span class="tocitem">Solver Summaries and Recommendations</span><ul><li><a class="tocitem" href="../mirk/">BoundaryValueDiffEqMIRK</a></li><li class="is-active"><a class="tocitem" href>BoundaryValueDiffEqFIRK</a><ul class="internal"><li><a class="tocitem" href="#Nested-nonlinear-solving-in-FIRK-methods"><span>Nested nonlinear solving in FIRK methods</span></a></li><li><a class="tocitem" href="#Full-List-of-Methods"><span>Full List of Methods</span></a></li><li><a class="tocitem" href="#Detailed-Solvers-Explanation"><span>Detailed Solvers Explanation</span></a></li></ul></li><li><a class="tocitem" href="../shooting/">BoundaryValueDiffEqShooting</a></li><li><a class="tocitem" href="../mirkn/">BoundaryValueDiffEqMIRKN</a></li><li><a class="tocitem" href="../ascher/">BoundaryValueDiffEqAscher</a></li><li><a class="tocitem" href="../simple_solvers/">SimpleBoundaryValueDiffEq</a></li><li><a class="tocitem" href="../wrappers/">Wrapper Methods</a></li></ul></li><li><span class="tocitem">Wrapped Solver APIs</span><ul><li><a class="tocitem" href="../../api/odeinterface/">ODEInterface.jl</a></li></ul></li><li><span class="tocitem">Development Documentation</span><ul><li><a class="tocitem" href="../../devdocs/internal_interfaces/">Internal Abstract Types</a></li></ul></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Solver Summaries and Recommendations</a></li><li class="is-active"><a href>BoundaryValueDiffEqFIRK</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>BoundaryValueDiffEqFIRK</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/master/docs/src/solvers/firk.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="firk"><a class="docs-heading-anchor" href="#firk">BoundaryValueDiffEqFIRK</a><a id="firk-1"></a><a class="docs-heading-anchor-permalink" href="#firk" title="Permalink"></a></h1><p>Fully Implicit Runge Kutta(FIRK) Methods. To be able to access the solvers in BoundaryValueDiffEqFIRK, you must first install them use the Julia package manager:</p><pre><code class="language-julia hljs">using Pkg
+Pkg.add(&quot;BoundaryValueDiffEqFIRK&quot;)</code></pre><pre><code class="language-julia hljs">solve(prob::BVProblem, alg, dt; kwargs...)
+solve(prob::TwoPointBVProblem, alg, dt; kwargs...)</code></pre><h2 id="Nested-nonlinear-solving-in-FIRK-methods"><a class="docs-heading-anchor" href="#Nested-nonlinear-solving-in-FIRK-methods">Nested nonlinear solving in FIRK methods</a><a id="Nested-nonlinear-solving-in-FIRK-methods-1"></a><a class="docs-heading-anchor-permalink" href="#Nested-nonlinear-solving-in-FIRK-methods" title="Permalink"></a></h2><p>When working with large boundary value problems, especially those involving stiff systems, computational efficiency and solver robustness become critical concerns. To improve the efficiency of FIRK methods on large BVPs, we can use nested nonlinear solving to obtain the implicit FIRK step instead of solving them as part of the global residual. In BoundaryValueDiffEq.jl, we can set <code>nested_nlsolve</code> as <code>true</code> to enable FIRK methods to compute the implicit FIRK steps using nested nonlinear solving(default option in FIRK methods is <code>nested_nlsolve=false</code>).</p><p>Moreover, the nested nonlinear problem solver can be finely tuned to meet specific accuracy requirements by providing detailed keyword arguments through the <code>nested_nlsolve_kwargs</code> option in any FIRK solver, for example, <code>RadauIIa5(; nested_nlsolve = true, nested_nlsolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))</code>, where <code>nested_nlsolve_kwargs</code> can be any common keyword arguments in NonlinearSolve.jl, see <a href="https://docs.sciml.ai/NonlinearSolve/stable/basics/solve/">Common Solver Options in NonlinearSolve.jl</a>.</p><h2 id="Full-List-of-Methods"><a class="docs-heading-anchor" href="#Full-List-of-Methods">Full List of Methods</a><a id="Full-List-of-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Full-List-of-Methods" title="Permalink"></a></h2><h3 id="Radau-IIA-methods"><a class="docs-heading-anchor" href="#Radau-IIA-methods">Radau IIA methods</a><a id="Radau-IIA-methods-1"></a><a class="docs-heading-anchor-permalink" href="#Radau-IIA-methods" title="Permalink"></a></h3><ul><li><code>RadauIIa1</code>: 1 stage Radau IIA method, without defect control adaptivity</li><li><code>RadauIIa2</code>: 2 stage Radau IIA method, with defect control adaptivity.</li><li><code>RadauIIa3</code>: 3 stage Radau IIA method, with defect control adaptivity.</li><li><code>RadauIIa5</code>: 5 stage Radau IIA method, with defect control adaptivity.</li><li><code>RadauIIa7</code>: 7 stage Radau IIA method, with defect control adaptivity.</li></ul><h3 id="Lobatto-IIIA-methods"><a class="docs-heading-anchor" href="#Lobatto-IIIA-methods">Lobatto IIIA methods</a><a id="Lobatto-IIIA-methods-1"></a><a class="docs-heading-anchor-permalink" href="#Lobatto-IIIA-methods" title="Permalink"></a></h3><ul><li><code>LobattoIIIa2</code>: 2 stage Lobatto IIIa method, with defect control adaptivity.</li><li><code>LobattoIIIa3</code>: 3 stage Lobatto IIIa method, with defect control adaptivity.</li><li><code>LobattoIIIa4</code>: 4 stage Lobatto IIIa method, with defect control adaptivity.</li><li><code>LobattoIIIa5</code>: 5 stage Lobatto IIIa method, with defect control adaptivity.</li></ul><h3 id="Lobatto-IIIB-methods"><a class="docs-heading-anchor" href="#Lobatto-IIIB-methods">Lobatto IIIB methods</a><a id="Lobatto-IIIB-methods-1"></a><a class="docs-heading-anchor-permalink" href="#Lobatto-IIIB-methods" title="Permalink"></a></h3><ul><li><code>LobattoIIIb2</code>: 2 stage Lobatto IIIb method, without defect control adaptivity.</li><li><code>LobattoIIIb3</code>: 3 stage Lobatto IIIb method, with defect control adaptivity.</li><li><code>LobattoIIIb4</code>: 4 stage Lobatto IIIb method, with defect control adaptivity.</li><li><code>LobattoIIIb5</code>: 5 stage Lobatto IIIb method, with defect control adaptivity.</li></ul><h3 id="Lobatto-IIIC-methods"><a class="docs-heading-anchor" href="#Lobatto-IIIC-methods">Lobatto IIIC methods</a><a id="Lobatto-IIIC-methods-1"></a><a class="docs-heading-anchor-permalink" href="#Lobatto-IIIC-methods" title="Permalink"></a></h3><ul><li><code>LobattoIIIc2</code>: 2 stage Lobatto IIIc method, without defect control adaptivity.</li><li><code>LobattoIIIc3</code>: 3 stage Lobatto IIIc method, with defect control adaptivity.</li><li><code>LobattoIIIc4</code>: 4 stage Lobatto IIIc method, with defect control adaptivity.</li><li><code>LobattoIIIc5</code>: 5 stage Lobatto IIIc method, with defect control adaptivity.</li></ul><h2 id="Detailed-Solvers-Explanation"><a class="docs-heading-anchor" href="#Detailed-Solvers-Explanation">Detailed Solvers Explanation</a><a id="Detailed-Solvers-Explanation-1"></a><a class="docs-heading-anchor-permalink" href="#Detailed-Solvers-Explanation" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.RadauIIa1" href="#BoundaryValueDiffEqFIRK.RadauIIa1"><code>BoundaryValueDiffEqFIRK.RadauIIa1</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  RadauIIa1(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>1th stage RadauIIa method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@incollection{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    editor={Engquist, Bj{&quot;o}rn},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L8-L89">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.RadauIIa2" href="#BoundaryValueDiffEqFIRK.RadauIIa2"><code>BoundaryValueDiffEqFIRK.RadauIIa2</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  RadauIIa2(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>2th stage RadauIIa method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@incollection{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    editor={Engquist, Bj{&quot;o}rn},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L8-L89">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.RadauIIa3" href="#BoundaryValueDiffEqFIRK.RadauIIa3"><code>BoundaryValueDiffEqFIRK.RadauIIa3</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  RadauIIa3(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>3th stage RadauIIa method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@incollection{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    editor={Engquist, Bj{&quot;o}rn},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L8-L89">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.RadauIIa5" href="#BoundaryValueDiffEqFIRK.RadauIIa5"><code>BoundaryValueDiffEqFIRK.RadauIIa5</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  RadauIIa5(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>5th stage RadauIIa method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@incollection{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    editor={Engquist, Bj{&quot;o}rn},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L8-L89">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.RadauIIa7" href="#BoundaryValueDiffEqFIRK.RadauIIa7"><code>BoundaryValueDiffEqFIRK.RadauIIa7</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  RadauIIa7(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>7th stage RadauIIa method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@incollection{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    editor={Engquist, Bj{&quot;o}rn},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L8-L89">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIa2" href="#BoundaryValueDiffEqFIRK.LobattoIIIa2"><code>BoundaryValueDiffEqFIRK.LobattoIIIa2</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIa2(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>2th stage LobattoIIIa method.</p><p><strong>Keyword Arguments</strong></p><pre><code class="nohighlight hljs">- `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+`NonlinearProblem` interface can be used. Note that any autodiff argument for
+  the solver will be ignored and a custom jacobian algorithm will be used.</code></pre><ul><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><pre><code class="nohighlight hljs">  Reference for Lobatto and Radau methods:
+  ```bibtex
+      @Inbook{Jay2015,
+      author=&quot;Jay, Laurent O.&quot;,
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      title=&quot;Lobatto Methods&quot;,
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      year=&quot;2015&quot;,
+      publisher=&quot;Springer Berlin Heidelberg&quot;,
+      }
+      @incollection{engquist_radau_2015,
+      author = {Hairer, Ernst and Wanner, Gerhard},
+      title = {Radau {Methods}},
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      publisher = {Springer Berlin Heidelberg},
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      year = {2015},
+  }
+  ```
+  References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+  ```bibtex
+  @article{shampine_solving_nodate,
+  title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+  author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+  year = {2000},
+  }
+
+  @article{kierzenka_bvp_2008,
+      title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+      author = {Kierzenka, J and Shampine, L F},
+      year = {2008},
+  }
+
+  @article{russell_adaptive_1978,
+      title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+      journal = {SIAM Journal on Numerical Analysis},
+      author = {Russell, R. D. and Christiansen, J.},
+      year = {1978},
+      file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+  }
+  ```</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L108-L188">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIa3" href="#BoundaryValueDiffEqFIRK.LobattoIIIa3"><code>BoundaryValueDiffEqFIRK.LobattoIIIa3</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIa3(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>3th stage LobattoIIIa method.</p><p><strong>Keyword Arguments</strong></p><pre><code class="nohighlight hljs">- `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+`NonlinearProblem` interface can be used. Note that any autodiff argument for
+  the solver will be ignored and a custom jacobian algorithm will be used.</code></pre><ul><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><pre><code class="nohighlight hljs">  Reference for Lobatto and Radau methods:
+  ```bibtex
+      @Inbook{Jay2015,
+      author=&quot;Jay, Laurent O.&quot;,
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      title=&quot;Lobatto Methods&quot;,
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      year=&quot;2015&quot;,
+      publisher=&quot;Springer Berlin Heidelberg&quot;,
+      }
+      @incollection{engquist_radau_2015,
+      author = {Hairer, Ernst and Wanner, Gerhard},
+      title = {Radau {Methods}},
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      publisher = {Springer Berlin Heidelberg},
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      year = {2015},
+  }
+  ```
+  References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+  ```bibtex
+  @article{shampine_solving_nodate,
+  title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+  author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+  year = {2000},
+  }
+
+  @article{kierzenka_bvp_2008,
+      title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+      author = {Kierzenka, J and Shampine, L F},
+      year = {2008},
+  }
+
+  @article{russell_adaptive_1978,
+      title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+      journal = {SIAM Journal on Numerical Analysis},
+      author = {Russell, R. D. and Christiansen, J.},
+      year = {1978},
+      file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+  }
+  ```</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L108-L188">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIa4" href="#BoundaryValueDiffEqFIRK.LobattoIIIa4"><code>BoundaryValueDiffEqFIRK.LobattoIIIa4</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIa4(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>4th stage LobattoIIIa method.</p><p><strong>Keyword Arguments</strong></p><pre><code class="nohighlight hljs">- `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+`NonlinearProblem` interface can be used. Note that any autodiff argument for
+  the solver will be ignored and a custom jacobian algorithm will be used.</code></pre><ul><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><pre><code class="nohighlight hljs">  Reference for Lobatto and Radau methods:
+  ```bibtex
+      @Inbook{Jay2015,
+      author=&quot;Jay, Laurent O.&quot;,
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      title=&quot;Lobatto Methods&quot;,
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      year=&quot;2015&quot;,
+      publisher=&quot;Springer Berlin Heidelberg&quot;,
+      }
+      @incollection{engquist_radau_2015,
+      author = {Hairer, Ernst and Wanner, Gerhard},
+      title = {Radau {Methods}},
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      publisher = {Springer Berlin Heidelberg},
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      year = {2015},
+  }
+  ```
+  References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+  ```bibtex
+  @article{shampine_solving_nodate,
+  title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+  author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+  year = {2000},
+  }
+
+  @article{kierzenka_bvp_2008,
+      title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+      author = {Kierzenka, J and Shampine, L F},
+      year = {2008},
+  }
+
+  @article{russell_adaptive_1978,
+      title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+      journal = {SIAM Journal on Numerical Analysis},
+      author = {Russell, R. D. and Christiansen, J.},
+      year = {1978},
+      file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+  }
+  ```</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L108-L188">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIa5" href="#BoundaryValueDiffEqFIRK.LobattoIIIa5"><code>BoundaryValueDiffEqFIRK.LobattoIIIa5</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIa5(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>5th stage LobattoIIIa method.</p><p><strong>Keyword Arguments</strong></p><pre><code class="nohighlight hljs">- `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
+`NonlinearProblem` interface can be used. Note that any autodiff argument for
+  the solver will be ignored and a custom jacobian algorithm will be used.</code></pre><ul><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>false</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><pre><code class="nohighlight hljs">  Reference for Lobatto and Radau methods:
+  ```bibtex
+      @Inbook{Jay2015,
+      author=&quot;Jay, Laurent O.&quot;,
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      title=&quot;Lobatto Methods&quot;,
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      year=&quot;2015&quot;,
+      publisher=&quot;Springer Berlin Heidelberg&quot;,
+      }
+      @incollection{engquist_radau_2015,
+      author = {Hairer, Ernst and Wanner, Gerhard},
+      title = {Radau {Methods}},
+      booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+      publisher = {Springer Berlin Heidelberg},
+      editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+      year = {2015},
+  }
+  ```
+  References for implementation of defect control, based on the `bvp5c` solver in MATLAB:
+  ```bibtex
+  @article{shampine_solving_nodate,
+  title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+  author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+  year = {2000},
+  }
+
+  @article{kierzenka_bvp_2008,
+      title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+      author = {Kierzenka, J and Shampine, L F},
+      year = {2008},
+  }
+
+  @article{russell_adaptive_1978,
+      title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+      journal = {SIAM Journal on Numerical Analysis},
+      author = {Russell, R. D. and Christiansen, J.},
+      year = {1978},
+      file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+  }
+  ```</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L108-L188">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIb2" href="#BoundaryValueDiffEqFIRK.LobattoIIIb2"><code>BoundaryValueDiffEqFIRK.LobattoIIIb2</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIb2(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>2th stage LobattoIIIb method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L207-L289">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIb3" href="#BoundaryValueDiffEqFIRK.LobattoIIIb3"><code>BoundaryValueDiffEqFIRK.LobattoIIIb3</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIb3(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>3th stage LobattoIIIb method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L207-L289">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIb4" href="#BoundaryValueDiffEqFIRK.LobattoIIIb4"><code>BoundaryValueDiffEqFIRK.LobattoIIIb4</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIb4(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>4th stage LobattoIIIb method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L207-L289">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIb5" href="#BoundaryValueDiffEqFIRK.LobattoIIIb5"><code>BoundaryValueDiffEqFIRK.LobattoIIIb5</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIb5(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>5th stage LobattoIIIb method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+    title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+    author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+    year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L207-L289">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIc2" href="#BoundaryValueDiffEqFIRK.LobattoIIIc2"><code>BoundaryValueDiffEqFIRK.LobattoIIIc2</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIc2(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>2th stage LobattoIIIc method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L308-L390">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIc3" href="#BoundaryValueDiffEqFIRK.LobattoIIIc3"><code>BoundaryValueDiffEqFIRK.LobattoIIIc3</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIc3(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>3th stage LobattoIIIc method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L308-L390">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIc4" href="#BoundaryValueDiffEqFIRK.LobattoIIIc4"><code>BoundaryValueDiffEqFIRK.LobattoIIIc4</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIc4(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>4th stage LobattoIIIc method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L308-L390">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="BoundaryValueDiffEqFIRK.LobattoIIIc5" href="#BoundaryValueDiffEqFIRK.LobattoIIIc5"><code>BoundaryValueDiffEqFIRK.LobattoIIIc5</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">  LobattoIIIc5(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false, nest_tol = 0.0,
+          defect_threshold = 0.1, max_num_subintervals = 3000)</code></pre><p>5th stage LobattoIIIc method.</p><p><strong>Keyword Arguments</strong></p><ul><li><p><code>nlsolve</code>: Internal Nonlinear solver. Any solver which conforms to the SciML <code>NonlinearProblem</code> interface can be used. Note that any autodiff argument for the solver will be ignored and a custom jacobian algorithm will be used.</p></li><li><p><code>jac_alg</code>: Jacobian Algorithm used for the nonlinear solver. Defaults to <code>BVPJacobianAlgorithm()</code>, which automatically decides the best algorithm to use based on the input types and problem type.</p><ul><li>For <code>TwoPointBVProblem</code>, only <code>diffmode</code> is used (defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>).</li><li>For <code>BVProblem</code>, <code>bc_diffmode</code> and <code>nonbc_diffmode</code> are used. For <code>nonbc_diffmode</code> defaults to <code>AutoSparse(AutoForwardDiff)</code> if possible else <code>AutoSparse(AutoFiniteDiff)</code>. For <code>bc_diffmode</code>, defaults to <code>AutoForwardDiff</code> if possible else <code>AutoFiniteDiff</code>.</li></ul></li><li><p><code>nested_nlsolve</code>: Whether or not to use a nested nonlinear solve for the implicit FIRK step. Defaults to <code>true</code>. If set to <code>false</code>, the FIRK stages are solved as a part of the global residual. The general recommendation is to choose <code>true</code> for larger problems and <code>false</code> for smaller ones.</p></li><li><p><code>nest_tol</code>: The tolerance for the nested solver. Default is nothing which leads to <code>NonlinearSolve</code> automatically selecting the tolerance.</p></li><li><p><code>defect_threshold</code>: Threshold for defect control.</p></li><li><p><code>max_num_subintervals</code>: Number of maximal subintervals, default as 3000.</p></li></ul><div class="admonition is-info" id="Note-614d4f8643185fcc"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-614d4f8643185fcc" title="Permalink"></a></header><div class="admonition-body"><p>For type-stability, the chunksizes for ForwardDiff ADTypes in <code>BVPJacobianAlgorithm</code> must be provided.</p></div></div><p><strong>References</strong></p><p>Reference for Lobatto and Radau methods:</p><pre><code class="language-bibtex hljs">@Inbook{Jay2015,
+    author=&quot;Jay, Laurent O.&quot;,
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    title=&quot;Lobatto Methods&quot;,
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    year=&quot;2015&quot;,
+    publisher=&quot;Springer Berlin Heidelberg&quot;,
+}
+@incollection{engquist_radau_2015,
+    author = {Hairer, Ernst and Wanner, Gerhard},
+    title = {Radau {Methods}},
+    booktitle = {Encyclopedia of {Applied} and {Computational} {Mathematics}},
+    publisher = {Springer Berlin Heidelberg},
+    editor=&quot;Engquist, Bj{&quot;o}rn&quot;,
+    year = {2015},
+}</code></pre><p>References for implementation of defect control, based on the <code>bvp5c</code> solver in MATLAB:</p><pre><code class="language-bibtex hljs">@article{shampine_solving_nodate,
+title = {Solving {Boundary} {Value} {Problems} for {Ordinary} {Diﬀerential} {Equations} in {Matlab} with bvp4c
+author = {Shampine, Lawrence F and Kierzenka, Jacek and Reichelt, Mark W},
+year = {2000},
+}
+
+@article{kierzenka_bvp_2008,
+    title = {A {BVP} {Solver} that {Controls} {Residual} and {Error}},
+    author = {Kierzenka, J and Shampine, L F},
+    year = {2008},
+}
+
+@article{russell_adaptive_1978,
+    title = {Adaptive {Mesh} {Selection} {Strategies} for {Solving} {Boundary} {Value} {Problems}},
+    journal = {SIAM Journal on Numerical Analysis},
+    author = {Russell, R. D. and Christiansen, J.},
+    year = {1978},
+    file = {Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:/Users/AXLRSN/Zotero/storage/HKU27A4T/Russell and Christiansen - 1978 - Adaptive Mesh Selection Strategies for Solving Bou.pdf:application/pdf},
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/9b290aafb2992496c590dd44072e745650f3f267/lib/BoundaryValueDiffEqFIRK/src/algorithms.jl#L308-L390">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../mirk/">« BoundaryValueDiffEqMIRK</a><a class="docs-footer-nextpage" href="../shooting/">BoundaryValueDiffEqShooting »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Saturday 31 May 2025 16:17">Saturday 31 May 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
