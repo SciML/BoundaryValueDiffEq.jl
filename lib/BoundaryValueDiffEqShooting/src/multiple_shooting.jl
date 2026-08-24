@@ -45,6 +45,7 @@ function SciMLBase.__solve(
 
     internal_ode_kwargs = (; kwargs..., odesolve_kwargs..., save_end = true)
 
+    odecache_by_eltype = Dict{Tuple{Any, Int}, Any}()
     solve_internal_odes! = @closure (
         resid_nodes,
         us,
@@ -52,9 +53,15 @@ function SciMLBase.__solve(
         cur_nshoot,
         nodes,
         odecache,
-    ) -> __multiple_shooting_solve_internal_odes!(
-        resid_nodes, us, cur_nshoot, odecache, nodes, u0_size, N, ensemblealg, tspan
-    )
+    ) -> begin
+        odecache_ = __multiple_shooting_odecache_for_eltype(
+            odecache, odecache_by_eltype, ensemblealg, prob, alg.ode_alg, us, cur_nshoot,
+            u0_size, N, internal_ode_kwargs
+        )
+        __multiple_shooting_solve_internal_odes!(
+            resid_nodes, us, cur_nshoot, odecache_, nodes, u0_size, N, ensemblealg, tspan
+        )
+    end
 
     # This gets all the nshoots except the final SingleShooting case
     all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
@@ -360,6 +367,21 @@ function __multiple_shooting_init_jacobian_odecache(
     return __multiple_shooting_init_odecache(
         ensemblealg, prob, alg, xduals, nshoots; kwargs...
     )
+end
+
+function __multiple_shooting_odecache_for_eltype(
+        odecache, odecache_by_eltype, ensemblealg, prob, ode_alg, us, nshoots, u0_size, N,
+        internal_ode_kwargs
+    )
+    cache = odecache isa Vector ? first(odecache) : odecache
+    eltype(cache.u) === eltype(us) && return odecache
+
+    return get!(odecache_by_eltype, (eltype(us), nshoots)) do
+        u0 = copy(reshape(@view(us[1:N]), u0_size))
+        __multiple_shooting_init_odecache(
+            ensemblealg, prob, ode_alg, u0, nshoots; internal_ode_kwargs...
+        )
+    end
 end
 
 # Not using `EnsembleProblem` since it is hard to initialize the cache and stuff
