@@ -5,11 +5,13 @@
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
+    return
 end
 
 function bc!(res, u, p, t)
     res[1] = u[1][1]
     res[2] = u[end][1] - 1
+    return
 end
 
 u0 = [0.0, 1.0]
@@ -18,34 +20,26 @@ prob = BVProblem(f!, bc!, u0, tspan)
 
 # Solve with detailed verbosity to see convergence info
 verbose = BVPVerbosity(Detailed())
-sol = solve(prob, MIRK4(), dt = 0.1, verbose = verbose)
+sol = solve(prob, MIRK4(), dt = 0.1; verbose)
 
 # Solve with completely silent output (no warnings or deprecations)
 sol = solve(prob, MIRK4(), dt = 0.1, verbose = BVPVerbosity(None()))
 
 # Solve with default verbosity (standard preset)
 sol = solve(prob, MIRK4(), dt = 0.1)  # equivalent to verbose = BVPVerbosity()</code></pre><h2 id="Controlling-Internal-Solver-Verbosity"><a class="docs-heading-anchor" href="#Controlling-Internal-Solver-Verbosity">Controlling Internal Solver Verbosity</a><a id="Controlling-Internal-Solver-Verbosity-1"></a><a class="docs-heading-anchor-permalink" href="#Controlling-Internal-Solver-Verbosity" title="Permalink"></a></h2><p>BoundaryValueDiffEq.jl solvers internally use NonlinearSolve.jl (for nonlinear systems) or Optimization.jl (when using optimization-based methods). You can control the verbosity of these internal solvers independently:</p><pre><code class="language-julia hljs"># Silence BVP messages but show all NonlinearSolve convergence info
-verbose = BVPVerbosity(
-    None(),
-    nonlinear_verbosity = All()
-)
-sol = solve(prob, MIRK4(), dt = 0.1, verbose = verbose)
+verbose = BVPVerbosity(None(), nonlinear_verbosity = All())
+sol = solve(prob, MIRK4(); dt = 0.1, verbose)
 
 # Show standard BVP messages but silence NonlinearSolve output
-verbose = BVPVerbosity(
-    Standard(),
-    nonlinear_verbosity = None()
-)
-sol = solve(prob, MIRK4(), dt = 0.1, verbose = verbose)
+verbose = BVPVerbosity(Standard(), nonlinear_verbosity = None())
+sol = solve(prob, MIRK4(); dt = 0.1, verbose)
 
 # Control Optimization.jl verbosity when using optimization-based methods
-using Optimization, OptimizationOptimJL
+using Optimization
+using OptimizationOptimJL: BFGS
 
-verbose = BVPVerbosity(
-    Standard(),
-    optimization_verbosity = Detailed()
-)
-sol = solve(prob, MIRK4(optimize = OptimizationOptimJL.BFGS()), dt = 0.1, verbose = verbose)</code></pre><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><article><details class="docstring" open="true"><summary id="BoundaryValueDiffEqCore.BVPVerbosity"><a class="docstring-binding" href="#BoundaryValueDiffEqCore.BVPVerbosity"><code>BoundaryValueDiffEqCore.BVPVerbosity</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">BVPVerbosity</code></pre><p>Verbosity specifier for controlling logging output in BoundaryValueDiffEq.jl.</p><p><strong>Toggles</strong></p><p>Fine-grained toggles for specific message categories:</p><p><strong>BVPSOL Solver:</strong></p><ul><li><code>:bvpsol_convergence</code> - Convergence failures (Gauss Newton, iterative refinement)</li><li><code>:bvpsol_integrator</code> - Integrator trajectory failures</li><li><code>:bvpsol_linear_solver</code> - Linear solver failures (sparse solver, condensing algorithm, rank reduction)</li><li><code>:bvpsol_resources</code> - Resource exhaustion (workspace limits)</li><li><code>:bvpsol_bc_inconsistent</code> - Boundary condition inconsistencies</li></ul><p><strong>COLNEW Solver:</strong></p><ul><li><code>:colnew_convergence</code> - Nonlinear iteration convergence failures</li><li><code>:colnew_matrix</code> - Collocation matrix singularity</li><li><code>:colnew_resources</code> - Subinterval storage exhaustion</li><li><code>:colnew_input</code> - Input data errors</li></ul><p><strong>Shooting Methods:</strong></p><ul><li><code>:shooting_initial_guess</code> - Single shooting initial guess warnings</li><li><code>:multiple_shooting_initial_guess</code> - Multiple shooting initial guess warnings</li></ul><p><strong>General:</strong></p><ul><li><code>:nonlinear_verbosity</code> - Controls verbosity of the underlying NonlinearSolve.jl solver (uses SciMLLogging presets)</li><li><code>:optimization_verbosity</code> - Controls verbosity of the underlying Optimization.jl solver (uses SciMLLogging presets)</li><li><code>:type_inference</code> - Type stability warnings</li><li><code>:initialization</code> - ODE solver initialization failures</li><li><code>:adaptivity</code> - Mesh refinement and adaptivity messages</li><li><code>:convergence_result</code> - Final solve status with residuals</li><li><code>:deprecations</code> - Deprecation warnings</li></ul><p><strong>Presets</strong></p><p>BVPVerbosity supports five predefined SciMLLogging presets:</p><ul><li><strong>None()</strong> - No output (best for production/batch operations)</li><li><strong>Minimal()</strong> - Only solver failures and deprecations</li><li><strong>Standard()</strong> - Adds input validation warnings (default, recommended)</li><li><strong>Detailed()</strong> - Adds initialization and convergence info</li><li><strong>All()</strong> - Maximum verbosity (includes mesh adaptivity)</li></ul><p><strong>Usage</strong></p><p><strong>Using Presets</strong></p><pre><code class="language-julia hljs"># Standard preset (default)
+verbose = BVPVerbosity(Standard(), optimization_verbosity = Detailed())
+sol = solve(prob, MIRK4(; optimize = BFGS()), dt = 0.1, verbose)</code></pre><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><article><details class="docstring" open="true"><summary id="BoundaryValueDiffEqCore.BVPVerbosity"><a class="docstring-binding" href="#BoundaryValueDiffEqCore.BVPVerbosity"><code>BoundaryValueDiffEqCore.BVPVerbosity</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">BVPVerbosity</code></pre><p>Verbosity specifier for controlling logging output in BoundaryValueDiffEq.jl.</p><p><strong>Toggles</strong></p><p>Fine-grained toggles for specific message categories:</p><p><strong>BVPSOL Solver:</strong></p><ul><li><code>:bvpsol_convergence</code> - Convergence failures (Gauss Newton, iterative refinement)</li><li><code>:bvpsol_integrator</code> - Integrator trajectory failures</li><li><code>:bvpsol_linear_solver</code> - Linear solver failures (sparse solver, condensing algorithm, rank reduction)</li><li><code>:bvpsol_resources</code> - Resource exhaustion (workspace limits)</li><li><code>:bvpsol_bc_inconsistent</code> - Boundary condition inconsistencies</li></ul><p><strong>COLNEW Solver:</strong></p><ul><li><code>:colnew_convergence</code> - Nonlinear iteration convergence failures</li><li><code>:colnew_matrix</code> - Collocation matrix singularity</li><li><code>:colnew_resources</code> - Subinterval storage exhaustion</li><li><code>:colnew_input</code> - Input data errors</li></ul><p><strong>Shooting Methods:</strong></p><ul><li><code>:shooting_initial_guess</code> - Single shooting initial guess warnings</li><li><code>:multiple_shooting_initial_guess</code> - Multiple shooting initial guess warnings</li></ul><p><strong>General:</strong></p><ul><li><code>:nonlinear_verbosity</code> - Controls verbosity of the underlying NonlinearSolve.jl solver (uses SciMLLogging presets)</li><li><code>:optimization_verbosity</code> - Controls verbosity of the underlying Optimization.jl solver (uses SciMLLogging presets)</li><li><code>:type_inference</code> - Type stability warnings</li><li><code>:initialization</code> - ODE solver initialization failures</li><li><code>:adaptivity</code> - Mesh refinement and adaptivity messages</li><li><code>:convergence_result</code> - Final solve status with residuals</li><li><code>:deprecations</code> - Deprecation warnings</li></ul><p><strong>Presets</strong></p><p>BVPVerbosity supports five predefined SciMLLogging presets:</p><ul><li><strong>None()</strong> - No output (best for production/batch operations)</li><li><strong>Minimal()</strong> - Only solver failures and deprecations</li><li><strong>Standard()</strong> - Adds input validation warnings (default, recommended)</li><li><strong>Detailed()</strong> - Adds initialization and convergence info</li><li><strong>All()</strong> - Maximum verbosity (includes mesh adaptivity)</li></ul><p><strong>Usage</strong></p><p><strong>Using Presets</strong></p><pre><code class="language-julia hljs"># Standard preset (default)
 solve(prob, MIRK4(); verbose = BVPVerbosity())
 solve(prob, MIRK4(); verbose = BVPVerbosity(Standard()))
 
@@ -60,41 +54,47 @@ solve(prob, MIRK4(); verbose = BVPVerbosity(Detailed()))
 
 # Maximum verbosity
 solve(prob, MIRK4(); verbose = BVPVerbosity(All()))</code></pre><p><strong>Setting Individual Toggles</strong></p><pre><code class="language-julia hljs"># Show only BVPSOL convergence issues
-solve(prob, BVPSOL(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     bvpsol_convergence = WarnLevel(),
     # All others default to Silent in None preset
-))
+)
+solve(prob, BVPSOL(); verbose)
 
 # Silence initial guess warnings but keep solver failures
-solve(prob, MultipleShooting(10); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     Standard(),
     multiple_shooting_initial_guess = Silent()
-))
+)
+solve(prob, MultipleShooting(10); verbose)
 
 # Only show linear algebra issues
-solve(prob, BVPSOL(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),
     bvpsol_linear_solver = WarnLevel(),
     colnew_matrix = WarnLevel()
-))
+)
+solve(prob, BVPSOL(); verbose)
 
 # Control NonlinearSolve verbosity independently
-solve(prob, MIRK4(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),  # Silence BVP messages
     nonlinear_verbosity = All()  # Show all NonlinearSolve convergence info
-))
+)
+solve(prob, MIRK4(); verbose)
 
 # Silence NonlinearSolve but keep BVP messages
-solve(prob, MIRK4(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     Standard(),  # Standard BVP messages
     nonlinear_verbosity = None()  # No NonlinearSolve output
-))
+)
+solve(prob, MIRK4(); verbose)
 
 # Control Optimization.jl verbosity independently
-solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),  # Silence BVP messages
     optimization_verbosity = All()  # Show all Optimization.jl convergence info
-))</code></pre><p><strong>Using Groups</strong></p><p>Groups provide convenient access to related toggles:</p><pre><code class="language-julia hljs"># All BVPSOL messages
+)
+solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose)</code></pre><p><strong>Using Groups</strong></p><p>Groups provide convenient access to related toggles:</p><pre><code class="language-julia hljs"># All BVPSOL messages
 solve(prob, BVPSOL(); verbose = BVPVerbosity(bvpsol = WarnLevel()))
 
 # All COLNEW messages
@@ -118,4 +118,4 @@ solve(prob, alg; verbose = BVPVerbosity(input_validation = WarnLevel()))
 # All solver failures (equivalent to Minimal preset failures)
 solve(prob, alg; verbose = BVPVerbosity(solver_failures = WarnLevel()))</code></pre><p><strong>Backward Compatibility</strong></p><pre><code class="language-julia hljs"># Boolean verbose still works (true → Standard, false → None)
 solve(prob, MIRK4(); verbose = true)   # Uses Standard preset
-solve(prob, MIRK4(); verbose = false)  # Uses None preset</code></pre><p><strong>Groups</strong></p><p>Groups for convenient toggle control:</p><ul><li><strong><code>bvpsol</code></strong> - All BVPSOL toggles</li><li><strong><code>colnew</code></strong> - All COLNEW toggles</li><li><strong><code>shooting</code></strong> - All shooting method toggles</li><li><strong><code>convergence</code></strong> - Convergence failures across solvers</li><li><strong><code>linear_algebra</code></strong> - Linear algebra failures</li><li><strong><code>resources</code></strong> - Resource exhaustion issues</li><li><strong><code>input_validation</code></strong> - Input validation warnings</li><li><strong><code>solver_failures</code></strong> - All solver failure toggles</li><li><strong><code>progress</code></strong> - Initialization, adaptivity, and convergence results</li></ul><p><strong>Preset Details</strong></p><p><strong>None</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>None()</code> (no NonlinearSolve output)</li><li><code>optimization_verbosity</code> → <code>None()</code> (no Optimization.jl output)</li><li>All toggles: <code>Silent()</code></li></ul><p><strong>Minimal</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>Minimal()</code> (minimal NonlinearSolve output)</li><li><code>optimization_verbosity</code> → <code>Minimal()</code> (minimal Optimization.jl output)</li><li>All solver failure toggles → <code>WarnLevel()</code></li><li><code>deprecations</code> → <code>WarnLevel()</code></li><li>All others → <code>Silent()</code></li></ul><p><strong>Standard (Default)</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>Standard()</code> (standard NonlinearSolve output)</li><li><code>optimization_verbosity</code> → <code>Standard()</code> (standard Optimization.jl output)</li><li>All solver failure toggles → <code>WarnLevel()</code></li><li>All shooting and input validation toggles → <code>WarnLevel()</code></li><li>All others → <code>Silent()</code></li></ul><p><strong>Detailed</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>Detailed()</code> (detailed NonlinearSolve convergence info)</li><li><code>optimization_verbosity</code> → <code>Detailed()</code> (detailed Optimization.jl convergence info)</li><li>All solver failure toggles → <code>WarnLevel()</code></li><li>All shooting and input validation toggles → <code>WarnLevel()</code></li><li><code>initialization</code> → <code>InfoLevel()</code></li><li><code>convergence_result</code> → <code>InfoLevel()</code></li><li><code>adaptivity</code> → <code>Silent()</code> (still off, can be very verbose)</li></ul><p><strong>All</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>All()</code> (maximum NonlinearSolve verbosity)</li><li><code>optimization_verbosity</code> → <code>All()</code> (maximum Optimization.jl verbosity)</li><li>All toggles → <code>InfoLevel()</code> (including adaptivity)</li><li><code>deprecations</code> → <code>WarnLevel()</code></li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/7fb26ea45d35d0ba0cf4b108b6429e7267ec35c8/lib/BoundaryValueDiffEqCore/src/verbosity.jl#L153-L348">source</a></section></details></article><article><details class="docstring" open="true"><summary id="BoundaryValueDiffEqCore.DEFAULT_VERBOSE"><a class="docstring-binding" href="#BoundaryValueDiffEqCore.DEFAULT_VERBOSE"><code>BoundaryValueDiffEqCore.DEFAULT_VERBOSE</code></a> — <span class="docstring-category">Constant</span></summary><section><div><pre><code class="language-julia hljs">DEFAULT_VERBOSE</code></pre><p>Default <code>BVPVerbosity()</code> value used by BoundaryValueDiffEq solvers when <code>verbose</code> is not specified.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/7fb26ea45d35d0ba0cf4b108b6429e7267ec35c8/lib/BoundaryValueDiffEqCore/src/verbosity.jl#L351-L356">source</a></section></details></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../error_control/">« Error Control Adaptivity</a><a class="docs-footer-nextpage" href="../../solvers/mirk/">BoundaryValueDiffEqMIRK »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 26 August 2026 13:53">Wednesday 26 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+solve(prob, MIRK4(); verbose = false)  # Uses None preset</code></pre><p><strong>Groups</strong></p><p>Groups for convenient toggle control:</p><ul><li><strong><code>bvpsol</code></strong> - All BVPSOL toggles</li><li><strong><code>colnew</code></strong> - All COLNEW toggles</li><li><strong><code>shooting</code></strong> - All shooting method toggles</li><li><strong><code>convergence</code></strong> - Convergence failures across solvers</li><li><strong><code>linear_algebra</code></strong> - Linear algebra failures</li><li><strong><code>resources</code></strong> - Resource exhaustion issues</li><li><strong><code>input_validation</code></strong> - Input validation warnings</li><li><strong><code>solver_failures</code></strong> - All solver failure toggles</li><li><strong><code>progress</code></strong> - Initialization, adaptivity, and convergence results</li></ul><p><strong>Preset Details</strong></p><p><strong>None</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>None()</code> (no NonlinearSolve output)</li><li><code>optimization_verbosity</code> → <code>None()</code> (no Optimization.jl output)</li><li>All toggles: <code>Silent()</code></li></ul><p><strong>Minimal</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>Minimal()</code> (minimal NonlinearSolve output)</li><li><code>optimization_verbosity</code> → <code>Minimal()</code> (minimal Optimization.jl output)</li><li>All solver failure toggles → <code>WarnLevel()</code></li><li><code>deprecations</code> → <code>WarnLevel()</code></li><li>All others → <code>Silent()</code></li></ul><p><strong>Standard (Default)</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>Standard()</code> (standard NonlinearSolve output)</li><li><code>optimization_verbosity</code> → <code>Standard()</code> (standard Optimization.jl output)</li><li>All solver failure toggles → <code>WarnLevel()</code></li><li>All shooting and input validation toggles → <code>WarnLevel()</code></li><li>All others → <code>Silent()</code></li></ul><p><strong>Detailed</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>Detailed()</code> (detailed NonlinearSolve convergence info)</li><li><code>optimization_verbosity</code> → <code>Detailed()</code> (detailed Optimization.jl convergence info)</li><li>All solver failure toggles → <code>WarnLevel()</code></li><li>All shooting and input validation toggles → <code>WarnLevel()</code></li><li><code>initialization</code> → <code>InfoLevel()</code></li><li><code>convergence_result</code> → <code>InfoLevel()</code></li><li><code>adaptivity</code> → <code>Silent()</code> (still off, can be very verbose)</li></ul><p><strong>All</strong></p><ul><li><code>nonlinear_verbosity</code> → <code>All()</code> (maximum NonlinearSolve verbosity)</li><li><code>optimization_verbosity</code> → <code>All()</code> (maximum Optimization.jl verbosity)</li><li>All toggles → <code>InfoLevel()</code> (including adaptivity)</li><li><code>deprecations</code> → <code>WarnLevel()</code></li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/628472d18d90569e787105a65b297cc94df435a2/lib/BoundaryValueDiffEqCore/src/verbosity.jl#L153-L354">source</a></section></details></article><article><details class="docstring" open="true"><summary id="BoundaryValueDiffEqCore.DEFAULT_VERBOSE"><a class="docstring-binding" href="#BoundaryValueDiffEqCore.DEFAULT_VERBOSE"><code>BoundaryValueDiffEqCore.DEFAULT_VERBOSE</code></a> — <span class="docstring-category">Constant</span></summary><section><div><pre><code class="language-julia hljs">DEFAULT_VERBOSE</code></pre><p>Default <code>BVPVerbosity()</code> value used by BoundaryValueDiffEq solvers when <code>verbose</code> is not specified.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/SciML/BoundaryValueDiffEq.jl/blob/628472d18d90569e787105a65b297cc94df435a2/lib/BoundaryValueDiffEqCore/src/verbosity.jl#L357-L362">source</a></section></details></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../error_control/">« Error Control Adaptivity</a><a class="docs-footer-nextpage" href="../../solvers/mirk/">BoundaryValueDiffEqMIRK »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 10:11">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
