@@ -9,7 +9,7 @@ using DiffEqBase: DiffEqBase, solve
 using DifferentiationInterface: SecondOrder
 using ForwardDiff: ForwardDiff, pickchunksize
 using Integrals: Integrals, IntegralProblem
-using LinearAlgebra: LinearAlgebra, mul!
+using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
 using LineSearch: BackTracking
 using NonlinearSolveFirstOrder: NonlinearSolveFirstOrder, NonlinearSolvePolyAlgorithm,
     GaussNewton, LevenbergMarquardt, NewtonRaphson, NonlinearSolveBase, TrustRegion
@@ -29,7 +29,8 @@ using SciMLLogging: SciMLLogging, Silent,
 using SciMLPublic: @public
 using Setfield: @set!
 using SparseArrays: sparse
-using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
+using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector,
+    TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm
 using SciMLStructures: SciMLStructures
 
@@ -87,6 +88,9 @@ export BVPVerbosity, _process_verbose_param, DEFAULT_VERBOSE
     __needs_diffcache, __resize!, __restructure_sol, __split_kwargs,
     __tunable_part, __use_both_error_control, __vec, __vec_bc, __vec_bc!,
     __vec_f, __vec_f!, __vec_so_bc, __vec_so_bc!, _sparse_like,
+    __apply_mass_matrix!, __get_algebraic_indices, __subtract_mass_stage!,
+    __apply_algebraic_constraint!, __apply_algebraic_constraint_oop!,
+    __check_dae_adaptivity,
     concrete_jacobian_algorithm, diff!, eval_bc_residual, eval_bc_residual!,
     get_dense_ad, interval, nodual_value, recursive_flatten, recursive_flatten!,
     recursive_flatten_twopoint!, recursive_unflatten!, safe_similar, _unwrap_val
