@@ -38,6 +38,7 @@ ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
 BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
 
 [compat]
+MonteCarloIntegration = "0.2, 0.3"
 LatticeRules = "0.0.2"
 ADTypes = "1.14"
 BoundaryValueDiffEqAscher = "1.16.0"
