@@ -73,6 +73,7 @@ Test = "1.10"
 julia = "1.10"
 
 [extras]
+MonteCarloIntegration = "4886b29c-78c9-11e9-0a6e-41e1f4161f7b"
 LatticeRules = "73f95e8e-ec14-4e6a-8b18-0d2e271c4e55"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
@@ -92,4 +93,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["LatticeRules", "DiffEqDevTools", "DifferentiationInterface", "LinearSolve", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "SciMLTesting", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
+test = ["MonteCarloIntegration", "LatticeRules", "DiffEqDevTools", "DifferentiationInterface", "LinearSolve", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "SciMLTesting", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
