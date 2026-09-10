@@ -6,7 +6,7 @@ using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
-    DEFAULT_VERBOSE, DefectControl, GaussNewton, LevenbergMarquardt,
+    DEFAULT_VERBOSE, DefectControl,
     _process_verbose_param,
     recursive_flatten!, recursive_unflatten!,
     __concrete_solve_algorithm, diff!, EvalSol,
@@ -34,9 +34,9 @@ using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
 using LinearAlgebra: LinearAlgebra
+using NonlinearSolveFirstOrder: GaussNewton, LevenbergMarquardt
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray,
     VectorOfArray, recursivecopy, recursivefill!
-using Reexport: @reexport
 using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
@@ -46,11 +46,22 @@ using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, BVPFunction, BVProblem,
 using Setfield: @set!
 using SparseArrays: sparse
 using SciMLStructures: SciMLStructures
+
+# The public API that BoundaryValueDiffEqFIRK reexports (see the second `export` block
+# below), so that `using BoundaryValueDiffEqFIRK` on its own is enough to pick an AD
+# backend, build a `BVProblem` or `TwoPointBVProblem`, configure the solve, run it, and
+# inspect the result. Every name stays owned and documented by ADTypes,
+# BoundaryValueDiffEqCore, NonlinearSolveFirstOrder or SciMLBase; the set is documented on
+# the Reexported API docs page and approved via `reexports_allow` in test/qa/qa.jl.
+using ADTypes: AutoEnzyme, AutoFiniteDiff, AutoMooncake, AutoPolyesterForwardDiff
+using BoundaryValueDiffEqCore: BVPVerbosity, GlobalErrorControl, HOErrorControl,
+    HybridErrorControl, NoErrorControl, REErrorControl, SequentialErrorControl, integral
+using NonlinearSolveFirstOrder: NewtonRaphson, TrustRegion
+using SciMLBase: EnsembleProblem, ODEFunction, init, solve!, successful_retcode
+
 using StaticArrays: SMatrix, SVector
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("utils.jl")
@@ -310,5 +321,18 @@ export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
+
+# Reexported ADTypes / BoundaryValueDiffEqCore / NonlinearSolveFirstOrder / SciMLBase
+# API; approved via `reexports_allow` in test/qa/qa.jl.
+export AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake, AutoPolyesterForwardDiff,
+    AutoSparse
+export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE
+export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
+    NoErrorControl
+export HOErrorControl, REErrorControl
+export integral
+export GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
+export BVPFunction, BVProblem, EnsembleProblem, ODEFunction, ReturnCode, TwoPointBVProblem,
+    init, remake, solve, solve!, successful_retcode
 
 end

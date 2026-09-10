@@ -31,8 +31,8 @@ Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 function SciMLBase.__init(
         prob::SecondOrderBVProblem, alg::AbstractMIRKN;
         dt = 0.0, adaptive = false, abstol = 1.0e-6,
-        controller = NoErrorControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        controller = NoErrorControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
@@ -119,7 +119,7 @@ function SciMLBase.__init(
     # would embed e.g. an entire previous solution's type in the cache and force
     # recompilation of all downstream code against it (issue #500).
     prob_ = if !(prob.u0 isa AbstractArray) || prob.u0 isa AbstractVectorOfArray
-        remake(prob; u0 = u0)
+        remake(prob; u0)
     else
         prob
     end

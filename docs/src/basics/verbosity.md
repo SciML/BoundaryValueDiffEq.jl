@@ -15,11 +15,13 @@ using BoundaryValueDiffEq
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
+    return
 end
 
 function bc!(res, u, p, t)
     res[1] = u[1][1]
     res[2] = u[end][1] - 1
+    return
 end
 
 u0 = [0.0, 1.0]
@@ -28,7 +30,7 @@ prob = BVProblem(f!, bc!, u0, tspan)
 
 # Solve with detailed verbosity to see convergence info
 verbose = BVPVerbosity(Detailed())
-sol = solve(prob, MIRK4(), dt = 0.1, verbose = verbose)
+sol = solve(prob, MIRK4(), dt = 0.1; verbose)
 
 # Solve with completely silent output (no warnings or deprecations)
 sol = solve(prob, MIRK4(), dt = 0.1, verbose = BVPVerbosity(None()))
@@ -43,27 +45,19 @@ BoundaryValueDiffEq.jl solvers internally use NonlinearSolve.jl (for nonlinear s
 
 ```julia
 # Silence BVP messages but show all NonlinearSolve convergence info
-verbose = BVPVerbosity(
-    None(),
-    nonlinear_verbosity = All()
-)
-sol = solve(prob, MIRK4(), dt = 0.1, verbose = verbose)
+verbose = BVPVerbosity(None(), nonlinear_verbosity = All())
+sol = solve(prob, MIRK4(); dt = 0.1, verbose)
 
 # Show standard BVP messages but silence NonlinearSolve output
-verbose = BVPVerbosity(
-    Standard(),
-    nonlinear_verbosity = None()
-)
-sol = solve(prob, MIRK4(), dt = 0.1, verbose = verbose)
+verbose = BVPVerbosity(Standard(), nonlinear_verbosity = None())
+sol = solve(prob, MIRK4(); dt = 0.1, verbose)
 
 # Control Optimization.jl verbosity when using optimization-based methods
-using Optimization, OptimizationOptimJL
+using Optimization
+using OptimizationOptimJL: BFGS
 
-verbose = BVPVerbosity(
-    Standard(),
-    optimization_verbosity = Detailed()
-)
-sol = solve(prob, MIRK4(optimize = OptimizationOptimJL.BFGS()), dt = 0.1, verbose = verbose)
+verbose = BVPVerbosity(Standard(), optimization_verbosity = Detailed())
+sol = solve(prob, MIRK4(; optimize = BFGS()), dt = 0.1, verbose)
 ```
 
 ## API Reference

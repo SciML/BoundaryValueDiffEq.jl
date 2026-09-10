@@ -45,8 +45,10 @@ function __FastShortcutBVPCompatibleNonlinearPolyalg(
 end
 
 """
-    __FastShortcutNonlinearPolyalg(T = Float64; concrete_jac = nothing, linsolve = nothing,
-        autodiff = nothing)
+    __FastShortcutNonlinearPolyalg(
+        T = Float64; concrete_jac = nothing, linsolve = nothing,
+        autodiff = nothing
+    )
 
 Build the default nonlinear solver polyalgorithm used when a BVP algorithm does not supply
 an explicit nonlinear solver.

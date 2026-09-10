@@ -6,6 +6,7 @@ using ADTypes: ADTypes, AbstractADType, AutoSparse, AutoForwardDiff, AutoFiniteD
 using ArrayInterface: parameterless_type
 using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
+using DifferentiationInterface: SecondOrder
 using ForwardDiff: ForwardDiff, pickchunksize
 using Integrals: Integrals, IntegralProblem
 using LinearAlgebra: LinearAlgebra, mul!
@@ -32,7 +33,13 @@ using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDet
 using SparseMatrixColorings: GreedyColoringAlgorithm
 using SciMLStructures: SciMLStructures
 
-@reexport using NonlinearSolveFirstOrder, SciMLBase
+@reexport using NonlinearSolveFirstOrder:
+    GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
+@reexport using SciMLBase:
+    BVPFunction, BVProblem, DynamicalBVPFunction, NonlinearFunction,
+    NonlinearLeastSquaresProblem, NonlinearProblem, OptimizationFunction,
+    OptimizationProblem, ReturnCode, SecondOrderBVProblem, TwoPointBVProblem,
+    TwoPointSecondOrderBVProblem, init, remake, solve, successful_retcode
 
 include("verbosity.jl")
 include("types.jl")

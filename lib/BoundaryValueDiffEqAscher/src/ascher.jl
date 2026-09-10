@@ -63,8 +63,8 @@ end
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractAscher; dt = 0.0, controller = GlobalErrorControl(),
-        adaptive = true, abstol = 1.0e-4, nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        adaptive = true, abstol = 1.0e-4, nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     (; tspan, p) = prob

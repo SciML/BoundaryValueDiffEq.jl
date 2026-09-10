@@ -1,8 +1,9 @@
 using BoundaryValueDiffEqMIRK
+import SciMLBase
+using SciMLBase: TwoPointBVProblem, solve
 using Test
 
 @testset "Singular BVP" begin
-    using BoundaryValueDiffEqMIRK
     using LinearAlgebra
 
     for order in (2, 3, 4, 5, 6)

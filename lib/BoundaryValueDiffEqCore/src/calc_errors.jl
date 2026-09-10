@@ -1,7 +1,32 @@
 """
     AbstractErrorControl
 
-Abstract type for different error control methods.
+Developer-facing abstract type for error-controller tags used by BoundaryValueDiffEq solver
+implementations.
+
+This is a narrow versioned interface for solver packages. Subtypes classify how a solver's own
+adaptivity implementation manages error estimates; subtyping this type alone does not make a
+controller usable by `MIRK`, `FIRK`, or another concrete solver.
+
+# Extension Rules
+
+A solver package that owns both an error controller and the corresponding adaptivity behavior may
+subtype `AbstractErrorControl`. It may extend [`__use_both_error_control`](@ref) for that subtype
+to declare whether its cache requires separate defect and global-error storage. The method must
+return a `Bool`, be side-effect free, and be defined only for the extending package's controller
+type. The default is `false`.
+
+The concrete solver package remains responsible for implementing all controller-specific error
+estimation and mesh-selection behavior. Applications should use the documented concrete
+controllers rather than subtype this type.
+
+# Examples
+
+```julia
+struct MyCombinedControl <: AbstractErrorControl end
+
+BoundaryValueDiffEqCore.__use_both_error_control(::MyCombinedControl) = true
+```
 """
 abstract type AbstractErrorControl end
 
@@ -118,7 +143,21 @@ struct REErrorControl <: GlobalErrorControlMethod end
 """
     __use_both_error_control(controller) -> Bool
 
-Return whether an error controller combines defect and global error control.
+Return whether an error controller requires separate defect and global-error storage.
+
+This developer hook is used while a solver cache is constructed. The default implementation
+returns `false`. Solver packages may extend it only for their own
+[`AbstractErrorControl`](@ref) subtype, return a concrete `Bool`, and perform no mutation. A
+`true` result reserves storage for both estimates; it does not by itself add support for a custom
+controller to a concrete solver.
+
+# Examples
+
+```julia
+struct MyCombinedControl <: AbstractErrorControl end
+
+BoundaryValueDiffEqCore.__use_both_error_control(::MyCombinedControl) = true
+```
 """
 @inline __use_both_error_control(::HybridErrorControl) = true
 @inline __use_both_error_control(_) = false

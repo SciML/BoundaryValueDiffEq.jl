@@ -380,11 +380,26 @@ always update the intermediate solution with discrete solution + discrete stages
 (Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
 """
 @views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
-    eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
+    restructured = __restructure_sol(y_, cache.in_size)
     eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
     interp_setup!(eval_sol.cache)
-    return nothing
+    # On an ordinary residual evaluation `y_` matches `eval_sol.u`'s element type, so the
+    # preallocated buffer is updated in place (works for e.g. StaticArray states too).
+    if promote_type(eltype(eltype(restructured)), eltype(eltype(eval_sol.u))) ===
+            eltype(eltype(eval_sol.u))
+        eval_sol.u[1:end] .= restructured
+        return eval_sol
+    end
+    # When the residual is differentiated directly (e.g. a line-search directional
+    # derivative), `y_` carries ForwardDiff.Duals that cannot be written into the Float64
+    # buffer. The lazy cache hands back a matching-eltype buffer, allocated once per eltype
+    # and reused afterwards. On this path `y_` is DiffCache-backed (plain Arrays), so the
+    # VectorOfArray buffer is safe to allocate via `similar`.
+    voa = VectorOfArray(restructured)
+    u = get_tmp(cache.eval_sol_cache, voa)
+    u .= voa
+    return EvalSol(u.u, eval_sol.t, cache)
 end
 
 """

@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase
 using Test
 
 using BoundaryValueDiffEq, LinearAlgebra, ODEInterface, Random, RecursiveArrayTools
@@ -165,6 +166,6 @@ end
     zeta = [0.0, pi / 4, pi / 2]
 
     prob = BVProblem(f!, fakebc!, [1.0, 1.0, 0.0], tspan)
-    sol_colnew = solve(prob, COLNEW(bc_func = bc, dbc_func = dbc, zeta = zeta), dt = 0.01)
+    sol_colnew = solve(prob, COLNEW(; bc_func = bc, dbc_func = dbc, zeta), dt = 0.01)
     @test SciMLBase.successful_retcode(sol_colnew)
 end

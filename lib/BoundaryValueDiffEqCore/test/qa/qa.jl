@@ -2,29 +2,11 @@ using SciMLTesting
 using BoundaryValueDiffEqCore
 using Test
 
-const DOCS_SRC = normpath(joinpath(@__DIR__, "..", "..", "..", "..", "docs", "src"))
-
-function upstream_reexports_with_doc_ownership(pkg, owners, extra = ())
-    names = Set{Symbol}(extra)
-    for owner in owners
-        isdefined(pkg, owner) || continue
-        union!(names, SciMLTesting.public_api_names(getproperty(pkg, owner)))
-        push!(names, owner)
-    end
-    return Tuple(sort!(collect(names)))
-end
-
-const UPSTREAM_REEXPORTS_WITH_DOC_OWNERSHIP = upstream_reexports_with_doc_ownership(
-    BoundaryValueDiffEqCore,
-    (:NonlinearSolveFirstOrder, :SciMLBase, :SciMLOperators),
-    (:AllObserved, :deleteat!, :init, :pickchunksize, :solve, :solve!, :step!)
-)
+include(joinpath(@__DIR__, "..", "..", "..", "..", "test", "qa", "reexports.jl"))
 
 run_qa(
     BoundaryValueDiffEqCore;
-    explicit_imports = true,
     aqua_kwargs = (;
-        ambiguities = (; recursive = false),
         stale_deps = (; ignore = [:TimerOutputs]),
     ),
     ei_kwargs = (;
@@ -52,10 +34,7 @@ run_qa(
             ),
         ),
     ),
-    api_docs_kwargs = (;
-        rendered = true,
-        docs_src = DOCS_SRC,
-        ignore = UPSTREAM_REEXPORTS_WITH_DOC_OWNERSHIP,
-        rendered_ignore = UPSTREAM_REEXPORTS_WITH_DOC_OWNERSHIP,
-    ),
+    reexports_allow = CORE_REEXPORTS,
 )
+
+test_reexport_surface(BoundaryValueDiffEqCore, CORE_REEXPORTS, @__MODULE__)

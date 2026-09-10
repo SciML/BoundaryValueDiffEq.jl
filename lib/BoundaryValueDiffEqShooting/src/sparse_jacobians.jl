@@ -1,9 +1,13 @@
 # For Multiple Shooting
 """
-    __generate_sparse_jacobian_prototype(::MultipleShooting, ::StandardBVProblem,
-        bcresid_prototype, u0, N::Int, nshoots::Int)
-    __generate_sparse_jacobian_prototype(::MultipleShooting, ::TwoPointBVProblem,
-        bcresid_prototype, u0, N::Int, nshoots::Int)
+    __generate_sparse_jacobian_prototype(
+        ::MultipleShooting, ::StandardBVProblem,
+        bcresid_prototype, u0, N::Int, nshoots::Int
+    )
+    __generate_sparse_jacobian_prototype(
+        ::MultipleShooting, ::TwoPointBVProblem,
+        bcresid_prototype, u0, N::Int, nshoots::Int
+    )
 
 Generate a prototype of the sparse Jacobian matrix for the BVP problem.
 """

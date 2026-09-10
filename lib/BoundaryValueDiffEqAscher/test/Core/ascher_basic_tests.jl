@@ -1,6 +1,26 @@
 using BoundaryValueDiffEqAscher
 using Test
 
+@testset "Public API" begin
+    # Only the names this package owns; the rest of `names` is the reexported API
+    # documented elsewhere, pinned against `ASCHER_REEXPORTS` by test/qa/qa.jl.
+    owned = filter(names(BoundaryValueDiffEqAscher)) do name
+        which(BoundaryValueDiffEqAscher, name) === BoundaryValueDiffEqAscher
+    end
+    @test Set(owned) == Set(
+        (
+            :Ascher1,
+            :Ascher2,
+            :Ascher3,
+            :Ascher4,
+            :Ascher5,
+            :Ascher6,
+            :Ascher7,
+            :BoundaryValueDiffEqAscher,
+        )
+    )
+end
+
 # Standard test BVDAE problem from the URI M. ASCHER and RAYMOND J. SPITERI paper
 @testset "Test Ascher solver on example problem 1" begin
     using BoundaryValueDiffEqAscher, SciMLBase

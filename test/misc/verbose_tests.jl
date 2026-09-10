@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase
 using Test
 
 @testset "Verbose field in caches" begin
