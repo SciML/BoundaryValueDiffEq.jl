@@ -20,6 +20,10 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SciMLLogging = "a6db7da4-7206-11f0-1eab-35f2a5dbe1d1"
 
 [sources]
+# Until MonteCarloIntegration 0.3.0 registers: Integrals→MCI 0.2 pins QMC 0.3
+# → LatticeRules 0.0.1, which conflicts with test LatticeRules 0.0.2 and hard-fails
+# i686 precompile. Drop this pin after ranjanan/MonteCarloIntegration.jl#29.
+MonteCarloIntegration = {url = "https://github.com/ranjanan/MonteCarloIntegration.jl.git", rev = "master"}
 BoundaryValueDiffEqAscher = {path = "lib/BoundaryValueDiffEqAscher"}
 BoundaryValueDiffEqCore = {path = "lib/BoundaryValueDiffEqCore"}
 BoundaryValueDiffEqFIRK = {path = "lib/BoundaryValueDiffEqFIRK"}
