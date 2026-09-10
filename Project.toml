@@ -20,10 +20,11 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SciMLLogging = "a6db7da4-7206-11f0-1eab-35f2a5dbe1d1"
 
 [sources]
-# Until MonteCarloIntegration 0.3.0 registers: Integrals→MCI 0.2 pins QMC 0.3
-# → LatticeRules 0.0.1, which conflicts with test LatticeRules 0.0.2 and hard-fails
-# i686 precompile. Drop this pin after ranjanan/MonteCarloIntegration.jl#29.
+# Until MonteCarloIntegration 0.3.0 registers: registry Integrals still
+# Compat-pins MCI 0.2, which pulls QMC 0.3 → LatticeRules 0.0.1 (i686 hard-fail).
+# Source MCI 0.3 + Integrals master (MCI 0.2/0.3 compat). Drop after MCI+Integrals register.
 MonteCarloIntegration = {url = "https://github.com/ranjanan/MonteCarloIntegration.jl.git", rev = "master"}
+Integrals = {url = "https://github.com/SciML/Integrals.jl.git", rev = "master"}
 BoundaryValueDiffEqAscher = {path = "lib/BoundaryValueDiffEqAscher"}
 BoundaryValueDiffEqCore = {path = "lib/BoundaryValueDiffEqCore"}
 BoundaryValueDiffEqFIRK = {path = "lib/BoundaryValueDiffEqFIRK"}
@@ -39,6 +40,7 @@ BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
 
 [compat]
 MonteCarloIntegration = "0.2, 0.3"
+Integrals = "5"
 LatticeRules = "0.0.2"
 ADTypes = "1.14"
 BoundaryValueDiffEqAscher = "1.16.0"
@@ -75,6 +77,7 @@ julia = "1.10"
 
 [extras]
 MonteCarloIntegration = "4886b29c-78c9-11e9-0a6e-41e1f4161f7b"
+Integrals = "de52edbc-65ea-441a-8357-d3a637375a31"
 LatticeRules = "73f95e8e-ec14-4e6a-8b18-0d2e271c4e55"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
@@ -94,4 +97,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["MonteCarloIntegration", "LatticeRules", "DiffEqDevTools", "DifferentiationInterface", "LinearSolve", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "SciMLTesting", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
+test = ["MonteCarloIntegration", "Integrals", "LatticeRules", "DiffEqDevTools", "DifferentiationInterface", "LinearSolve", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqTsit5", "Pkg", "Random", "RecursiveArrayTools", "SafeTestsets", "SciMLTesting", "Sparspak", "StaticArrays", "Test", "OptimizationBase", "NonlinearSolveBase"]
