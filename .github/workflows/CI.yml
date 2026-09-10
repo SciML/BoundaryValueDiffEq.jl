@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
   tests:
-    uses: "SciML/.github/.github/workflows/grouped-tests.yml@master"
+    uses: "ChrisRackauckas-Claude/.github/.github/workflows/grouped-tests.yml@i686-gitconfig-consumable"
     with:
       check-bounds: auto
     secrets: "inherit"
