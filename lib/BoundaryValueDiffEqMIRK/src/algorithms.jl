@@ -6,7 +6,7 @@ for order in (2, 3, 4, 5, 6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
                     defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
@@ -31,6 +31,8 @@ for order in (2, 3, 4, 5, 6)
                 `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
                 `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
@@ -52,10 +54,11 @@ for order in (2, 3, 4, 5, 6)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractMIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
@@ -67,7 +70,7 @@ for order in (6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
                     defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
@@ -91,6 +94,8 @@ for order in (6)
                 `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
                 `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
@@ -112,10 +117,11 @@ for order in (6)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractMIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end

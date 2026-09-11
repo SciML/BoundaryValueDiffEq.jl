@@ -21,9 +21,11 @@
     y
     y₀
     residual
-    # The following 2 caches are never resized
+    # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
+    # One scratch cache per mesh interval, so backend work items do not alias
+    collocation_cache
     defect
     nest_prob
     resid_size
@@ -59,9 +61,11 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     y
     y₀
     residual
-    # The following 2 caches are never resized
+    # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
+    # One scratch cache per mesh interval, so backend work items do not alias
+    collocation_cache
     defect
     resid_size
     singular_term
@@ -149,6 +153,7 @@ function init_nested(
 
     fᵢ_cache = __alloc(zero(u0))
     fᵢ₂_cache = vec(zero(u0))
+    collocation_cache = [__alloc(zeros(T, M + 2)) for _ in 1:Nig]
 
     # Don't flatten this here, since we need to expand it later if needed
     y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters)
@@ -282,7 +287,7 @@ function init_nested(
     return FIRKCacheNested{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, defect, nestprob, resid₁_size, prob.singular_term,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
@@ -328,6 +333,7 @@ function init_expanded(
 
     fᵢ_cache = __alloc(zero(u0)) # Runtime dispatch
     fᵢ₂_cache = vec(zero(u0))
+    collocation_cache = [__alloc(zero(u0)) for _ in 1:Nig]
 
     # Don't flatten this here, since we need to expand it later if needed
     _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters)
@@ -447,7 +453,7 @@ function init_expanded(
     return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
@@ -461,6 +467,7 @@ match the length of the new mesh.
 function __expand_cache!(cache::FIRKCacheExpand)
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
+    __resize!(cache.collocation_cache, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M, cache.TU)
     __resize!(cache.y₀.u, Nₙ, cache.M, cache.TU)
     __resize!(cache.residual, Nₙ, cache.M, cache.TU)
@@ -471,6 +478,7 @@ end
 function __expand_cache!(cache::FIRKCacheNested)
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M)
+    __resize!(cache.collocation_cache, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
     __resize!(cache.y₀.u, Nₙ, cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
