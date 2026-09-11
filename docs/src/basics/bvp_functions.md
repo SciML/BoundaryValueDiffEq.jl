@@ -4,7 +4,6 @@ The SciML ecosystem provides an extensive interface for declaring extra function
 
 ## Function Type Definitions
 
-```@docs
-SciMLBase.BVPFunction
-SciMLBase.DynamicalBVPFunction
-```
+`BVPFunction` and `DynamicalBVPFunction` are defined and documented by
+[SciMLBase](https://docs.sciml.ai/SciMLBase/stable/). Use their owner documentation for
+the full problem-function interface.

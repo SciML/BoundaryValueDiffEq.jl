@@ -221,41 +221,47 @@ solve(prob, MIRK4(); verbose = BVPVerbosity(All()))
 
 ```julia
 # Show only BVPSOL convergence issues
-solve(prob, BVPSOL(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     bvpsol_convergence = WarnLevel(),
     # All others default to Silent in None preset
-))
+)
+solve(prob, BVPSOL(); verbose)
 
 # Silence initial guess warnings but keep solver failures
-solve(prob, MultipleShooting(10); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     Standard(),
     multiple_shooting_initial_guess = Silent()
-))
+)
+solve(prob, MultipleShooting(10); verbose)
 
 # Only show linear algebra issues
-solve(prob, BVPSOL(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),
     bvpsol_linear_solver = WarnLevel(),
     colnew_matrix = WarnLevel()
-))
+)
+solve(prob, BVPSOL(); verbose)
 
 # Control NonlinearSolve verbosity independently
-solve(prob, MIRK4(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),  # Silence BVP messages
     nonlinear_verbosity = All()  # Show all NonlinearSolve convergence info
-))
+)
+solve(prob, MIRK4(); verbose)
 
 # Silence NonlinearSolve but keep BVP messages
-solve(prob, MIRK4(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     Standard(),  # Standard BVP messages
     nonlinear_verbosity = None()  # No NonlinearSolve output
-))
+)
+solve(prob, MIRK4(); verbose)
 
 # Control Optimization.jl verbosity independently
-solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),  # Silence BVP messages
     optimization_verbosity = All()  # Show all Optimization.jl convergence info
-))
+)
+solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose)
 ```
 
 ## Using Groups

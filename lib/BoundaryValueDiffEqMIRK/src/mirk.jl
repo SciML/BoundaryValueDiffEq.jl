@@ -39,14 +39,19 @@
     optimize_kwargs
     kwargs
     verbose
+    # Element-type-adaptive buffer for the boundary-condition EvalSol. The residual can
+    # be differentiated directly (e.g. a line-search directional derivative), so the
+    # solution handed to the BCs may carry ForwardDiff.Duals; the lazy cache allocates a
+    # matching-eltype buffer on demand and reuses it across calls.
+    eval_sol_cache
 end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        controller = DefectControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
@@ -69,7 +74,7 @@ function SciMLBase.__init(
     ig, T,
         N,
         Nig,
-        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
+        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -81,7 +86,7 @@ function SciMLBase.__init(
     collocation_cache = [__alloc(zero(u0)) for _ in 1:Nig]
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters)
     y₀_flat = collect(vec(y₀))
 
     y = __alloc.(copy.(y₀.u))
@@ -248,7 +253,7 @@ function SciMLBase.__init(
     # would embed e.g. an entire previous solution's type in the cache and force
     # recompilation of all downstream code against it (issue #500).
     prob_ = if !(prob.u0 isa AbstractArray) || prob.u0 isa AbstractVectorOfArray
-        remake(prob; u0 = u0)
+        remake(prob; u0)
     else
         prob
     end
@@ -258,7 +263,8 @@ function SciMLBase.__init(
         TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
         y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, errors,
         new_stages, resid₁_size, prob.singular_term, nlsolve_kwargs, optimize_kwargs,
-        (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec
+        (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec,
+        LazyBufferCache()
     )
 end
 
@@ -474,7 +480,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -486,7 +492,7 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     Φ!(residual[2:end], cache, y_, u, trait, constraint)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache)
     eval_bc_residual!(residual[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, residual)
     return nothing
@@ -546,7 +552,7 @@ end
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
     resid_co = Φ(cache, y_, u, trait)
-    update_eval_sol!(eval_sol, y_, cache)
+    eval_sol = update_eval_sol!(eval_sol, y_, cache)
     resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
 end
@@ -682,7 +688,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -797,7 +803,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     return __construct_internal_problem(
@@ -913,7 +919,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = copy(resid)
@@ -980,7 +986,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = copy(resid)

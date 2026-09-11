@@ -1,4 +1,7 @@
 using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using SciMLBase
 using Test
 
 @testset "Different AD compatibility" begin
@@ -35,7 +38,7 @@ using Test
             nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
         )
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            sol = solve(prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.05)
+            sol = solve(prob, RadauIIa5(; jac_alg, nested_nlsolve = false), dt = 0.05)
             @test SciMLBase.successful_retcode(sol)
         end
     end
@@ -70,7 +73,7 @@ using Test
             nonbc_diffmode = AutoEnzyme(mode = Enzyme.Forward, function_annotation = Enzyme.Duplicated)
         )
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            sol = solve(prob, RadauIIa5(; jac_alg = jac_alg), dt = 0.05)
+            sol = solve(prob, RadauIIa5(; jac_alg), dt = 0.05)
             @test SciMLBase.successful_retcode(sol)
         end
     end
@@ -111,7 +114,7 @@ using Test
             )
         )
         for jac_alg in [jac_alg_forwarddiff, jac_alg_enzyme, jac_alg_mooncake]
-            sol = solve(prob, RadauIIa5(; jac_alg = jac_alg, nested_nlsolve = false), dt = 0.01)
+            sol = solve(prob, RadauIIa5(; jac_alg, nested_nlsolve = false), dt = 0.01)
             @test SciMLBase.successful_retcode(sol)
         end
     end

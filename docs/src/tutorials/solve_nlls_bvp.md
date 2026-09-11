@@ -30,6 +30,7 @@ using BoundaryValueDiffEq, Plots
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
+    return
 end
 function bc!(resid, sol, p, t)
     solₜ₁ = sol(0.0)
@@ -37,11 +38,12 @@ function bc!(resid, sol, p, t)
     resid[1] = solₜ₁[1]
     resid[2] = solₜ₂[1] - 1
     resid[3] = solₜ₂[2] + 1.729109
+    return
 end
 tspan = (0.0, 100.0)
 u0 = [0.0, 1.0]
 prob = BVProblem(BVPFunction(f!, bc!; bcresid_prototype = zeros(3)), u0, tspan)
-sol = solve(prob, MIRK4(), dt = 0.01, abstol = 1e-3)
+sol = solve(prob, MIRK4(), dt = 0.01, abstol = 1.0e-3)
 plot(sol)
 ```
 
@@ -51,29 +53,32 @@ Since this BVP imposes constraints only at the two endpoints, we can use `TwoPoi
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = -u[1]
+    return
 end
 bca!(resid, ua, p) = (resid[1] = ua[1])
 bcb!(resid, ub, p) = (resid[1] = ub[1] - 1; resid[2] = ub[2] + 1.729109)
-bvpfun = BVPFunction(f!, (bca!, bcb!); twopoint = Val(true),
-    bcresid_prototype = (zeros(1), zeros(2)))
+bvpfun = BVPFunction(
+    f!, (bca!, bcb!); twopoint = Val(true),
+    bcresid_prototype = (zeros(1), zeros(2))
+)
 prob = TwoPointBVProblem(bvpfun, u0, tspan)
 ```
 
 ## Solve Underdetermined BVP
 
-Let's see an example of underdetermined BVP, consider an horizontal metal beam of length $L$ subject to a vertical load $q(x)$ per unit length, the resulting beam displacement satisfies the differential equation
+Let's see an example of underdetermined BVP, consider an horizontal metal beam of length ``L`` subject to a vertical load ``q(x)`` per unit length, the resulting beam displacement satisfies the differential equation
 
 ```math
-EIy'(x)=q(x)
+E I y'(x) = q(x)
 ```
 
-with boundary condition $y(0)=y(L)=0$, $E$ is the Young's modulus and $I$ is the moment of inertia of the beam's cross section. Here we consider the simplified version and transform this BVP into a first order BVP system:
+with boundary condition ``y(0) = y(L) = 0``, ``E`` is the Young's modulus and ``I`` is the moment of inertia of the beam's cross section. Here we consider the simplified version and transform this BVP into a first order BVP system:
 
 ```math
 \begin{align*}
-y_1' &= y_2\\
-y_2' &= y_3\\
-y_3' &= y_4\\
+y_1' &= y_2 \\
+y_2' &= y_3 \\
+y_3' &= y_4 \\
 y_4' &= 0
 \end{align*}
 ```
@@ -85,12 +90,14 @@ function f!(du, u, p, t)
     du[2] = u[3]
     du[3] = u[4]
     du[4] = 0
+    return
 end
 function bc!(resid, sol, p, t)
     solₜ₁ = sol(0.0)
     solₜ₂ = sol(1.0)
     resid[1] = solₜ₁[1]
     resid[2] = solₜ₂[1]
+    return
 end
 xspan = (0.0, 1.0)
 u0 = [0.0, 1.0, 0.0, 1.0]
@@ -109,12 +116,15 @@ function f!(du, u, p, t)
     du[2] = u[3]
     du[3] = u[4]
     du[4] = 0
+    return
 end
 bca!(resid, ua, p) = (resid[1] = ua[1])
 bcb!(resid, ub, p) = (resid[1] = ub[1])
 xspan = (0.0, 1.0)
 u0 = [0.0, 1.0, 0.0, 1.0]
-bvpfun = BVPFunction(f!, (bca!, bcb!); twopoint = Val(true),
-    bcresid_prototype = ( zeros(1), zeros(1)))
+bvpfun = BVPFunction(
+    f!, (bca!, bcb!); twopoint = Val(true),
+    bcresid_prototype = (zeros(1), zeros(1))
+)
 prob = TwoPointBVProblem(bvpfun, u0, xspan)
 ```

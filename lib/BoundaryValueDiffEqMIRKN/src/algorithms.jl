@@ -6,36 +6,52 @@ for order in (4, 6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), optimize = nothing, jac_alg = BVPJacobianAlgorithm(),
+            $($alg)(; nlsolve = nothing, optimize = nothing, jac_alg = BVPJacobianAlgorithm(),
                     defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta Nyström method.
 
+        ## Fields
+
+        - `nlsolve`: Optional nonlinear solver algorithm. `nothing` selects the package default.
+        - `optimize`: Optional optimization solver algorithm. `nothing` disables optimization-based
+          initialization.
+        - `jac_alg`: Jacobian construction configuration used by the nonlinear solver.
+        - `defect_threshold`: Defect-control threshold used to refine the mesh.
+        - `max_num_subintervals`: Maximum number of mesh subintervals permitted during refinement.
+
         ## Keyword Arguments
 
-        - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-          `NonlinearProblem` interface can be used. Note that any autodiff argument for
-          the solver will be ignored and a custom jacobian algorithm will be used.
-        - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
-          `OptimizationProblem` interface can be used. Note that any autodiff argument for
-          the solver will be ignored and a custom jacobian algorithm will be used. Optimization
-          solvers should first be loaded to allow this functionality.
-        - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
-          `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
-          use based on the input types and problem type.
+        - `nlsolve = nothing`: Internal nonlinear solver. Any solver that conforms to the SciML
+          `NonlinearProblem` interface can be used. Its autodiff setting is ignored because MIRKN
+          uses `jac_alg` to construct the Jacobian.
+        - `optimize = nothing`: Internal optimization solver. Any solver that conforms to the
+          SciML `OptimizationProblem` interface can be used for initialization. Load the solver
+          package before constructing the algorithm.
+        - `jac_alg = BVPJacobianAlgorithm()`: Jacobian algorithm used for the nonlinear solver.
+          It automatically selects an algorithm from the problem and input types.
           - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
             `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
           - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
             `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
             `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
             possible else `AutoFiniteDiff`.
-        - `defect_threshold`: Threshold for defect control.
-        - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+        - `defect_threshold = 0.1`: Threshold for defect control.
+        - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
         !!! note
 
             For type-stability, the chunksizes for ForwardDiff ADTypes in
             `BVPJacobianAlgorithm` must be provided.
+
+        ## Examples
+
+        ```jldoctest
+        julia> using BoundaryValueDiffEqMIRKN: MIRKN$($order)
+
+        julia> MIRKN$($order)().max_num_subintervals
+        3000
+        ```
 
         ## References
 

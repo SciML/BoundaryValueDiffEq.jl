@@ -10,13 +10,73 @@
 # the EXPANDED and NESTED matrix groups, so adding a "Core" matrix entry would
 # only duplicate them across the full version matrix.
 
-[EXPANDED]
+[PUBLIC_FACADE]
 versions = ["lts", "1", "pre"]
-timeout = 240
+timeout = 30
 
-[NESTED]
+# The expanded formulation is split across five groups. Almost all of its runtime is
+# Julia compilation -- each (problem, solver) pair specializes the whole FIRK ->
+# NonlinearSolve -> AD stack from scratch at roughly 20 s -- and the Affineness and
+# Convergence sweeps each run 16 solvers over 4 problems. As a single group it ran past
+# two hours (issue #548). runtests.jl still defines an aggregate "EXPANDED" group for
+# local use; it is deliberately not a matrix entry here.
+
+[EXPANDED_BASIC]
 versions = ["lts", "1", "pre"]
-timeout = 240
+timeout = 120
+
+[EXPANDED_AFFINENESS]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[EXPANDED_CONVERGENCE]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[EXPANDED_NLLS]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[EXPANDED_MISC]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+# The nested formulation is split the same way, plus a group for the pendulum sweep.
+# Nested solvers run an inner nonlinear solve per mesh point, so unlike the expanded
+# groups a large part of their runtime is genuine solve time rather than compilation:
+# nested "Simple Pendulum" alone runs ~55 min. As with EXPANDED, runtests.jl keeps an
+# aggregate "NESTED" group for local use that is not a matrix entry here.
+
+[NESTED_BASIC]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[NESTED_AFFINENESS]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[NESTED_CONVERGENCE]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+[NESTED_PENDULUM]
+versions = ["lts", "1", "pre"]
+timeout = 180
+
+[NESTED_NLLS]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+# Underconstrained NLLS is pathologically slow in a way splitting does not fix: single
+# solves take 4-20 min of real solve time, so the 22 cases run for hours. Isolated here
+# so it cannot take the rest of the NLLS coverage down with it.
+[NESTED_NLLS_UNDERCONSTRAINED]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_MISC]
+versions = ["lts", "1", "pre"]
+timeout = 120
 
 # AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy
 # optional backends live in test/AD/Project.toml (kept out of the main test env so

@@ -1,8 +1,10 @@
 using BoundaryValueDiffEqMIRK
+import SciMLBase
+using SciMLBase: BVProblem, ODEProblem, solve
 using Test
 
 @testset "VectorOfVector Initial Condition" begin
-    using BoundaryValueDiffEqMIRK, OrdinaryDiffEqRosenbrock
+    using OrdinaryDiffEqRosenbrock
     #System Constants
     ss = 1 #excitatory parameter
     sj = 0 #inhibitory parameter

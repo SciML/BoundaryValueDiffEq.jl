@@ -1,8 +1,14 @@
 using BoundaryValueDiffEqShooting
+using ADTypes: AutoFiniteDiff, AutoForwardDiff, AutoSparse
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm
+using NonlinearSolveFirstOrder: NewtonRaphson, TrustRegion
+using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 using Test
 
+import SciMLBase
+
 @testset "Basic Shooting" begin
-    using BoundaryValueDiffEqShooting, LinearAlgebra, OrdinaryDiffEqTsit5
+    using LinearAlgebra, OrdinaryDiffEqTsit5
 
     # JET tests have been moved to the separate QA test group (test/qa/)
 
@@ -111,7 +117,7 @@ using Test
 end
 
 @testset "Shooting with Complex Values" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
+    using OrdinaryDiffEqVerner, LinearAlgebra
 
     SOLVERS = [
         Shooting(Vern7(), NewtonRaphson(; autodiff = AutoFiniteDiff())), Shooting(Vern7()),
@@ -148,7 +154,7 @@ end
 end
 
 @testset "Flow in a Channel" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock,
+    using OrdinaryDiffEqTsit5, OrdinaryDiffEqRosenbrock,
         LinearAlgebra
 
     function flow_in_a_channel!(du, u, p, t)
@@ -206,7 +212,7 @@ end
 end
 #FIXME: MultipleShooting fails for large out-of-place BVP systems
 @testset "Ray Tracing" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock,
+    using OrdinaryDiffEqVerner, OrdinaryDiffEqRosenbrock,
         LinearAlgebra
 
     @inline v(x, y, z, p) = 1 / (4 + cos(p[1] * x) + sin(p[2] * y) - cos(p[3] * z))
@@ -380,7 +386,7 @@ end
 end
 
 @testset "Shooting with heterogeneous initial guess" begin
-    using BoundaryValueDiffEqShooting, OrdinaryDiffEqVerner, LinearAlgebra
+    using OrdinaryDiffEqVerner, LinearAlgebra
     g = 9.81
     L = 1.0
     tspan = (0.0, pi / 2.0)

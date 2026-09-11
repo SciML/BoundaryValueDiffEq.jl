@@ -98,6 +98,14 @@ function integral(fun, domain)
     return sol.u
 end
 
+@inline function __optimization_second_order_ad(diffmode, sparsity_diffmode = diffmode)
+    dense_ad = get_dense_ad(diffmode)
+    return AutoSparse(
+        SecondOrder(dense_ad, dense_ad),
+        sparsity_detector = __default_sparsity_detector(sparsity_diffmode)
+    )
+end
+
 """
     __construct_internal_problem
 
@@ -112,16 +120,15 @@ function __construct_internal_problem(
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{true}(
             cost_fun,
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
+            __optimization_second_order_ad(
+                alg.jac_alg.nonbc_diffmode, alg.jac_alg.diffmode
             ),
             cons = loss,
             cons_j = jac,
@@ -131,7 +138,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end
@@ -144,17 +151,14 @@ function __construct_internal_problem(
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{true}(
             cost_fun,
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            __optimization_second_order_ad(alg.jac_alg.diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -163,7 +167,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end
@@ -177,17 +181,14 @@ function __construct_internal_problem(
     T = eltype(y)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.diffmode)
-            ),
+            __optimization_second_order_ad(alg.jac_alg.diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -196,7 +197,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end
@@ -220,17 +221,14 @@ function __construct_internal_problem(
     T = eltype(y)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{true}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            __optimization_second_order_ad(alg.jac_alg.nonbc_diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -239,7 +237,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end
@@ -251,16 +249,15 @@ function __construct_internal_problem(
     #iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{true}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
+            __optimization_second_order_ad(
+                alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode
             ),
             cons = loss,
             cons_j = jac,
@@ -270,7 +267,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end
@@ -284,17 +281,14 @@ function __construct_internal_problem(
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.nonbc_diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
-            ),
+            __optimization_second_order_ad(alg.jac_alg.nonbc_diffmode),
             cons = loss,
             cons_j = jac,
             cons_jac_prototype = sparse(jac_prototype)
@@ -303,7 +297,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end
@@ -315,16 +309,15 @@ function __construct_internal_problem(
     iip = SciMLBase.isinplace(prob)
     if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
         nlf = NonlinearFunction{iip}(
-            loss; jac = jac, resid_prototype = resid_prototype,
-            jac_prototype = jac_prototype
+            loss; jac, resid_prototype,
+            jac_prototype
         )
         return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
     else
         optf = OptimizationFunction{true}(
             __default_cost(prob.f),
-            AutoSparse(
-                get_dense_ad(alg.jac_alg.diffmode),
-                sparsity_detector = __default_sparsity_detector(alg.jac_alg.nonbc_diffmode)
+            __optimization_second_order_ad(
+                alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode
             ),
             cons = loss,
             cons_j = jac,
@@ -334,7 +327,7 @@ function __construct_internal_problem(
         lb, ub = __extract_lb_ub(prob, T, M, N)
 
         return __internal_optimization_problem(
-            prob, optf, y, p; lcons = lcons, ucons = ucons, lb = lb, ub = ub
+            prob, optf, y, p; lcons, ucons, lb, ub
         )
     end
 end

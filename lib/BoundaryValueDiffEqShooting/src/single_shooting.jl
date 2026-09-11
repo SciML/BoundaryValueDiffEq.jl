@@ -1,7 +1,7 @@
 function SciMLBase.__solve(
         prob::BVProblem, alg_::Shooting; abstol = 1.0e-6,
-        odesolve_kwargs = (;), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = true, kwargs...
+        odesolve_kwargs = (;), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = true, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
 

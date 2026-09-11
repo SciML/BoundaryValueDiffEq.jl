@@ -1,6 +1,6 @@
 function SciMLBase.__solve(
         prob::BVProblem, _alg::MultipleShooting; abstol = 1.0e-6, odesolve_kwargs = (;),
-        nlsolve_kwargs = (; abstol = abstol), optimize_kwargs = (; abstol = abstol),
+        nlsolve_kwargs = (; abstol), optimize_kwargs = (; abstol),
         ensemblealg = EnsembleThreads(), verbose = true, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
@@ -172,8 +172,8 @@ function __solve_nlproblem!(
     )
 
     loss_function! = NonlinearFunction{true}(
-        loss_fn; jac = jac_fn, resid_prototype = resid_prototype,
-        jac_prototype = jac_prototype
+        loss_fn; jac = jac_fn, resid_prototype,
+        jac_prototype
     )
 
     # NOTE: u_at_nodes is updated inplace

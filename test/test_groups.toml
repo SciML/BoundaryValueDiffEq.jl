@@ -13,6 +13,12 @@
 [Misc]
 versions = ["lts", "1", "pre"]
 
+["Misc 32-bit"]
+group = "Misc"
+versions = ["1"]
+os = ["ubuntu-latest"]
+arch = "x86"
+
 [Wrappers]
 versions = ["lts", "1", "pre"]
 

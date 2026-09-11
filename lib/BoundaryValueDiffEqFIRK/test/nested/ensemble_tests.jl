@@ -1,4 +1,8 @@
 using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using NonlinearSolveFirstOrder: NewtonRaphson
+using SciMLBase
 using Test
 
 @testset "EnsembleProblem" begin

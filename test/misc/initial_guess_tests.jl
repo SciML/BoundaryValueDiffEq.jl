@@ -1,4 +1,5 @@
 using BoundaryValueDiffEq
+using SciMLBase
 using Test
 
 @testset "Initial guess providing" begin

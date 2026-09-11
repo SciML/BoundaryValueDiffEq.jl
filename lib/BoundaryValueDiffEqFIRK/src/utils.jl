@@ -42,7 +42,7 @@ end
     prob,
     stage;
     tune_parameters = false
-) = __K0_on_u0(prob, prob.u0, stage; tune_parameters = tune_parameters)
+) = __K0_on_u0(prob, prob.u0, stage; tune_parameters)
 @inline __K0_on_u0(
     prob,
     u0::AbstractArray,

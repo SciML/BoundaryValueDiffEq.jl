@@ -1,4 +1,5 @@
 using BoundaryValueDiffEqFIRK
+using SciMLBase
 using Test
 
 using BoundaryValueDiffEqFIRK, LinearAlgebra

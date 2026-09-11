@@ -1,7 +1,11 @@
 using BoundaryValueDiffEqMIRK
+using ADTypes: AutoFiniteDiff, AutoSparse
+using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, DefectControl, GlobalErrorControl,
+    HybridErrorControl, SequentialErrorControl
+using RecursiveArrayTools: DiffEqArray, VectorOfArray
+import SciMLBase
+using SciMLBase: BVProblem, ODEFunction, TwoPointBVProblem, init, remake, solve
 using Test
-
-using BoundaryValueDiffEqMIRK
 
 for order in (2, 3, 4, 5, 6)
     s = Symbol("MIRK$(order)")
@@ -758,8 +762,6 @@ end
 # explicit strip the entire solution type gets embedded in the cache type and
 # every downstream method recompiles against it (~20x compile-time blowup).
 @testset "Initial-guess object does not leak into cache type (issue 500)" begin
-    using SciMLBase, RecursiveArrayTools
-
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
         du[1] = -u[2] / p[1]
@@ -792,4 +794,48 @@ end
     @test cache.prob.u0 isa Vector{Float64}
     sol3 = solve(bvp3, MIRK5(), dt = 0.1, adaptive = false)
     @test SciMLBase.successful_retcode(sol3)
+end
+
+# The boundary conditions evaluate the solution object (`u(t)`), so the residual holds
+# a preallocated `EvalSol`. When the nonlinear solver differentiates the residual
+# directly (e.g. a line-search directional derivative), the flattened solution carries
+# `ForwardDiff.Dual`s that must not be written into the `Float64` `EvalSol` buffer. This
+# reproduces the geodesic BVP on an embedded torus from Manifolds.jl (`solve_chart_log_bvp`).
+@testset "Solution-object BC survives Dual residual (issue 566)" begin
+    R, r = 3.0, 2.0
+    function affine_connection(a, Xc, Yc)
+        θ = a[1]
+        sinθ, cosθ = sincos(θ)
+        Γ¹₂₂ = (R + r * cosθ) * sinθ / r
+        Γ²₁₂ = -r * sinθ / (R + r * cosθ)
+        return (Xc[2] * Γ¹₂₂ * Yc[2], Γ²₁₂ * (Xc[1] * Yc[2] + Xc[2] * Yc[1]))
+    end
+    function chart_log_problem!(du, u, p, t)
+        a = @view u[1:2]
+        dx = @view u[3:4]
+        ddx = affine_connection(a, dx, dx)
+        du[1] = dx[1]
+        du[2] = dx[2]
+        du[3] = -ddx[1]
+        du[4] = -ddx[2]
+        return du
+    end
+
+    a1 = [π / 2, -1.0]
+    a2 = [-π / 8, π / 2]
+    function bc1!(residual, u, p, t)
+        ua = u(0.0)
+        ub = u(1.0)
+        residual[1] = ua[1] - a1[1]
+        residual[2] = ua[2] - a1[2]
+        residual[3] = ub[1] - a2[1]
+        residual[4] = ub[2] - a2[2]
+        return residual
+    end
+    u0 = (p, t) -> vcat(a1 .+ t .* (a2 .- a1), zero(a1))
+    bvp = BVProblem(chart_log_problem!, bc1!, u0, (0.0, 1.0))
+    sol = solve(bvp, MIRK4(); dt = 0.05)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.u[1][1:2] ≈ a1
+    @test sol.u[end][1:2] ≈ a2
 end

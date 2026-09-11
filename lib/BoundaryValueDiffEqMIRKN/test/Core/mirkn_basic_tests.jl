@@ -1,7 +1,9 @@
 using BoundaryValueDiffEqMIRKN
+using SciMLBase: DynamicalBVPFunction, SecondOrderBVProblem, TwoPointSecondOrderBVProblem,
+    solve
 using Test
 
-using BoundaryValueDiffEqMIRKN
+import SciMLBase
 
 for order in (4, 6)
     s = Symbol("MIRKN$(order)")
@@ -85,8 +87,6 @@ end
 # JET tests have been moved to the separate QA test group (test/qa/)
 
 @testset "Example problem from paper" begin
-    using BoundaryValueDiffEqMIRKN
-
     for order in (4, 6)
         s = Symbol("MIRKN$(order)")
         @eval mirkn_solver(::Val{$order}, args...; kwargs...) = $(s)(args...; kwargs...)

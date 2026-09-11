@@ -320,6 +320,9 @@ function __resize!(x::AbstractVectorOfArray, n, M)
     return x
 end
 
+"Helper function to check if a positive `dt` was passed, switched on by `check`."
+positive_dt(check, dt) = check && dt ≤ zero(dt) && throw(ArgumentError("dt must be positive"))
+
 ## Problem with Initial Guess
 """
     __extract_problem_details(prob; kwargs...)
@@ -332,7 +335,7 @@ function __extract_problem_details(prob; kwargs...)
 end
 function __extract_problem_details(prob, u0::Number; dt = 0.0, check_positive_dt::Bool = false, kwargs...)
     # Scalar BVP
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    positive_dt(check_positive_dt, dt)
     t₀, t₁ = prob.tspan
     return Val(true), typeof(u0), 1, Int(cld(t₁ - t₀, dt)), [u0]
 end
@@ -351,7 +354,7 @@ function __extract_problem_details(
         check_positive_dt::Bool = false, tune_parameters::Bool = false
     )
     # Problem does not have Initial Guess
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    positive_dt(check_positive_dt, dt)
     t₀, t₁ = prob.tspan
     if tune_parameters
         prob.p isa SciMLBase.NullParameters &&
@@ -366,9 +369,9 @@ function __extract_problem_details(
         tune_parameters::Bool = false
     ) where {F <: Function}
     # Problem passes in a initial guess function
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    positive_dt(check_positive_dt, dt)
 
-    u0 = __initial_guess(f, prob.p, prob.tspan[1]; tune_parameters = tune_parameters)
+    u0 = __initial_guess(f, prob.p, prob.tspan[1]; tune_parameters)
     t₀, t₁ = prob.tspan
     return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end

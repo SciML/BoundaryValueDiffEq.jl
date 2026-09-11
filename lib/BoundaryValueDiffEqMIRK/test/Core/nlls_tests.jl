@@ -1,8 +1,11 @@
 using BoundaryValueDiffEqMIRK
+using NonlinearSolveFirstOrder: GaussNewton, LevenbergMarquardt, TrustRegion
+import SciMLBase
+using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 using Test
 
 @testset "Overconstrained BVP" begin
-    using BoundaryValueDiffEqMIRK, LinearAlgebra
+    using LinearAlgebra
 
     SOLVERS = [
         mirk(; nlsolve)
@@ -99,7 +102,7 @@ end
 # This is not a very meaningful problem, but it tests that our solvers are not throwing an
 # error
 @testset "Underconstrained BVP: Rod BVP" begin
-    using LinearAlgebra, BoundaryValueDiffEqMIRK
+    using LinearAlgebra
 
     # Force normal form for GN
     SOLVERS = [
