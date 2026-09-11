@@ -48,12 +48,13 @@ using Setfield: @set!
 using SparseArrays: sparse
 using SciMLStructures: SciMLStructures
 
-# The public API that BoundaryValueDiffEqFIRK reexports (see the second `export` block
-# below), so that `using BoundaryValueDiffEqFIRK` on its own is enough to pick an AD
-# backend, build a `BVProblem` or `TwoPointBVProblem`, configure the solve, run it, and
-# inspect the result. Every name stays owned and documented by ADTypes,
-# BoundaryValueDiffEqCore, NonlinearSolveFirstOrder or SciMLBase; the set is documented on
-# the Reexported API docs page and approved via `reexports_allow` in test/qa/qa.jl.
+# The public API that BoundaryValueDiffEqFIRK reexports, so that
+# `using BoundaryValueDiffEqFIRK` on its own is enough to pick AD and execution
+# backends, build a `BVProblem` or `TwoPointBVProblem`, configure the solve, run it,
+# and inspect the result. Every name stays owned and documented by ADTypes,
+# BoundaryValueDiffEqCore, KernelAbstractions, NonlinearSolveFirstOrder or SciMLBase.
+# The set is documented on the Reexported API docs page and approved via
+# `reexports_allow` in test/qa/qa.jl.
 using ADTypes: AutoEnzyme, AutoFiniteDiff, AutoMooncake, AutoPolyesterForwardDiff
 using BoundaryValueDiffEqCore: BVPVerbosity, GlobalErrorControl, HOErrorControl,
     HybridErrorControl, NoErrorControl, REErrorControl, SequentialErrorControl, integral
@@ -318,14 +319,14 @@ include("sparse_jacobians.jl")
     end
 end
 
-export CPU
 export RadauIIa1, RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7
 export LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5
 export LobattoIIIb2, LobattoIIIb3, LobattoIIIb4, LobattoIIIb5
 export LobattoIIIc2, LobattoIIIc3, LobattoIIIc4, LobattoIIIc5
 
-# Reexported ADTypes / BoundaryValueDiffEqCore / NonlinearSolveFirstOrder / SciMLBase
-# API; approved via `reexports_allow` in test/qa/qa.jl.
+# Reexported ADTypes / BoundaryValueDiffEqCore / KernelAbstractions /
+# NonlinearSolveFirstOrder / SciMLBase API; approved via `reexports_allow` in test/qa/qa.jl.
+export CPU
 export AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake, AutoPolyesterForwardDiff,
     AutoSparse
 export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE
