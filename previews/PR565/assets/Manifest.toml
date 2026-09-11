@@ -274,7 +274,7 @@ uuid = "56b672f2-a5fe-4263-ab2d-da677488eb3a"
 version = "2.8.3"
 
 [[deps.BoundaryValueDiffEqFIRK]]
-deps = ["ADTypes", "ArrayInterface", "BandedMatrices", "BoundaryValueDiffEqCore", "ConcreteStructs", "DifferentiationInterface", "FastAlmostBandedMatrices", "FastClosures", "ForwardDiff", "LinearAlgebra", "NonlinearSolveFirstOrder", "PreallocationTools", "PrecompileTools", "Preferences", "RecursiveArrayTools", "SciMLBase", "SciMLStructures", "Setfield", "SparseArrays", "StaticArrays"]
+deps = ["ADTypes", "ArrayInterface", "BandedMatrices", "BoundaryValueDiffEqCore", "ConcreteStructs", "DifferentiationInterface", "FastAlmostBandedMatrices", "FastClosures", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "NonlinearSolveFirstOrder", "PreallocationTools", "PrecompileTools", "Preferences", "RecursiveArrayTools", "SciMLBase", "SciMLStructures", "Setfield", "SparseArrays", "StaticArrays"]
 path = "../lib/BoundaryValueDiffEqFIRK"
 uuid = "85d9eb09-370e-4000-bb32-543851f73618"
 version = "1.19.2"
@@ -2761,10 +2761,10 @@ version = "2.13.9+0"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "b29c22e245d092b8b4e8d3c09ad7baa586d9f573"
+git-tree-sha1 = "e52eca002a11c30a858185efdfb15311e1c7a6bf"
 registries = "General"
 uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.8.3+0"
+version = "5.8.4+0"
 
 [[deps.Xorg_libICE_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
