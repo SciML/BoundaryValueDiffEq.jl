@@ -186,6 +186,18 @@ is specified.
     TracerLocalSparsityDetector() :
     diffmode.sparsity_detector
 
+# Sparsity detector for the optimization (BVP-with-cost) path. Unlike the nlsolve
+# path — which re-detects whenever the mesh changes — the optimization backends
+# freeze the constraint-Jacobian pattern once, at the initial guess, and refill the
+# same nonzeros every iterate. The pattern therefore has to be STRUCTURAL
+# (input-independent): a local detector probed at a degenerate initial guess records
+# a strict subset of the runtime pattern, and the refill at any physically active
+# iterate overflows the declared nonzeros.
+@inline __optimization_sparsity_detector(_) = TracerSparsityDetector()
+@inline __optimization_sparsity_detector(diffmode::AutoSparse) =
+    diffmode.sparsity_detector isa TracerLocalSparsityDetector ?
+    TracerSparsityDetector() : diffmode.sparsity_detector
+
 """
     __default_nonsparse_ad(x_or_type)
 
