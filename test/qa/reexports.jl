@@ -107,8 +107,9 @@ const COLLOCATION_REEXPORTS = Symbol[
     :successful_retcode,
 ]
 
-# MIRK and FIRK additionally document ensembles and `ODEFunction`-wrapped dynamics.
-const MIRK_REEXPORTS = Symbol[COLLOCATION_REEXPORTS..., :EnsembleProblem, :ODEFunction]
+# MIRK and FIRK additionally expose KernelAbstractions.CPU for the `platform`
+# keyword, ensembles and `ODEFunction`-wrapped dynamics.
+const MIRK_REEXPORTS = Symbol[COLLOCATION_REEXPORTS..., :CPU, :EnsembleProblem, :ODEFunction]
 const FIRK_REEXPORTS = MIRK_REEXPORTS
 
 const ASCHER_REEXPORTS = COLLOCATION_REEXPORTS

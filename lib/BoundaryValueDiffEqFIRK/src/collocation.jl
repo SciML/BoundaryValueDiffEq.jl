@@ -1,136 +1,167 @@
 function Φ!(residual, cache::FIRKCacheExpand, y, u, trait, constraint)
-    return Φ!(
-        residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u, cache.p,
-        cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype, cache.singular_term, trait, constraint
-    )
+    return __firk_collocation!(residual, cache, y, u, trait, Val(true), constraint)
 end
 
 function Φ!(residual, cache::FIRKCacheNested, y, u, trait, constraint)
-    return Φ!(
-        residual, cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache, trait, constraint
+    return __firk_collocation!(residual, cache, y, u, trait)
+end
+
+@inline _collocation_tmp(cache, u, ::DiffCacheNeeded) = get_tmp(cache, u)
+@inline _collocation_tmp(cache, _, ::NoDiffCacheNeeded) = cache
+
+@views function __firk_collocation_interval!(
+        i, residual, collocation_cache, k_discrete, f, TU::FIRKTableau{false}, y, u,
+        p, mesh, mesh_dt, stage::Int, f_prototype, singular_term, trait,
+        ::Val{iip}, ::Val{constraint}
+    ) where {iip, constraint}
+    (; c, a, b) = TU
+    tmp = _collocation_tmp(collocation_cache[i], u, trait)
+    K = _collocation_tmp(k_discrete[i], u, trait)
+    ctr = (i - 1) * (stage + 1) + 1
+    h = mesh_dt[i]
+    yᵢ = _collocation_tmp(y[ctr], u, trait)
+    yᵢ₊₁ = _collocation_tmp(y[ctr + stage + 1], u, trait)
+    nstate = constraint ? length(f_prototype) : length(yᵢ)
+
+    # Each interval owns its stage matrix and writes a disjoint residual block.
+    for r in 1:stage
+        stage_y = _collocation_tmp(y[ctr + r], u, trait)
+        for j in 1:nstate
+            K[j, r] = stage_y[j]
+        end
+    end
+
+    for r in 1:stage
+        for j in 1:nstate
+            stage_sum = zero(eltype(tmp))
+            for s in 1:stage
+                stage_sum += K[j, s] * a[s, r]
+            end
+            tmp[j] = yᵢ[j] + h * stage_sum
+        end
+        if constraint
+            for j in (nstate + 1):length(tmp)
+                tmp[j] = yᵢ[j]
+            end
+        end
+        t = mesh[i] + c[r] * h
+        stage_resid = residual[ctr + r]
+        if iip
+            f(stage_resid, tmp, p, t)
+        else
+            stage_resid .= f(tmp, p, t)
+        end
+        if !constraint
+            __add_singular_term!(stage_resid, singular_term, tmp, t)
+        end
+        for j in eachindex(stage_resid)
+            stage_resid[j] -= K[j, r]
+        end
+    end
+
+    residᵢ = residual[ctr]
+    for j in eachindex(residᵢ)
+        stage_sum = zero(eltype(residᵢ))
+        for r in 1:stage
+            stage_sum += K[j, r] * b[r]
+        end
+        residᵢ[j] = yᵢ₊₁[j] - yᵢ[j] - h * stage_sum
+    end
+    return nothing
+end
+
+@kernel function __firk_collocation_kernel!(
+        residual, collocation_cache, k_discrete, f, TU, y, u, p, mesh, mesh_dt,
+        stage, f_prototype, singular_term, trait, iip, constraint
+    )
+    i = @index(Global, Linear)
+    __firk_collocation_interval!(
+        i, residual, collocation_cache, k_discrete, f, TU, y, u, p, mesh, mesh_dt,
+        stage, f_prototype, singular_term, trait, iip, constraint
     )
 end
 
-@views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, singular_term, ::DiffCacheNeeded, ::Val{true}
+function __firk_collocation!(residual, cache::FIRKCacheExpand, y, u, trait, iip, constraint)
+    platform = cache.alg.platform
+    kernel! = __firk_collocation_kernel!(platform)
+    kernel!(
+        residual, cache.collocation_cache, cache.k_discrete, cache.f, cache.TU, y, u,
+        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype,
+        cache.singular_term, trait, iip, constraint;
+        ndrange = length(cache.mesh_dt)
     )
-    (; c, a, b) = TU
-    L_f_prototype = length(f_prototype)
-    tmp1,
-        tmpu = get_tmp(fᵢ_cache, u)[1:L_f_prototype],
-        get_tmp(fᵢ_cache, u)[(L_f_prototype + 1):end]
-
-    K = get_tmp(k_discrete[1], u) # Not optimal # TODO
-    T = eltype(u)
-    ctr = 1
-
-    for i in eachindex(mesh_dt)
-        h = mesh_dt[i]
-        yᵢ = get_tmp(y[ctr], u)
-        yᵢ₊₁ = get_tmp(y[ctr + stage + 1], u)
-
-        yᵢ, uᵢ = yᵢ[1:L_f_prototype], yᵢ[(L_f_prototype + 1):end]
-        yᵢ₊₁, uᵢ₊₁ = yᵢ₊₁[1:L_f_prototype], yᵢ₊₁[(L_f_prototype + 1):end]
-
-        # Load interpolation residual
-        for j in 1:stage
-            tmp = get_tmp(y[ctr + j], u)
-            K[:, j] = tmp[1:L_f_prototype]
-        end
-
-        # Update interpolation residual
-        for r in 1:stage
-            @. tmp1 = yᵢ
-            @. tmpu = uᵢ
-            __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            f!(residual[ctr + r], vcat(tmp1, tmpu), p, mesh[i] + c[r] * h)
-            residual[ctr + r] .-= K[:, r]
-        end
-
-        # Update mesh point residual
-        residᵢ = residual[ctr]
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K, b, -h, T(1))
-        ctr += stage + 1
-    end
+    synchronize(platform)
+    return nothing
 end
 
-@views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p,
-        mesh, mesh_dt, stage::Int, _, singular_term, ::DiffCacheNeeded, ::Val{false}
+@views function __firk_collocation_nested_interval!(
+        i, residual, collocation_cache, k_discrete, TU::FIRKTableau{true}, y, u,
+        mesh, mesh_dt, nest_prob, nest_nlsolve_alg, nested_nlsolve_kwargs, trait
     )
-    (; c, a, b) = TU
-    tmp1 = get_tmp(fᵢ_cache, u)
-    K = get_tmp(k_discrete[1], u) # Not optimal # TODO
-    T = eltype(u)
-    ctr = 1
+    (; b) = TU
+    nestprob_p = _collocation_tmp(collocation_cache[i], u, trait)
+    yᵢ = _collocation_tmp(y[i], u, trait)
+    yᵢ₊₁ = _collocation_tmp(y[i + 1], u, trait)
+    h = mesh_dt[i]
+    nestprob_p[1] = mesh[i]
+    nestprob_p[2] = h
+    nestprob_p[3:end] .= yᵢ
 
-    for i in eachindex(mesh_dt)
-        h = mesh_dt[i]
-        yᵢ = get_tmp(y[ctr], u)
-        yᵢ₊₁ = get_tmp(y[ctr + stage + 1], u)
-
-        # Load interpolation residual
-        for j in 1:stage
-            K[:, j] = get_tmp(y[ctr + j], u)
-        end
-
-        # Update interpolation residual
-        for r in 1:stage
-            @. tmp1 = yᵢ
-            __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            t = mesh[i] + c[r] * h
-            f!(residual[ctr + r], tmp1, p, t)
-            __add_singular_term!(residual[ctr + r], singular_term, tmp1, t)
-            residual[ctr + r] .-= K[:, r]
-        end
-
-        # Update mesh point residual
-        residᵢ = residual[ctr]
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K, b, -h, T(1))
-        ctr += stage + 1
+    # Keep the initial guess private even when the nested solver aliases u0.
+    nestprob = remake(nest_prob; u0 = copy(nest_prob.u0), p = nestprob_p)
+    nestsol = if trait isa DiffCacheNeeded
+        __solve(nestprob, nest_nlsolve_alg; nested_nlsolve_kwargs...)
+    else
+        solve(nestprob, nest_nlsolve_alg; nested_nlsolve_kwargs...)
     end
+    K = _collocation_tmp(k_discrete[i], u, trait)
+    K .= nestsol.u
+    residᵢ = residual[i]
+    for j in eachindex(residᵢ)
+        stage_sum = zero(eltype(residᵢ))
+        for r in eachindex(b)
+            stage_sum += K[j, r] * b[r]
+        end
+        residᵢ[j] = yᵢ₊₁[j] - yᵢ[j] - h * stage_sum
+    end
+    return nothing
 end
 
-@views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{false}, y, u, p, mesh,
-        mesh_dt, stage::Int, _, singular_term, ::NoDiffCacheNeeded, ::Val{false}
+@kernel function __firk_collocation_nested_kernel!(
+        residual, collocation_cache, k_discrete, TU, y, u, mesh, mesh_dt,
+        nest_prob, nest_nlsolve_alg, nested_nlsolve_kwargs, trait
     )
-    (; c, a, b) = TU
-    tmp1 = similar(fᵢ_cache)
-    K = similar(k_discrete[1])
-    T = eltype(u)
-    ctr = 1
+    i = @index(Global, Linear)
+    __firk_collocation_nested_interval!(
+        i, residual, collocation_cache, k_discrete, TU, y, u, mesh, mesh_dt,
+        nest_prob, nest_nlsolve_alg, nested_nlsolve_kwargs, trait
+    )
+end
 
-    for i in eachindex(mesh_dt)
-        h = mesh_dt[i]
-        yᵢ = y[ctr]
-        yᵢ₊₁ = y[ctr + stage + 1]
+function __firk_collocation!(residual, cache::FIRKCacheNested, y, u, trait)
+    (; alg, nest_prob) = cache
+    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
+    kernel! = __firk_collocation_nested_kernel!(alg.platform)
+    kernel!(
+        residual, cache.collocation_cache, cache.k_discrete, cache.TU, y, u,
+        cache.mesh, cache.mesh_dt, nest_prob, nest_nlsolve_alg,
+        alg.nested_nlsolve_kwargs, trait;
+        ndrange = length(cache.mesh_dt)
+    )
+    synchronize(alg.platform)
+    return nothing
+end
 
-        # Load interpolation residual
-        for j in 1:stage
-            K[:, j] = y[ctr + j]
-        end
+function Φ(cache::FIRKCacheExpand, y, u, trait)
+    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    __firk_collocation!(residuals, cache, y, u, trait, Val(false), Val(false))
+    return residuals
+end
 
-        # Update interpolation residual
-        for r in 1:stage
-            @. tmp1 = yᵢ
-            __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            t = mesh[i] + c[r] * h
-            f!(residual[ctr + r], tmp1, p, t)
-            __add_singular_term!(residual[ctr + r], singular_term, tmp1, t)
-            residual[ctr + r] .-= K[:, r]
-        end
-
-        # Update mesh point residual
-        residᵢ = residual[ctr]
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K, b, -h, T(1))
-        ctr += stage + 1
-    end
+function Φ(cache::FIRKCacheNested, y, u, trait)
+    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    __firk_collocation!(residuals, cache, y, u, trait)
+    return residuals
 end
 
 function FIRK_nlsolve!(res, K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
@@ -169,260 +200,4 @@ function FIRK_nlsolve(K, p_nlsolve, f!, TU::FIRKTableau{true}, p_f!)
         @views res[:, r] .-= K[:, r]
     end
     return res
-end
-
-@views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{true}
-    )
-    (; b) = TU
-    (; nest_prob, alg) = cache
-
-    T = eltype(u)
-    nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
-    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
-
-    for i in eachindex(k_discrete)
-        residᵢ = residual[i]
-        h = mesh_dt[i]
-
-        yᵢ = get_tmp(y[i], u)
-        yᵢ₊₁ = get_tmp(y[i + 1], u)
-
-        nestprob_p[1] = T(mesh[i])
-        nestprob_p[2] = T(mesh_dt[i])
-        nestprob_p[3:end] = yᵢ
-
-        K = get_tmp(k_discrete[i], u)
-
-        _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
-        @. K = nestsol.u
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-    end
-end
-
-@views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded, ::Val{false}
-    )
-    (; b) = TU
-    (; nest_prob, alg) = cache
-
-    T = eltype(u)
-    nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
-    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
-
-    for i in eachindex(k_discrete)
-        residᵢ = residual[i]
-        h = mesh_dt[i]
-
-        yᵢ = get_tmp(y[i], u)
-        yᵢ₊₁ = get_tmp(y[i + 1], u)
-
-        nestprob_p[1] = T(mesh[i])
-        nestprob_p[2] = T(mesh_dt[i])
-        nestprob_p[3:end] = yᵢ
-
-        K = get_tmp(k_discrete[i], u)
-
-        _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
-        @. K = nestsol.u
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-    end
-end
-
-@views function Φ!(
-        residual, fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded, ::Val{false}
-    )
-    (; b) = TU
-    (; nest_prob, alg) = cache
-
-    T = eltype(u)
-    nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])
-    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, cache.alg.nlsolve)
-
-    for i in eachindex(k_discrete)
-        residᵢ = residual[i]
-        h = mesh_dt[i]
-
-        yᵢ = y[i]
-        yᵢ₊₁ = y[i + 1]
-
-        nestprob_p[1] = T(mesh[i])
-        nestprob_p[2] = T(mesh_dt[i])
-        nestprob_p[3:end] = yᵢ
-
-        K = k_discrete[i]
-
-        _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
-        @. K = nestsol.u
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-    end
-end
-
-function Φ(cache::FIRKCacheExpand, y, u, trait)
-    return Φ(
-        cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait
-    )
-end
-
-function Φ(cache::FIRKCacheNested, y, u, trait)
-    return Φ(
-        cache.fᵢ_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache, trait
-    )
-end
-
-@views function Φ(
-        fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
-        u, p, mesh, mesh_dt, stage::Int, singular_term, ::DiffCacheNeeded
-    )
-    (; c, a, b) = TU
-    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
-    tmp1 = get_tmp(fᵢ_cache, u)
-    K = get_tmp(k_discrete[1], u) # Not optimal # TODO
-    T = eltype(u)
-    ctr = 1
-
-    for i in eachindex(mesh_dt)
-        h = mesh_dt[i]
-        yᵢ = get_tmp(y[ctr], u)
-        yᵢ₊₁ = get_tmp(y[ctr + stage + 1], u)
-
-        # Load interpolation residual
-        for j in 1:stage
-            K[:, j] = get_tmp(y[ctr + j], u)
-        end
-
-        # Update interpolation residual
-        for r in 1:stage
-            @. tmp1 = yᵢ
-            __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            t = mesh[i] + c[r] * h
-            residuals[ctr + r] = f(tmp1, p, t)
-            __add_singular_term!(residuals[ctr + r], singular_term, tmp1, t)
-            residuals[ctr + r] .-= K[:, r]
-        end
-
-        # Update mesh point residual
-        residᵢ = residuals[ctr]
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K, b, -h, T(1))
-        ctr += stage + 1
-    end
-    return residuals
-end
-
-@views function Φ(
-        fᵢ_cache, k_discrete, f, TU::FIRKTableau{false}, y,
-        u, p, mesh, mesh_dt, stage::Int, singular_term, ::NoDiffCacheNeeded
-    )
-    (; c, a, b) = TU
-    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
-    tmp1 = similar(fᵢ_cache)
-    K = similar(k_discrete[1])
-    T = eltype(u)
-    ctr = 1
-
-    for i in eachindex(mesh_dt)
-        h = mesh_dt[i]
-        yᵢ = y[ctr]
-        yᵢ₊₁ = y[ctr + stage + 1]
-
-        # Load interpolation residual
-        for j in 1:stage
-            K[:, j] = y[ctr + j]
-        end
-
-        # Update interpolation residual
-        for r in 1:stage
-            @. tmp1 = yᵢ
-            __maybe_matmul!(tmp1, K, a[:, r], h, T(1))
-            t = mesh[i] + c[r] * h
-            residuals[ctr + r] = f(tmp1, p, t)
-            __add_singular_term!(residuals[ctr + r], singular_term, tmp1, t)
-            residuals[ctr + r] .-= K[:, r]
-        end
-
-        # Update mesh point residual
-        residᵢ = residuals[ctr]
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, K, b, -h, T(1))
-        ctr += stage + 1
-    end
-    return residuals
-end
-
-@views function Φ(
-        fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u,
-        p, mesh, mesh_dt, stage::Int, cache, ::DiffCacheNeeded
-    )
-    (; b) = TU
-    (; nest_prob, alg) = cache
-
-    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
-
-    T = eltype(u)
-    nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), get_tmp(y[1], u))
-    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
-
-    for i in eachindex(k_discrete)
-        residᵢ = residuals[i]
-        h = mesh_dt[i]
-
-        yᵢ = get_tmp(y[i], u)
-        yᵢ₊₁ = get_tmp(y[i + 1], u)
-
-        nestprob_p[1] = T(mesh[i])
-        nestprob_p[2] = T(mesh_dt[i])
-        nestprob_p[3:end] = yᵢ
-
-        _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = __solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
-
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-    end
-    return residuals
-end
-
-@views function Φ(
-        fᵢ_cache, k_discrete, f!, TU::FIRKTableau{true}, y, u, p,
-        mesh, mesh_dt, stage::Int, cache, ::NoDiffCacheNeeded
-    )
-    (; b) = TU
-    (; nest_prob, alg) = cache
-
-    residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
-
-    T = eltype(u)
-    nestprob_p = vcat(T(mesh[1]), T(mesh_dt[1]), y[1])
-    nest_nlsolve_alg = __concrete_solve_algorithm(nest_prob, alg.nlsolve)
-
-    for i in eachindex(k_discrete)
-        residᵢ = residuals[i]
-        h = mesh_dt[i]
-
-        yᵢ = y[i]
-        yᵢ₊₁ = y[i + 1]
-
-        nestprob_p[1] = T(mesh[i])
-        nestprob_p[2] = T(mesh_dt[i])
-        nestprob_p[3:end] = yᵢ
-
-        _nestprob = remake(nest_prob, p = nestprob_p)
-        nestsol = solve(_nestprob, nest_nlsolve_alg; alg.nested_nlsolve_kwargs...)
-
-        @. residᵢ = yᵢ₊₁ - yᵢ
-        __maybe_matmul!(residᵢ, nestsol.u, b, -h, T(1))
-    end
-    return residuals
 end

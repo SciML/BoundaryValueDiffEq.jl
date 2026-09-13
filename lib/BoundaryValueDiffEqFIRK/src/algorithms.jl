@@ -6,7 +6,7 @@ for stage in (1, 2, 3, 5, 7)
 
     @eval begin
         """
-            $($alg)(; nlsolve = nothing, optimize = nothing,
+            $($alg)(; nlsolve = nothing, optimize = nothing, platform = CPU(),
                 jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false,
                 nested_nlsolve_kwargs = (;), defect_threshold = 0.1,
                 max_num_subintervals = 3000) -> $($alg)
@@ -29,6 +29,8 @@ for stage in (1, 2, 3, 5, 7)
                 `nonbc_diffmode`, the default is `AutoSparse(AutoForwardDiff())` if possible,
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
@@ -112,10 +114,11 @@ for stage in (1, 2, 3, 5, 7)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractFIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
@@ -129,7 +132,7 @@ for stage in (2, 3, 4, 5)
 
     @eval begin
         """
-            $($alg)(; nlsolve = nothing, optimize = nothing,
+            $($alg)(; nlsolve = nothing, optimize = nothing, platform = CPU(),
                 jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false,
                 nested_nlsolve_kwargs = (;), defect_threshold = 0.1,
                 max_num_subintervals = 3000) -> $($alg)
@@ -152,6 +155,8 @@ for stage in (2, 3, 4, 5)
                 `nonbc_diffmode`, the default is `AutoSparse(AutoForwardDiff())` if possible,
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
@@ -235,10 +240,11 @@ for stage in (2, 3, 4, 5)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractFIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
@@ -252,7 +258,7 @@ for stage in (2, 3, 4, 5)
 
     @eval begin
         """
-            $($alg)(; nlsolve = nothing, optimize = nothing,
+            $($alg)(; nlsolve = nothing, optimize = nothing, platform = CPU(),
                 jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false,
                 nested_nlsolve_kwargs = (;), defect_threshold = 0.1,
                 max_num_subintervals = 3000) -> $($alg)
@@ -275,6 +281,8 @@ for stage in (2, 3, 4, 5)
                 `nonbc_diffmode`, the default is `AutoSparse(AutoForwardDiff())` if possible,
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
@@ -358,10 +366,11 @@ for stage in (2, 3, 4, 5)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractFIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1
@@ -375,7 +384,7 @@ for stage in (2, 3, 4, 5)
 
     @eval begin
         """
-            $($alg)(; nlsolve = nothing, optimize = nothing,
+            $($alg)(; nlsolve = nothing, optimize = nothing, platform = CPU(),
                 jac_alg = BVPJacobianAlgorithm(), nested_nlsolve = false,
                 nested_nlsolve_kwargs = (;), defect_threshold = 0.1,
                 max_num_subintervals = 3000) -> $($alg)
@@ -398,6 +407,8 @@ for stage in (2, 3, 4, 5)
                 `nonbc_diffmode`, the default is `AutoSparse(AutoForwardDiff())` if possible,
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
@@ -481,10 +492,11 @@ for stage in (2, 3, 4, 5)
         }
         ```
         """
-        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractFIRK
+        Base.@kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractFIRK
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             nested_nlsolve::Bool = false
             nested_nlsolve_kwargs::NamedTuple = (;)
             defect_threshold::T = 0.1

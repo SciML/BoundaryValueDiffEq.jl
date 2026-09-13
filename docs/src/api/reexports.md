@@ -17,6 +17,8 @@ Owners linked from this page:
     types and the `solve`/`init`/`remake` interface.
   - [ADTypes](https://sciml.github.io/ADTypes.jl/stable/) — the `Auto*` automatic
     differentiation backend selectors.
+  - [KernelAbstractions](https://juliagpu.github.io/KernelAbstractions.jl/stable/api/) —
+    the `CPU` execution backend accepted by MIRK and FIRK's `platform` keyword.
   - [NonlinearSolveFirstOrder](https://docs.sciml.ai/NonlinearSolve/stable/) — the
     nonlinear solver algorithms accepted by every solver's `nlsolve` keyword.
   - `BoundaryValueDiffEqCore` — the shared BVP configuration types, documented under
@@ -53,6 +55,7 @@ and in addition:
 In addition to `MIRK2`–`MIRK6`, `MIRK6I`, `maxsol`, `minsol` (MIRK) and the `RadauIIa*` /
 `LobattoIII*` algorithms (FIRK), both packages reexport:
 
+  - Execution backend for the `platform` keyword, from KernelAbstractions: `CPU`
   - AD backend selectors, from ADTypes: `AutoEnzyme`, `AutoFiniteDiff`, `AutoForwardDiff`,
     `AutoMooncake`, `AutoPolyesterForwardDiff`, `AutoSparse`
   - Configuration, from BoundaryValueDiffEqCore: `BVPJacobianAlgorithm`, `BVPVerbosity`,
@@ -70,8 +73,8 @@ In addition to `MIRK2`–`MIRK6`, `MIRK6I`, `maxsol`, `minsol` (MIRK) and the `R
 ## BoundaryValueDiffEqAscher
 
 In addition to `Ascher1`–`Ascher7`, the same set as MIRK and FIRK, except that Ascher
-documents no ensemble workflow and so does not reexport `EnsembleProblem` or
-`ODEFunction`:
+has no `platform` keyword or documented ensemble workflow and so does not reexport
+`CPU`, `EnsembleProblem` or `ODEFunction`:
 
   - AD backend selectors, from ADTypes: `AutoEnzyme`, `AutoFiniteDiff`, `AutoForwardDiff`,
     `AutoMooncake`, `AutoPolyesterForwardDiff`, `AutoSparse`
