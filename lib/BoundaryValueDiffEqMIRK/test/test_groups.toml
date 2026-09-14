@@ -9,6 +9,11 @@
 [Core]
 versions = ["lts", "1", "pre"]
 
+# DAE: the index-1 DAE (singular mass matrix) tests, split out of Core because
+# Core already runs close to its 120 min budget on the release lane.
+[DAE]
+versions = ["lts", "1", "pre"]
+
 # AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy
 # optional backends live in test/AD/Project.toml (kept out of the main test env so
 # the Downgrade lane does not force a joint at-floor resolve of them).
