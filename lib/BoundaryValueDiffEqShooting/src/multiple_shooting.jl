@@ -68,7 +68,7 @@ function SciMLBase.__solve(
     ) -> __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoot,
         __multiple_shooting_matching_odecache(odecache, odecache_for_states, us),
-        nodes, u0_size, N, ensemblealg, tspan
+        nodes, u0_size, N, ensemblealg, tspan, alg.platform
     )
 
     ode_cache_loss_fn = __multiple_shooting_init_odecache(
@@ -340,10 +340,7 @@ function __multiple_shooting_init_odecache(
         ::EnsembleThreads, prob, alg, u0, nshoots; kwargs...
     )
     odeprob = ODEProblem{isinplace(prob)}(prob.f, u0, prob.tspan, prob.p)
-    return [
-        SciMLBase.__init(odeprob, alg; kwargs...)
-            for _ in 1:min(Threads.nthreads(), nshoots)
-    ]
+    return [SciMLBase.__init(odeprob, alg; kwargs...) for _ in 1:nshoots]
 end
 
 function __multiple_shooting_init_jacobian_odecache(
@@ -381,7 +378,7 @@ end
 # Not using `EnsembleProblem` since it is hard to initialize the cache and stuff
 function __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoots::Int, odecache,
-        nodes, u0_size, N::Int, ::EnsembleSerial, tspan
+        nodes, u0_size, N::Int, ::EnsembleSerial, tspan, platform
     )
     ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
@@ -401,35 +398,37 @@ function __multiple_shooting_solve_internal_odes!(
     return reduce(vcat, us_), reduce(vcat, ts_)
 end
 
+# Each work item owns `odecaches[i]` and writes only to `us_[i]`, `ts_[i]` and the
+# `resid_nodes` block of interval `i`.
+@kernel function __ms_solve_internal_odes_kernel!(
+        resid_nodes, us_, ts_, us, odecaches, nodes, u0_size, N
+    )
+    i = @index(Global, Linear)
+    cache = odecaches[i]
+    SciMLBase.reinit!(
+        cache, reshape(view(us, ((i - 1) * N + 1):(i * N)), u0_size);
+        t0 = nodes[i], tf = nodes[i + 1]
+    )
+    sol = solve!(cache)
+    us_[i] = deepcopy(sol.u)
+    ts_[i] = deepcopy(sol.t)
+    resid_nodes[((i - 1) * N + 1):(i * N)] .= view(us, (i * N + 1):((i + 1) * N)) .-
+        vec(sol.u[end])
+end
+
 function __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoots::Int, odecache::Vector,
-        nodes, u0_size, N::Int, ::EnsembleThreads, tspan
+        nodes, u0_size, N::Int, ::EnsembleThreads, tspan, platform
     )
     ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
 
-    n_splits = min(cur_nshoots, Threads.nthreads())
-    n_per_chunk, n_remaining = divrem(cur_nshoots, n_splits)
-    data_partition = map(1:n_splits) do i
-        first = 1 + (i - 1) * n_per_chunk + ifelse(i ≤ n_remaining, i - 1, n_remaining)
-        last = (first - 1) + n_per_chunk + ifelse(i <= n_remaining, 1, 0)
-        return first:1:last
-    end
-
-    Threads.@threads for idx in eachindex(data_partition)
-        cache = odecache[idx]
-        for i in data_partition[idx]
-            SciMLBase.reinit!(
-                cache, reshape(@view(us[((i - 1) * N + 1):(i * N)]), u0_size);
-                t0 = nodes[i], tf = nodes[i + 1]
-            )
-            sol = solve!(cache)
-            us_[i] = deepcopy(sol.u)
-            ts_[i] = deepcopy(sol.t)
-            resid_nodes[((i - 1) * N + 1):(i * N)] .= @view(us[(i * N + 1):((i + 1) * N)]) .-
-                vec(sol.u[end])
-        end
-    end
+    kernel! = __ms_solve_internal_odes_kernel!(platform)
+    kernel!(
+        resid_nodes, us_, ts_, us, odecache, nodes, u0_size, N;
+        ndrange = cur_nshoots
+    )
+    synchronize(platform)
 
     return reduce(vcat, us_), reduce(vcat, ts_)
 end

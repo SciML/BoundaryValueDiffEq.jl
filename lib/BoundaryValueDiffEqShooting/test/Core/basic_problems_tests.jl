@@ -124,7 +124,8 @@ import SciMLBase
             @test matched !== odecache
             fill!(resid_nodes, zero(T_dual))
             __multiple_shooting_solve_internal_odes!(
-                resid_nodes, us, nshoots, matched, nodes, (N,), N, ensemblealg, tspan
+                resid_nodes, us, nshoots, matched, nodes, (N,), N, ensemblealg,
+                tspan, CPU()
             )
             @test norm(ForwardDiff.value.(resid_nodes), Inf) < 1.0e-8
             # the lazily built cache is reused; primal states keep the primal cache
@@ -142,7 +143,8 @@ import SciMLBase
             EnsembleSerial(), bvp2, Tsit5(), u0, nshoots; save_end = true
         )
         @test_throws MethodError __multiple_shooting_solve_internal_odes!(
-            resid_nodes, us, nshoots, odecache, nodes, (N,), N, EnsembleSerial(), tspan
+            resid_nodes, us, nshoots, odecache, nodes, (N,), N, EnsembleSerial(),
+            tspan, CPU()
         )
     end
 
