@@ -942,3 +942,160 @@ end
     end
     return nothing
 end
+
+"""
+    __apply_mass_matrix!(residᵢ, mass_matrix)
+
+Overwrite `residᵢ` with `mass_matrix * residᵢ` in place. Used in defect estimation so that
+the defect compares `M * z′` against `f(z)` for mass-matrix problems. No-op for
+`UniformScaling` mass matrices, so plain ODEs pay no cost.
+"""
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::UniformScaling)
+    return nothing
+end
+
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::AbstractMatrix)
+    copyto!(residᵢ, mass_matrix * residᵢ)
+    return nothing
+end
+
+"""
+    __get_algebraic_indices(mass_matrix)
+
+Return the indices of the zero rows of `mass_matrix`, i.e. the algebraic equations of an
+index-1 DAE, or `nothing` when there are none (always for `UniformScaling`).
+"""
+@inline function __get_algebraic_indices(mass_matrix::UniformScaling)
+    return nothing
+end
+
+@inline function __get_algebraic_indices(mass_matrix::AbstractMatrix)
+    indices = [i for i in axes(mass_matrix, 1) if iszero(mass_matrix[i, :])]
+    return isempty(indices) ? nothing : indices
+end
+
+"""
+    __mass_stage_entry(mass_matrix, K, j, r)
+
+Return `(mass_matrix * K)[j, r]`, the `j`-th entry of the mass-matrix-weighted `r`-th
+collocation stage slope. For `UniformScaling` this is just `K[j, r]`. Rows beyond the
+extent of `mass_matrix` are treated as having an identity mass row, which is the correct
+semantics for the constant-parameter equations appended by `tune_parameters`.
+"""
+@inline function __mass_stage_entry(mass_matrix::UniformScaling, K, j, r)
+    return K[j, r]
+end
+
+@inline function __mass_stage_entry(mass_matrix::AbstractMatrix, K, j, r)
+    j > size(mass_matrix, 1) && return K[j, r]
+    stage_sum = zero(promote_type(eltype(mass_matrix), eltype(K)))
+    for l in axes(mass_matrix, 2)
+        stage_sum += mass_matrix[j, l] * K[l, r]
+    end
+    return stage_sum
+end
+
+"""
+    __mass_mesh_entry(mass_matrix, yᵢ₊₁, yᵢ, j)
+
+Return `(mass_matrix * (yᵢ₊₁ - yᵢ))[j]`, the `j`-th entry of the mass-matrix-weighted mesh
+difference, for MIRK residuals where the stage values store `f` evaluations rather than
+slopes. For `UniformScaling` this is `yᵢ₊₁[j] - yᵢ[j]`; rows beyond the extent of
+`mass_matrix` are treated as identity rows (see [`__mass_stage_entry`](@ref)).
+"""
+@inline function __mass_mesh_entry(mass_matrix::UniformScaling, yᵢ₊₁, yᵢ, j)
+    return yᵢ₊₁[j] - yᵢ[j]
+end
+
+@inline function __mass_mesh_entry(mass_matrix::AbstractMatrix, yᵢ₊₁, yᵢ, j)
+    j > size(mass_matrix, 1) && return yᵢ₊₁[j] - yᵢ[j]
+    mesh_sum = zero(promote_type(eltype(mass_matrix), eltype(yᵢ₊₁)))
+    for l in axes(mass_matrix, 2)
+        mesh_sum += mass_matrix[j, l] * (yᵢ₊₁[l] - yᵢ[l])
+    end
+    return mesh_sum
+end
+
+"""
+    __subtract_mass_stage!(res, mass_matrix, K_r, tmp)
+
+Subtract `mass_matrix * K_r` from `res` in place, using `tmp` as workspace. Turns the
+collocation stage residual `f(...) - K_r` into `f(...) - M * K_r`, i.e. collocation of
+`M * u′ = f(u, p, t)`. Entries beyond the extent of `mass_matrix` are treated as having
+an identity mass row (see [`__mass_stage_entry`](@ref)).
+"""
+@inline function __subtract_mass_stage!(res, ::UniformScaling, K_r, tmp)
+    res .-= K_r
+    return nothing
+end
+
+@inline function __subtract_mass_stage!(res, M::AbstractMatrix, K_r, tmp)
+    n = size(M, 1)
+    mul!(@view(tmp[1:n]), M, @view(K_r[1:n]))
+    res[1:n] .-= @view(tmp[1:n])
+    res[(n + 1):end] .-= @view(K_r[(n + 1):end])
+    return nothing
+end
+
+"""
+    __apply_algebraic_constraint!(residᵢ, algebraic_indices, f, yᵢ₊₁, p, t, iip)
+
+When `algebraic_indices !== nothing`, overwrite `residᵢ` with `f(yᵢ₊₁, p, t)` so that the
+algebraic rows of the mesh-point residual hold the DAE constraint residual evaluated at
+the right mesh point, following the unprojected collocation approach for index-1 DAEs of
+Ascher & Spiteri (1994). The caller must then fill the non-algebraic rows with the usual
+continuity residual, skipping the entries selected by [`__is_algebraic`](@ref). `iip` is
+a `Val` indicating whether `f` is in-place. No-op when `algebraic_indices === nothing`.
+"""
+@inline function __apply_algebraic_constraint!(
+        residᵢ, ::Nothing, f, yᵢ₊₁, p, t, ::Val{iip}
+    ) where {iip}
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices::Vector{Int}, f!, yᵢ₊₁, p, t, ::Val{true}
+    )
+    f!(residᵢ, yᵢ₊₁, p, t)
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices::Vector{Int}, f, yᵢ₊₁, p, t, ::Val{false}
+    )
+    residᵢ .= f(yᵢ₊₁, p, t)
+    return nothing
+end
+
+"""
+    __is_algebraic(algebraic_indices, j)
+
+Whether row `j` of the mesh-point residual is an algebraic (zero mass-matrix row)
+equation. Always `false` when `algebraic_indices === nothing`.
+"""
+@inline __is_algebraic(::Nothing, j) = false
+@inline __is_algebraic(algebraic_indices::Vector{Int}, j) = j in algebraic_indices
+
+"""
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+
+Throw an `ArgumentError` when mesh adaptivity is requested for a DAE problem
+(`algebraic_indices !== nothing`): the collocation interpolant is inaccurate for algebraic
+variables, so defect-based mesh refinement cannot converge.
+"""
+@inline __check_dae_adaptivity(::Nothing, adaptive::Bool) = nothing
+
+@inline function __check_dae_adaptivity(::Vector{Int}, adaptive::Bool)
+    if adaptive
+        throw(
+            ArgumentError(
+                "Adaptive mesh refinement is not supported for DAE problems (mass " *
+                    "matrices with zero rows): the collocation interpolant is inaccurate " *
+                    "for algebraic variables, so the defect estimate cannot converge. " *
+                    "Pass `adaptive = false`, or use a solver from " *
+                    "BoundaryValueDiffEqAscher.jl, which supports mesh adaptivity for DAEs."
+            )
+        )
+    end
+    return nothing
+end

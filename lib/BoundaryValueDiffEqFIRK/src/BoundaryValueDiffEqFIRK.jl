@@ -25,7 +25,9 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __build_solution, __split_kwargs, _sparse_like,
     get_dense_ad,
     __internal_solve, __default_sparsity_detector, __build_cost,
-    __tunable_part, __add_singular_term!
+    __tunable_part, __add_singular_term!, __apply_mass_matrix!,
+    __get_algebraic_indices, __mass_stage_entry, __subtract_mass_stage!,
+    __apply_algebraic_constraint!, __is_algebraic, __check_dae_adaptivity
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant

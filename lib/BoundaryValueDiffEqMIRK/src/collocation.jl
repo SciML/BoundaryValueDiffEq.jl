@@ -1,8 +1,9 @@
 function Φ!(residual, cache::MIRKCache, y, u, trait, constraint)
     return Φ!(
         residual, cache.collocation_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.f_prototype,
-        cache.singular_term, trait, constraint, cache.alg.platform
+        cache.p, cache.mass_matrix, cache.algebraic_indices, cache.mesh, cache.mesh_dt,
+        cache.stage, cache.f_prototype, cache.singular_term, trait, constraint,
+        cache.alg.platform
     )
 end
 
@@ -11,7 +12,8 @@ end
 
 @views function __mirk_collocation_interval!(
         i, residual, collocation_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, _, singular_term, trait, ::Val{false}
+        mass_matrix, algebraic_indices, mesh, mesh_dt, stage::Int, _, singular_term,
+        trait, ::Val{false}
     )
     (; c, v, x, b) = TU
     tmp = _collocation_tmp(collocation_cache[i], u, trait)
@@ -34,19 +36,26 @@ end
         __add_singular_term!(K[:, r], singular_term, tmp, t)
     end
 
+    # For a DAE the algebraic rows of residᵢ hold the constraint f(yᵢ₊₁); the remaining
+    # rows are filled with the mass-weighted continuity residual M(yᵢ₊₁ - yᵢ) - h Σ bᵣ Kᵣ.
+    __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], Val(true)
+    )
     for j in eachindex(residᵢ)
+        __is_algebraic(algebraic_indices, j) && continue
         stage_sum = zero(eltype(residᵢ))
         for r in 1:stage
             stage_sum += K[j, r] * b[r]
         end
-        residᵢ[j] = yᵢ₊₁[j] - yᵢ[j] - h * stage_sum
+        residᵢ[j] = __mass_mesh_entry(mass_matrix, yᵢ₊₁, yᵢ, j) - h * stage_sum
     end
     return nothing
 end
 
 @views function __mirk_collocation_interval!(
         i, residual, collocation_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, _, trait, ::Val{true}
+        mass_matrix, algebraic_indices, mesh, mesh_dt, stage::Int, f_prototype, _,
+        trait, ::Val{true}
     )
     (; c, v, x, b) = TU
     L_f_prototype = length(f_prototype)
@@ -77,36 +86,44 @@ end
         f!(K[:, r], tmp, p, mesh[i] + c[r] * h)
     end
 
+    __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices, f!, yᵢ₊₁, p, mesh[i + 1], Val(true)
+    )
     for j in eachindex(residᵢ)
+        __is_algebraic(algebraic_indices, j) && continue
         stage_sum = zero(eltype(residᵢ))
         for r in 1:stage
             stage_sum += K[j, r] * b[r]
         end
-        residᵢ[j] = yᵢ₊₁_state[j] - yᵢ_state[j] - h * stage_sum
+        residᵢ[j] = __mass_mesh_entry(mass_matrix, yᵢ₊₁_state, yᵢ_state, j) -
+            h * stage_sum
     end
     return nothing
 end
 
 @kernel function __mirk_collocation_kernel!(
-        residual, collocation_cache, k_discrete, f!, TU, y, u, p, mesh, mesh_dt,
-        stage, f_prototype, singular_term, trait, constraint
+        residual, collocation_cache, k_discrete, f!, TU, y, u, p, mass_matrix,
+        algebraic_indices, mesh, mesh_dt, stage, f_prototype, singular_term, trait,
+        constraint
     )
     i = @index(Global, Linear)
     __mirk_collocation_interval!(
-        i, residual, collocation_cache, k_discrete, f!, TU, y, u, p, mesh, mesh_dt,
-        stage, f_prototype, singular_term, trait, constraint
+        i, residual, collocation_cache, k_discrete, f!, TU, y, u, p, mass_matrix,
+        algebraic_indices, mesh, mesh_dt, stage, f_prototype, singular_term, trait,
+        constraint
     )
 end
 
 function Φ!(
         residual, collocation_cache, k_discrete, f!, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, f_prototype, singular_term, trait, constraint,
-        platform::Backend
+        mass_matrix, algebraic_indices, mesh, mesh_dt, stage::Int, f_prototype,
+        singular_term, trait, constraint, platform::Backend
     )
     kernel! = __mirk_collocation_kernel!(platform)
     kernel!(
-        residual, collocation_cache, k_discrete, f!, TU, y, u, p, mesh, mesh_dt,
-        stage, f_prototype, singular_term, trait, constraint;
+        residual, collocation_cache, k_discrete, f!, TU, y, u, p, mass_matrix,
+        algebraic_indices, mesh, mesh_dt, stage, f_prototype, singular_term, trait,
+        constraint;
         ndrange = length(k_discrete)
     )
     synchronize(platform)
@@ -116,14 +133,14 @@ end
 function Φ(cache::MIRKCache, y, u, trait)
     return Φ(
         cache.collocation_cache, cache.k_discrete, cache.f, cache.TU, y, u,
-        cache.p, cache.mesh, cache.mesh_dt, cache.stage, cache.singular_term, trait,
-        cache.alg.platform
+        cache.p, cache.mass_matrix, cache.algebraic_indices, cache.mesh, cache.mesh_dt,
+        cache.stage, cache.singular_term, trait, cache.alg.platform
     )
 end
 
 @views function __mirk_collocation_oop_interval!(
         i, residuals, collocation_cache, k_discrete, f, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, singular_term, trait
+        mass_matrix, algebraic_indices, mesh, mesh_dt, stage::Int, singular_term, trait
     )
     (; c, v, x, b) = TU
     tmp = _collocation_tmp(collocation_cache[i], u, trait)
@@ -146,36 +163,41 @@ end
         __add_singular_term!(K[:, r], singular_term, tmp, t)
     end
 
+    __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices, f, yᵢ₊₁, p, mesh[i + 1], Val(false)
+    )
     for j in eachindex(residᵢ)
+        __is_algebraic(algebraic_indices, j) && continue
         stage_sum = zero(eltype(residᵢ))
         for r in 1:stage
             stage_sum += K[j, r] * b[r]
         end
-        residᵢ[j] = yᵢ₊₁[j] - yᵢ[j] - h * stage_sum
+        residᵢ[j] = __mass_mesh_entry(mass_matrix, yᵢ₊₁, yᵢ, j) - h * stage_sum
     end
     return nothing
 end
 
 @kernel function __mirk_collocation_oop_kernel!(
-        residuals, collocation_cache, k_discrete, f, TU, y, u, p, mesh, mesh_dt,
-        stage, singular_term, trait
+        residuals, collocation_cache, k_discrete, f, TU, y, u, p, mass_matrix,
+        algebraic_indices, mesh, mesh_dt, stage, singular_term, trait
     )
     i = @index(Global, Linear)
     __mirk_collocation_oop_interval!(
-        i, residuals, collocation_cache, k_discrete, f, TU, y, u, p, mesh, mesh_dt,
-        stage, singular_term, trait
+        i, residuals, collocation_cache, k_discrete, f, TU, y, u, p, mass_matrix,
+        algebraic_indices, mesh, mesh_dt, stage, singular_term, trait
     )
 end
 
 function Φ(
         collocation_cache, k_discrete, f, TU::MIRKTableau, y, u, p,
-        mesh, mesh_dt, stage::Int, singular_term, trait, platform::Backend
+        mass_matrix, algebraic_indices, mesh, mesh_dt, stage::Int, singular_term,
+        trait, platform::Backend
     )
     residuals = [safe_similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     kernel! = __mirk_collocation_oop_kernel!(platform)
     kernel!(
-        residuals, collocation_cache, k_discrete, f, TU, y, u, p, mesh, mesh_dt,
-        stage, singular_term, trait;
+        residuals, collocation_cache, k_discrete, f, TU, y, u, p, mass_matrix,
+        algebraic_indices, mesh, mesh_dt, stage, singular_term, trait;
         ndrange = length(k_discrete)
     )
     synchronize(platform)
