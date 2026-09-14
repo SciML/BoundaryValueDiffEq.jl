@@ -34,6 +34,7 @@ using SciMLLogging: @SciMLMessage
 using Setfield: @set
 using SparseArrays: sparse
 using OrdinaryDiffEqTsit5: Tsit5
+using PreallocationTools: GeneralLazyBufferCache
 using PrecompileTools: @compile_workload, @setup_workload
 
 using Preferences: Preferences
