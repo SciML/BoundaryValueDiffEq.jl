@@ -18,10 +18,8 @@
     f_prototype
     bcresid_prototype
 
-    residual
-    zval
-    yval
-    gval
+    # One scratch bundle per mesh interval, so backend work items do not alias
+    collocation_cache
 
     error
 
@@ -85,10 +83,9 @@ function SciMLBase.__init(
 
     TU = constructAscher(alg, T)
 
-    residual = Vector{T}(undef, ncy)
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
-    gval = Vector{T}(undef, ncomp)
+    collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
     lz = [similar(zval) for _ in 1:(n + 1)]
     fill!.(lz, T(0))
     ly = [similar(yval) for _ in 1:(n + 1)]
@@ -154,7 +151,7 @@ function SciMLBase.__init(
     g = build_almost_block_diagonals(zeta, ncomp, mesh, T)
     cache = AscherCache{iip, T}(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
-        fixpnt, alg, prob.problem_type, f_prototype, bcresid_prototype, residual, zval, yval, gval,
+        fixpnt, alg, prob.problem_type, f_prototype, bcresid_prototype, collocation_cache,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
@@ -255,6 +252,9 @@ function __expand_cache_for_error!(cache::AscherCache)
     __append_similar!(cache.ipvtg, Nₙ * ncomp)
     __append_similar!(cache.ipvtw, Nₙ - 1)
     __append_similar!(cache.error, Nₙ - 1)
+    for _ in 1:((Nₙ - 1) - length(cache.collocation_cache))
+        push!(cache.collocation_cache, __ascher_collocation_scratch(eltype(cache), ncomp, ny))
+    end
     return cache
 end
 

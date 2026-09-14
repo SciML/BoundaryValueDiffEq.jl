@@ -6,7 +6,8 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
     @eval begin
         """
             $($alg)(; nlsolve = nothing, optimize = nothing, zeta = Float64[],
-                jac_alg = BVPJacobianAlgorithm(), max_num_subintervals = 3000)
+                jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
+                max_num_subintervals = 3000)
 
         $($stage)-stage Gauss-Legendre collocation method with Ascher error-control
         adaptivity and mesh refinement for boundary-value problems, including problems
@@ -22,6 +23,8 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
             empty vector is appropriate when no side conditions are present.
           - `jac_alg`: `BVPJacobianAlgorithm` that selects the Jacobian construction
             strategy for the collocation system.
+          - `platform`: KernelAbstractions backend used to assemble the collocation
+            equations.
           - `max_num_subintervals`: Maximum number of mesh subintervals permitted while
             refining the solution.
 
@@ -38,6 +41,8 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `jac_alg = BVPJacobianAlgorithm()`: Jacobian construction strategy. For
             type stability, provide ForwardDiff chunk sizes in the AD types selected by
             this value.
+          - `platform`: KernelAbstractions backend used to assemble the collocation
+            equations. Defaults to `CPU()`.
           - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
         ## Example
@@ -70,11 +75,12 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm} <: AbstractAscher
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend} <: AbstractAscher
             nlsolve::N = nothing
             optimize::O = nothing
             zeta::Vector{Float64} = Float64[]
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             max_num_subintervals::Int = 3000
         end
     end

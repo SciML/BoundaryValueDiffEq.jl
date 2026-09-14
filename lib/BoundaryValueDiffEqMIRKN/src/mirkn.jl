@@ -17,8 +17,8 @@
     y
     y₀
     residual
-    fᵢ_cache
-    fᵢ₂_cache
+    # One scratch pair per mesh interval, so backend work items do not alias
+    collocation_cache
     resid_size
     nlsolve_kwargs
     optimize_kwargs
@@ -51,8 +51,7 @@ function SciMLBase.__init(
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
     y = __alloc.(copy.(y₀.u))
-    fᵢ_cache = __alloc(zero(u0))
-    fᵢ₂_cache = __alloc(zero(u0))
+    collocation_cache = [(__alloc(zero(u0)), __alloc(zero(u0))) for _ in 1:Nig]
     stage = alg_stage(alg)
     bcresid_prototype = zero(vcat(u0, u0))
     k_discrete = [
@@ -127,7 +126,7 @@ function SciMLBase.__init(
     return MIRKNCache{iip, T}(
         alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, resid_size, nlsolve_kwargs,
+        y, y₀, residual, collocation_cache, resid_size, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
