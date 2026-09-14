@@ -1,7 +1,7 @@
 name = "BoundaryValueDiffEqMIRK"
 uuid = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
 authors = ["Qingyu Qu <erikqqy123@gmail.com>"]
-version = "1.19.0"
+version = "1.19.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -31,7 +31,7 @@ BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
 ADTypes = "1.14"
 ArrayInterface = "7.18"
 BandedMatrices = "1.7.5"
-BoundaryValueDiffEqCore = "2.8.1"
+BoundaryValueDiffEqCore = "2.8.4"
 ConcreteStructs = "0.2.3"
 DiffEqDevTools = "3"
 DifferentiationInterface = "0.7.15"
