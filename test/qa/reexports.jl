@@ -112,14 +112,18 @@ const COLLOCATION_REEXPORTS = Symbol[
 const MIRK_REEXPORTS = Symbol[COLLOCATION_REEXPORTS..., :CPU, :EnsembleProblem, :ODEFunction]
 const FIRK_REEXPORTS = MIRK_REEXPORTS
 
-const ASCHER_REEXPORTS = COLLOCATION_REEXPORTS
+# Ascher exposes KernelAbstractions.CPU for the `platform` keyword but no
+# documented ensemble workflow.
+const ASCHER_REEXPORTS = Symbol[COLLOCATION_REEXPORTS..., :CPU]
 
 # MIRKN solves second order BVPs; it has no defect control adaptivity
-# (docs/src/solvers/mirkn.md), so only `NoErrorControl` applies.
+# (docs/src/solvers/mirkn.md), so only `NoErrorControl` applies. It also exposes
+# KernelAbstractions.CPU for the `platform` keyword.
 const MIRKN_REEXPORTS = Symbol[
     AD_REEXPORTS...,
     CORE_CONFIG_REEXPORTS...,
     NLSOLVE_REEXPORTS...,
+    :CPU,
     :NoErrorControl,
     :integral,
     :DynamicalBVPFunction,

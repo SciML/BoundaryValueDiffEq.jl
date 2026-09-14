@@ -7,7 +7,7 @@ for order in (4, 6)
     @eval begin
         """
             $($alg)(; nlsolve = nothing, optimize = nothing, jac_alg = BVPJacobianAlgorithm(),
-                    defect_threshold = 0.1, max_num_subintervals = 3000)
+                    platform = CPU(), defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta Nyström method.
 
@@ -17,6 +17,7 @@ for order in (4, 6)
         - `optimize`: Optional optimization solver algorithm. `nothing` disables optimization-based
           initialization.
         - `jac_alg`: Jacobian construction configuration used by the nonlinear solver.
+        - `platform`: KernelAbstractions backend used to evaluate the collocation equations.
         - `defect_threshold`: Defect-control threshold used to refine the mesh.
         - `max_num_subintervals`: Maximum number of mesh subintervals permitted during refinement.
 
@@ -36,6 +37,8 @@ for order in (4, 6)
             `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
             `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
             possible else `AutoFiniteDiff`.
+        - `platform`: KernelAbstractions backend used to evaluate the collocation
+          equations. Defaults to `CPU()`.
         - `defect_threshold = 0.1`: Threshold for defect control.
         - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
@@ -66,10 +69,11 @@ for order in (4, 6)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, T} <: AbstractMIRKN
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractMIRKN
             nlsolve::N = nothing
             optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end

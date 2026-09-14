@@ -19,17 +19,19 @@ using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff
+using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra, I, norm, rank
 using SciMLBase: SciMLBase, BVProblem, ReturnCode, StandardBVProblem,
     TwoPointBVProblem, isinplace, solve
 
-# The public API that BoundaryValueDiffEqAscher reexports (see the second `export` block
-# below), so that `using BoundaryValueDiffEqAscher` on its own is enough to pick an AD
-# backend, build a `BVProblem` or `TwoPointBVProblem` (including the semi-explicit BVDAE
-# form carried by a `BVPFunction` mass matrix), configure the solve, run it, and inspect
-# the result. Every name stays owned and documented by ADTypes, BoundaryValueDiffEqCore,
-# NonlinearSolveFirstOrder or SciMLBase; the set is documented on the Reexported API docs
-# page and approved via `reexports_allow` in test/qa/qa.jl.
+# The public API that BoundaryValueDiffEqAscher reexports, so that
+# `using BoundaryValueDiffEqAscher` on its own is enough to pick AD and execution
+# backends, build a `BVProblem` or `TwoPointBVProblem` (including the semi-explicit
+# BVDAE form carried by a `BVPFunction` mass matrix), configure the solve, run it, and
+# inspect the result. Every name stays owned and documented by ADTypes,
+# BoundaryValueDiffEqCore, KernelAbstractions, NonlinearSolveFirstOrder or SciMLBase;
+# the set is documented on the Reexported API docs page and approved via
+# `reexports_allow` in test/qa/qa.jl.
 using ADTypes: AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake,
     AutoPolyesterForwardDiff
 using BoundaryValueDiffEqCore: BVPVerbosity, DefectControl, GaussNewton, HOErrorControl,
@@ -52,8 +54,9 @@ include("collocation.jl")
 
 export Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7
 
-# Reexported ADTypes / BoundaryValueDiffEqCore / NonlinearSolveFirstOrder / SciMLBase
-# API; approved via `reexports_allow` in test/qa/qa.jl.
+# Reexported ADTypes / BoundaryValueDiffEqCore / KernelAbstractions /
+# NonlinearSolveFirstOrder / SciMLBase API; approved via `reexports_allow` in test/qa/qa.jl.
+export CPU
 export AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake, AutoPolyesterForwardDiff,
     AutoSparse
 export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE

@@ -18,7 +18,8 @@ Owners linked from this page:
   - [ADTypes](https://sciml.github.io/ADTypes.jl/stable/) — the `Auto*` automatic
     differentiation backend selectors.
   - [KernelAbstractions](https://juliagpu.github.io/KernelAbstractions.jl/stable/api/) —
-    the `CPU` execution backend accepted by MIRK and FIRK's `platform` keyword.
+    the `CPU` execution backend accepted by the collocation solvers' `platform`
+    keyword.
   - [NonlinearSolveFirstOrder](https://docs.sciml.ai/NonlinearSolve/stable/) — the
     nonlinear solver algorithms accepted by every solver's `nlsolve` keyword.
   - `BoundaryValueDiffEqCore` — the shared BVP configuration types, documented under
@@ -73,9 +74,10 @@ In addition to `MIRK2`–`MIRK6`, `MIRK6I`, `maxsol`, `minsol` (MIRK) and the `R
 ## BoundaryValueDiffEqAscher
 
 In addition to `Ascher1`–`Ascher7`, the same set as MIRK and FIRK, except that Ascher
-has no `platform` keyword or documented ensemble workflow and so does not reexport
-`CPU`, `EnsembleProblem` or `ODEFunction`:
+has no documented ensemble workflow and so does not reexport `EnsembleProblem` or
+`ODEFunction`:
 
+  - Execution backend for the `platform` keyword, from KernelAbstractions: `CPU`
   - AD backend selectors, from ADTypes: `AutoEnzyme`, `AutoFiniteDiff`, `AutoForwardDiff`,
     `AutoMooncake`, `AutoPolyesterForwardDiff`, `AutoSparse`
   - Configuration, from BoundaryValueDiffEqCore: `BVPJacobianAlgorithm`, `BVPVerbosity`,
@@ -97,6 +99,7 @@ MIRKN solves second order boundary value problems, so it reexports the second or
 problem and function types rather than the first order ones, and — having no defect
 control adaptivity — only `NoErrorControl` from the error controllers:
 
+  - Execution backend for the `platform` keyword, from KernelAbstractions: `CPU`
   - AD backend selectors, from ADTypes: `AutoEnzyme`, `AutoFiniteDiff`, `AutoForwardDiff`,
     `AutoMooncake`, `AutoPolyesterForwardDiff`, `AutoSparse`
   - Configuration, from BoundaryValueDiffEqCore: `BVPJacobianAlgorithm`, `BVPVerbosity`,
