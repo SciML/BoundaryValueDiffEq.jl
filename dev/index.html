@@ -19,7 +19,7 @@ Pkg.add(&quot;BoundaryValueDiffEq&quot;)</code></pre><h2 id="Contributing"><a cl
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v7.8.1
   <span class="sgr90">[b1df2697] </span>OrdinaryDiffEqTsit5 v2.1.4
   <span class="sgr90">[91a5bcdd] </span>Plots v1.41.7
-  <span class="sgr90">[0bca4576] </span>SciMLBase v3.54.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v3.55.0
   <span class="sgr90">[be0294bd] </span>SimpleBoundaryValueDiffEq v1.6.0
   <span class="sgr90">[37e2e46d] </span>LinearAlgebra v1.13.0</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.13.0
 Commit d1c37793dd2 (2026-09-09 19:00 UTC)
@@ -27,9 +27,9 @@ Build Info:
   Official https://julialang.org release
 Platform Info:
   OS: Linux (x86_64-linux-gnu)
-  CPU: 4 × AMD EPYC 9V74 80-Core Processor
+  CPU: 4 × INTEL(R) XEON(R) PLATINUM 8573C
   WORD_SIZE: 64
-  LLVM: libLLVM-20.1.8 (ORCJIT, znver4)
+  LLVM: libLLVM-20.1.8 (ORCJIT, emeraldrapids)
   GC: Built with stock GC
 Threads: 1 default, 1 interactive, 1 GC (on 4 virtual cores)</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `~/work/BoundaryValueDiffEq.jl/BoundaryValueDiffEq.jl/docs/Manifest.toml`
   <span class="sgr90">[47edcb42] </span>ADTypes v1.24.0
@@ -140,9 +140,9 @@ Threads: 1 default, 1 interactive, 1 GC (on 4 virtual cores)</code></pre></detai
   <span class="sgr90">[4886b29c] </span>MonteCarloIntegration v0.3.0
   <span class="sgr90">[46d2c3a1] </span>MuladdMacro v0.2.7
   <span class="sgr90">[77ba4419] </span>NaNMath v1.1.4
-  <span class="sgr90">[8913a72c] </span>NonlinearSolve v4.31.0
+  <span class="sgr90">[8913a72c] </span>NonlinearSolve v4.32.0
   <span class="sgr90">[be0214bd] </span>NonlinearSolveBase v2.51.1
-  <span class="sgr90">[5959db7a] </span>NonlinearSolveFirstOrder v2.7.0
+  <span class="sgr90">[5959db7a] </span>NonlinearSolveFirstOrder v2.8.0
   <span class="sgr90">[9a2c21bd] </span>NonlinearSolveQuasiNewton v1.15.3
   <span class="sgr90">[26075421] </span>NonlinearSolveSpectralMethods v1.8.3
   <span class="sgr90">[bca83a33] </span>OptimizationBase v5.6.1
@@ -152,9 +152,9 @@ Threads: 1 default, 1 interactive, 1 GC (on 4 virtual cores)</code></pre></detai
   <span class="sgr90">[6ad6398a] </span>OrdinaryDiffEqBDF v2.4.10
   <span class="sgr90">[bbf590c4] </span>OrdinaryDiffEqCore v4.17.4
   <span class="sgr90">[50262376] </span>OrdinaryDiffEqDefault v2.6.2
-  <span class="sgr90">[4302a76b] </span>OrdinaryDiffEqDifferentiation v3.12.1
+  <span class="sgr90">[4302a76b] </span>OrdinaryDiffEqDifferentiation v3.12.2
   <span class="sgr90">[127b3ac7] </span>OrdinaryDiffEqNonlinearSolve v2.9.8
-  <span class="sgr90">[43230ef6] </span>OrdinaryDiffEqRosenbrock v2.7.3
+  <span class="sgr90">[43230ef6] </span>OrdinaryDiffEqRosenbrock v2.7.4
   <span class="sgr90">[b4bd8bb3] </span>OrdinaryDiffEqRosenbrockTableaus v2.4.2
   <span class="sgr90">[2d112036] </span>OrdinaryDiffEqSDIRK v2.9.6
   <span class="sgr90">[b1df2697] </span>OrdinaryDiffEqTsit5 v2.1.4
@@ -184,7 +184,7 @@ Threads: 1 default, 1 interactive, 1 GC (on 4 virtual cores)</code></pre></detai
   <span class="sgr90">[79098fc4] </span>Rmath v0.9.0
   <span class="sgr90">[f2b01f46] </span>Roots v3.0.8
   <span class="sgr90">[7e49a35a] </span>RuntimeGeneratedFunctions v0.5.26
-  <span class="sgr90">[0bca4576] </span>SciMLBase v3.54.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v3.55.0
   <span class="sgr90">[19f34311] </span>SciMLJacobianOperators v0.1.19
   <span class="sgr90">[a6db7da4] </span>SciMLLogging v2.1.0
   <span class="sgr90">[c0aeaf25] </span>SciMLOperators v1.30.1
@@ -367,4 +367,4 @@ Threads: 1 default, 1 interactive, 1 GC (on 4 virtual cores)</code></pre></detai
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.15.0+0
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.67.1+0
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.8.2+0
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr33">⌅</span> have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.25.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.25.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Monday 14 September 2026 12:17">Monday 14 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr33">⌅</span> have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.25.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/BoundaryValueDiffEq.jl/tree/gh-pages/v5.25.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/getting_started/">Getting Started with BVP solving in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 15 September 2026 05:52">Tuesday 15 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
