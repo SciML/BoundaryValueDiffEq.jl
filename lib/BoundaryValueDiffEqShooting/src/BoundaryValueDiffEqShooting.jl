@@ -26,6 +26,7 @@ using DifferentiationInterface: DifferentiationInterface,
     overloaded_input_type
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
+using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra
 using SciMLBase: SciMLBase, BVProblem, EnsembleSerial, EnsembleThreads,
     NonlinearFunction, ODEProblem, StandardBVProblem, TwoPointBVProblem,
@@ -41,10 +42,11 @@ using Preferences: Preferences
 
 # The public API that BoundaryValueDiffEqShooting reexports (see the second `export` block
 # below), so that `using BoundaryValueDiffEqShooting` on its own is enough to pick an AD
-# backend, build a `BVProblem` or `TwoPointBVProblem`, configure the solve, run it, and
-# inspect the result. Every name stays owned and documented by ADTypes,
-# BoundaryValueDiffEqCore, NonlinearSolveFirstOrder or SciMLBase; the set is documented on
-# the Reexported API docs page and approved via `reexports_allow` in test/qa/qa.jl.
+# backend, a KernelAbstractions backend, build a `BVProblem` or `TwoPointBVProblem`,
+# configure the solve, run it, and inspect the result. Every name stays owned and
+# documented by ADTypes, BoundaryValueDiffEqCore, KernelAbstractions,
+# NonlinearSolveFirstOrder or SciMLBase; the set is documented on the Reexported API docs
+# page and approved via `reexports_allow` in test/qa/qa.jl.
 using ADTypes: AutoEnzyme, AutoFiniteDiff, AutoMooncake, AutoPolyesterForwardDiff
 using BoundaryValueDiffEqCore: BVPVerbosity, DEFAULT_VERBOSE, GaussNewton,
     LevenbergMarquardt, NewtonRaphson, TrustRegion, integral
@@ -121,11 +123,13 @@ end
 
 export Shooting, MultipleShooting
 
-# Reexported ADTypes / BoundaryValueDiffEqCore / NonlinearSolveFirstOrder / SciMLBase
-# API; approved via `reexports_allow` in test/qa/qa.jl.
+# Reexported ADTypes / BoundaryValueDiffEqCore / KernelAbstractions /
+# NonlinearSolveFirstOrder / SciMLBase API; approved via `reexports_allow` in
+# test/qa/qa.jl.
 export AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake, AutoPolyesterForwardDiff,
     AutoSparse
 export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE
+export CPU
 export integral
 export GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
 export BVPFunction, BVProblem, EnsembleSerial, EnsembleThreads, ODEProblem, ReturnCode,

@@ -126,6 +126,8 @@ its surface:
     `LevenbergMarquardt`, `NewtonRaphson`, `TrustRegion`
   - Problems and functions, from SciMLBase: `BVProblem`, `TwoPointBVProblem`,
     `ODEProblem`, `BVPFunction`
+  - Execution backend for `MultipleShooting`'s `platform` keyword, from
+    KernelAbstractions: `CPU`
   - Ensemble algorithms, from SciMLBase: `EnsembleSerial`, `EnsembleThreads`
   - Solving, from SciMLBase: `solve`, `solve!`, `init`, `remake`
   - Return status, from SciMLBase: `ReturnCode`, `successful_retcode`

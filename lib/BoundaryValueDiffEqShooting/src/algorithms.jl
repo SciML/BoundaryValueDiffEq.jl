@@ -118,6 +118,10 @@ it is generally more stable than [`Shooting`](@ref).
       + `Function`: Takes the current number of shooting points and returns the next number
         of shooting points. For example, if `nshoots = 10` and
         `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
+  - `platform = CPU()`: KernelAbstractions backend used to evaluate the per-interval
+    internal ODE solves when the internal `ensemblealg` is `EnsembleThreads` (the default).
+    Currently only the `CPU` backend is supported, since the internal solves run through
+    the standard ODE integrator interface.
 
 ## Fields
 
@@ -125,6 +129,7 @@ it is generally more stable than [`Shooting`](@ref).
   - `nlsolve`: configured nonlinear-solver algorithm or `nothing`.
   - `optimize`: configured optimization-solver algorithm or `nothing`.
   - `jac_alg::BVPJacobianAlgorithm`: materialized Jacobian-algorithm configuration.
+  - `platform`: KernelAbstractions backend used for the internal ODE solves.
   - `nshoots::Int`: configured number of shooting subintervals.
   - `grid_coarsening`: configured grid-coarsening strategy.
 
@@ -144,11 +149,12 @@ alg = MultipleShooting(8, Tsit5(); grid_coarsening = true)
 # output
 ```
 """
-@concrete struct MultipleShooting{J <: BVPJacobianAlgorithm} <: AbstractShooting
+@concrete struct MultipleShooting{J <: BVPJacobianAlgorithm, P <: Backend} <: AbstractShooting
     ode_alg
     nlsolve
     optimize
     jac_alg::J
+    platform::P
     nshoots::Int
     grid_coarsening
 end
@@ -156,13 +162,15 @@ end
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, alg.optimize, jac_alg, alg.nshoots, alg.grid_coarsening
+        alg.ode_alg, alg.nlsolve, alg.optimize, jac_alg, alg.platform,
+        alg.nshoots, alg.grid_coarsening
     )
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
     return MultipleShooting(
-        alg.ode_alg, alg.nlsolve, alg.optimize, alg.jac_alg, nshoots, alg.grid_coarsening
+        alg.ode_alg, alg.nlsolve, alg.optimize, alg.jac_alg, alg.platform,
+        nshoots, alg.grid_coarsening
     )
 end
 
@@ -174,7 +182,8 @@ function MultipleShooting(;
         grid_coarsening::Union{
             Bool, Function, <:AbstractVector{<:Integer}, Tuple{Vararg{Integer}},
         } = true,
-        jac_alg = nothing
+        jac_alg = nothing,
+        platform = CPU()
     )
     grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
     if grid_coarsening isa AbstractVector
@@ -183,7 +192,8 @@ function MultipleShooting(;
     end
     return MultipleShooting(
         ode_alg, nlsolve, optimize,
-        __materialize_jacobian_algorithm(nlsolve, jac_alg), nshoots, grid_coarsening
+        __materialize_jacobian_algorithm(nlsolve, jac_alg), platform, nshoots,
+        grid_coarsening
     )
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)

@@ -147,6 +147,7 @@ const SHOOTING_REEXPORTS = Symbol[
     :integral,
     :BVPFunction,
     :BVProblem,
+    :CPU,
     :EnsembleSerial,
     :EnsembleThreads,
     :ODEProblem,
