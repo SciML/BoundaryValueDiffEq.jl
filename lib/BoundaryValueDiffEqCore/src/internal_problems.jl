@@ -98,11 +98,29 @@ function integral(fun, domain)
     return sol.u
 end
 
+"""
+    __optimization_second_order_ad(diffmode, sparsity_diffmode = diffmode)
+
+ADtype handed to `OptimizationFunction` on the BVP-with-cost path. The explicit
+`SecondOrder` core keeps optimizers that need Hessians (e.g. Ipopt) from warning and
+wrapping the first-order ADtype themselves.
+
+Only the assembled constraint function `cons` is passed alongside it, never the
+nlsolve-oriented `cons_j`/`cons_jac_prototype` pair: OptimizationBase then derives the
+constraint-Jacobian prototype and its values from a single DI preparation, so their
+nonzero patterns agree by construction. The nlsolve `jac_prototype` is materialized
+numerically at the initial guess, so entries that vanish there (e.g. the control columns
+of an optimal-control problem at a degenerate guess) are dropped from the pattern, while
+the refill follows the DI-detected pattern and inserts them back, breaking the frozen-nnz
+contract of the interior-point backends. See [`__optimization_sparsity_detector`](@ref)
+for why the detector must be structural.
+"""
 @inline function __optimization_second_order_ad(diffmode, sparsity_diffmode = diffmode)
     dense_ad = get_dense_ad(diffmode)
     return AutoSparse(
         SecondOrder(dense_ad, dense_ad),
-        sparsity_detector = __default_sparsity_detector(sparsity_diffmode)
+        sparsity_detector = __optimization_sparsity_detector(sparsity_diffmode),
+        coloring_algorithm = __default_coloring_algorithm(sparsity_diffmode)
     )
 end
 
@@ -130,9 +148,7 @@ function __construct_internal_problem(
             __optimization_second_order_ad(
                 alg.jac_alg.nonbc_diffmode, alg.jac_alg.diffmode
             ),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -159,9 +175,7 @@ function __construct_internal_problem(
         optf = OptimizationFunction{true}(
             cost_fun,
             __optimization_second_order_ad(alg.jac_alg.diffmode),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -189,9 +203,7 @@ function __construct_internal_problem(
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
             __optimization_second_order_ad(alg.jac_alg.diffmode),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -229,9 +241,7 @@ function __construct_internal_problem(
         optf = OptimizationFunction{true}(
             __default_cost(prob.f.cost),
             __optimization_second_order_ad(alg.jac_alg.nonbc_diffmode),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -259,9 +269,7 @@ function __construct_internal_problem(
             __optimization_second_order_ad(
                 alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode
             ),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -289,9 +297,7 @@ function __construct_internal_problem(
         optf = OptimizationFunction{iip}(
             __default_cost(prob.f.cost),
             __optimization_second_order_ad(alg.jac_alg.nonbc_diffmode),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)
@@ -319,9 +325,7 @@ function __construct_internal_problem(
             __optimization_second_order_ad(
                 alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode
             ),
-            cons = loss,
-            cons_j = jac,
-            cons_jac_prototype = sparse(jac_prototype)
+            cons = loss
         )
         lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
         lb, ub = __extract_lb_ub(prob, T, M, N)

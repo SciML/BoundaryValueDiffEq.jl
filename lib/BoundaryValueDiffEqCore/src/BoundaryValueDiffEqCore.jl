@@ -29,7 +29,8 @@ using SciMLLogging: SciMLLogging, Silent,
 using SciMLPublic: @public
 using Setfield: @set!
 using SparseArrays: sparse
-using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
+using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector,
+    TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm
 using SciMLStructures: SciMLStructures
 
