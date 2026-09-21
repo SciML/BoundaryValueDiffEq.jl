@@ -9,5 +9,11 @@
 [Core]
 versions = ["lts", "1", "pre"]
 
+[DeviceKernels]
+versions = ["lts", "1", "pre"]
+
+[GPU]
+versions = ["1"]
+
 [QA]
 versions = ["lts", "1"]

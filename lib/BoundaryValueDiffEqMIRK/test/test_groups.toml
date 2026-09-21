@@ -5,6 +5,10 @@
 # Core: the sublibrary's solver tests in test/Core/, run on the base version
 # matrix. QA (Aqua) adds extra deps via test/qa/Project.toml, is excluded from
 # the default "All" run, and runs on release + LTS Julia only.
+# GPU is an opt-in group with its own CUDA environment; it is deliberately
+# omitted here because the shared CI matrix does not provide NVIDIA hardware.
+# Device is an additional opt-in group for JLArrays storage and scalar-indexing
+# checks, with its dependencies isolated from the normal Core environment.
 
 [Core]
 versions = ["lts", "1", "pre"]
@@ -12,6 +16,11 @@ versions = ["lts", "1", "pre"]
 # DAE: the index-1 DAE (singular mass matrix) tests, split out of Core because
 # Core already runs close to its 120 min budget on the release lane.
 [DAE]
+versions = ["lts", "1", "pre"]
+
+# Portable GPU kernels, sparse differentiation and interpolation on the CPU.
+# No CUDA/JLArrays dependencies; run separately to preserve Core's CI budget.
+[DeviceKernels]
 versions = ["lts", "1", "pre"]
 
 # AD: different-AD-backend (Enzyme/Mooncake) compatibility tests. The heavy

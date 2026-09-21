@@ -8,6 +8,7 @@
     original_mesh
     mesh
     mesh_dt
+    host_mesh                  # Host mesh metadata for packed storage; nothing on CPU
     ncomp
     ny
     p
@@ -37,6 +38,18 @@
     ipvtw
     TU
     valstr
+    # Packed collocation state, sparse Jacobian and scratch storage. These are
+    # unused by the CPU almost-block-diagonal formulation.
+    M::Int
+    left::Int
+    locations
+    host_locations
+    mass
+    x
+    residual
+    jacobian
+    work
+    new_mesh
     nlsolve_kwargs
     optimize_kwargs
     kwargs
@@ -64,6 +77,13 @@ function SciMLBase.__init(
         adaptive = true, abstol = 1.0e-4, nlsolve_kwargs = (; abstol),
         optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    initial = BoundaryValueDiffEqCore.__extract_u0(prob.u0, prob.p, first(prob.tspan))
+    if alg.device || !(alg.platform isa CPU) || !(__ascher_initial_backend(initial) isa CPU)
+        return __init_ascher_device(
+            prob, alg; dt, controller, adaptive, abstol, nlsolve_kwargs,
+            optimize_kwargs, verbose, kwargs...
+        )
+    end
     verbose_spec = _process_verbose_param(verbose)
     (; tspan, p) = prob
     _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
@@ -150,15 +170,17 @@ function SciMLBase.__init(
 
     g = build_almost_block_diagonals(zeta, ncomp, mesh, T)
     cache = AscherCache{iip, T}(
-        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p, zeta,
+        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, nothing, ncomp, ny, p, zeta,
         fixpnt, alg, prob.problem_type, f_prototype, bcresid_prototype, collocation_cache,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
+        ncy, 0, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
     return cache
 end
 
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
+    cache.host_mesh === nothing || return __solve_ascher_device!(cache)
     (abstol, adaptive, _, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
@@ -323,6 +345,7 @@ function __append_similar(x::AbstractVector{<:AbstractArray{T}}, n) where {T <: 
 end
 
 function __construct_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
+    cache.host_mesh === nothing || return __construct_ascher_device_nlproblem(cache)
     (; alg, pt, prob, f_prototype, bcresid_prototype) = cache
     (; jac_alg) = alg
     loss = if iip
@@ -418,4 +441,339 @@ function __append_abd!(cache::AscherCache)
         blocks[i] = zeros(T, rows[i], cols[i])
     end
     return
+end
+
+@inline __ascher_jacobian(cache::AscherCache) = cache.jacobian[nothing]
+
+function __init_ascher_device(
+        prob, alg; dt, controller = GlobalErrorControl(), adaptive = true,
+        abstol = 1.0e-4, nlsolve_kwargs = (; abstol), optimize_kwargs = (; abstol),
+        verbose = DEFAULT_VERBOSE, host_mesh = nothing, kwargs...
+    )
+    controller isa Union{GlobalErrorControl, NoErrorControl} ||
+        throw(ArgumentError("Device Ascher supports GlobalErrorControl or NoErrorControl."))
+    adaptive && controller isa NoErrorControl && throw(ArgumentError("NoErrorControl requires adaptive = false."))
+    alg.optimize === nothing && prob.f.cost === nothing && prob.f.inequality === nothing &&
+        prob.f.equality === nothing && prob.lb === nothing && prob.ub === nothing &&
+        prob.lcons === nothing && prob.ucons === nothing ||
+        throw(ArgumentError("Device Ascher currently supports unconstrained square nonlinear BVPs, not optimization problems."))
+    get(prob.kwargs, :tune_parameters, false) && throw(ArgumentError("Device Ascher does not support parameter tuning."))
+    initial = BoundaryValueDiffEqCore.__extract_u0(prob.u0, prob.p, first(prob.tspan))
+    initial isa AbstractVector{<:Union{Float32, Float64}} ||
+        throw(ArgumentError("Device Ascher requires a vector state with Float32 or Float64 elements."))
+    T, M = eltype(initial), length(initial)
+    platform = alg.platform isa CPU ? __ascher_initial_backend(initial) : alg.platform
+    @set! alg.platform = platform
+    mode = __ascher_device_mode(alg)
+    mass, d = __ascher_device_mass(prob.f.mass_matrix, M, T)
+    t0, t1 = prob.tspan
+    isfinite(dt) && dt > 0 && isfinite(t0) && isfinite(t1) && t1 > t0 || throw(ArgumentError("Device Ascher requires dt > 0 and an increasing finite tspan."))
+    isfinite(abstol) && abstol > 0 || throw(ArgumentError("abstol must be finite and positive."))
+    twopoint = prob.problem_type isa TwoPointBVProblem
+    left = 0
+    if twopoint
+        prototype = prob.f.bcresid_prototype
+        prototype === nothing && throw(ArgumentError("Device two-point Ascher requires bcresid_prototype = (left, right)."))
+        left = length(first(prototype))
+        left + length(last(prototype)) == d || throw(DimensionMismatch("Ascher requires one boundary condition per differential variable."))
+        zeta = vcat(fill(t0, left), fill(t1, d - left))
+        isempty(alg.zeta) || alg.zeta == zeta || throw(ArgumentError("Two-point zeta must match the declared endpoint boundary sizes."))
+    else
+        length(alg.zeta) == d || throw(DimensionMismatch("Provide one zeta location per differential variable for a standard Ascher BVProblem."))
+        prob.f.bcresid_prototype === nothing || length(prob.f.bcresid_prototype) == d ||
+            throw(DimensionMismatch("Ascher requires one boundary residual per differential variable."))
+        zeta = alg.zeta
+    end
+    all(t -> isfinite(t) && t0 <= t <= t1, zeta) || throw(ArgumentError("zeta must lie inside tspan."))
+    if host_mesh === nothing
+        n = Int(cld(t1 - t0, dt))
+        base_mesh = collect(__extract_mesh(prob.u0, t0, t1, n))
+        # Side conditions stay on mesh nodes, including throughout refinement.
+        host_mesh = sort!(unique!(vcat(base_mesh, zeta)))
+    end
+    host_mesh = sort!(unique!(T.(host_mesh)))
+    all(isfinite, host_mesh) && all(>(zero(T)), diff(host_mesh)) || throw(ArgumentError("Ascher mesh must be finite and strictly increasing."))
+    n = length(host_mesh) - 1
+    n <= alg.max_num_subintervals || throw(ArgumentError("Initial mesh exceeds max_num_subintervals."))
+    locations = [searchsortedfirst(host_mesh, T(t)) for t in zeta]
+    k = alg_stage(alg)
+    table = constructAscher(alg, T)
+    # acol contains the integrated basis divided by rho, as in CPU vwblok.
+    a = T.(table.acol) .* reshape(T.(table.rho), 1, k)
+    upload(a) = __ascher_upload(platform, a)
+    TU = (; a = upload(a), b = upload(T.(table.b)), rho = upload(T.(table.rho)), coef = upload(T.(table.coef)))
+    width = d + M * k
+    host_x = zeros(T, n * width + d)
+    guess = prob.u0 isa AbstractVector{<:Number} ? Array(prob.u0) : prob.u0
+    # Initial values are setup data. Newton states and Jacobians never pass
+    # through this host initialization after the device cache has been built.
+    function guess_at(t)
+        if guess isa AbstractVector{<:Number}
+            return guess
+        elseif guess isa Function
+            return Array(BoundaryValueDiffEqCore.__initial_guess(guess, prob.p, t))
+        elseif guess isa SciMLBase.ODESolution
+            return Array(guess(t))
+        else
+            values = hasproperty(guess, :u) ? guess.u : guess
+            times = hasproperty(guess, :t) ? guess.t : range(t0, t1; length = length(values))
+            length(times) == 1 && return Array(first(values))
+            index = clamp(searchsortedlast(times, t), 1, length(times) - 1)
+            theta = (t - times[index]) / (times[index + 1] - times[index])
+            return (1 - theta) .* Array(values[index]) .+ theta .* Array(values[index + 1])
+        end
+    end
+    for i in 1:(n + 1)
+        value = guess_at(host_mesh[i])
+        length(value) == M || throw(DimensionMismatch("Initial state dimension changed on the mesh."))
+        copyto!(view(host_x, ((i - 1) * width + 1):((i - 1) * width + d)), view(value, 1:d))
+        i > n && continue
+        for s in 1:k
+            stage_value = guess_at(host_mesh[i] + T(table.rho[s]) * (host_mesh[i + 1] - host_mesh[i]))
+            offset = (i - 1) * width + d + (s - 1) * M
+            copyto!(view(host_x, (offset + d + 1):(offset + M)), view(stage_value, (d + 1):M))
+        end
+    end
+    x = upload(host_x)
+    jacobian = __ascher_prepare_device_jacobian(x, platform, mode, d, M, k, n, locations)
+    nlkwargs = __concrete_kwargs(alg.nlsolve, nothing, nlsolve_kwargs, optimize_kwargs, _process_verbose_param(verbose))
+    return AscherCache{isinplace(prob), T}(
+        prob, prob.f.f, nothing, prob.f.bc, nothing, k, copy(host_mesh), upload(host_mesh), nothing,
+        host_mesh, d, M - d, upload(prob.p), zeta, nothing, alg, prob.problem_type, nothing, nothing,
+        nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing,
+        nothing, nothing, nothing, nothing, nothing, nothing, TU, nothing,
+        M, left, upload(locations), locations, upload(mass), x, similar(x), Dict(nothing => jacobian),
+        Dict{DataType, Any}(),
+        (; x = similar(x, 0), mesh = similar(x, 0), coarse = similar(x, 0), fine = similar(x, 0)),
+        nlkwargs, optimize_kwargs, (; abstol = T(abstol), dt, adaptive, controller, kwargs...),
+        _process_verbose_param(verbose)
+    )
+end
+
+function __ascher_device_work(cache, ::Type{T}) where {T}
+    # Retain owning vectors for each scalar/AD type. Never retain a reshape of a
+    # resizable device allocation across refinement.
+    buffers = get!(cache.work, T) do
+        (;
+            x = similar(cache.x, T, 0), r = similar(cache.x, T, 0), minus = similar(cache.x, T, 0),
+            stages = similar(cache.x, T, 0), boundary = similar(cache.x, T, cache.ncomp^2),
+        )
+    end
+    for buffer in (buffers.x, buffers.r, buffers.minus)
+        resize!(buffer, length(cache.x))
+    end
+    n = length(cache.host_mesh) - 1
+    resize!(buffers.stages, cache.M * cache.k * n)
+    return (;
+        buffers.x, buffers.r, buffers.minus,
+        stages = reshape(buffers.stages, cache.M, cache.k, n),
+        boundary = reshape(buffers.boundary, cache.ncomp, cache.ncomp),
+    )
+end
+
+function __construct_ascher_device_nlproblem(cache::AscherCache)
+    residual! = (r, x, p) -> __ascher_device_residual!(r, x, cache)
+    jac! = (J, x, p) -> __ascher_device_jacobian!(J, x, cache)
+    # Explicit products also keep user-selected line searches on sparse storage.
+    product = copy(__ascher_jacobian(cache).matrix)
+    jvp! = (out, v, x, p) -> begin
+        jac!(product, x, p)
+        LinearAlgebra.mul!(out, product, v)
+    end
+    vjp! = (out, v, x, p) -> begin
+        jac!(product, x, p)
+        LinearAlgebra.mul!(out, adjoint(product), v)
+    end
+    nf = SciMLBase.NonlinearFunction{true}(
+        residual!; jac = jac!, jvp = jvp!, vjp = vjp!,
+        jac_prototype = __ascher_jacobian(cache).matrix, resid_prototype = cache.residual
+    )
+    return SciMLBase.NonlinearProblem(nf, copy(cache.x), cache.p)
+end
+
+function __ascher_device_solve_once!(cache)
+    __ascher_refresh_parameter!(cache.p, cache.prob.p)
+    nlprob = __construct_nlproblem(cache)
+    algorithm = __concrete_device_solve_algorithm(
+        nlprob, cache.alg.nlsolve, cache.alg.optimize;
+        linsolve = __default_sparse_linsolve(__ascher_jacobian(cache).matrix)
+    )
+    result = __internal_solve(nlprob, algorithm; cache.nlsolve_kwargs...)
+    copyto!(cache.x, result.u)
+    return result
+end
+
+function __solve_ascher_device!(cache::AscherCache)
+    result = __ascher_device_solve_once!(cache)
+    current, result, retcode = __ascher_refine_solution(cache, result)
+    values = __ascher_device_sample(current, current.mesh)
+    # `values` is owned by this solution. Views avoid one GPU allocation/copy
+    # per mesh node, while subsequent solve! calls cannot change this storage.
+    u = [view(values, :, i) for i in axes(values, 2)]
+    interpolation = AscherDeviceInterpolation(copy(current.x), copy(current.mesh), current.TU.coef, current.ncomp, current.M, current.k, current.alg.platform)
+    return SciMLBase.build_solution(
+        cache.prob, cache.alg, copy(current.host_mesh), u;
+        interp = interpolation, retcode, original = result
+    )
+end
+
+# A conservative, branch-independent graph follows directly from Ascher's
+# stencil. Dense local RHS/BC blocks allow arbitrary state dependencies, while
+# global storage and color count stay bounded with increasing mesh length.
+function __ascher_device_pattern(T, d, M, k, n, locations)
+    rows, cols = Int[], Int[]
+    width = d + M * k
+    entries = d^2 + n * (d * (k + 2) + k * M * (k * d + M))
+    sizehint!(rows, entries)
+    sizehint!(cols, entries)
+    for j in 1:d, c in 1:d
+        push!(rows, j)
+        push!(cols, (locations[j] - 1) * width + c)
+    end
+    for i in 1:n
+        offset = (i - 1) * width
+        for j in 1:d
+            row = d + offset + j
+            for col in (offset + j, offset + width + j)
+                push!(rows, row)
+                push!(cols, col)
+            end
+            for s in 1:k
+                push!(rows, row)
+                push!(cols, offset + d + (s - 1) * M + j)
+            end
+        end
+        for s in 1:k, j in 1:M
+            row = d + offset + d + (s - 1) * M + j
+            for c in 1:d
+                push!(rows, row)
+                push!(cols, offset + c)
+            end
+            for stage in 1:k, c in 1:d
+                push!(rows, row)
+                push!(cols, offset + d + (stage - 1) * M + c)
+            end
+            for c in (d + 1):M
+                push!(rows, row)
+                push!(cols, offset + d + (s - 1) * M + c)
+            end
+        end
+    end
+    size = n * width + d
+    return sparse(rows, cols, ones(T, length(rows)), size, size)
+end
+
+function __ascher_prepare_device_jacobian(x, platform, mode, d, M, k, n, locations)
+    __device_sparse_supported(x) || throw(ArgumentError("No sparse Ascher storage extension is loaded for $(typeof(x)); CUDA is supported by loading CUDA.jl."))
+    pattern = __ascher_device_pattern(eltype(x), d, M, k, n, locations)
+    algorithm = BoundaryValueDiffEqCore.__default_coloring_algorithm(mode)
+    algorithm isa ADTypes.NoColoringAlgorithm &&
+        (algorithm = BoundaryValueDiffEqCore.__default_coloring_algorithm(nothing))
+    colors = collect(Int, ADTypes.column_coloring(pattern, algorithm))
+    length(colors) == length(x) && all(>(0), colors) ||
+        throw(ArgumentError("Ascher requires positive column colors for every unknown."))
+    # Validate explicitly supplied colorings. The built-in greedy algorithm
+    # already guarantees this property; avoid a second graph traversal and one
+    # Set allocation per residual row on large meshes for the default case.
+    if mode isa AutoSparse && !(mode.coloring_algorithm isa ADTypes.NoColoringAlgorithm)
+        rowcolors = [Set{Int}() for _ in axes(pattern, 1)]
+        for col in axes(pattern, 2), index in SparseArrays.nzrange(pattern, col)
+            set = rowcolors[SparseArrays.rowvals(pattern)[index]]
+            colors[col] in set && throw(ArgumentError("Ascher column coloring has a collision."))
+            push!(set, colors[col])
+        end
+    end
+    storage = __device_sparse_matrix(x, pattern)
+    upload(a) = __ascher_upload(platform, a)
+    return (;
+        storage.matrix, rows = upload(storage.rows), cols = upload(storage.cols),
+        colors = upload(colors), ncolors = maximum(colors), mode = get_dense_ad(mode),
+    )
+end
+
+@kernel function __ascher_seed!(dual, x, colors, firstcolor, ::Val{C}) where {C}
+    i = @index(Global, Linear)
+    @inbounds dual[i] = eltype(dual)(
+        x[i], ForwardDiff.Partials(
+            ntuple(j -> colors[i] == firstcolor + j - 1 ? one(eltype(x)) : zero(eltype(x)), Val(C))
+        )
+    )
+end
+
+@kernel function __ascher_extract_partials!(values, r, rows, cols, colors, firstcolor, ::Val{C}) where {C}
+    index = @index(Global, Linear)
+    @inbounds begin
+        part = colors[cols[index]] - firstcolor + 1
+        if 1 <= part <= C
+            values[index] = ForwardDiff.partials(r[rows[index]])[part]
+        end
+    end
+end
+
+@inline __ascher_fd_step(x, relstep, absstep, direction) = max(abs(x) * relstep, absstep) * direction
+
+@kernel function __ascher_perturb!(out, x, colors, color, relstep, absstep, direction)
+    i = @index(Global, Linear)
+    @inbounds out[i] = x[i] + (colors[i] == color ? __ascher_fd_step(x[i], relstep, absstep, direction) : zero(eltype(x)))
+end
+
+@kernel function __ascher_extract_fd!(values, plus, minus, x, rows, cols, colors, color, relstep, absstep, direction, central)
+    index = @index(Global, Linear)
+    @inbounds begin
+        col = cols[index]
+        if colors[col] == color
+            h = __ascher_fd_step(x[col], relstep, absstep, direction)
+            values[index] = (plus[rows[index]] - minus[rows[index]]) / (central ? 2h : h)
+        end
+    end
+end
+
+function __ascher_device_jacobian!(J, x, cache)
+    return __ascher_device_jacobian!(J, x, cache, __ascher_jacobian(cache).mode)
+end
+
+function __ascher_device_jacobian!(J, x, cache, mode::AutoForwardDiff{C}) where {C}
+    chunk = Val(C === nothing ? min(8, __ascher_jacobian(cache).ncolors) : min(C, __ascher_jacobian(cache).ncolors))
+    return __ascher_device_forward_jacobian!(J, x, cache, mode, chunk)
+end
+
+function __ascher_device_forward_jacobian!(J, x, cache, mode, chunk::Val{C}) where {C}
+    tag = mode.tag === nothing ? typeof(ForwardDiff.Tag(__ascher_device_residual!, eltype(x))) : typeof(mode.tag)
+    D = ForwardDiff.Dual{tag, eltype(x), C}
+    work = __ascher_device_work(cache, D)
+    (; rows, cols, colors, ncolors) = __ascher_jacobian(cache)
+    platform = cache.alg.platform
+    values = SparseArrays.nonzeros(J)
+    for color in 1:C:ncolors
+        __ascher_seed!(platform)(work.x, x, colors, color, chunk; ndrange = length(x))
+        __ascher_device_residual!(work.r, work.x, cache)
+        __ascher_extract_partials!(platform)(values, work.r, rows, cols, colors, color, chunk; ndrange = length(values))
+    end
+    synchronize(platform)
+    return J
+end
+
+function __ascher_device_jacobian!(J, x, cache, mode::AutoFiniteDiff)
+    T = eltype(x)
+    central = mode.fdjtype isa Val{:central}
+    default_step = central ? cbrt(eps(T)) : sqrt(eps(T))
+    relstep = hasproperty(mode, :relstep) && mode.relstep !== nothing ? T(mode.relstep) : default_step
+    absstep = hasproperty(mode, :absstep) && mode.absstep !== nothing ? T(mode.absstep) : relstep
+    direction = hasproperty(mode, :dir) && !mode.dir ? -one(T) : one(T)
+    work = __ascher_device_work(cache, T)
+    (; rows, cols, colors, ncolors) = __ascher_jacobian(cache)
+    platform = cache.alg.platform
+    values = SparseArrays.nonzeros(J)
+    central || __ascher_device_residual!(work.minus, x, cache)
+    for color in 1:ncolors
+        __ascher_perturb!(platform)(work.x, x, colors, color, relstep, absstep, direction; ndrange = length(x))
+        __ascher_device_residual!(work.r, work.x, cache)
+        if central
+            __ascher_perturb!(platform)(work.x, x, colors, color, relstep, absstep, -direction; ndrange = length(x))
+            __ascher_device_residual!(work.minus, work.x, cache)
+        end
+        __ascher_extract_fd!(platform)(values, work.r, work.minus, x, rows, cols, colors, color, relstep, absstep, direction, central; ndrange = length(values))
+    end
+    synchronize(platform)
+    return J
 end

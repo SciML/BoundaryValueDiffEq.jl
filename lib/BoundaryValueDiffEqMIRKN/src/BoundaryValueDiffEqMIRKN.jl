@@ -25,11 +25,11 @@ using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
-using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using KernelAbstractions: KernelAbstractions, Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra
 using PreallocationTools: PreallocationTools, get_tmp
 using Preferences: Preferences
-using RecursiveArrayTools: AbstractVectorOfArray, ArrayPartition
+using RecursiveArrayTools: RecursiveArrayTools, AbstractVectorOfArray, ArrayPartition
 using SciMLBase: SciMLBase, ReturnCode, SecondOrderBVProblem,
     StandardSecondOrderBVProblem, TwoPointSecondOrderBVProblem, isinplace, remake
 
@@ -47,6 +47,12 @@ using BoundaryValueDiffEqCore: BVPVerbosity, GaussNewton, LevenbergMarquardt,
 using SciMLBase: DynamicalBVPFunction, init, solve, solve!, successful_retcode
 
 using Setfield: @set!
+
+using BoundaryValueDiffEqCore: __device_copy_parameter!, __device_bc_sizes, __device_jacobian!,
+    __device_jacobian_products, __device_parameter, __device_reshape, __device_residual!,
+    __device_validate_ad, __device_eval!, __device_initial_backend, __device_initial_state,
+    __device_boundary_pattern, __device_sparse_structure, __prepare_device_jacobian,
+    __device_host_parameter
 
 const DI = DifferentiationInterface
 

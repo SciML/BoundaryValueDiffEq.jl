@@ -88,3 +88,7 @@ timeout = 240
 
 [QA]
 versions = ["lts", "1"]
+
+[DeviceKernels]
+versions = ["lts", "1", "pre"]
+timeout = 120

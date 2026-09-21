@@ -4,6 +4,7 @@ using ADTypes: ADTypes, AutoForwardDiff, AutoSparse
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+    __device_sparse_matrix, __default_linsolve, __concrete_device_solve_algorithm,
     AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
     recursive_flatten!,
     __concrete_solve_algorithm,
@@ -26,14 +27,16 @@ using DifferentiationInterface: DifferentiationInterface,
     overloaded_input_type
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
-using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using KernelAbstractions: KernelAbstractions, Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra
 using SciMLBase: SciMLBase, BVProblem, EnsembleSerial, EnsembleThreads,
     NonlinearFunction, ODEProblem, StandardBVProblem, TwoPointBVProblem,
     __solve, isinplace, remake, solve, solve!
 using SciMLLogging: @SciMLMessage
 using Setfield: @set
-using SparseArrays: sparse
+using SparseArrays: SparseArrays, sparse
+using SparseConnectivityTracer: TracerSparsityDetector
+using RecursiveArrayTools: DiffEqArray
 using OrdinaryDiffEqTsit5: Tsit5
 using PreallocationTools: GeneralLazyBufferCache
 using PrecompileTools: @compile_workload, @setup_workload

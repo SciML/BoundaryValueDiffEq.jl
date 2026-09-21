@@ -6,7 +6,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
     @eval begin
         """
             $($alg)(; nlsolve = nothing, optimize = nothing, zeta = Float64[],
-                jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
+                jac_alg = BVPJacobianAlgorithm(), platform = CPU(), device = false,
                 max_num_subintervals = 3000)
 
         $($stage)-stage Gauss-Legendre collocation method with Ascher error-control
@@ -24,7 +24,10 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `jac_alg`: `BVPJacobianAlgorithm` that selects the Jacobian construction
             strategy for the collocation system.
           - `platform`: KernelAbstractions backend used to assemble the collocation
-            equations.
+            equations. A GPU backend selects the device-resident sparse formulation.
+          - `device`: Use the device formulation also with `CPU()` arrays, for testing
+            or comparing identical discretizations. GPU initial states select it
+            automatically. The default `false` preserves the original CPU solver.
           - `max_num_subintervals`: Maximum number of mesh subintervals permitted while
             refining the solution.
 
@@ -43,6 +46,9 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
             this value.
           - `platform`: KernelAbstractions backend used to assemble the collocation
             equations. Defaults to `CPU()`.
+          - `device = false`: Force the packed sparse formulation on the selected
+            backend. CUDA requires loading CUDA.jl; loading CUDSS.jl enables sparse
+            direct Newton solves. Device callbacks must be GPU-kernel compatible.
           - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
         ## Example
@@ -81,6 +87,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
             zeta::Vector{Float64} = Float64[]
             jac_alg::J = BVPJacobianAlgorithm()
             platform::P = CPU()
+            device::Bool = false
             max_num_subintervals::Int = 3000
         end
     end

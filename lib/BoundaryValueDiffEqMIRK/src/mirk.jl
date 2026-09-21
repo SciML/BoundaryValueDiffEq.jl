@@ -1,4 +1,4 @@
-@concrete struct MIRKCache{iip, T, use_both, diffcache, tune_parameters} <:
+@concrete struct MIRKCache{iip, T, use_both, diffcache, tune_parameters, Y} <:
     AbstractBoundaryValueDiffEqCache
     order::Int                 # The order of MIRK method
     stage::Int                 # The state of MIRK method
@@ -16,23 +16,26 @@
     ITU                        # MIRK Interpolation Tableau
     f_prototype
     bcresid_prototype
-    # Everything below gets resized in adaptive methods
     mesh                       # Discrete mesh
     mesh_dt                    # Step size
+    host_mesh                  # Host mesh metadata for packed storage; nothing on CPU
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
     k_interp                   # Stage information associated with the discrete Runge-Kutta method
-    y
+    y::Y
     y₀
     y₀_flat                    # Flat Vector{T} mirror of y₀ used as nlprob u0 to keep
     # LinearSolve / NonlinearSolveBase happy (they require a
     # concrete `Vector{T}`, not the `Base.ReshapedArray` that
     # `vec(::VectorOfArray)` returns under RAT v4).
     residual
-    # Scratch caches used outside collocation are never resized
+    jac_prototype              # Flat dense device Jacobian buffer; nothing for sparse/CPU
+    jacobian_cache             # Typed sparse matrix/plan dictionary; nothing for dense/CPU
+    # CPU scratch caches outside collocation keep their original size.
     fᵢ_cache
     fᵢ₂_cache
     # One scratch cache per mesh interval, so backend work items do not alias
     collocation_cache
+    device_cache               # Offload buffers or packed AD buffers; nothing on CPU
     errors
     new_stages
     resid_size
@@ -50,11 +53,38 @@ end
 
 Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
+# Shaped arrays are ephemeral views of the owning vectors. Never retain one
+# across resize!: GPU reshape objects may still refer to the old allocation.
+@inline __mirk_states(cache::MIRKCache) = reshape(cache.y, cache.M, length(cache.mesh))
+@inline __mirk_stages(cache::MIRKCache) =
+    reshape(cache.k_discrete, cache.M, cache.stage, length(cache.mesh_dt))
+@inline __mirk_interp_stages(cache::MIRKCache) =
+    reshape(cache.k_interp, cache.M, cache.ITU.s_star - cache.stage, length(cache.mesh_dt))
+@inline __mirk_collocation(cache::MIRKCache) =
+    reshape(cache.collocation_cache, cache.M, length(cache.mesh_dt))
+@inline __mirk_rhs_tmp(cache::MIRKCache) =
+    reshape(cache.fᵢ₂_cache, cache.M, length(cache.mesh_dt))
+@inline __mirk_jacobian(cache::MIRKCache) = cache.jacobian_cache === nothing ?
+    reshape(cache.jac_prototype, length(cache.residual), length(cache.y)) :
+    cache.jacobian_cache[nothing].matrix
+@inline __mirk_jacobian_plan(cache::MIRKCache) = cache.jacobian_cache === nothing ?
+    nothing : cache.jacobian_cache[nothing].plan
+
+BoundaryValueDiffEqCore.__bvp_device_residual_prototype(cache::MIRKCache) = cache.residual
+BoundaryValueDiffEqCore.__bvp_device_jacobian_plan(cache::MIRKCache) = __mirk_jacobian_plan(cache)
+
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractMIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
         controller = DefectControl(), nlsolve_kwargs = (; abstol),
         optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
+    initial_state = __device_initial_state(prob.u0, prob.p, first(prob.tspan))
+    if !(__device_initial_backend(initial_state) isa CPU)
+        return __init_mirk_device(
+            prob, alg, initial_state; dt, abstol, adaptive, controller,
+            nlsolve_kwargs, optimize_kwargs, verbose, kwargs...
+        )
+    end
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     iip = isinplace(prob)
@@ -77,6 +107,7 @@ function SciMLBase.__init(
         N,
         Nig,
         u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters)
+    __mirk_validate_device_problem(alg.platform, prob, alg, u0, tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -265,12 +296,125 @@ function SciMLBase.__init(
 
     return MIRKCache{iip, T, use_both, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, N, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p, alg,
-        TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete, k_interp, y,
-        y₀, y₀_flat, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, errors,
+        TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, nothing, k_discrete, k_interp, y,
+        y₀, y₀_flat, residual, nothing, nothing, fᵢ_cache, fᵢ₂_cache, collocation_cache,
+        __mirk_device_cache(alg.platform, prob, alg, u0, TU, tune_parameters), errors,
         new_stages, resid₁_size, prob.singular_term, nlsolve_kwargs, optimize_kwargs,
         (; abstol, dt, adaptive, controller, tune_parameters, kwargs...), verbose_spec,
         LazyBufferCache()
     )
+end
+
+
+function __init_mirk_device(
+        prob, alg, u0; dt, abstol, adaptive, controller, nlsolve_kwargs,
+        optimize_kwargs, verbose, kwargs...
+    )
+    # Determine algebraic rows from host metadata before launching kernels.
+    host_mass = __device_host_parameter(prob.f.mass_matrix)
+    algebraic_indices = __get_algebraic_indices(host_mass)
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+    platform = KernelAbstractions.get_backend(u0)
+    tune_parameters = get(prob.kwargs, :tune_parameters, false)
+    if tune_parameters
+        isinplace(prob) && u0 isa AbstractVector && prob.p isa AbstractVector{<:Number} ||
+            throw(ArgumentError("Resident MIRK parameter tuning requires an in-place RHS, vector states and numeric vector parameters."))
+    end
+    if alg.optimize !== nothing || prob.f.inequality !== nothing ||
+            prob.f.equality !== nothing || prob.lb !== nothing || prob.ub !== nothing
+        throw(ArgumentError("MIRK optimization and constraints require a CPU initial guess with `platform` selecting GPU collocation."))
+    end
+    # Keep explicit launch/compiler options for the matching device backend.
+    typeof(alg.platform) === typeof(platform) && (platform = alg.platform)
+    @set! alg.platform = platform
+    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    twopoint = prob.problem_type isa TwoPointBVProblem
+    modes = twopoint ? (alg.jac_alg.diffmode,) :
+        (alg.jac_alg.bc_diffmode, alg.jac_alg.nonbc_diffmode)
+    foreach(__device_validate_ad, modes)
+
+    _, T, M, N, _ = __extract_problem_details(prob; dt, check_positive_dt = true)
+    nparameters = tune_parameters ? length(prob.p) : 0
+    M += nparameters
+    host_mesh = collect(__extract_mesh(prob.u0, prob.tspan..., N))
+    host_dt = diff(host_mesh)
+
+    to_device(x) = __device_parameter(platform, x)
+    mesh, mesh_dt = to_device(host_mesh), to_device(host_dt)
+    y_buffer = similar(u0, T, M * (N + 1))
+    y = reshape(y_buffer, M, N + 1)
+    __mirk_device_initial_guess!(view(y, 1:(M - nparameters), :), prob.u0, prob.p, host_mesh, u0)
+    if tune_parameters
+        parameters = to_device(prob.p)
+        for node in axes(y, 2)
+            copyto!(view(y, (M - nparameters + 1):M, node), parameters)
+        end
+    end
+    in_size = tune_parameters ? (M,) : size(u0)
+
+    TU, ITU = constructMIRK(alg, T)
+    TU = MIRKTableau(TU.s, to_device(TU.c), to_device(TU.v), to_device(TU.b), to_device(TU.x))
+    ITU = MIRKInterpTableau(
+        ITU.s_star, to_device(ITU.c_star), to_device(ITU.v_star), to_device(ITU.x_star),
+        ITU.τ_star, ITU.p_star
+    )
+
+    bc_sizes = __device_bc_sizes(prob, tune_parameters ? view(y, :, 1) : u0)
+    nbc = twopoint ? sum(prod, bc_sizes) : prod(first(bc_sizes))
+    nresid = M * N + nbc
+    k = similar(y_buffer, M * TU.s * N)
+    ki = similar(y_buffer, M * (ITU.s_star - TU.s) * N)
+    tmp = similar(y_buffer, M * N)
+    residual = similar(y, T, (nresid,))
+    jacobian = __mirk_prepare_device_jacobian(
+        prob, alg, y, host_mesh, TU, ITU, bc_sizes, prob.p, in_size
+    )
+    jac_prototype = jacobian.plan === nothing ? vec(jacobian.matrix) : nothing
+    jacobian_cache = jacobian.plan === nothing ? nothing : Dict(nothing => jacobian)
+    singular_term = to_device(prob.singular_term)
+
+    # Strip ODEFunction metadata before passing the RHS to a kernel.
+    f = __device_function(prob.f.f)
+    tune_parameters && (f = BVPTunableRHS(f, nparameters))
+    verbose_spec = _process_verbose_param(verbose)
+    return MIRKCache{isinplace(prob), T, false, NoDiffCacheNeeded, tune_parameters}(
+        alg_order(alg), TU.s, M, in_size, f, to_device(host_mass), to_device(algebraic_indices),
+        prob.f.bc, prob, prob.problem_type,
+        to_device(prob.p), alg, TU, ITU, nothing, nothing,
+        mesh, mesh_dt, host_mesh, k, ki, y_buffer,
+        nothing, nothing, residual, jac_prototype, jacobian_cache,
+        nothing, similar(tmp), tmp, Dict{DataType, Any}(),
+        similar(y, T, (N,)),
+        (; y = similar(y_buffer, 0), mesh = similar(mesh, 0)),
+        bc_sizes, singular_term,
+        __concrete_kwargs(alg.nlsolve, nothing, nlsolve_kwargs, optimize_kwargs, verbose_spec),
+        optimize_kwargs, (; abstol, dt, adaptive, controller, tune_parameters, kwargs...),
+        verbose_spec, nothing
+    )
+end
+
+function __mirk_device_initial_guess!(y, guess, p, mesh, u0)
+    states = if guess isa AbstractVector{<:AbstractArray}
+        guess
+    elseif guess isa Union{AbstractVectorOfArray, SciMLBase.ODESolution}
+        guess.u
+    else
+        nothing
+    end
+    for i in eachindex(mesh)
+        state = states !== nothing ? states[i] :
+            (
+                guess isa Function ?
+                (i == 1 ? u0 : __device_initial_state(guess, p, mesh[i])) : u0
+            )
+        size(state) == size(u0) || throw(DimensionMismatch("Initial guess state sizes differ."))
+        typeof(KernelAbstractions.get_backend(state)) ===
+            typeof(KernelAbstractions.get_backend(y)) || throw(
+            ArgumentError("All initial guess states must be on the same backend.")
+        )
+        copyto!(view(y, :, i), vec(state))
+    end
+    return y
 end
 
 """
@@ -290,31 +434,74 @@ function __expand_cache!(cache::MIRKCache{iip, T, use_both}) where {iip, T, use_
     __resize!(cache.collocation_cache, Nₙ - 1, cache.M)
     __resize!(cache.errors.u, ifelse(use_both, 2 * (Nₙ - 1), (Nₙ - 1)), cache.M)
     __resize!(cache.new_stages.u, Nₙ - 1, cache.M)
+    __mirk_reset_device_cache!(cache.device_cache)
     return cache
 end
 
-function SciMLBase.solve!(
-        cache::MIRKCache{
-            iip, T, use_both, diffcache,
-            tune_parameters,
-        }
-    ) where {iip, T, use_both, diffcache, tune_parameters}
+function __expand_cache!(
+        cache::MIRKCache{iip, T, U, D, P, Y}
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
+    M, N = cache.M, length(cache.mesh_dt)
+    # Cached primal and Dual views may still alias the old device allocation.
+    empty!(cache.device_cache)
+    resize!(cache.k_discrete, M * cache.stage * N)
+    resize!(cache.k_interp, M * (cache.ITU.s_star - cache.stage) * N)
+    resize!(cache.collocation_cache, M * N)
+    resize!(cache.fᵢ₂_cache, M * N)
+    nbc = cache.problem_type isa TwoPointBVProblem ? sum(prod, cache.resid_size) : prod(cache.resid_size[1])
+    resize!(cache.residual, M * N + nbc)
+    __expand_cache!(cache, Val(:jacobian))
+    resize!(cache.errors, N)
+    return cache
+end
+
+function SciMLBase.solve!(cache::MIRKCache)
+    __mirk_reset_device_cache!(cache)
     (abstol, adaptive, controller, _), _ = __split_kwargs(; cache.kwargs...)
-    info::ReturnCode.T = ReturnCode.Success
-    prob = cache.prob
-    length_u = cache.in_size
 
-    # We do the first iteration outside the loop to preserve type-stability of the
-    # `original` field of the solution
-    sol_nlprob, info,
-        error_norm = __perform_mirk_iteration(cache, abstol, adaptive, controller)
-
+    # Keep the first iteration outside the loop to preserve the type of the
+    # nonlinear solution stored in the final solution's `original` field.
+    sol_nlprob, info, error_norm = __perform_mirk_iteration(cache, abstol, adaptive, controller)
     if adaptive
-        while SciMLBase.successful_retcode(info) && error_norm > abstol
-            sol_nlprob, info,
-                error_norm = __perform_mirk_iteration(cache, abstol, adaptive, controller)
+        while successful_retcode(info) && error_norm > abstol
+            sol_nlprob, info, error_norm = __perform_mirk_iteration(cache, abstol, adaptive, controller)
         end
     end
+    return __mirk_build_solution(cache, sol_nlprob, info)
+end
+
+# The same cache expansion is used by mesh refinement and repeated solves.
+function __expand_cache!(cache::MIRKCache, ::Val{:jacobian})
+    if cache.jacobian_cache === nothing
+        resize!(cache.jac_prototype, length(cache.residual) * length(cache.y))
+    else
+        jacobian = __mirk_prepare_device_jacobian(
+            cache.prob, cache.alg, __mirk_states(cache), cache.host_mesh, cache.TU, cache.ITU,
+            cache.resid_size, cache.p, cache.in_size
+        )
+        cache.jacobian_cache[nothing] = jacobian
+    end
+    return cache
+end
+
+__mirk_reset_device_cache!(cache::MIRKCache) = nothing
+function __mirk_reset_device_cache!(
+        cache::MIRKCache{iip, T, U, D, P, Y}
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
+    return __mirk_reset_device_cache!(cache, __mirk_jacobian_plan(cache))
+end
+__mirk_reset_device_cache!(cache::MIRKCache, ::Nothing) = nothing
+function __mirk_reset_device_cache!(cache::MIRKCache, ::SparseJacobianCache)
+    # Parameters can change boundary evaluation times when solve! reuses a cache.
+    __expand_cache!(cache, Val(:jacobian))
+    return nothing
+end
+
+function __mirk_build_solution(
+        cache::MIRKCache{iip, T, use_both, diffcache, tune_parameters}, sol_nlprob, info
+    ) where {iip, T, use_both, diffcache, tune_parameters}
+    prob = cache.prob
+    length_u = cache.in_size
 
     # Parameter estimation, put the estimated parameters to sol.prob.p
     if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
@@ -339,6 +526,32 @@ function SciMLBase.solve!(
         prob, cache.alg, cache.mesh, u.u; interp = interpolation, retcode = info
     )
     return __build_solution(prob, odesol, sol_nlprob)
+end
+
+function __mirk_build_solution(
+        cache::MIRKCache{iip, T, U, D, P, Y}, nlsol, retcode
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
+    # Preserve the state shape and device storage in the SciML solution.
+    y, k, ki = copy(__mirk_states(cache)), copy(__mirk_stages(cache)), copy(__mirk_interp_stages(cache))
+    prob = cache.prob
+    in_size = cache.in_size
+    if P
+        nstates = cache.M - length(cache.p)
+        prob = remake(prob; p = copy(view(y, (nstates + 1):cache.M, 1)))
+        y = copy(view(y, 1:nstates, :))
+        k = copy(view(k, 1:nstates, :, :))
+        ki = copy(view(ki, 1:nstates, :, :))
+        in_size = (nstates,)
+    end
+    values = [reshape(copy(view(y, :, i)), in_size) for i in axes(y, 2)]
+    interp = __build_interpolation(
+        y, k, ki, copy(cache.mesh), copy(cache.mesh_dt),
+        Val(nameof(typeof(cache.alg))), in_size, cache.alg.platform
+    )
+    odesol = SciMLBase.build_solution(
+        prob, cache.alg, copy(cache.host_mesh), values; interp, retcode
+    )
+    return __build_solution(prob, odesol, nlsol)
 end
 
 function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, controller::AbstractErrorControl)
@@ -397,7 +610,150 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
     return sol_nlprob, info, error_norm
 end
 
+# Device storage uses the same solve loop, with its own residual/Jacobian
+# construction and device error estimates.
+function __perform_mirk_iteration(
+        cache::MIRKCache{iip, T, U, D, P, Y}, abstol, adaptive::Bool, controller::AbstractErrorControl
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
+    nlprob = __construct_problem(cache, copy(cache.y))
+    solve_alg = __concrete_solve_algorithm(nlprob, cache)
+    kwargs = __concrete_kwargs(
+        cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
+        cache.verbose
+    )
+    sol_nlprob = __internal_solve(nlprob, solve_alg; kwargs...)
+    copyto!(cache.y, sol_nlprob.u)
+    __device_residual!(cache.residual, cache.y, cache)
+    __mirk_device_interp_setup!(
+        cache.alg.platform, __mirk_interp_stages(cache), __mirk_collocation(cache), __mirk_stages(cache),
+        __mirk_states(cache), cache.f, cache.p,
+        cache.mesh, cache.mesh_dt, cache.ITU, cache.in_size, Val(iip), cache.singular_term
+    )
+    info = sol_nlprob.retcode
+    error_norm = zero(abstol)
+    if adaptive && successful_retcode(info)
+        error_norm, estimate_info = error_estimate!(
+            cache, controller, cache.errors, sol_nlprob, cache.alg.nlsolve, abstol
+        )
+        if estimate_info == ReturnCode.Failure && isfinite(error_norm) && error_norm > abstol
+            # A large defect requires bisection before attempting redistribution.
+            if 2 * length(cache.mesh_dt) > cache.alg.max_num_subintervals
+                info = ReturnCode.Failure
+            else
+                half_mesh!(cache)
+            end
+        elseif !successful_retcode(estimate_info)
+            info = estimate_info
+        elseif error_norm > abstol
+            _, _, _, info = mesh_selector!(cache, controller)
+        end
+    end
+    return sol_nlprob, info, error_norm
+end
+
+# Boundary Residuals
+@kernel function __mirk_device_bc_kernel!(
+        resid, bc, y, k, ki, p, mesh, mesh_dt, algid, in_size, bc_sizes, iip, twopoint, tune_parameters
+    )
+    @inbounds begin
+        left = prod(bc_sizes[1])
+        parameters = tune_parameters isa Val{true} ?
+            view(y, (size(y, 1) - length(p) + 1):size(y, 1), 1) : p
+        if twopoint isa Val{true}
+            right = prod(bc_sizes[2])
+            __device_eval!(
+                __device_reshape(view(resid, 1:left), bc_sizes[1]), bc[1],
+                (__device_reshape(view(y, :, 1), in_size), parameters), iip
+            )
+            __device_eval!(
+                __device_reshape(
+                    view(resid, (length(resid) - right + 1):length(resid)), bc_sizes[2]
+                ),
+                bc[2], (
+                    __device_reshape(view(y, :, size(y, 2)), in_size),
+                    tune_parameters isa Val{true} ? view(y, (size(y, 1) - length(p) + 1):size(y, 1), size(y, 2)) : p,
+                ), iip
+            )
+        else
+            sol = EvalSol(__build_interpolation(y, k, ki, mesh, mesh_dt, algid, in_size))
+            __device_eval!(
+                __device_reshape(view(resid, 1:left), bc_sizes[1]),
+                bc, (sol, parameters, mesh), iip
+            )
+        end
+    end
+end
+
+# Collocation and Boundary Residual Assembly
+
+function __mirk_device_buffers(
+        cache::MIRKCache{iip, T, U, D, P, Y}, ::Type{S}
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}, S}
+    return get!(cache.device_cache, S) do
+        if S === eltype(cache.y)
+            (;
+                k = __mirk_stages(cache), ki = __mirk_interp_stages(cache),
+                tmp = __mirk_collocation(cache), residual = cache.residual,
+            )
+        else
+            (;
+                k = similar(__mirk_stages(cache), S), ki = similar(__mirk_interp_stages(cache), S),
+                tmp = similar(__mirk_collocation(cache), S), residual = similar(cache.residual, S),
+            )
+        end
+    end
+end
+
+function BoundaryValueDiffEqCore.__device_residual!(
+        resid, u, cache::MIRKCache{iip, T, U, D, P, Y}, boundary = true
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
+    work = __mirk_device_buffers(cache, eltype(u))
+    y = reshape(u, cache.M, length(cache.mesh))
+    M, nodes = size(y)
+    left = prod(cache.resid_size[1])
+    collocation = reshape(view(resid, (left + 1):(left + M * (nodes - 1))), M, nodes - 1)
+    (; c, v, x, b) = cache.TU
+    __mirk_packed_collocation_kernel!(cache.alg.platform)(
+        collocation, work.tmp, work.k, cache.f, y, cache.p, cache.mesh,
+        cache.mesh_dt, c, v, x, b, cache.singular_term, cache.in_size,
+        cache.in_size, P ? length(cache.p) : 0, Val(iip), Val(false), Val(P),
+        cache.mass_matrix, cache.algebraic_indices; ndrange = nodes - 1
+    )
+    synchronize(cache.alg.platform)
+    if boundary
+        if !(cache.problem_type isa TwoPointBVProblem)
+            __mirk_device_interp_setup!(
+                cache.alg.platform, work.ki, work.tmp, work.k, y, cache.f, cache.p,
+                cache.mesh, cache.mesh_dt, cache.ITU, cache.in_size,
+                Val(iip), cache.singular_term
+            )
+        end
+        __mirk_device_bc_kernel!(cache.alg.platform)(
+            resid, cache.bc, y, work.k, work.ki, cache.p, cache.mesh, cache.mesh_dt,
+            Val(nameof(typeof(cache.alg))), cache.in_size, cache.resid_size,
+            Val(iip), Val(cache.problem_type isa TwoPointBVProblem), Val(P); ndrange = 1
+        )
+        synchronize(cache.alg.platform)
+    end
+    return resid
+end
+
 # Constructing the Nonlinear Problem
+function __construct_problem(
+        cache::MIRKCache{iip, T, U, D, P, Y}, u0::AbstractVector
+    ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
+    loss! = (r, u, p) -> __device_residual!(r, u, cache)
+    jac! = (J, u, p) -> __device_jacobian!(J, u, cache)
+    nf = SciMLBase.NonlinearFunction{true}(
+        loss!; jac = jac!,
+        __device_jacobian_products(cache)...,
+        resid_prototype = cache.residual, jac_prototype = __mirk_jacobian(cache)
+    )
+    return BoundaryValueDiffEqCore.__internal_nlsolve_problem(
+        cache.prob, cache.residual, u0, nf, u0, cache.p
+    )
+end
+
 function __construct_problem(cache::MIRKCache{iip}, y::AbstractVector, y₀::AbstractVectorOfArray) where {iip}
     constraint = (!isnothing(cache.prob.f.inequality)) ||
         (!isnothing(cache.prob.f.equality)) ||
@@ -784,7 +1140,11 @@ function __construct_problem(
     if J_full_band === nothing
         jac_prototype = vcat(J_bc, J_c)
     else
-        jac_prototype = AlmostBandedMatrix{eltype(cache)}(J_full_band, J_bc)
+        # Keep sparse AD/coloring, but store the small boundary block densely.
+        # Almost-banded QR applies dense updates to this block and its factors;
+        # a sparse container makes those updates and triangular solves expensive.
+        # DI can decompress the sparse Jacobian directly into this dense block.
+        jac_prototype = AlmostBandedMatrix{eltype(cache)}(J_full_band, Matrix(J_bc))
     end
 
     jac = if iip
@@ -1010,3 +1370,5 @@ function __mirk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L, p) where 
     DI.jacobian!(loss_fn, J, diffcache, diffmode, x, Constant(p))
     return J
 end
+
+BoundaryValueDiffEqCore.__bvp_device_unknowns(cache::MIRKCache) = cache.y

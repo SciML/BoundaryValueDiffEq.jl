@@ -10,6 +10,11 @@ run_qa(
         all_explicit_imports_are_public = (;
             ignore = (:overloaded_input_type, :pickchunksize),
         ),
+        # Device AD seeds/extracts ForwardDiff's documented
+        # Dual/Partials representation directly; those names are not marked public.
+        all_qualified_accesses_are_public = (;
+            ignore = (:Dual, :Partials, :Tag, :partials),
+        ),
     ),
     reexports_allow = SHOOTING_REEXPORTS,
 )

@@ -6,8 +6,17 @@ run_tests(;
     core = function ()
         @time @safetestset "Shooting Basic Problems Tests" include("Core/basic_problems_tests.jl")
         @time @safetestset "Shooting NLLS Tests" include("Core/nlls_tests.jl")
+        @time @safetestset "Device MultipleShooting Tests" include("GPU/cpu_tests.jl")
         return @time @safetestset "Shooting Orbital Tests" include("Core/orbital_tests.jl")
     end,
+    groups = Dict(
+        "GPU" => (;
+            env = joinpath(@__DIR__, "GPU"),
+            body = function ()
+                return @time @safetestset "CUDA MultipleShooting" include("GPU/cuda_tests.jl")
+            end,
+        ),
+    ),
     qa = (;
         env = joinpath(@__DIR__, "qa"),
         body = function ()

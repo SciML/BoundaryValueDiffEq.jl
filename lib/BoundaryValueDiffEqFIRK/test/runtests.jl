@@ -99,6 +99,22 @@ run_tests(;
         # heavy optional backends kept out of the main test environment (they force a
         # large joint at-floor resolve on the Downgrade lane); they live in this
         # group's own test/AD/Project.toml, auto-activated before the body runs.
+        "DeviceKernels" => function ()
+            @time @safetestset "FIRK flat buffer resizing" begin
+                include("GPU/resizing_tests.jl")
+                test_firk_flat_buffers(identity, CPU())
+            end
+            @time @safetestset "FIRK device kernels" include("GPU/device_backend_tests.jl")
+            @time @safetestset "FIRK device regressions" include("GPU/device_regression_tests.jl")
+            @time @safetestset "FIRK resident nested solves" include("GPU/device_nested_tests.jl")
+            return @time @safetestset "FIRK device adaptivity and structure" include("GPU/device_features_tests.jl")
+        end,
+        "GPU" => (;
+            env = joinpath(@__DIR__, "GPU"),
+            body = function ()
+                return @time @safetestset "FIRK CUDA" include("GPU/cuda_tests.jl")
+            end,
+        ),
         "AD" => (;
             env = joinpath(@__DIR__, "AD"),
             body = function ()
@@ -122,6 +138,6 @@ run_tests(;
         "EXPANDED_NLLS", "EXPANDED_MISC",
         "NESTED_BASIC", "NESTED_AFFINENESS", "NESTED_CONVERGENCE",
         "NESTED_PENDULUM", "NESTED_NLLS", "NESTED_NLLS_UNDERCONSTRAINED", "NESTED_MISC",
-        "AD", "QA",
+        "DeviceKernels", "AD", "QA",
     ],
 )

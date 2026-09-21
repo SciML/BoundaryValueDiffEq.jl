@@ -4,6 +4,7 @@ using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+    __device_sparse_linsolve,
     AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
     DEFAULT_VERBOSE, DefectControl,
@@ -27,7 +28,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __internal_solve, __default_sparsity_detector, __build_cost,
     __tunable_part, __add_singular_term!, __apply_mass_matrix!,
     __get_algebraic_indices, __mass_stage_entry, __subtract_mass_stage!,
-    __apply_algebraic_constraint!, __is_algebraic, __check_dae_adaptivity
+    __check_dae_adaptivity
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -35,7 +36,7 @@ using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart
     finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
-using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using KernelAbstractions: KernelAbstractions, Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra
 using NonlinearSolveFirstOrder: GaussNewton, LevenbergMarquardt
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray,
@@ -64,6 +65,12 @@ using NonlinearSolveFirstOrder: NewtonRaphson, TrustRegion
 using SciMLBase: EnsembleProblem, ODEFunction, init, solve!, successful_retcode
 
 using StaticArrays: SMatrix, SVector
+
+using BoundaryValueDiffEqCore: BVPTunableRHS, __device_copy_parameter!, __device_bc_sizes,
+    __device_function, __device_jacobian!, __device_jacobian_products, __device_parameter,
+    __device_reshape, __device_residual!, __device_singular!, __device_validate_ad,
+    __device_eval!, __device_initial_backend, __device_initial_state, __device_boundary_pattern,
+    __device_sparse_structure, __prepare_device_jacobian, __device_host_parameter
 
 const DI = DifferentiationInterface
 
