@@ -93,3 +93,30 @@ end
         @test sol(0.5) ≈ [sinh(0.5) / sinh(1.0), -cosh(0.5) / sinh(1.0)] rtol = 1.0e-4
     end
 end
+
+@testset "Structural constraint-Jacobian pattern on the optimization path" begin
+    using OptimizationIpopt
+
+    # x' = x u, x(0) = 1, maximize x(1) subject to |u| <= 1: the optimum is u ≡ 1 with
+    # x(1) = e. The control column of the constraint Jacobian, ∂(x u)/∂u = x, vanishes
+    # identically at the all-zero initial guess. The optimizer freezes the pattern it is
+    # handed at that guess, so a pattern probed *numerically* there loses the control
+    # column and the optimizer, blind to the control, "succeeds" at u ≡ 0 with x(1) = 1.
+    # The pattern handed to the optimization backend must therefore be structural.
+    bilinear_f!(du, u, p, t) = (du[1] = u[1] * u[2]; nothing)
+    bilinear_bc!(res, u, p, t) = (res[1] = u(0.0)[1] - 1; nothing)
+    bilinear_cost(u, p) = -u(1.0)[1]
+    u0 = [0.0, 0.0]
+    tspan = (0.0, 1.0)
+    lb, ub = [-Inf, -1.0], [Inf, 1.0]
+
+    bilinear_fun = BVPFunction(
+        bilinear_f!, bilinear_bc!; cost = bilinear_cost, f_prototype = zeros(1),
+        bcresid_prototype = zeros(1)
+    )
+    bilinear_prob = BVProblem(bilinear_fun, u0, tspan; lb, ub)
+    sol = solve(bilinear_prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.05, adaptive = false)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol(1.0)[1] ≈ exp(1) atol = 1.0e-2
+    @test sol(0.5)[2] ≈ 1.0 atol = 1.0e-4
+end
