@@ -127,7 +127,7 @@ end
 
 function BoundaryValueDiffEqCore.__device_residual!(resid, u, cache::MIRKNCache{iip}, boundary = true) where {iip}
     work = __mirkn_device_buffers(cache, eltype(u))
-    y = reshape(u, size(__mirkn_states(cache)))
+    y = __reshape_buffer(u, size(__mirkn_states(cache)))
     M, nodes = size(y)
     left = prod(cache.resid_size[1])
     collocation = reshape(view(resid, (left + 1):(left + M * (nodes - 1))), M, nodes - 1)

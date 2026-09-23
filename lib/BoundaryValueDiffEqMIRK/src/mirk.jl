@@ -55,17 +55,17 @@ Base.eltype(::MIRKCache{iip, T, use_both}) where {iip, T, use_both} = T
 
 # Shaped arrays are ephemeral views of the owning vectors. Never retain one
 # across resize!: GPU reshape objects may still refer to the old allocation.
-@inline __mirk_states(cache::MIRKCache) = reshape(cache.y, cache.M, length(cache.mesh))
+@inline __mirk_states(cache::MIRKCache) = __reshape_buffer(cache.y, cache.M, length(cache.mesh))
 @inline __mirk_stages(cache::MIRKCache) =
-    reshape(cache.k_discrete, cache.M, cache.stage, length(cache.mesh_dt))
+    __reshape_buffer(cache.k_discrete, cache.M, cache.stage, length(cache.mesh_dt))
 @inline __mirk_interp_stages(cache::MIRKCache) =
-    reshape(cache.k_interp, cache.M, cache.ITU.s_star - cache.stage, length(cache.mesh_dt))
+    __reshape_buffer(cache.k_interp, cache.M, cache.ITU.s_star - cache.stage, length(cache.mesh_dt))
 @inline __mirk_collocation(cache::MIRKCache) =
-    reshape(cache.collocation_cache, cache.M, length(cache.mesh_dt))
+    __reshape_buffer(cache.collocation_cache, cache.M, length(cache.mesh_dt))
 @inline __mirk_rhs_tmp(cache::MIRKCache) =
-    reshape(cache.fᵢ₂_cache, cache.M, length(cache.mesh_dt))
+    __reshape_buffer(cache.fᵢ₂_cache, cache.M, length(cache.mesh_dt))
 @inline __mirk_jacobian(cache::MIRKCache) = cache.jacobian_cache === nothing ?
-    reshape(cache.jac_prototype, length(cache.residual), length(cache.y)) :
+    __reshape_buffer(cache.jac_prototype, length(cache.residual), length(cache.y)) :
     cache.jacobian_cache[nothing].matrix
 @inline __mirk_jacobian_plan(cache::MIRKCache) = cache.jacobian_cache === nothing ?
     nothing : cache.jacobian_cache[nothing].plan
@@ -342,7 +342,7 @@ function __init_mirk_device(
     to_device(x) = __device_parameter(platform, x)
     mesh, mesh_dt = to_device(host_mesh), to_device(host_dt)
     y_buffer = similar(u0, T, M * (N + 1))
-    y = reshape(y_buffer, M, N + 1)
+    y = __reshape_buffer(y_buffer, M, N + 1)
     __mirk_device_initial_guess!(view(y, 1:(M - nparameters), :), prob.u0, prob.p, host_mesh, u0)
     if tune_parameters
         parameters = to_device(prob.p)
@@ -369,7 +369,7 @@ function __init_mirk_device(
     jacobian = __mirk_prepare_device_jacobian(
         prob, alg, y, host_mesh, TU, ITU, bc_sizes, prob.p, in_size
     )
-    jac_prototype = jacobian.plan === nothing ? vec(jacobian.matrix) : nothing
+    jac_prototype = jacobian.plan === nothing ? copy(vec(jacobian.matrix)) : nothing
     jacobian_cache = jacobian.plan === nothing ? nothing : Dict(nothing => jacobian)
     singular_term = to_device(prob.singular_term)
 
@@ -708,7 +708,7 @@ function BoundaryValueDiffEqCore.__device_residual!(
         resid, u, cache::MIRKCache{iip, T, U, D, P, Y}, boundary = true
     ) where {iip, T, U, D, P, Y <: AbstractVector{<:Number}}
     work = __mirk_device_buffers(cache, eltype(u))
-    y = reshape(u, cache.M, length(cache.mesh))
+    y = __reshape_buffer(u, cache.M, length(cache.mesh))
     M, nodes = size(y)
     left = prod(cache.resid_size[1])
     collocation = reshape(view(resid, (left + 1):(left + M * (nodes - 1))), M, nodes - 1)

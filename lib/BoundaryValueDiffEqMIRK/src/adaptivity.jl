@@ -342,7 +342,7 @@ function __mirk_device_remesh!(cache, host_mesh)
     resize!(scratch.mesh, length(host_mesh))
     copyto!(scratch.mesh, host_mesh)
     resize!(scratch.y, cache.M * length(host_mesh))
-    y = reshape(scratch.y, cache.M, length(host_mesh))
+    y = __reshape_buffer(scratch.y, cache.M, length(host_mesh))
     # Finish reading the old states, mesh and stages before resizing any owner.
     __mirk_device_refine!(
         platform, y, scratch.mesh, __mirk_states(cache), __mirk_stages(cache), __mirk_interp_stages(cache),

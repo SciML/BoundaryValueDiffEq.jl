@@ -4,7 +4,7 @@ using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
-    __device_sparse_linsolve,
+    __device_sparse_linsolve, __needs_sparse_damping,
     AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
     DEFAULT_VERBOSE, DefectControl,
@@ -68,7 +68,7 @@ using StaticArrays: SMatrix, SVector
 
 using BoundaryValueDiffEqCore: BVPTunableRHS, __device_copy_parameter!, __device_bc_sizes,
     __device_function, __device_jacobian!, __device_jacobian_products, __device_parameter,
-    __device_reshape, __device_residual!, __device_singular!, __device_validate_ad,
+    __device_reshape, __reshape_buffer, __device_residual!, __device_singular!, __device_validate_ad,
     __device_eval!, __device_initial_backend, __device_initial_state, __device_boundary_pattern,
     __device_sparse_structure, __prepare_device_jacobian, __device_host_parameter
 

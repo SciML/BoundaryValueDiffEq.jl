@@ -300,7 +300,7 @@ end
 function BoundaryValueDiffEqCore.__device_residual!(resid, u, cache::Union{FIRKCacheExpand{iip}, FIRKCacheNested{iip}}, boundary = true, reuse_nested = false) where {iip}
     cache.alg.nested_nlsolve && return __firk_nested_residual!(resid, u, cache, boundary, reuse_nested)
     work = __firk_device_buffers(cache, eltype(u))
-    y = reshape(u, size(__firk_states(cache)))
+    y = __reshape_buffer(u, size(__firk_states(cache)))
     M, nodes = size(y)
     left = prod(cache.resid_size[1])
     collocation = reshape(view(resid, (left + 1):(left + M * (nodes - 1))), M, nodes - 1)
@@ -713,7 +713,7 @@ end
 function __firk_nested_residual!(resid, u, cache::Union{FIRKCacheExpand{iip}, FIRKCacheNested{iip}}, boundary = true, reuse = false) where {iip}
     work = __firk_nested_buffers(cache, eltype(u))
     platform, TU = cache.alg.platform, cache.TU
-    states = reshape(u, size(__firk_unknowns(cache)))
+    states = __reshape_buffer(u, size(__firk_unknowns(cache)))
     options = __firk_nested_options(cache.alg, eltype(cache), cache.kwargs.abstol)
     __firk_nested_stages_kernel!(platform)(
         work, states, cache.f, cache.p, TU.a, TU.c, cache.mesh, cache.mesh_dt,

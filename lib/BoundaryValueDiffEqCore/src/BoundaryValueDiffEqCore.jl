@@ -84,7 +84,7 @@ export BVPVerbosity, _process_verbose_param, DEFAULT_VERBOSE
     __prepare_device_jacobian, __bvp_device_sparse_group
 
 @public __device_parameter, __device_copy_parameter!, __device_host_parameter,
-    __device_reshape, __device_singular!, __device_eval!, __device_initial_state,
+    __device_reshape, __reshape_buffer, __device_singular!, __device_eval!, __device_initial_state,
     __device_initial_backend, __device_bc_sizes, __device_validate_ad, __device_function
 
 @public SparseJacobianCache,

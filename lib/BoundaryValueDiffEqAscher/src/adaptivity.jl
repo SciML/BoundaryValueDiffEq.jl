@@ -248,7 +248,7 @@ function __ascher_refine!(cache::AscherCache, host_mesh)
     copyto!(scratch.mesh, host_mesh)
     resize!(scratch.x, n * (cache.ncomp + cache.M * cache.k) + cache.ncomp)
     resize!(scratch.coarse, cache.M * (n + 1))
-    coarse = reshape(scratch.coarse, cache.M, n + 1)
+    coarse = __reshape_buffer(scratch.coarse, cache.M, n + 1)
     __ascher_device_sample!(platform)(
         coarse, cache.x, cache.mesh, cache.TU.coef, scratch.mesh,
         cache.ncomp, cache.M, cache.k; ndrange = size(coarse)
@@ -287,7 +287,7 @@ function __ascher_refine_solution(cache::AscherCache, result)
             result = __ascher_device_solve_once!(cache)
             retcode = result.retcode
             resize!(cache.new_mesh.fine, length(coarse))
-            fine = reshape(cache.new_mesh.fine, size(coarse))
+            fine = __reshape_buffer(cache.new_mesh.fine, size(coarse))
             __ascher_device_sample!(cache.alg.platform)(
                 fine, cache.x, cache.mesh, cache.TU.coef, cache.mesh,
                 cache.ncomp, cache.M, cache.k; ndrange = size(fine)

@@ -5,7 +5,7 @@ using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 using Test
 
 @testset "Two-point sparse damping and zero-iteration solves" begin
-    using BandedMatrices: BandedMatrix
+    using BandedMatrices: BandedMatrix, bandwidths
     using LinearSolve: LUFactorization
     using SparseArrays: SparseMatrixCSC, nnz
 
@@ -31,7 +31,12 @@ using Test
             cache, copy(cache.y₀_flat), copy(cache.y₀)
         )
         @test internal.f.jac_prototype isa Union{SparseMatrixCSC, BandedMatrix}
-        @test nnz(internal.f.jac_prototype) < length(internal.f.jac_prototype)
+        J = internal.f.jac_prototype
+        if J isa BandedMatrix
+            @test sum(bandwidths(J)) + 1 < size(J, 2)
+        else
+            @test nnz(J) < length(J)
+        end
         sol = solve!(cache)
         @test !SciMLBase.successful_retcode(sol)
         @test sol.u == original

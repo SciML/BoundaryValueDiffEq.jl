@@ -566,8 +566,8 @@ function __ascher_device_work(cache, ::Type{T}) where {T}
     resize!(buffers.stages, cache.M * cache.k * n)
     return (;
         buffers.x, buffers.r, buffers.minus,
-        stages = reshape(buffers.stages, cache.M, cache.k, n),
-        boundary = reshape(buffers.boundary, cache.ncomp, cache.ncomp),
+        stages = __reshape_buffer(buffers.stages, cache.M, cache.k, n),
+        boundary = __reshape_buffer(buffers.boundary, cache.ncomp, cache.ncomp),
     )
 end
 

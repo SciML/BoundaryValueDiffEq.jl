@@ -199,7 +199,7 @@ function sparse_resident_cache(prob, alg = MIRK4(); dt = 0.2, adaptive = false, 
     )
 end
 
-sparse_plan(cache) = cache.jacobian_cache[]
+sparse_plan(cache) = MIRK.__mirk_jacobian_plan(cache)
 
 function sparse_pendulum!(du, u, p, t)
     du[1] = u[2]
@@ -254,7 +254,7 @@ end
 
 function sparse_dense_reference(cache, x)
     return ForwardDiff.jacobian(x) do state
-        residual = similar(state, length(cache.residual[]))
+        residual = similar(state, length(cache.residual))
         MIRK.__device_residual!(residual, state, cache)
         return residual
     end
@@ -323,18 +323,18 @@ end
     )
     @testset "problem $index" for (index, prob) in enumerate(sparse_jacobian_problems())
         reference_cache = sparse_resident_cache(prob)
-        x = vec(copy(reference_cache.y[]))
+        x = vec(copy(reference_cache.y))
         x .+= 0.2 .* sin.(eachindex(x))
         expected = sparse_dense_reference(reference_cache, x)
         cpu_residual, cpu_jacobian = sparse_cpu_reference(prob, x)
-        residual = similar(reference_cache.residual[])
+        residual = similar(reference_cache.residual)
         MIRK.__device_residual!(residual, x, reference_cache)
         @test residual ≈ cpu_residual rtol = 1.0e-11 atol = 1.0e-11
         @test expected ≈ cpu_jacobian rtol = 1.0e-7 atol = 1.0e-8
 
         @testset "mode $mode" for mode in modes
             cache = sparse_resident_cache(prob, MIRK4(; jac_alg = mode))
-            J = cache.jac_prototype[]
+            J = MIRK.__mirk_jacobian(cache)
             @test J isa SparseMatrixCSC
             @test !sparse_plan(cache).boundary_fallback
             @test MIRK.__device_jacobian!(J, x, cache) === J
@@ -354,10 +354,10 @@ end
     prob = first(sparse_jacobian_problems())
     @testset "$Alg" for Alg in (MIRK2, MIRK3, MIRK4, MIRK5, MIRK6, MIRK6I)
         cache = sparse_resident_cache(prob, Alg())
-        x = vec(copy(cache.y[])) .+ 0.1 .* sin.(1:length(cache.y[]))
+        x = vec(copy(cache.y)) .+ 0.1 .* sin.(1:length(cache.y))
         expected = sparse_dense_reference(cache, x)
-        MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-        @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+        MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+        @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
     end
 end
 
@@ -385,27 +385,27 @@ end
     cache = sparse_resident_cache(prob)
     plan = sparse_plan(cache)
     @test plan.boundary_fallback
-    @test nnz(plan.pattern[1:2, :]) == 2length(cache.y[])
+    @test nnz(plan.pattern[1:2, :]) == 2length(cache.y)
     @test maximum(group.ncolors for group in plan.groups if !group.boundary) == 2cache.M
     # The initialized pattern must remain valid when a later iterate selects a
     # branch depending on entirely different mesh intervals.
     for sign in (-1, 1)
-        x = sign .* vec(copy(cache.y[]))
+        x = sign .* vec(copy(cache.y))
         expected = sparse_dense_reference(cache, x)
-        MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-        @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+        MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+        @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
     end
 
     global_prob = BVProblem(sparse_pendulum!, sparse_global_bc!, [0.2, 0.3], (0.0, 1.0))
     global_cache = sparse_resident_cache(global_prob)
     global_plan = sparse_plan(global_cache)
     @test !global_plan.boundary_fallback
-    @test any(group.boundary && group.ncolors == length(global_cache.y[]) for group in global_plan.groups)
+    @test any(group.boundary && group.ncolors == length(global_cache.y) for group in global_plan.groups)
     @test any(!group.boundary && group.ncolors == 2global_cache.M for group in global_plan.groups)
-    x = vec(copy(global_cache.y[]))
+    x = vec(copy(global_cache.y))
     expected = sparse_dense_reference(global_cache, x)
-    MIRK.__device_jacobian!(global_cache.jac_prototype[], x, global_cache)
-    @test Matrix(global_cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+    MIRK.__device_jacobian!(MIRK.__mirk_jacobian(global_cache), x, global_cache)
+    @test Matrix(MIRK.__mirk_jacobian(global_cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
 
     prob = first(sparse_jacobian_problems())
     reference = sparse_resident_cache(prob)
@@ -420,14 +420,14 @@ end
     known = sparse_resident_cache(prob, MIRK4(; jac_alg))
     @test !sparse_plan(known).boundary_fallback
     @test nnz(sparse_plan(known).pattern[1:2, :]) == nnz(known_pattern)
-    x = vec(copy(known.y[]))
+    x = vec(copy(known.y))
     expected = sparse_dense_reference(reference, x)
-    MIRK.__device_jacobian!(known.jac_prototype[], x, known)
-    @test Matrix(known.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+    MIRK.__device_jacobian!(MIRK.__mirk_jacobian(known), x, known)
+    @test Matrix(MIRK.__mirk_jacobian(known)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
 
     invalid_mode = AutoSparse(
         AutoForwardDiff();
-        sparsity_detector = KnownJacobianSparsityDetector(zeros(3, length(known.y[])))
+        sparsity_detector = KnownJacobianSparsityDetector(zeros(3, length(known.y)))
     )
     invalid_alg = MIRK4(; jac_alg = BVPJacobianAlgorithm(; bc_diffmode = invalid_mode))
     @test_throws DimensionMismatch sparse_resident_cache(prob, invalid_alg)
@@ -440,11 +440,11 @@ end
             AutoFiniteDiff(; fdjtype = Val(:central)),
         )
         cache = sparse_resident_cache(prob, MIRK4(; jac_alg = BVPJacobianAlgorithm(mode)); dt = 0.2f0)
-        x = vec(copy(cache.y[]))
+        x = vec(copy(cache.y))
         expected = sparse_dense_reference(cache, x)
-        MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-        @test eltype(cache.jac_prototype[]) === Float32
-        @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 3.0f-3 atol = 5.0f-4
+        MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+        @test eltype(MIRK.__mirk_jacobian(cache)) === Float32
+        @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 3.0f-3 atol = 5.0f-4
     end
 end
 
@@ -453,13 +453,13 @@ end
     for dt in (0.02, 0.001)
         cache = sparse_resident_cache(prob; dt)
         plan = sparse_plan(cache)
-        N = length(cache.mesh_dt[])
+        N = length(cache.mesh_dt)
         M = cache.M
-        @test cache.jac_prototype[] isa SparseMatrixCSC
+        @test MIRK.__mirk_jacobian(cache) isa SparseMatrixCSC
         # Each collocation block touches two states. Each test boundary row
         # touches at most three nearby states, independent of the mesh size.
-        @test nnz(cache.jac_prototype[]) <= 2M^2 * N + 12M
-        @test nnz(cache.jac_prototype[]) < length(cache.jac_prototype[]) ÷ 10
+        @test nnz(MIRK.__mirk_jacobian(cache)) <= 2M^2 * N + 12M
+        @test nnz(MIRK.__mirk_jacobian(cache)) < length(MIRK.__mirk_jacobian(cache)) ÷ 10
         @test all(group.ncolors <= 6M for group in plan.groups)
         @test sum(cld(group.ncolors, 8) for group in plan.groups) <= 4
         @test !plan.boundary_fallback
@@ -469,19 +469,19 @@ end
 @testset "Mesh refinement rebuilds the sparse derivative plan" begin
     prob = first(sparse_jacobian_problems())
     cache = sparse_resident_cache(prob)
-    old_J, old_plan = cache.jac_prototype[], sparse_plan(cache)
-    old_nodes = length(cache.mesh[])
-    MIRK.__device_residual!(cache.residual[], vec(cache.y[]), cache)
+    old_J, old_plan = MIRK.__mirk_jacobian(cache), sparse_plan(cache)
+    old_nodes = length(cache.mesh)
+    MIRK.__device_residual!(cache.residual, vec(cache.y), cache)
     MIRK.half_mesh!(cache)
-    @test length(cache.mesh[]) == 2old_nodes - 1
-    @test cache.jac_prototype[] isa SparseMatrixCSC
-    @test cache.jac_prototype[] !== old_J
+    @test length(cache.mesh) == 2old_nodes - 1
+    @test MIRK.__mirk_jacobian(cache) isa SparseMatrixCSC
+    @test MIRK.__mirk_jacobian(cache) !== old_J
     @test sparse_plan(cache) !== old_plan
-    @test size(cache.jac_prototype[]) == (length(cache.residual[]), length(cache.y[]))
-    x = vec(copy(cache.y[]))
+    @test size(MIRK.__mirk_jacobian(cache)) == (length(cache.residual), length(cache.y))
+    x = vec(copy(cache.y))
     expected = sparse_dense_reference(cache, x)
-    MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-    @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+    MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+    @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
 end
 
 function sparse_solvable_rhs!(du, u, p, t)
@@ -507,7 +507,7 @@ end
     sol = solve!(cache)
     @test successful_retcode(cpu)
     @test successful_retcode(sol)
-    @test cache.jac_prototype[] isa SparseMatrixCSC
+    @test MIRK.__mirk_jacobian(cache) isa SparseMatrixCSC
     @test sol.original.prob.f.jac_prototype isa SparseMatrixCSC
     @test Array(sol) ≈ Array(cpu) rtol = 1.0e-8 atol = 1.0e-9
     @test sol(0.43) ≈ [1 / (2 - 0.43), 1 / (2 - 0.43)^2] rtol = 1.0e-4
@@ -516,8 +516,8 @@ end
     adaptive_sol = solve!(adaptive_cache)
     @test successful_retcode(adaptive_sol)
     @test length(adaptive_sol.t) > 5
-    @test adaptive_cache.jac_prototype[] isa SparseMatrixCSC
-    @test size(adaptive_cache.jac_prototype[], 2) == 2length(adaptive_sol.t)
+    @test MIRK.__mirk_jacobian(adaptive_cache) isa SparseMatrixCSC
+    @test size(MIRK.__mirk_jacobian(adaptive_cache), 2) == 2length(adaptive_sol.t)
     @test adaptive_sol(0.43) ≈ [1 / (2 - 0.43), 1 / (2 - 0.43)^2] rtol = 1.0e-5
 end
 
@@ -534,10 +534,10 @@ end
     @test successful_retcode(changed)
     @test sparse_plan(cache).pattern != old_pattern
     @test changed(0.43) ≈ [1 / (2 - 0.43), 1 / (2 - 0.43)^2] rtol = 1.0e-4
-    x = vec(copy(cache.y[]))
+    x = vec(copy(cache.y))
     expected = sparse_dense_reference(cache, x)
-    MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-    @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+    MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+    @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
 end
 
 function sparse_nlls_rhs!(du, u, p, t)
@@ -556,25 +556,25 @@ end
     bf = BVPFunction(sparse_nlls_rhs!, sparse_nlls_bc!; bcresid_prototype = zeros(3))
     prob = BVProblem(bf, [0.5, 0.5], (0.0, 1.0); nlls = Val(true))
     cache = sparse_resident_cache(prob; dt = 0.1, abstol = 1.0e-8)
-    x = vec(copy(cache.y[]))
+    x = vec(copy(cache.y))
     expected = sparse_dense_reference(cache, x)
-    MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-    @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+    MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+    @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
     nlprob = MIRK.__construct_problem(cache, x)
     direction = sin.(eachindex(x))
-    residual_direction = cos.(eachindex(cache.residual[]))
-    jvp, vjp = similar(cache.residual[]), similar(x)
+    residual_direction = cos.(eachindex(cache.residual))
+    jvp, vjp = similar(cache.residual), similar(x)
     nlprob.f.jvp(jvp, direction, x, nlprob.p)
     nlprob.f.vjp(vjp, residual_direction, x, nlprob.p)
     @test jvp ≈ expected * direction rtol = 1.0e-11 atol = 1.0e-11
     @test vjp ≈ expected' * residual_direction rtol = 1.0e-11 atol = 1.0e-11
     product_J = sparse_plan(cache).product
     @test product_J isa SparseMatrixCSC
-    @test product_J !== cache.jac_prototype[]
+    @test product_J !== MIRK.__mirk_jacobian(cache)
     sol = solve!(cache)
     @test successful_retcode(sol)
-    @test cache.jac_prototype[] isa SparseMatrixCSC
-    @test size(cache.jac_prototype[]) == (length(x) + 1, length(x))
+    @test MIRK.__mirk_jacobian(cache) isa SparseMatrixCSC
+    @test size(MIRK.__mirk_jacobian(cache)) == (length(x) + 1, length(x))
     @test sol.original.prob.f.jac_prototype isa SparseMatrixCSC
     @test sol.u[end] ≈ fill(exp(1.0), 2) rtol = 1.0e-4
 end
@@ -616,9 +616,9 @@ end
         @test length(plan.groups) == ngroups
         @test !plan.boundary_fallback
         @test sol(0.43) ≈ [1 / (2 - 0.43), 1 / (2 - 0.43)^2] rtol = 1.0e-4
-        x = vec(copy(cache.y[]))
+        x = vec(copy(cache.y))
         expected = sparse_dense_reference(cache, x)
-        MIRK.__device_jacobian!(cache.jac_prototype[], x, cache)
-        @test Matrix(cache.jac_prototype[]) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
+        MIRK.__device_jacobian!(MIRK.__mirk_jacobian(cache), x, cache)
+        @test Matrix(MIRK.__mirk_jacobian(cache)) ≈ expected rtol = 1.0e-11 atol = 1.0e-11
     end
 end

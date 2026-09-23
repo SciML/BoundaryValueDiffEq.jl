@@ -49,7 +49,7 @@ using SciMLBase: DynamicalBVPFunction, init, solve, solve!, successful_retcode
 using Setfield: @set!
 
 using BoundaryValueDiffEqCore: __device_copy_parameter!, __device_bc_sizes, __device_jacobian!,
-    __device_jacobian_products, __device_parameter, __device_reshape, __device_residual!,
+    __device_jacobian_products, __device_parameter, __device_reshape, __reshape_buffer, __device_residual!,
     __device_validate_ad, __device_eval!, __device_initial_backend, __device_initial_state,
     __device_boundary_pattern, __device_sparse_structure, __prepare_device_jacobian,
     __device_host_parameter

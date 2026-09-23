@@ -497,11 +497,11 @@ end
 # Resident storage interleaves position and velocity at each node:
 # y[1:M, i] = u_i, y[M+1:2M, i] = du_i. Consequently each interval has
 # one contiguous 2M residual block and only two adjacent unknown blocks.
-@inline __mirkn_states(cache::MIRKNCache) = reshape(cache.y, 2cache.M, length(cache.host_mesh))
-@inline __mirkn_stages(cache::MIRKNCache) = reshape(cache.k_discrete, cache.M, cache.TU.s, length(cache.host_mesh) - 1)
-@inline __mirkn_collocation(cache::MIRKNCache) = reshape(cache.collocation_cache, 2cache.M, length(cache.host_mesh) - 1)
+@inline __mirkn_states(cache::MIRKNCache) = __reshape_buffer(cache.y, 2cache.M, length(cache.host_mesh))
+@inline __mirkn_stages(cache::MIRKNCache) = __reshape_buffer(cache.k_discrete, cache.M, cache.TU.s, length(cache.host_mesh) - 1)
+@inline __mirkn_collocation(cache::MIRKNCache) = __reshape_buffer(cache.collocation_cache, 2cache.M, length(cache.host_mesh) - 1)
 @inline __mirkn_jacobian(cache::MIRKNCache) = cache.jacobian_cache === nothing ?
-    reshape(cache.jac_prototype, length(cache.residual), length(cache.y)) : cache.jacobian_cache[nothing].matrix
+    __reshape_buffer(cache.jac_prototype, length(cache.residual), length(cache.y)) : cache.jacobian_cache[nothing].matrix
 @inline __mirkn_jacobian_plan(cache::MIRKNCache) = cache.jacobian_cache === nothing ?
     nothing : cache.jacobian_cache[nothing].plan
 BoundaryValueDiffEqCore.__bvp_device_residual_prototype(cache::MIRKNCache) = cache.residual
@@ -553,7 +553,7 @@ function __init_mirkn_device(
     to_device(x) = __device_parameter(platform, x)
     mesh, mesh_dt = to_device(host_mesh), to_device(diff(host_mesh))
     y_buffer = similar(u0, T, 2M * (N + 1))
-    y = reshape(y_buffer, 2M, N + 1)
+    y = __reshape_buffer(y_buffer, 2M, N + 1)
     __mirkn_device_initial_guess!(view(y, 1:M, :), prob.u0, prob.p, host_mesh, u0)
     copyto!(view(y, (M + 1):2M, :), view(y, 1:M, :))
     host_TU = constructMIRKN(alg, T)
@@ -574,7 +574,7 @@ function __init_mirkn_device(
     return MIRKNCache{isinplace(prob), T}(
         alg_order(alg), TU.s, M, size(u0), prob.f.f, prob.f.bc, prob, prob.problem_type,
         to_device(prob.p), alg, TU, nothing, mesh, mesh_dt, host_mesh, k, y_buffer, nothing, residual,
-        jacobian.plan === nothing ? vec(jacobian.matrix) : nothing,
+        jacobian.plan === nothing ? copy(vec(jacobian.matrix)) : nothing,
         jacobian.plan === nothing ? nothing : Dict(nothing => jacobian),
         tmp, Dict{DataType, Any}(), Dict{DataType, Any}(), bc_sizes,
         __concrete_kwargs(alg.nlsolve, nothing, nlsolve_kwargs, optimize_kwargs, _process_verbose_param(verbose)),
@@ -593,8 +593,8 @@ function __mirkn_device_buffers(cache::MIRKNCache, ::Type{T}) where {T}
             resize!(buffers.k, length(cache.k_discrete))
             resize!(buffers.tmp, length(cache.collocation_cache))
             (;
-                k = reshape(buffers.k, size(__mirkn_stages(cache))),
-                tmp = reshape(buffers.tmp, size(__mirkn_collocation(cache))),
+                k = __reshape_buffer(buffers.k, size(__mirkn_stages(cache))),
+                tmp = __reshape_buffer(buffers.tmp, size(__mirkn_collocation(cache))),
             )
         end
     end

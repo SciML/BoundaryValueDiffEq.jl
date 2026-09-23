@@ -1681,11 +1681,11 @@ end
 # `unknowns`. All resizable arrays own flat storage; shaped views are regenerated
 # after resizing, since device reshapes can retain the previous allocation.
 @inline __firk_states(cache::Union{FIRKCacheExpand, FIRKCacheNested}) =
-    reshape(cache.y, prod(cache.in_size), (length(cache.host_mesh) - 1) * (cache.TU.s + 1) + 1)
+    __reshape_buffer(cache.y, prod(cache.in_size), (length(cache.host_mesh) - 1) * (cache.TU.s + 1) + 1)
 @inline __firk_unknowns(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.alg.nested_nlsolve ?
-    reshape(cache.unknowns, prod(cache.in_size), length(cache.host_mesh)) : __firk_states(cache)
+    __reshape_buffer(cache.unknowns, prod(cache.in_size), length(cache.host_mesh)) : __firk_states(cache)
 @inline __firk_jacobian(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.jacobian_cache === nothing ?
-    reshape(cache.jac_prototype, length(cache.residual), length(cache.unknowns)) :
+    __reshape_buffer(cache.jac_prototype, length(cache.residual), length(cache.unknowns)) :
     cache.jacobian_cache[nothing].matrix
 @inline __firk_jacobian_plan(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.jacobian_cache === nothing ?
     nothing : cache.jacobian_cache[nothing].plan
@@ -1699,7 +1699,7 @@ function __firk_work_array(cache, key, ::Type{T}, dims...) where {T}
         similar(cache.y, T, prod(dims))
     end
     resize!(buffer, prod(dims))
-    return reshape(buffer, dims...)
+    return __reshape_buffer(buffer, dims...)
 end
 
 function __init_firk_device(
@@ -1743,7 +1743,7 @@ function __init_firk_device(
     TU = FIRKTableau(TU.s, upload(TU.a), upload(TU.c), upload(TU.b), false)
     ITU = FIRKInterpTableau(upload(ITU.q_coeff), ITU.τ_star, ITU.stage, false)
     y_buffer = KernelAbstractions.allocate(platform, T, (M * (N * (TU.s + 1) + 1),))
-    y = reshape(y_buffer, M, N * (TU.s + 1) + 1)
+    y = __reshape_buffer(y_buffer, M, N * (TU.s + 1) + 1)
     states = prob.u0 isa AbstractVector{<:AbstractArray} ? prob.u0 :
         (prob.u0 isa Union{AbstractVectorOfArray, SciMLBase.ODESolution} ? prob.u0.u : nothing)
     if states === nothing && !(prob.u0 isa Function)
@@ -1769,7 +1769,7 @@ function __init_firk_device(
     bc_sizes = __device_bc_sizes(prob, tune_parameters ? view(y, :, 1) : u0)
     nbc = prob.problem_type isa TwoPointBVProblem ? sum(prod, bc_sizes) : prod(first(bc_sizes))
     unknowns_buffer = alg.nested_nlsolve ? similar(y_buffer, M * (N + 1)) : y_buffer
-    unknowns = alg.nested_nlsolve ? reshape(unknowns_buffer, M, N + 1) : y
+    unknowns = alg.nested_nlsolve ? __reshape_buffer(unknowns_buffer, M, N + 1) : y
     alg.nested_nlsolve && copyto!(unknowns, view(y, :, 1:(TU.s + 1):size(y, 2)))
     residual = similar(y, M * (size(unknowns, 2) - 1) + nbc)
     jacobian = __firk_prepare_device_jacobian(
@@ -1784,7 +1784,7 @@ function __init_firk_device(
         alg_order(alg), TU.s, M, in_size, f, upload(host_mass), upload(algebraic_indices),
         prob.f.bc, prob, prob.problem_type, upload(prob.p), alg, TU, ITU, nothing, nothing,
         upload(host_mesh), upload(diff(host_mesh)), host_mesh, nothing, y_buffer, nothing, unknowns_buffer,
-        residual, jacobian.plan === nothing ? vec(jacobian.matrix) : nothing,
+        residual, jacobian.plan === nothing ? copy(vec(jacobian.matrix)) : nothing,
         jacobian.plan === nothing ? nothing : Dict(nothing => jacobian),
         nothing, nothing, nothing, Dict{DataType, Any}(),
         Dict{Any, Any}(), (; y = similar(y_buffer, 0), mesh = similar(y_buffer, eltype(host_mesh), 0)),

@@ -1089,6 +1089,18 @@ function __device_copy_parameter!(dest::Union{Tuple, NamedTuple}, src::Union{Tup
     return nothing
 end
 
+"""
+    __reshape_buffer(buffer, dims...)
+    __reshape_buffer(buffer, dims::Tuple)
+
+Reshape an owning buffer without preventing later resizing of its storage. On CPU,
+reshape a view so Julia 1.10 does not mark the vector's allocation as shared.
+Recreate the shaped view after resizing the buffer, including on device backends.
+"""
+@inline __reshape_buffer(buffer, dims::Tuple) = reshape(buffer, dims)
+@inline __reshape_buffer(buffer::Vector, dims::Tuple) = reshape(view(buffer, :), dims)
+@inline __reshape_buffer(buffer, dims::Int...) = __reshape_buffer(buffer, dims)
+
 # Base.reshape's error path is not GPU-compatible; validate dimensions on the host.
 
 Base.size(a::DeviceReshapedArray) = a.dims

@@ -3,7 +3,7 @@ module BoundaryValueDiffEqAscher
 using ADTypes: ADTypes, AutoSparse
 using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
 
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore, __reshape_buffer,
     __default_sparse_linsolve, __concrete_device_solve_algorithm,
     __device_sparse_matrix, __device_sparse_supported,
     AbstractBoundaryValueDiffEqAlgorithm,

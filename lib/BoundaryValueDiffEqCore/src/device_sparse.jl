@@ -4,7 +4,8 @@
 Whether the array backend provides sparse Jacobian storage. Device extensions
 implement this hook together with [`__device_sparse_matrix`](@ref).
 """
-__device_sparse_supported(::AbstractArray) = false
+__device_sparse_supported(template::AbstractArray) =
+    parent(template) === template ? false : __device_sparse_supported(parent(template))
 __device_sparse_supported(::Array) = true
 
 """
@@ -16,6 +17,9 @@ host coordinates `rows` and `cols` follow the storage order of `nonzeros(matrix)
 Keep structural zeros and do not alias or modify the input pattern.
 """
 function __device_sparse_matrix(template, pattern)
+    if template isa AbstractArray && parent(template) !== template
+        return __device_sparse_matrix(parent(template), pattern)
+    end
     throw(ArgumentError("No sparse-storage adapter is loaded for $(typeof(template)). Load CUDA for CuArray support, or implement BoundaryValueDiffEqCore.__device_sparse_matrix and __device_sparse_supported for the backend."))
 end
 
@@ -48,8 +52,20 @@ buffers, and uses `__bvp_device_residual_prototype(cache)` for its backend and s
 """
 function __bvp_device_unknowns end
 
-# Cache accessors allow solvers to own arrays directly or use replaceable refs.
+"""
+    __bvp_device_residual_prototype(cache)
+
+Return the resident residual buffer used to determine Jacobian workspace size,
+element type and backend. Solvers with directly owned buffers override this accessor.
+"""
 __bvp_device_residual_prototype(cache) = cache.residual[]
+
+"""
+    __bvp_device_jacobian_plan(cache)
+
+Return the resident sparse Jacobian plan, or `nothing` for dense differentiation.
+Solvers override this accessor to match their cache storage.
+"""
 __bvp_device_jacobian_plan(cache) = cache.jacobian_cache[]
 
 function __bvp_device_jacobian_buffers(cache, ::Type{T}) where {T}

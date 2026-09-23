@@ -20,16 +20,18 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        ::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N
+        cache::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N
     )
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
     J₂ = M * N
     J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
-    # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return sparse(J)
-    return J
+    # Trust-region damping appends rows outside the original band. Sparse storage
+    # also supports the QR needed by underdetermined systems.
+    damping = cache.alg.optimize === nothing &&
+        __needs_sparse_damping(cache.alg.nlsolve, ya)
+    return J₁ < J₂ || damping ? sparse(J) : J
 end
 
 function __generate_sparse_jacobian_prototype(

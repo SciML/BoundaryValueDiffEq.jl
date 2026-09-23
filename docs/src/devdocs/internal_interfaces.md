@@ -10,6 +10,38 @@ concrete solver algorithm instead of depending on these names.
 BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm
 ```
 
+## Resident Device Interfaces
+
+```@docs
+BoundaryValueDiffEqCore.BVPTunableRHS
+BoundaryValueDiffEqCore.SparseJacobianCache
+BoundaryValueDiffEqCore.__bvp_device_ad_jacobian!
+BoundaryValueDiffEqCore.__bvp_device_jacobian_plan
+BoundaryValueDiffEqCore.__bvp_device_residual_prototype
+BoundaryValueDiffEqCore.__bvp_device_sparse_group
+BoundaryValueDiffEqCore.__bvp_device_unknowns
+BoundaryValueDiffEqCore.__device_bc_sizes
+BoundaryValueDiffEqCore.__device_boundary_pattern
+BoundaryValueDiffEqCore.__device_copy_parameter!
+BoundaryValueDiffEqCore.__device_eval!
+BoundaryValueDiffEqCore.__device_function
+BoundaryValueDiffEqCore.__device_host_parameter
+BoundaryValueDiffEqCore.__device_initial_backend
+BoundaryValueDiffEqCore.__device_initial_state
+BoundaryValueDiffEqCore.__device_jacobian!
+BoundaryValueDiffEqCore.__device_jacobian_products
+BoundaryValueDiffEqCore.__device_nlls_linsolve
+BoundaryValueDiffEqCore.__device_parameter
+BoundaryValueDiffEqCore.__device_reshape
+BoundaryValueDiffEqCore.__device_residual!
+BoundaryValueDiffEqCore.__device_singular!
+BoundaryValueDiffEqCore.__device_sparse_structure
+BoundaryValueDiffEqCore.__device_square_linsolve
+BoundaryValueDiffEqCore.__device_validate_ad
+BoundaryValueDiffEqCore.__prepare_device_jacobian
+BoundaryValueDiffEqCore.__reshape_buffer
+```
+
 ## Core Internal Interfaces
 
 ```@docs

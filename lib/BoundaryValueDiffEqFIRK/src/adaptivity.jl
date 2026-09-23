@@ -713,7 +713,7 @@ function __firk_refine!(cache, host_mesh)
     ncols = (length(host_mesh) - 1) * (cache.TU.s + 1) + 1
     M = size(y, 1)
     resize!(scratch.y, M * ncols)
-    newy = reshape(scratch.y, M, ncols)
+    newy = __reshape_buffer(scratch.y, M, ncols)
     __firk_refine_kernel!(platform)(
         newy, scratch.mesh, y, cache.mesh, cache.mesh_dt,
         work.coefficients, cache.TU.s, cache.in_size, cache.TU.c; ndrange = length(host_mesh)
