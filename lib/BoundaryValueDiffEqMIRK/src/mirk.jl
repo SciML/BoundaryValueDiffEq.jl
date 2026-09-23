@@ -375,9 +375,13 @@ function __perform_mirk_iteration(cache::MIRKCache, abstol, adaptive::Bool, cont
             if info == ReturnCode.Success
                 (length(mesh) < length(cache.mesh)) &&
                     __resize!(cache.y₀.u, length(cache.mesh), cache.M)
+                # `interp_eval!` reads the old-mesh values in `cache.y₀`, so the new
+                # guess must not overwrite them until every point is evaluated.
+                y_new = [similar(cache.y₀.u[i]) for i in eachindex(cache.mesh)]
                 for (i, m) in enumerate(cache.mesh)
-                    interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
+                    interp_eval!(y_new[i], cache, m, mesh, mesh_dt)
                 end
+                foreach(copyto!, cache.y₀.u, y_new)
                 __expand_cache!(cache)
             end
         end
