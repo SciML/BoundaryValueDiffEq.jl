@@ -4,7 +4,8 @@ using ADTypes: ADTypes, AutoForwardDiff, AutoSparse
 using ArrayInterface: fast_scalar_indexing
 using BandedMatrices: BandedMatrix, Ones
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
-    __device_sparse_matrix, __default_linsolve, __concrete_device_solve_algorithm,
+    __device_sparse_matrix, __default_linsolve, __default_sparse_linsolve,
+    __concrete_device_solve_algorithm,
     AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm,
     recursive_flatten!,
     __concrete_solve_algorithm,

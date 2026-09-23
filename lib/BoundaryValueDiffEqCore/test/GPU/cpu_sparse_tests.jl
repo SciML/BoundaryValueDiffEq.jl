@@ -1,10 +1,22 @@
 include("device_sparse_tests.jl")
 
+# A backend without a sparse adapter must still take the dense fallback.
+# CPU views inherit sparse support from their parent storage.
+struct DenseOnlyArray{T, N} <: AbstractArray{T, N}
+    data::Array{T, N}
+end
+Base.size(x::DenseOnlyArray) = size(x.data)
+Base.getindex(x::DenseOnlyArray, i::Int) = x.data[i]
+Base.similar(x::DenseOnlyArray, dims::Dims) = similar(x.data, dims)
+
 @testset "CPU sparse storage" begin
     test_device_sparse_storage(identity)
     template = view(zeros(4), 1:2)
-    @test !__device_sparse_supported(template)
-    @test_throws ArgumentError __device_sparse_matrix(template, spzeros(2, 2))
+    @test __device_sparse_supported(template)
+    @test __device_sparse_matrix(template, spzeros(2, 2)).matrix isa SparseMatrixCSC
+    unsupported = DenseOnlyArray(zeros(2))
+    @test !__device_sparse_supported(unsupported)
+    @test_throws ArgumentError __device_sparse_matrix(unsupported, spzeros(2, 2))
 
     pattern = sparse([1, 2], [1, 2], [1.0, 2.0])
     storage = __device_sparse_matrix(zeros(2), pattern)
@@ -117,7 +129,7 @@ end
     @test Matrix(traced) == trues(1, 4)
 
     storage = core.__prepare_device_jacobian(
-        view(reshape(copy(u), 1, :), :, :), StandardBVProblem(), ((1,), ())
+        DenseOnlyArray(reshape(copy(u), 1, :)), StandardBVProblem(), ((1,), ())
     ) do
         error("Dense backends must not construct sparse metadata")
     end

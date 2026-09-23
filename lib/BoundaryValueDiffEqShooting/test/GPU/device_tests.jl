@@ -25,6 +25,7 @@ function device_shooting_tests(platform; gpu = false)
                 alg = MultipleShooting(8, Tsit5(); platform, device_steps = 4)
                 sol = solve(prob, alg; abstol = tol, nlsolve_kwargs = (; abstol = tol, reltol = tol / 10))
                 @test successful_retcode(sol)
+                @test eltype(sol.u[1]) === T
                 @test maximum(abs, sol.resid) < 5tol
                 @test Array(sol.u[end]) ≈ T[sin(1), cos(1)] atol = 5tol
                 @test Array(sol(T(0.5))) ≈ T[sin(0.5), cos(0.5)] atol = 5tol

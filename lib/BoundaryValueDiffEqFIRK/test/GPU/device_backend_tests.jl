@@ -1,5 +1,6 @@
 using BoundaryValueDiffEqFIRK, Test
 using ForwardDiff, SparseArrays
+using KernelAbstractions: get_backend
 using SciMLBase: ReturnCode, isinplace
 const FIRK = BoundaryValueDiffEqFIRK
 
@@ -136,7 +137,9 @@ function test_device_backend(upload, is_device, platform; gpu = false)
 end
 
 if !isdefined(@__MODULE__, :FIRK_GPU_TESTS)
-    test_device_backend(identity, x -> x isa Array, CPU())
+    # Resizable CPU buffers expose reshaped views, which are not Arrays.
+    # Check their execution backend, as with the other resident storage checks.
+    test_device_backend(identity, x -> get_backend(x) isa CPU, CPU())
     @testset "Packed sparse Jacobian agrees with independent ForwardDiff" begin
         prob = device_problem(identity, Float64, true, false; interior = true)
         cache = packed_init(prob, RadauIIa3(); dt = 0.2, adaptive = false)

@@ -38,8 +38,12 @@ include("firk_test_setup.jl")
         end
 
         @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
+            # The finest two-point LobattoIIIc4 error is near Float64 roundoff.
+            # Use coarser meshes to measure truncation error and retain the
+            # same sixth-order convergence requirement.
+            convergence_dts = stage == 4 && i in (9, 10) ? 2 .* dts : dts
             @time sim = test_convergence(
-                dts, prob, lobattoIIIc_solver(Val(stage); nested_nlsolve = nested);
+                convergence_dts, prob, lobattoIIIc_solver(Val(stage); nested_nlsolve = nested);
                 abstol = 1.0e-8, reltol = 1.0e-8
             )
             if stage == 5 || ((stage == 4) && (i == 3 || i == 4))

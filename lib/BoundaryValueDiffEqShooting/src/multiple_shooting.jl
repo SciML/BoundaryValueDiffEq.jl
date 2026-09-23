@@ -941,6 +941,7 @@ end
 
 # The CUDSS extension specializes this hook for shooting's segment layout.
 __shooting_default_linsolve(u, cache, plan) = __default_linsolve(u)
+__shooting_default_linsolve(u::Array, cache, plan) = __default_sparse_linsolve(plan.matrix)
 
 function __multiple_shooting_device_solve(prob, alg; abstol, odesolve_kwargs, nlsolve_kwargs, optimize_kwargs, ensemblealg, verbose, kwargs...)
     __shooting_validate(prob, alg, odesolve_kwargs, kwargs)

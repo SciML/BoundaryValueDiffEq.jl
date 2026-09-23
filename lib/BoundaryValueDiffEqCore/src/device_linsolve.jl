@@ -20,8 +20,12 @@ __default_linsolve(::Array) = nothing
 """
     __default_sparse_linsolve(matrix)
 
-Select a sparse direct solver for a resident system. Float64 host CSC matrices use
-UMFPACK; other matrices use the optional backend adapter in `__device_sparse_linsolve`.
+Select a linear solver for a resident sparse system. Float64 host CSC matrices use
+UMFPACK; Float32 host CSC matrices use GMRES to preserve Float32 storage and avoid
+LinearSolve 4.2's default LU path, which passes Float32 directly to an unsupported
+UMFPACK constructor. Other matrices use the optional backend adapter in
+`__device_sparse_linsolve`.
 """
 __default_sparse_linsolve(matrix) = __device_sparse_linsolve(matrix)
 __default_sparse_linsolve(::SparseMatrixCSC{Float64}) = UMFPACKFactorization()
+__default_sparse_linsolve(::SparseMatrixCSC{Float32}) = KrylovJL_GMRES()

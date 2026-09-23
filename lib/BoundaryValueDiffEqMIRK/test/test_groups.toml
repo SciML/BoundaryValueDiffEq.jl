@@ -7,8 +7,6 @@
 # the default "All" run, and runs on release + LTS Julia only.
 # GPU is an opt-in group with its own CUDA environment; it is deliberately
 # omitted here because the shared CI matrix does not provide NVIDIA hardware.
-# Device is an additional opt-in group for JLArrays storage and scalar-indexing
-# checks, with its dependencies isolated from the normal Core environment.
 
 [Core]
 versions = ["lts", "1", "pre"]
@@ -19,7 +17,8 @@ versions = ["lts", "1", "pre"]
 versions = ["lts", "1", "pre"]
 
 # Portable GPU kernels, sparse differentiation and interpolation on the CPU.
-# No CUDA/JLArrays dependencies; run separately to preserve Core's CI budget.
+# Includes JLArrays storage and scalar-indexing checks without requiring CUDA.
+# Run separately to preserve Core's CI budget.
 [DeviceKernels]
 versions = ["lts", "1", "pre"]
 

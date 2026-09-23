@@ -19,7 +19,7 @@ end
     # A non-Array storage token exercises the backend fallback without a GPU.
     @test __default_linsolve(nothing) == KrylovJL_GMRES()
     @test __default_sparse_linsolve(sparse([2.0 1.0; 1.0 3.0])) isa UMFPACKFactorization
-    @test __default_sparse_linsolve(sparse(Float32[2 1; 1 3])) === nothing
+    @test __default_sparse_linsolve(sparse(Float32[2 1; 1 3])) == KrylovJL_GMRES()
 end
 
 @testset "Shared internal nonlinear solvers" begin
