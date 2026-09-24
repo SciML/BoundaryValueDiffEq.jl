@@ -1,0 +1,333 @@
+@inline __default_cost(::Nothing) = (x, p) -> 0.0
+@inline __default_cost(f) = f
+
+"""
+    __build_cost(fun, cache, mesh, M; tune_parameters = false, p = nothing)
+
+Build the objective function used by optimization-based BVP solves from a user supplied
+cost functional.
+"""
+@inline __build_cost(::Nothing, cache, mesh, M; kwargs...) = (x, p) -> 0.0
+@inline function __build_cost(fun, cache, mesh, M; tune_parameters = false, p = nothing)
+    if tune_parameters && SciMLStructures.isscimlstructure(p)
+        # When tune_parameters=true, the state vector is augmented with tunable params
+        # Extract them and use SciMLStructures.replace to update p for the cost function
+        tunable_part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        l_params = length(tunable_part)
+        length_u = M - l_params
+        cost_fun = @views function (u, p_orig)
+            newy = eachcol(reshape(u, M, :))
+            # Extract tunable params from first mesh point (same at all points)
+            params_from_u = u[(length_u + 1):M]
+            new_p = SciMLStructures.replace(SciMLStructures.Tunable(), p_orig, params_from_u)
+            eval_sol = EvalSol(newy, mesh, cache)
+            return fun(eval_sol, new_p)
+        end
+    elseif tune_parameters && !isnothing(p)
+        length_u = M - length(p)
+        cost_fun = @views function (u, p)
+            # When tune_parameters=true, the state vector is augmented with tunable params
+            newy = eachcol(reshape(u, M, :))
+            params_from_u = u[(length_u + 1):M]
+            eval_sol = EvalSol(newy, mesh, cache)
+            return fun(eval_sol, params_from_u)
+        end
+    else
+        cost_fun = @views function (u, p)
+            # simple recursive unflatten
+            newy = eachcol(reshape(u, M, :))
+            eval_sol = EvalSol(newy, mesh, cache)
+            return fun(eval_sol, p)
+        end
+    end
+    return cost_fun
+end
+
+"""
+    __extract_lcons_ucons(prob, T, constraint_length)
+
+Build the `lcons` / `ucons` vectors for the equality-constrained optimization
+problem constructed from a BVP. Length must match the actual constraint vector
+(`resid_prototype`) passed to the solver — not a reconstruction from
+`(M, N, bcresid_prototype, f_prototype)`, which has a different formula per
+discretization (MIRK: `L_bc + M*(N-1)`; FIRK Expanded: `L_bc + M*(N-1)*(stage+1)`;
+MIRKN: `L_bc + M*2*(N-1)`; shooting: `L_bc`). Callers pass `length(resid_prototype)`
+directly.
+"""
+@inline function __extract_lcons_ucons(
+        prob::AbstractBVProblem, ::Type{T}, constraint_length::Int
+    ) where {T}
+    lcons = if isnothing(prob.lcons)
+        zeros(T, constraint_length)
+    else
+        lcons_length = length(prob.lcons)
+        vcat(prob.lcons, zeros(T, constraint_length - lcons_length))
+    end
+    ucons = if isnothing(prob.ucons)
+        zeros(T, constraint_length)
+    else
+        ucons_length = length(prob.ucons)
+        vcat(prob.ucons, zeros(T, constraint_length - ucons_length))
+    end
+    return lcons, ucons
+end
+
+@inline function __extract_lb_ub(prob::AbstractBVProblem, ::Type{T}, M, N) where {T}
+    lb = if isnothing(prob.lb)
+        nothing
+    else
+        repeat(prob.lb, N)
+    end
+    ub = if isnothing(prob.ub)
+        nothing
+    else
+        repeat(prob.ub, N)
+    end
+    return lb, ub
+end
+
+"""
+    integral(fun, domain)
+
+Evaluate a one-dimensional integral over `domain` using the default `Integrals.QuadGKJL`
+backend.
+"""
+function integral(fun, domain)
+    prob = IntegralProblem(fun, domain)
+    sol = SciMLBase.solve(prob, Integrals.QuadGKJL())
+    return sol.u
+end
+
+@inline function __optimization_second_order_ad(diffmode, sparsity_diffmode = diffmode)
+    dense_ad = get_dense_ad(diffmode)
+    return AutoSparse(
+        SecondOrder(dense_ad, dense_ad),
+        sparsity_detector = __default_sparsity_detector(sparsity_diffmode)
+    )
+end
+
+"""
+    __construct_internal_problem
+
+Constructs the internal problem according to the specified boundary value problem and the
+selected algorithm. Depending on the formulation, it returns either a `NonlinearProblem` or an `OptimizationProblem`.
+"""
+function __construct_internal_problem(
+        prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, cost_fun
+    )
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            cost_fun,
+            __optimization_second_order_ad(
+                alg.jac_alg.nonbc_diffmode, alg.jac_alg.diffmode
+            ),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end
+
+function __construct_internal_problem(
+        prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype, resid_prototype,
+        bcresid_prototype, f_prototype, y, p, M::Int, N::Int, cost_fun
+    )
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            cost_fun,
+            __optimization_second_order_ad(alg.jac_alg.diffmode),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end
+
+# Single shooting use diffmode for StandardBVProblem and TwoPointBVProblem
+# Version with Val{iip} for type stability
+function __construct_internal_problem(
+        prob::SciMLBase.AbstractBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int, ::Nothing, ::Val{iip}
+    ) where {iip}
+    T = eltype(y)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{iip}(
+            __default_cost(prob.f.cost),
+            __optimization_second_order_ad(alg.jac_alg.diffmode),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end
+
+# Fallback version without Val{iip} - extracts iip at runtime (for backwards compatibility)
+function __construct_internal_problem(
+        prob::SciMLBase.AbstractBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int, ::Nothing
+    )
+    return __construct_internal_problem(
+        prob, alg, loss, jac, jac_prototype, resid_prototype,
+        y, p, M, N, nothing, Val(SciMLBase.isinplace(prob))
+    )
+end
+
+# Multiple shooting always use inplace version internal problem constructor
+function __construct_internal_problem(
+        prob, pt::StandardBVProblem, alg, loss, jac, jac_prototype,
+        resid_prototype, y, p, M::Int, N::Int, ::Nothing, ::Nothing
+    )
+    T = eltype(y)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{true}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            __default_cost(prob.f.cost),
+            __optimization_second_order_ad(alg.jac_alg.nonbc_diffmode),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end
+function __construct_internal_problem(
+        prob, pt::TwoPointBVProblem, alg, loss, jac, jac_prototype,
+        resid_prototype, y, p, M::Int, N::Int, ::Nothing, ::Nothing
+    )
+    T = eltype(y)
+    #iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{true}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            __default_cost(prob.f.cost),
+            __optimization_second_order_ad(
+                alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode
+            ),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end
+
+# SecondOrderBVProblem
+function __construct_internal_problem(
+        prob, pt::StandardSecondOrderBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int
+    )
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{iip}(
+            __default_cost(prob.f.cost),
+            __optimization_second_order_ad(alg.jac_alg.nonbc_diffmode),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end
+function __construct_internal_problem(
+        prob, pt::TwoPointSecondOrderBVProblem, alg, loss, jac,
+        jac_prototype, resid_prototype, y, p, M::Int, N::Int
+    )
+    T = eltype(y)
+    iip = SciMLBase.isinplace(prob)
+    if !isnothing(alg.nlsolve) || (isnothing(alg.nlsolve) && isnothing(alg.optimize))
+        nlf = NonlinearFunction{iip}(
+            loss; jac, resid_prototype,
+            jac_prototype
+        )
+        return __internal_nlsolve_problem(prob, resid_prototype, y, nlf, y, p)
+    else
+        optf = OptimizationFunction{true}(
+            __default_cost(prob.f),
+            __optimization_second_order_ad(
+                alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode
+            ),
+            cons = loss,
+            cons_j = jac,
+            cons_jac_prototype = sparse(jac_prototype)
+        )
+        lcons, ucons = __extract_lcons_ucons(prob, T, length(resid_prototype))
+        lb, ub = __extract_lb_ub(prob, T, M, N)
+
+        return __internal_optimization_problem(
+            prob, optf, y, p; lcons, ucons, lb, ub
+        )
+    end
+end

@@ -1,4 +1,10 @@
 # Intermediate solution evaluation
+"""
+    EvalSol(u, t, cache)
+
+Internal interpolatable solution wrapper used while forming collocation residuals and
+optimization objectives.
+"""
 @concrete struct EvalSol{C}
     u
     t

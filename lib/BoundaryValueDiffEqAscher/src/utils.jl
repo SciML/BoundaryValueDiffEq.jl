@@ -1,5 +1,6 @@
 function build_almost_block_diagonals(zeta::Vector{T}, ncomp::I, mesh, ::Type{T}) where {
-        T, I}
+        T, I,
+    }
     lside = 0
     ncol = 2 * ncomp
     n = length(mesh) - 1
@@ -53,11 +54,12 @@ function __factorize!(a::Matrix{T}, ipvt::Vector) where {T}
             end
         end
     end
-    ipvt[n] = n
+    return ipvt[n] = n
 end
 
 function __substitute!(a::Matrix{T1}, ipvt::Vector{I}, vb::Vector{Vector{T2}}) where {
-        T1, T2, I}
+        T1, T2, I,
+    }
     n = size(a, 1)
     b = reduce(vcat, vb)
     if n - 1 >= 1
@@ -75,10 +77,11 @@ function __substitute!(a::Matrix{T1}, ipvt::Vector{I}, vb::Vector{Vector{T2}}) w
         b[k] = b[k] / a[k, k]
         @views __muladd!(-b[k], a[1:(k - 1), k], b[1:(k - 1)])
     end
-    recursive_unflatten!(vb, b)
+    return recursive_unflatten!(vb, b)
 end
 function __substitute!(a::Matrix{T1}, ipvt::Vector{I}, b::AbstractVector{T2}) where {
-        T1, T2 <: Real, I}
+        T1, T2 <: Real, I,
+    }
     n = size(a, 1)
     if n - 1 >= 1
         for k in 1:(n - 1)
@@ -95,10 +98,11 @@ function __substitute!(a::Matrix{T1}, ipvt::Vector{I}, b::AbstractVector{T2}) wh
         b[k] = b[k] / a[k, k]
         @views __muladd!(-b[k], a[1:(k - 1), k], b[1:(k - 1)])
     end
+    return
 end
 
 @inline function __muladd!(a, x, y)
-    y .= muladd.(a, x, y)
+    return y .= muladd.(a, x, y)
 end
 
 @views function recursive_flatten!(y::Vector, x::Vector{Vector{Vector{T}}}) where {T}
@@ -121,8 +125,10 @@ end
     return nothing
 end
 
-@views function recursive_flatten!(y::Vector, x::Vector{Vector{T}}) where {T <:
-                                                                           ForwardDiff.Dual}
+@views function recursive_flatten!(y::Vector, x::Vector{Vector{T}}) where {
+        T <:
+        ForwardDiff.Dual,
+    }
     i = 0
     for xᵢ in x
         copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
@@ -182,7 +188,7 @@ end
 end
 
 @inline function construct_bc_jac(prob::BVProblem, bcresid_prototype, pt::TwoPointBVProblem)
-    if isinplace(prob)
+    return if isinplace(prob)
         bcjac = (df, u, p) -> begin
             _du = similar(u)
             La = length(first(bcresid_prototype))
@@ -190,7 +196,7 @@ end
             @views last(prob.f.bc)(_du[(La + 1):end], u, p)
             _f = function (du, u)
                 @views first(prob.f.bc)(du[1:La], u, p)
-                @views last(prob.f.bc)(du[(La + 1):end], u, p)
+                return @views last(prob.f.bc)(du[(La + 1):end], u, p)
             end
             ForwardDiff.jacobian!(df, _f, _du, u)
             return
@@ -203,7 +209,7 @@ end
             _f = function (du, u)
                 dua = first(prob.f.bc)(u, p)
                 dub = last(prob.f.bc)(u, p)
-                du .= vcat(dua, dub)
+                return du .= vcat(dua, dub)
             end
             ForwardDiff.jacobian!(df, _f, vcat(_dua, _dub), u)
             return

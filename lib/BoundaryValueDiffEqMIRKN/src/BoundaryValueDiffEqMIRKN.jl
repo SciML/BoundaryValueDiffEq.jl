@@ -1,49 +1,54 @@
 module BoundaryValueDiffEqMIRKN
 
-using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
-using ArrayInterface: fast_scalar_indexing
-using BandedMatrices: BandedMatrix, Ones
-using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
-                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
-                               recursive_flatten, recursive_flatten!, recursive_unflatten!,
-                               __concrete_solve_algorithm, diff!, EvalSol, eval_bc_residual,
-                               eval_bc_residual!, get_tmp, __maybe_matmul!,
-                               __extract_problem_details, __initial_guess,
-                               __maybe_allocate_diffcache, __restructure_sol,
-                               __get_bcresid_prototype, safe_similar, __vec, __vec_f,
-                               __vec_f!, __vec_bc, __vec_bc!, __vec_so_bc!, __vec_so_bc,
-                               recursive_flatten_twopoint!, __internal_nlsolve_problem,
-                               __extract_mesh, __extract_u0, __has_initial_guess,
-                               __initial_guess_length, __initial_guess_on_mesh,
-                               __flatten_initial_guess, __build_solution, __Fix3,
-                               __default_sparse_ad, __default_nonsparse_ad, get_dense_ad,
-                               concrete_jacobian_algorithm, __default_coloring_algorithm,
-                               __default_sparsity_detector, interval, __split_kwargs,
-                               NoErrorControl, __construct_internal_problem,
-                               __concrete_kwargs, __internal_solve
+using ADTypes: ADTypes, AutoSparse
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+    AbstractBoundaryValueDiffEqAlgorithm,
+    AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
+    DEFAULT_VERBOSE, _process_verbose_param,
+    recursive_flatten!, recursive_unflatten!,
+    __concrete_solve_algorithm, EvalSol, eval_bc_residual,
+    eval_bc_residual!,
+    __extract_problem_details,
+    __maybe_allocate_diffcache, __restructure_sol,
+    safe_similar, __vec_f,
+    __vec_f!, __vec_so_bc!, __vec_so_bc,
+    __extract_mesh,
+    __initial_guess_on_mesh,
+    __build_solution,
+    get_dense_ad,
+    concrete_jacobian_algorithm, __default_coloring_algorithm,
+    __default_sparsity_detector, interval,
+    NoErrorControl, __construct_internal_problem,
+    __concrete_kwargs, __internal_solve
 
 using ConcreteStructs: @concrete
-using DiffEqBase: DiffEqBase
-using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
-using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart,
-                                finish_part_setindex!
+using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
-using ForwardDiff: ForwardDiff, pickchunksize, Dual
-using LinearAlgebra
-using PreallocationTools: PreallocationTools, DiffCache
-using PrecompileTools: @compile_workload, @setup_workload
+using ForwardDiff: ForwardDiff, pickchunksize
+using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using LinearAlgebra: LinearAlgebra
+using PreallocationTools: PreallocationTools, get_tmp
 using Preferences: Preferences
-using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, recursivecopy,
-                           ArrayPartition
-using Reexport: @reexport
-using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, AbstractBVProblem,
-                 StandardSecondOrderBVProblem, StandardBVProblem, __solve, _unwrap_val
-using Setfield: @set!, @set
-using SparseArrays: sparse
+using RecursiveArrayTools: AbstractVectorOfArray, ArrayPartition
+using SciMLBase: SciMLBase, ReturnCode, SecondOrderBVProblem,
+    StandardSecondOrderBVProblem, TwoPointSecondOrderBVProblem, isinplace, remake
+
+# The public API that BoundaryValueDiffEqMIRKN reexports, so that
+# `using BoundaryValueDiffEqMIRKN` on its own is enough to pick AD and execution
+# backends, build a `SecondOrderBVProblem` or `TwoPointSecondOrderBVProblem`, configure
+# the solve, run it, and inspect the result. Every name stays owned and documented by
+# ADTypes, BoundaryValueDiffEqCore, KernelAbstractions, NonlinearSolveFirstOrder or
+# SciMLBase; the set is documented on the Reexported API docs page and approved via
+# `reexports_allow` in test/qa/qa.jl.
+using ADTypes: AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake,
+    AutoPolyesterForwardDiff
+using BoundaryValueDiffEqCore: BVPVerbosity, GaussNewton, LevenbergMarquardt,
+    NewtonRaphson, TrustRegion, integral
+using SciMLBase: DynamicalBVPFunction, init, solve, solve!, successful_retcode
+
+using Setfield: @set!
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("algorithms.jl")
@@ -54,5 +59,16 @@ include("mirkn_tableaus.jl")
 include("interpolation.jl")
 
 export MIRKN4, MIRKN6
+
+# Reexported ADTypes / BoundaryValueDiffEqCore / KernelAbstractions /
+# NonlinearSolveFirstOrder / SciMLBase API; approved via `reexports_allow` in test/qa/qa.jl.
+export CPU
+export AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake, AutoPolyesterForwardDiff,
+    AutoSparse
+export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE, NoErrorControl
+export integral
+export GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
+export DynamicalBVPFunction, ReturnCode, SecondOrderBVProblem,
+    TwoPointSecondOrderBVProblem, init, remake, solve, solve!, successful_retcode
 
 end

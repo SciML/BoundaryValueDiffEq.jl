@@ -1,0 +1,43 @@
+[deps]
+BoundaryValueDiffEq = "764a87c0-6b3e-53db-9096-fe964310641d"
+BoundaryValueDiffEqAscher = "7227322d-7511-4e07-9247-ad6ff830280e"
+BoundaryValueDiffEqCore = "56b672f2-a5fe-4263-ab2d-da677488eb3a"
+BoundaryValueDiffEqFIRK = "85d9eb09-370e-4000-bb32-543851f73618"
+BoundaryValueDiffEqMIRK = "1a22d4ce-7765-49ea-b6f2-13c8438986a6"
+BoundaryValueDiffEqMIRKN = "9255f1d6-53bf-473e-b6bd-23f1ff009da4"
+BoundaryValueDiffEqShooting = "ed55bfe0-3725-4db6-871e-a1dc9f42a757"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NonlinearSolveFirstOrder = "5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
+ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
+OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+BoundaryValueDiffEq = {path = "../.."}
+BoundaryValueDiffEqAscher = {path = "../../lib/BoundaryValueDiffEqAscher"}
+BoundaryValueDiffEqCore = {path = "../../lib/BoundaryValueDiffEqCore"}
+BoundaryValueDiffEqFIRK = {path = "../../lib/BoundaryValueDiffEqFIRK"}
+BoundaryValueDiffEqMIRK = {path = "../../lib/BoundaryValueDiffEqMIRK"}
+BoundaryValueDiffEqMIRKN = {path = "../../lib/BoundaryValueDiffEqMIRKN"}
+BoundaryValueDiffEqShooting = {path = "../../lib/BoundaryValueDiffEqShooting"}
+
+[compat]
+BoundaryValueDiffEq = "5"
+BoundaryValueDiffEqAscher = "1"
+BoundaryValueDiffEqCore = "2"
+BoundaryValueDiffEqFIRK = "1"
+BoundaryValueDiffEqMIRK = "1"
+BoundaryValueDiffEqMIRKN = "1"
+BoundaryValueDiffEqShooting = "1"
+LinearAlgebra = "1.10"
+NonlinearSolveFirstOrder = "1.3, 2"
+ODEInterface = "0.5"
+OrdinaryDiffEqTsit5 = "1.1, 2"
+Random = "1.10"
+RecursiveArrayTools = "3.31.2, 4"
+SciMLBase = "3"
+Test = "1.10"
+julia = "1.10"

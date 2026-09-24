@@ -28,4 +28,7 @@ MIRK3
 MIRK4
 MIRK5
 MIRK6
+MIRK6I
+maxsol
+minsol
 ```

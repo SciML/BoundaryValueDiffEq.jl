@@ -1,4 +1,8 @@
-@testitem "Manifolds.jl Integration" begin
+using BoundaryValueDiffEq
+using SciMLBase
+using Test
+
+@testset "Manifolds.jl Integration" begin
     using LinearAlgebra, OrdinaryDiffEqTsit5
 
     struct EmbeddedTorus
@@ -49,7 +53,7 @@
     @testset "Successful Convergence" begin
         u0 = [vcat(a1, zero(a1)), vcat(a2, zero(a1))]
         bvp1 = BVProblem(chart_log_problem!, bc1!, u0, tspan, (M, i, a1, a2))
-        sol1 = solve(bvp1, solver, dt = dt)
+        sol1 = solve(bvp1, solver; dt)
         @test SciMLBase.successful_retcode(sol1.retcode)
     end
 
@@ -65,14 +69,14 @@
 
         for alg in algs
             if alg isa Shooting || alg isa MultipleShooting
-                sol = solve(bvp, alg; abstol = 1e-8)
+                sol = solve(bvp, alg; abstol = 1.0e-8)
             else
-                sol = solve(bvp, alg; dt, abstol = 1e-8)
+                sol = solve(bvp, alg; dt, abstol = 1.0e-8)
             end
             @test SciMLBase.successful_retcode(sol)
             resid = zeros(4)
             bc1!(resid, sol, (M, i, a1, a2), sol.t)
-            @test norm(resid, Inf) < 1e-10
+            @test norm(resid, Inf) < 1.0e-10
         end
     end
 end

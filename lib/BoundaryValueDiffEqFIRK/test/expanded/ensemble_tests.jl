@@ -1,4 +1,11 @@
-@testitem "EnsembleProblem" begin
+using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using NonlinearSolveFirstOrder: NewtonRaphson
+using SciMLBase
+using Test
+
+@testset "EnsembleProblem" begin
     using BoundaryValueDiffEqFIRK, Random
 
     function ode!(du, u, p, t)
@@ -11,7 +18,7 @@
         residual[2] = u(1.0)[1]
     end
 
-    prob_func(prob, i, repeat) = remake(prob, p = [rand()])
+    prob_func(prob, ctx) = remake(prob, p = [rand()])
 
     u0 = [0.0, 1.0]
     tspan = (0, pi / 2)
@@ -22,50 +29,70 @@
     nested = false
 
     @testset "$(solver)" for solver in (RadauIIa2, RadauIIa3, RadauIIa5, RadauIIa7) # RadauIIa1 doesn't have adaptivity
-        jac_algs = [BVPJacobianAlgorithm(),
+        jac_algs = [
+            BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
-                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
+                nonbc_diffmode = AutoSparse(AutoFiniteDiff())
+            ),
+        ]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
-                trajectories = 10, dt = 0.1)
+            sol = solve(
+                ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
+                trajectories = 10, dt = 0.1
+            )
             @test sol.converged
         end
     end
 
     @testset "$(solver)" for solver in
-                             (LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5)
-        jac_algs = [BVPJacobianAlgorithm(),
+        (LobattoIIIa2, LobattoIIIa3, LobattoIIIa4, LobattoIIIa5)
+        jac_algs = [
+            BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
-                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
+                nonbc_diffmode = AutoSparse(AutoFiniteDiff())
+            ),
+        ]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
-                trajectories = 10, dt = 0.1)
+            sol = solve(
+                ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
+                trajectories = 10, dt = 0.1
+            )
             @test sol.converged
         end
     end
 
     @testset "$(solver)" for solver in (LobattoIIIb3, LobattoIIIb4, LobattoIIIb5) # LobattoIIIb2 doesn't have adaptivity
-        jac_algs = [BVPJacobianAlgorithm(),
+        jac_algs = [
+            BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
-                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
+                nonbc_diffmode = AutoSparse(AutoFiniteDiff())
+            ),
+        ]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
-                trajectories = 10, dt = 0.1)
+            sol = solve(
+                ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
+                trajectories = 10, dt = 0.1
+            )
             @test sol.converged
         end
     end
 
     @testset "$(solver)" for solver in (LobattoIIIc3, LobattoIIIc4, LobattoIIIc5) # LobattoIIIc2 doesn't have adaptivity
-        jac_algs = [BVPJacobianAlgorithm(),
+        jac_algs = [
+            BVPJacobianAlgorithm(),
             BVPJacobianAlgorithm(
                 AutoSparse(AutoFiniteDiff()); bc_diffmode = AutoFiniteDiff(),
-                nonbc_diffmode = AutoSparse(AutoFiniteDiff()))]
+                nonbc_diffmode = AutoSparse(AutoFiniteDiff())
+            ),
+        ]
         for jac_alg in jac_algs
-            sol = solve(ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
-                trajectories = 10, dt = 0.1)
+            sol = solve(
+                ensemble_prob, solver(; nlsolve, jac_alg, nested_nlsolve = nested);
+                trajectories = 10, dt = 0.1
+            )
             @test sol.converged
         end
     end

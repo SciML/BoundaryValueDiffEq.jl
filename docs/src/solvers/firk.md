@@ -7,9 +7,49 @@ using Pkg
 Pkg.add("BoundaryValueDiffEqFIRK")
 ```
 
-```julia
-solve(prob::BVProblem, alg, dt; kwargs...)
-solve(prob::TwoPointBVProblem, alg, dt; kwargs...)
+`BoundaryValueDiffEqFIRK` reexports the BVP problem constructors and `solve` used by its
+documented solver workflow (see [Reexported API](@ref reexports)):
+
+```jldoctest
+using BoundaryValueDiffEqFIRK
+
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = 0
+    return
+end
+
+function bc!(residual, u, p, t)
+    residual[1] = u(0.0)[1] - 1
+    residual[2] = u(1.0)[1]
+    return
+end
+
+prob = BVProblem(f!, bc!, [1.0, -1.0], (0.0, 1.0); nlls = Val(false))
+sol = solve(prob, RadauIIa5(); dt = 0.2, abstol = 1.0e-8)
+
+@assert isapprox(sol(0.0)[1], 1.0; atol = 1.0e-6)
+@assert isapprox(sol(1.0)[1], 0.0; atol = 1.0e-6)
+
+function bca!(residual, u, p)
+    residual[1] = u[1] - 1
+    return
+end
+
+function bcb!(residual, u, p)
+    residual[1] = u[1]
+    return
+end
+
+two_point_prob = TwoPointBVProblem(
+    f!, (bca!, bcb!), [1.0, -1.0], (0.0, 1.0);
+    bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
+)
+two_point_sol = solve(two_point_prob, RadauIIa5(); dt = 0.2, abstol = 1.0e-8)
+
+@assert isapprox(two_point_sol(0.0)[1], 1.0; atol = 1.0e-6)
+@assert isapprox(two_point_sol(1.0)[1], 0.0; atol = 1.0e-6)
+# output
 ```
 
 ## Nested nonlinear solving in FIRK methods

@@ -1,34 +1,47 @@
 module BoundaryValueDiffEqAscher
 
-using ADTypes: ADTypes, AutoSparse, AutoForwardDiff
+using ADTypes: ADTypes, AutoSparse
 using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
 
-using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqAlgorithm,
-                               AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
-                               __extract_problem_details, concrete_jacobian_algorithm,
-                               __Fix3, __concrete_solve_algorithm,
-                               __internal_nlsolve_problem, __vec, __vec_f, __vec_f!,
-                               __vec_bc, __vec_bc!, __extract_mesh, get_dense_ad,
-                               __get_bcresid_prototype, __split_kwargs, __concrete_kwargs,
-                               __default_nonsparse_ad, __construct_internal_problem,
-                               __internal_solve
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+    AbstractBoundaryValueDiffEqAlgorithm,
+    AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
+    DEFAULT_VERBOSE, GlobalErrorControl, _process_verbose_param,
+    __extract_problem_details, concrete_jacobian_algorithm,
+    __concrete_solve_algorithm,
+    __vec, __vec_f, __vec_f!,
+    __vec_bc, __vec_bc!, __extract_mesh, get_dense_ad,
+    __get_bcresid_prototype, __split_kwargs, __concrete_kwargs,
+    __default_nonsparse_ad, __construct_internal_problem,
+    __internal_solve, __build_cost
 
 using ConcreteStructs: @concrete
-using DiffEqBase: DiffEqBase
-using DifferentiationInterface: DifferentiationInterface, Constant, prepare_jacobian
+using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
-using ForwardDiff: ForwardDiff, Dual
-using LinearAlgebra
-using PreallocationTools: PreallocationTools, DiffCache
-using RecursiveArrayTools: VectorOfArray, recursivecopy
-using Reexport: @reexport
-using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, StandardBVProblem, __solve,
-                 _unwrap_val
+using ForwardDiff: ForwardDiff
+using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using LinearAlgebra: LinearAlgebra, I, norm, rank
+using SciMLBase: SciMLBase, BVProblem, ReturnCode, StandardBVProblem,
+    TwoPointBVProblem, isinplace, solve
+
+# The public API that BoundaryValueDiffEqAscher reexports, so that
+# `using BoundaryValueDiffEqAscher` on its own is enough to pick AD and execution
+# backends, build a `BVProblem` or `TwoPointBVProblem` (including the semi-explicit
+# BVDAE form carried by a `BVPFunction` mass matrix), configure the solve, run it, and
+# inspect the result. Every name stays owned and documented by ADTypes,
+# BoundaryValueDiffEqCore, KernelAbstractions, NonlinearSolveFirstOrder or SciMLBase;
+# the set is documented on the Reexported API docs page and approved via
+# `reexports_allow` in test/qa/qa.jl.
+using ADTypes: AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake,
+    AutoPolyesterForwardDiff
+using BoundaryValueDiffEqCore: BVPVerbosity, DefectControl, GaussNewton, HOErrorControl,
+    HybridErrorControl, LevenbergMarquardt, NewtonRaphson, NoErrorControl, REErrorControl,
+    SequentialErrorControl, TrustRegion, integral
+using SciMLBase: BVPFunction, init, remake, solve!, successful_retcode
+
 using Setfield: @set!
 
 const DI = DifferentiationInterface
-
-@reexport using ADTypes, BoundaryValueDiffEqCore, SciMLBase
 
 include("types.jl")
 include("utils.jl")
@@ -40,5 +53,19 @@ include("adaptivity.jl")
 include("collocation.jl")
 
 export Ascher1, Ascher2, Ascher3, Ascher4, Ascher5, Ascher6, Ascher7
+
+# Reexported ADTypes / BoundaryValueDiffEqCore / KernelAbstractions /
+# NonlinearSolveFirstOrder / SciMLBase API; approved via `reexports_allow` in test/qa/qa.jl.
+export CPU
+export AutoEnzyme, AutoFiniteDiff, AutoForwardDiff, AutoMooncake, AutoPolyesterForwardDiff,
+    AutoSparse
+export BVPJacobianAlgorithm, BVPVerbosity, DEFAULT_VERBOSE
+export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
+    NoErrorControl
+export HOErrorControl, REErrorControl
+export integral
+export GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
+export BVPFunction, BVProblem, ReturnCode, TwoPointBVProblem, init, remake, solve, solve!,
+    successful_retcode
 
 end # module BoundaryValueDiffEqAscher

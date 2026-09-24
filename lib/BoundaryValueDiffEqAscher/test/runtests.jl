@@ -1,19 +1,18 @@
-using ReTestItems, BoundaryValueDiffEqAscher, Hwloc, InteractiveUtils
+using SafeTestsets, Test
+using SciMLTesting
 
-@info sprint(InteractiveUtils.versioninfo)
-
-const GROUP = lowercase(get(ENV, "GROUP", "All"))
-
-const RETESTITEMS_NWORKERS = parse(Int,
-    get(ENV, "RETESTITEMS_NWORKERS",
-        string(min(ifelse(Sys.iswindows(), 0, Hwloc.num_physical_cores()), 4))))
-const RETESTITEMS_NWORKER_THREADS = parse(Int,
-    get(ENV, "RETESTITEMS_NWORKER_THREADS",
-        string(max(Hwloc.num_virtual_cores() ÷ max(RETESTITEMS_NWORKERS, 1), 1))))
-
-@info "Running tests for group: $(GROUP) with $(RETESTITEMS_NWORKERS) workers"
-
-ReTestItems.runtests(
-    BoundaryValueDiffEqAscher; tags = (GROUP == "all" ? nothing : [Symbol(GROUP)]),
-    nworkers = RETESTITEMS_NWORKERS,
-    nworker_threads = RETESTITEMS_NWORKER_THREADS, testitem_timeout = 3 * 60 * 60)
+run_tests(;
+    env = "BOUNDARYVALUEDIFFEQ_TEST_GROUP",
+    core = function ()
+        return @time @safetestset "Ascher Basic Tests" include("Core/ascher_basic_tests.jl")
+    end,
+    qa = (;
+        env = joinpath(@__DIR__, "qa"),
+        body = function ()
+            # QA (Aqua) runs on release + LTS Julia only; skip on prerelease.
+            isempty(VERSION.prerelease) || return nothing
+            return @time @safetestset "Quality Assurance" include("qa/qa.jl")
+        end,
+    ),
+    all = ["Core", "QA"],
+)
