@@ -57,4 +57,17 @@ SimpleBoundaryValueDiffEq.SimpleMIRK4
 SimpleBoundaryValueDiffEq.SimpleMIRK5
 SimpleBoundaryValueDiffEq.SimpleMIRK6
 SimpleBoundaryValueDiffEq.SimpleShooting
+SimpleBoundaryValueDiffEq.solve(::SimpleBoundaryValueDiffEq.BVProblem, ::SimpleBoundaryValueDiffEq.AbstractSimpleMIRK)
+SimpleBoundaryValueDiffEq.solve(::SimpleBoundaryValueDiffEq.BVProblem, ::SimpleBoundaryValueDiffEq.SimpleShooting)
+```
+
+## Developer Interface
+
+The following interfaces support custom simple MIRK algorithms:
+
+```@docs
+SimpleBoundaryValueDiffEq.AbstractSimpleMIRK
+SimpleBoundaryValueDiffEq.alg_order
+SimpleBoundaryValueDiffEq.alg_stage
+SimpleBoundaryValueDiffEq.constructSimpleMIRK
 ```

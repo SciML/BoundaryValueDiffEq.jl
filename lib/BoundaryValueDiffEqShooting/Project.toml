@@ -56,7 +56,8 @@ ForwardDiff = "1"
 KernelAbstractions = "0.9"
 LinearAlgebra = "1.10"
 Logging = "1.10"
-LinearSolve = "4.2, 5"
+# 5.4 fixes the missing issquare import when differentiating stiff ODE solves.
+LinearSolve = "5.4"
 NonlinearSolveFirstOrder = "2"
 OrdinaryDiffEqLowOrderRK = "2"
 OrdinaryDiffEqRosenbrock = "2"
@@ -79,6 +80,7 @@ julia = "1.10"
 
 [extras]
 DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
@@ -93,4 +95,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqGPU", "Logging", "DiffEqDevTools", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Random", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]
+test = ["DiffEqGPU", "LinearSolve", "Logging", "DiffEqDevTools", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Random", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]

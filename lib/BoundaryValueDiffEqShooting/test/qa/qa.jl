@@ -9,7 +9,9 @@ run_qa(
     BoundaryValueDiffEqShooting;
     ei_kwargs = (;
         all_explicit_imports_are_public = (;
-            ignore = (:overloaded_input_type, :pickchunksize),
+            # The DiffEqGPU extension constructs nested duals for time derivatives.
+            # ForwardDiff documents these names but does not mark them public.
+            ignore = (:overloaded_input_type, :pickchunksize, :Dual, :Partials, :value, :partials),
         ),
         # Device AD seeds/extracts ForwardDiff's documented
         # Dual/Partials representation directly; those names are not marked public.
