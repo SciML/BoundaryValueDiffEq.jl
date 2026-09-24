@@ -120,12 +120,17 @@ it is generally more stable than [`Shooting`](@ref).
         `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
   - `platform = CPU()`: KernelAbstractions backend. With `device_steps`, the interval
     integrations, sparse differentiation, and nonlinear arrays use this backend.
-    Loading CUDA enables `CUDA.CUDABackend()` with CSR sparse Jacobians.
+    Load CUDA and DiffEqGPU to use `CUDA.CUDABackend()` with CSR sparse Jacobians
+    and a kernel ODE algorithm such as `DiffEqGPU.GPUTsit5()`.
   - `device_steps = nothing`: Set a positive integer to use the device-resident path
-    with this many fixed Tsit5 steps per shooting interval, also available on `CPU()`.
-    This path requires `Tsit5()`, vector Float32/Float64 states, and kernel-compatible
-    RHS/BC functions. `grid_coarsening` defaults to `false` when this is set and must
-    remain false. No final single-shooting solve is performed. `abstol` controls the
+    with this many fixed ODE steps per shooting interval, also available on `CPU()`.
+    On CPU, pass an OrdinaryDiffEq algorithm such as `OrdinaryDiffEqTsit5.Tsit5()`.
+    On GPU, pass a DiffEqGPU kernel algorithm such as `GPUTsit5()` or `GPUVern7()`.
+    DiffEqGPU is an optional dependency, loaded only when the user imports it.
+    This path requires vector Float32/Float64 states and kernel-compatible RHS/BC
+    functions. GPU interval states and parameters are converted to static storage;
+    both in-place and out-of-place RHS functions are supported. `grid_coarsening`
+    defaults to `false` when this is set and must remain false. No final single-shooting solve is performed. `abstol` controls the
     nonlinear solve; increase `device_steps`/`nshoots` to check integration accuracy.
     `odesolve_kwargs`, optimization, callbacks, and nonidentity mass matrices are
     unsupported. The result uses cubic Hermite interpolation between shooting nodes.

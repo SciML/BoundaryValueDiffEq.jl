@@ -168,11 +168,11 @@ function __shooting_group_buffers(mode::AutoForwardDiff, chunk::Val{C}, cache, u
     C > 0 || throw(ArgumentError("ForwardDiff chunk size must be positive."))
     tag = mode.tag === nothing ? typeof(ForwardDiff.Tag(__shooting_residual!, eltype(u))) : typeof(mode.tag)
     D = ForwardDiff.Dual{tag, eltype(u), C}
-    work = __shooting_buffers(u, cache.n, cache.intervals, nr, D)
+    work = __shooting_buffers(u, cache, nr, D)
     return (; mode, chunk, colors, ncolors, entries, rows, cols, work)
 end
 function __shooting_group_buffers(mode::AutoFiniteDiff, chunk, cache, u, nr, colors, ncolors, entries, rows, cols)
-    work = __shooting_buffers(u, cache.n, cache.intervals, nr, eltype(u))
+    work = __shooting_buffers(u, cache, nr, eltype(u))
     return (; mode, chunk, colors, ncolors, entries, rows, cols, work, minus = similar(u, nr))
 end
 

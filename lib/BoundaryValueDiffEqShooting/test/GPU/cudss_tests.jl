@@ -1,5 +1,5 @@
 using BoundaryValueDiffEqCore, BoundaryValueDiffEqShooting, CUDA, CUDSS, LinearSolve
-using LinearAlgebra, SparseArrays, OrdinaryDiffEqTsit5, Test
+using LinearAlgebra, SparseArrays, DiffEqGPU, Test
 
 const ShootingCUDA = Base.get_extension(BoundaryValueDiffEqShooting, :BoundaryValueDiffEqShootingCUDSSExt)
 const ShootingModule = BoundaryValueDiffEqShooting
@@ -102,7 +102,7 @@ function condensation_test_setup(T, steps, segment_length, mode = AutoForwardDif
         bcresid_prototype = (zeros(T, 2), zeros(T, 2)), nlls = Val(false)
     )
     alg = MultipleShooting(
-        steps, Tsit5(); platform = CUDA.CUDABackend(), device_steps = 8,
+        steps, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8,
         jac_alg = BVPJacobianAlgorithm(mode)
     )
     setup = ShootingModule.__shooting_device_setup(prob, alg)
@@ -202,7 +202,7 @@ end
         rhs!, (left!, right!), ones(2), (0.0, 1.0);
         bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
     )
-    alg = MultipleShooting(17, Tsit5(); platform = CUDA.CUDABackend(), device_steps = 8)
+    alg = MultipleShooting(17, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8)
     (; u, cache, plan) = ShootingModule.__shooting_device_setup(prob, alg)
     ShootingModule.__shooting_jacobian!(plan.matrix, u, cache, plan)
     linear_alg = ShootingCUDA.default_linsolve(u, cache, plan; segment_length = 8)
@@ -218,9 +218,9 @@ end
 end
 
 @testset "Device linear solver keyword validation" begin
-    @test_throws ArgumentError MultipleShooting(5, Tsit5(); device_linsolve = LUFactorization())
+    @test_throws ArgumentError MultipleShooting(5, GPUTsit5(); device_linsolve = LUFactorization())
     @test_throws ArgumentError MultipleShooting(
-        5, Tsit5(); device_steps = 4,
+        5, GPUTsit5(); device_steps = 4,
         device_linsolve = LUFactorization(), nlsolve = NewtonRaphson()
     )
 end
@@ -233,7 +233,7 @@ end
         bc = left ? (boundary!, empty!) : (empty!, boundary!)
         prototype = left ? (zeros(2), zeros(0)) : (zeros(0), zeros(2))
         prob = TwoPointBVProblem(rhs!, bc, ones(2), (0.0, 1.0); bcresid_prototype = prototype, nlls = Val(false))
-        alg = MultipleShooting(37, Tsit5(); platform = CUDA.CUDABackend(), device_steps = 8)
+        alg = MultipleShooting(37, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8)
         sol = solve(prob, alg; abstol = 1.0e-10)
         @test successful_retcode(sol)
         @test maximum(abs, sol.resid) < 1.0e-10
@@ -251,7 +251,7 @@ end
     if hasproperty(nlsolve, :jacobian_reuse)
         nlsolve = NewtonRaphson(; linsolve = LUFactorization(), jacobian_reuse = false)
     end
-    alg = MultipleShooting(37, Tsit5(); platform = CUDA.CUDABackend(), device_steps = 8, nlsolve)
+    alg = MultipleShooting(37, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8, nlsolve)
     sol = solve(prob, alg; abstol = 1.0e-10)
     @test successful_retcode(sol)
     @test maximum(abs, sol.resid) < 1.0e-10
@@ -260,4 +260,4 @@ end
 
 # Exercise default selection with CUDSS loaded, including multipoint boundaries,
 # least squares, Float32/64, and out-of-place functions.
-device_shooting_tests(CUDA.CUDABackend(); gpu = true)
+device_shooting_tests(CUDA.CUDABackend(); gpu = true, ode_alg = GPUTsit5())

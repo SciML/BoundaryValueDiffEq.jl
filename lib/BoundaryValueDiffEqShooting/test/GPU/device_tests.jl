@@ -14,7 +14,7 @@ device_right!(r, u, p) = (r[1] = u[1] - sin(one(eltype(u))); nothing)
 device_left(u, p) = SVector(u[1])
 device_right(u, p) = SVector(u[1] - sin(one(eltype(u))))
 
-function device_shooting_tests(platform; gpu = false)
+function device_shooting_tests(platform; gpu = false, ode_alg = Tsit5())
     return @testset "Resident shooting $(typeof(platform))" begin
         @testset "Endpoints, interpolation, and OOP, $T" for T in (Float32, Float64)
             tol = T === Float32 ? 2.0e-5 : 1.0e-9
@@ -22,7 +22,7 @@ function device_shooting_tests(platform; gpu = false)
                 rhs = iip ? device_oscillator! : device_oscillator
                 bc = iip ? (device_left!, device_right!) : (device_left, device_right)
                 prob = TwoPointBVProblem(rhs, bc, T[0.1, 0.9], (T(0), T(1)); bcresid_prototype = (zeros(T, 1), zeros(T, 1)))
-                alg = MultipleShooting(8, Tsit5(); platform, device_steps = 4)
+                alg = MultipleShooting(8, ode_alg; platform, device_steps = 4)
                 sol = solve(prob, alg; abstol = tol, nlsolve_kwargs = (; abstol = tol, reltol = tol / 10))
                 @test successful_retcode(sol)
                 @test eltype(sol.u[1]) === T
@@ -46,7 +46,7 @@ function device_shooting_tests(platform; gpu = false)
         @testset "Sparse AD and finite differences" begin
             prob = TwoPointBVProblem(device_oscillator!, (device_left!, device_right!), [0.1, 0.9], (0.0, 1.0); bcresid_prototype = (zeros(1), zeros(1)))
             for mode in (AutoSparse(AutoForwardDiff(; chunksize = 1)), AutoSparse(AutoForwardDiff(; chunksize = 2)), AutoSparse(AutoFiniteDiff()), AutoSparse(AutoFiniteDiff(; fdjtype = Val(:central))))
-                alg = MultipleShooting(5, Tsit5(); platform, device_steps = 8, jac_alg = BVPJacobianAlgorithm(mode))
+                alg = MultipleShooting(5, ode_alg; platform, device_steps = 8, jac_alg = BVPJacobianAlgorithm(mode))
                 setup = DeviceShooting.__shooting_device_setup(prob, alg)
                 (; u, cache, work, plan) = setup
                 DeviceShooting.__shooting_jacobian!(plan.matrix, u, cache, plan)
@@ -82,7 +82,7 @@ function device_shooting_tests(platform; gpu = false)
                 return nothing
             end
             prob = BVProblem(rhs!, bc!, (p, t) -> [sin(t) + 0.03, cos(t) - 0.02], (0.0, 1.0), [0.1])
-            alg = MultipleShooting(16, Tsit5(); platform, device_steps = 4)
+            alg = MultipleShooting(16, ode_alg; platform, device_steps = 4)
             sol = solve(prob, alg; abstol = 1.0e-10)
             @test successful_retcode(sol)
             @test Array(sol.u[end]) ≈ [sin(1), cos(1)] atol = 2.0e-6
@@ -131,7 +131,7 @@ function device_shooting_tests(platform; gpu = false)
                 coupled!, (left_loop!, empty_bc!), ones(n), (0.0, 1.0);
                 bcresid_prototype = (zeros(n), zeros(0))
             )
-            alg = MultipleShooting(4, Tsit5(); platform, device_steps = 8)
+            alg = MultipleShooting(4, ode_alg; platform, device_steps = 8)
             (; u, cache, work, plan) = DeviceShooting.__shooting_device_setup(prob, alg)
             DeviceShooting.__shooting_jacobian!(plan.matrix, u, cache, plan)
             J = Matrix(gpu ? SparseMatrixCSC(plan.matrix) : plan.matrix)
@@ -174,16 +174,16 @@ function device_shooting_tests(platform; gpu = false)
                 return nothing
             end
             prob = TwoPointBVProblem(device_oscillator!, (inconsistent!, device_right!), [0.1, 0.9], (0.0, 1.0); bcresid_prototype = (zeros(2), zeros(1)), nlls = Val(true))
-            sol = solve(prob, MultipleShooting(4, Tsit5(); platform, device_steps = 4); nlsolve_kwargs = (; maxiters = 50, abstol = 1.0e-8))
+            sol = solve(prob, MultipleShooting(4, ode_alg; platform, device_steps = 4); nlsolve_kwargs = (; maxiters = 50, abstol = 1.0e-8))
             @test all(isfinite, sol.u[end])
             @test Array(sol.u[1])[1] ≈ 1.5 atol = 1.0e-5
             square = TwoPointBVProblem(device_oscillator!, (device_left!, device_right!), [0.1, 0.9], (0.0, 1.0); bcresid_prototype = (zeros(1), zeros(1)))
-            failed = solve(square, MultipleShooting(4, Tsit5(); platform, device_steps = 4); nlsolve_kwargs = (; maxiters = 0))
+            failed = solve(square, MultipleShooting(4, ode_alg; platform, device_steps = 4); nlsolve_kwargs = (; maxiters = 0))
             @test !successful_retcode(failed)
             @test failed.retcode == failed.original.retcode
-            @test_throws ArgumentError solve(square, MultipleShooting(4, Tsit5(); platform, device_steps = 2, grid_coarsening = true))
-            @test_throws ArgumentError solve(square, MultipleShooting(4, Tsit5(); platform, device_steps = 2); odesolve_kwargs = (; adaptive = true))
-            @test_throws ArgumentError MultipleShooting(4, Tsit5(); device_steps = 0)
+            @test_throws ArgumentError solve(square, MultipleShooting(4, ode_alg; platform, device_steps = 2, grid_coarsening = true))
+            @test_throws ArgumentError solve(square, MultipleShooting(4, ode_alg; platform, device_steps = 2); odesolve_kwargs = (; adaptive = true))
+            @test_throws ArgumentError MultipleShooting(4, ode_alg; device_steps = 0)
         end
     end
 end

@@ -26,11 +26,14 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
 
 [weakdeps]
+DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 
 [extensions]
+BoundaryValueDiffEqShootingDiffEqGPUExt = ["DiffEqGPU", "StaticArrays"]
 BoundaryValueDiffEqShootingCUDSSExt = ["CUDA", "CUDSS", "LinearSolve"]
 
 [sources]
@@ -46,11 +49,13 @@ ConcreteStructs = "0.2.3"
 CUDA = "5, 6"
 CUDSS = "0.6.1, 0.7, 0.8"
 DiffEqDevTools = "3"
+DiffEqGPU = "3.21.2"
 DifferentiationInterface = "0.7.15"
 FastClosures = "0.3.2"
 ForwardDiff = "1"
 KernelAbstractions = "0.9"
 LinearAlgebra = "1.10"
+Logging = "1.10"
 LinearSolve = "4.2, 5"
 NonlinearSolveFirstOrder = "2"
 OrdinaryDiffEqLowOrderRK = "2"
@@ -73,6 +78,8 @@ Test = "1.10"
 julia = "1.10"
 
 [extras]
+DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 NonlinearSolveFirstOrder = "5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
@@ -86,4 +93,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqDevTools", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Random", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]
+test = ["DiffEqGPU", "Logging", "DiffEqDevTools", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Random", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]

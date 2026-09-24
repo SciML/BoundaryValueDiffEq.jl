@@ -691,62 +691,65 @@ end
 end
 @inline function __shooting_eval!(out, f::F, args, ::Val{false}) where {F}
     value = f(args...)
+    # Empty static boundary residuals have no valid getindex method on GPU.
+    isempty(value) && return nothing
     @inbounds for j in eachindex(out)
         out[j] = value[j]
     end
     return nothing
 end
 
-# Tsitouras 5(4) fifth-order weights, matching OrdinaryDiffEqTsit5's tableau.
-# The embedded error estimate is deliberately not used in this fixed-step path.
-function __shooting_tableau(::Type{T}) where {T}
-    a = (
-        (0.161,),
-        (-0.008480655492356989, 0.335480655492357),
-        (2.8971530571054935, -6.359448489975075, 4.3622954328695815),
-        (5.325864828439257, -11.748883564062828, 7.4955393428898365, -0.09249506636175525),
-        (5.86145544294642, -12.92096931784711, 8.159367898576159, -0.071584973281401, -0.028269050394068383),
-        (0.09646076681806523, 0.01, 0.4798896504144996, 1.379008574103742, -3.290069515436081, 2.324710524099774),
+# The optional DiffEqGPU extension specializes these hooks for GPUODEAlgorithm.
+# OrdinaryDiffEq integrators are only constructed and executed on CPU.
+function __shooting_validate_ode(ode_alg, platform)
+    platform isa CPU || throw(
+        ArgumentError(
+            "GPU MultipleShooting requires a DiffEqGPU kernel algorithm. Load DiffEqGPU and use e.g. GPUTsit5() instead of Tsit5()."
+        )
     )
-    c = (0, 0.161, 0.327, 0.9, 0.9800255409045097, 1)
-    # Pad stage rows to a uniform tuple type for runtime device indexing.
-    rows = ntuple(i -> ntuple(j -> j <= length(a[i]) ? T(a[i][j]) : zero(T), 6), 6)
-    return (; a = rows, c = map(T, c))
+    ode_alg isa SciMLBase.AbstractODEAlgorithm || throw(
+        ArgumentError(
+            "Fixed-step CPU MultipleShooting requires an ODE algorithm, e.g. OrdinaryDiffEqTsit5.Tsit5()."
+        )
+    )
+    return nothing
 end
 
-@kernel function __shooting_integrate_kernel!(r, u, work, f::F, p, mesh, steps, nleft, tab, iip) where {F}
-    interval = @index(Global, Linear)
-    n = size(work, 1)
-    x = view(work, :, 1, interval)
-    y = view(work, :, 2, interval)
+function __shooting_odecache(ode_alg, u, cache, ::Type{T}) where {T}
+    __shooting_validate_ode(ode_alg, cache.platform)
+    (; f, p, mesh, n, steps, intervals, iip) = cache
+    return map(1:intervals) do i
+        u0 = T.(u[((i - 1) * n + 1):(i * n)])
+        tspan = (mesh[i], mesh[i + 1])
+        prob = ODEProblem{_unwrap_val(iip)}(f, u0, tspan, p)
+        SciMLBase.init(
+            prob, ode_alg; adaptive = false, dt = (tspan[2] - tspan[1]) / steps,
+            save_everystep = false, save_start = false, save_end = false, dense = false
+        )
+    end
+end
+
+@kernel function __shooting_cpu_integrate_kernel!(r, u, integrators, mesh, steps, n, na)
+    i = @index(Global, Linear)
+    integrator = integrators[i]
+    SciMLBase.reinit!(
+        integrator, view(u, ((i - 1) * n + 1):(i * n));
+        t0 = mesh[i], tf = mesh[i + 1], reset_dt = false
+    )
+    SciMLBase.set_proposed_dt!(integrator, (mesh[i + 1] - mesh[i]) / steps)
+    sol = solve!(integrator)
+    SciMLBase.successful_retcode(sol) || error("Shooting interval $i failed: $(sol.retcode)")
     @inbounds for j in 1:n
-        x[j] = u[(interval - 1) * n + j]
+        r[na + (i - 1) * n + j] = integrator.u[j] - u[i * n + j]
     end
-    @inbounds h = (mesh[interval + 1] - mesh[interval]) / steps
-    for step in 1:steps
-        @inbounds t = mesh[interval] + (step - 1) * h
-        __shooting_eval!(view(work, :, 3, interval), f, (x, p, t), iip)
-        for stage in 2:6
-            @inbounds for j in 1:n
-                value = zero(eltype(work))
-                for k in 1:(stage - 1)
-                    value += tab.a[stage - 1][k] * work[j, k + 2, interval]
-                end
-                y[j] = x[j] + h * value
-            end
-            __shooting_eval!(view(work, :, stage + 2, interval), f, (y, p, t + tab.c[stage] * h), iip)
-        end
-        @inbounds for j in 1:n
-            value = zero(eltype(work))
-            for k in 1:6
-                value += tab.a[6][k] * work[j, k + 2, interval]
-            end
-            x[j] += h * value
-        end
-    end
-    @inbounds for j in 1:n
-        r[nleft + (interval - 1) * n + j] = x[j] - u[interval * n + j]
-    end
+end
+
+function __shooting_integrate!(r, u, ode_alg, cache, integrators)
+    __shooting_cpu_integrate_kernel!(cache.platform)(
+        r, u, integrators, cache.mesh, cache.steps, cache.n, cache.na;
+        ndrange = cache.intervals
+    )
+    return nothing
 end
 
 @kernel function __shooting_derivative_kernel!(d, u, f::F, p, mesh, iip) where {F}
@@ -820,23 +823,18 @@ end
     __shooting_eval!(view(r, 1:na), bc, (ShootingDeviceEvalSol(u, d, mesh, n), p, mesh), iip)
 end
 
-# CPU work items own intervals; contiguous GPU lanes own adjacent intervals.
-__shooting_stages(::CPU, u, T, n, intervals) = similar(u, T, n, 8, intervals)
-__shooting_stages(::Backend, u, T, n, intervals) =
-    PermutedDimsArray(similar(u, T, intervals, n, 8), (2, 3, 1))
-
-function __shooting_buffers(u, n, intervals, nr, ::Type{T}) where {T}
+function __shooting_buffers(u, cache, nr, ::Type{T}) where {T}
     return (;
         input = similar(u, T, length(u)), residual = similar(u, T, nr),
-        stages = __shooting_stages(KernelAbstractions.get_backend(u), u, T, n, intervals),
-        derivative = similar(u, T, n, intervals + 1),
+        odecache = __shooting_odecache(cache.ode_alg, u, cache, T),
+        derivative = similar(u, T, cache.n, cache.intervals + 1),
     )
 end
 
 function __shooting_residual!(r, u, cache, work, selection = :all)
-    (; platform, n, intervals, steps, na, nb, f, bc, p, mesh, tab, iip, twopoint) = cache
+    (; platform, n, intervals, na, nb, f, bc, p, mesh, ode_alg, iip, twopoint) = cache
     if selection !== :boundary
-        __shooting_integrate_kernel!(platform, 64)(r, u, work.stages, f, p, mesh, steps, na, tab, iip; ndrange = intervals)
+        __shooting_integrate!(r, u, ode_alg, cache, work.odecache)
     end
     if !twopoint && selection !== :continuity
         __shooting_derivative_kernel!(platform)(work.derivative, u, f, p, mesh, iip; ndrange = intervals + 1)
@@ -882,9 +880,8 @@ function (interp::ShootingDeviceInterpolation)(ts::AbstractVector, idxs, deriv::
 end
 
 function __shooting_validate(prob, alg, odesolve_kwargs, kwargs)
-    alg.device_steps !== nothing || throw(ArgumentError("GPU MultipleShooting requires device_steps (fixed Tsit5 steps per interval)."))
-    alg.ode_alg isa Tsit5 || throw(ArgumentError("Device MultipleShooting currently supports Tsit5()."))
-    alg.ode_alg == Tsit5() || throw(ArgumentError("Device shooting does not support Tsit5 limiters or threading options."))
+    alg.device_steps !== nothing || throw(ArgumentError("GPU MultipleShooting requires device_steps (fixed ODE steps per interval)."))
+    __shooting_validate_ode(alg.ode_alg, alg.platform)
     alg.grid_coarsening === false || throw(ArgumentError("Device MultipleShooting requires grid_coarsening=false."))
     alg.optimize === nothing || throw(ArgumentError("Device MultipleShooting supports nonlinear solvers, not optimize."))
     isempty(odesolve_kwargs) || throw(ArgumentError("Device MultipleShooting uses device_steps; odesolve_kwargs are not supported."))
@@ -899,6 +896,7 @@ function __shooting_validate(prob, alg, odesolve_kwargs, kwargs)
 end
 
 function __shooting_device_setup(prob, alg)
+    __shooting_validate_ode(alg.ode_alg, alg.platform)
     host_mesh = collect(range(prob.tspan...; length = alg.nshoots + 1))
     state = __extract_u0(prob.u0, prob.p, first(host_mesh))
     state isa AbstractVector || throw(ArgumentError("Device shooting requires vector states."))
@@ -931,10 +929,10 @@ function __shooting_device_setup(prob, alg)
     cache = (;
         platform = alg.platform, n, intervals, steps = alg.device_steps, na, nb,
         f = prob.f.f, bc = prob.f.bc, p = __shooting_parameter(alg.platform, prob.p),
-        mesh = __shooting_copy(alg.platform, host_mesh), tab = __shooting_tableau(T),
+        mesh = __shooting_copy(alg.platform, host_mesh), ode_alg = alg.ode_alg,
         iip = Val(isinplace(prob)), twopoint,
     )
-    work = __shooting_buffers(u, n, intervals, nr, T)
+    work = __shooting_buffers(u, cache, nr, T)
     plan = __shooting_jacobian_plan(prob, alg, u, host_mesh, cache, work)
     return (; u, host_mesh, cache, work, plan)
 end
