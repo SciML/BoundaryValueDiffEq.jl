@@ -48,7 +48,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
             equations. Defaults to `CPU()`.
           - `device = false`: Force the packed sparse formulation on the selected
             backend. CUDA requires loading CUDA.jl; loading CUDSS.jl enables sparse
-            direct Newton solves. Device callbacks must be GPU-kernel compatible.
+            direct Newton solves.
           - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
         ## Example

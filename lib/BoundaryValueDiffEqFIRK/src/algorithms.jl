@@ -31,8 +31,7 @@ for stage in (1, 2, 3, 5, 7)
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
             equations. Defaults to `CPU()`. A device initial guess selects its own
-            backend and keeps the nonlinear unknowns, implicit stages, sparse Jacobian,
-            interpolation and error estimation on that device. A CPU initial guess
+            backend. A CPU initial guess
             with a device platform offloads collocation while retaining host solver
             control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
@@ -163,8 +162,7 @@ for stage in (2, 3, 4, 5)
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
             equations. Defaults to `CPU()`. A device initial guess selects its own
-            backend and keeps the nonlinear unknowns, implicit stages, sparse Jacobian,
-            interpolation and error estimation on that device. A CPU initial guess
+            backend. A CPU initial guess
             with a device platform offloads collocation while retaining host solver
             control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
@@ -295,8 +293,7 @@ for stage in (2, 3, 4, 5)
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
             equations. Defaults to `CPU()`. A device initial guess selects its own
-            backend and keeps the nonlinear unknowns, implicit stages, sparse Jacobian,
-            interpolation and error estimation on that device. A CPU initial guess
+            backend. A CPU initial guess
             with a device platform offloads collocation while retaining host solver
             control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
@@ -427,8 +424,7 @@ for stage in (2, 3, 4, 5)
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
             equations. Defaults to `CPU()`. A device initial guess selects its own
-            backend and keeps the nonlinear unknowns, implicit stages, sparse Jacobian,
-            interpolation and error estimation on that device. A CPU initial guess
+            backend. A CPU initial guess
             with a device platform offloads collocation while retaining host solver
             control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested

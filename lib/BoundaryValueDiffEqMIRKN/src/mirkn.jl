@@ -646,9 +646,9 @@ function __solve_mirkn_device!(cache::MIRKNCache)
     M = cache.M
     solu = [
         ArrayPartition(
-                reshape(copy(view(y, 1:M, i)), cache.in_size),
-                reshape(copy(view(y, (M + 1):2M, i)), cache.in_size)
-            ) for i in axes(y, 2)
+            reshape(copy(view(y, 1:M, i)), cache.in_size),
+            reshape(copy(view(y, (M + 1):2M, i)), cache.in_size)
+        ) for i in axes(y, 2)
     ]
     interp = MIRKNDeviceInterpolation(y, copy(cache.mesh), cache.in_size, cache.alg.platform)
     odesol = SciMLBase.build_solution(
