@@ -97,3 +97,34 @@ end
     @test result isa BoundaryValueDiffEqCore.BVPVerbosity
     @test result === BoundaryValueDiffEqCore.DEFAULT_VERBOSE
 end
+
+@testset "__extract_problem_details ODESolution + tune_parameters" begin
+    # Regression: the ODESolution branch used `t₀`/`t₁` without binding them when
+    # `tune_parameters=true`, causing UndefVarError. Also require Non-null params.
+    using BoundaryValueDiffEqCore: __extract_problem_details
+    using SciMLBase: BVProblem, ODEProblem, build_solution, NullParameters
+
+    f!(du, u, p, t) = (du[1] = u[2]; du[2] = -u[1])
+    bc!(res, u, p, t) = (res[1] = u(0.0)[1]; res[2] = u(1.0)[1] - 1)
+
+    ode_sol = build_solution(
+        ODEProblem((u, p, t) -> zero(u), [1.0, 0.0], (0.0, 1.0), [0.5]),
+        nothing, [0.0, 0.5, 1.0], [[1.0, 0.0], [0.5, 0.5], [0.0, 1.0]]
+    )
+
+    # NullParameters must error before touching tspan / vcat
+    prob_null = BVProblem(f!, bc!, ode_sol, (0.0, 1.0))
+    @test_throws ArgumentError __extract_problem_details(
+        prob_null, ode_sol; dt = 0.1, tune_parameters = true
+    )
+
+    prob = BVProblem(f!, bc!, ode_sol, (0.0, 1.0), [0.25, 0.75])
+    ig, T, N, Nig, new_u = __extract_problem_details(
+        prob, ode_sol; dt = 0.1, tune_parameters = true
+    )
+    @test ig === Val(false)
+    @test T === Float64
+    @test N == 4  # 2 state + 2 tunable params
+    @test Nig == 10  # cld(1.0 - 0.0, 0.1)
+    @test new_u == [1.0, 0.0, 0.25, 0.75]
+end
