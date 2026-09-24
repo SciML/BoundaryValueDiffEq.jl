@@ -9,5 +9,11 @@
 [Core]
 versions = ["lts", "1", "pre"]
 
+[DeviceKernels]
+versions = ["lts", "1", "pre"]
+
+# GPU remains an opt-in group in runtests.jl. The shared CI runners do not
+# provide NVIDIA hardware; DeviceKernels exercises the portable code here.
+
 [QA]
 versions = ["lts", "1"]

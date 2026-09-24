@@ -868,65 +868,6 @@ function __split_kwargs(; abstol, adaptive, controller, verbose = DEFAULT_VERBOS
 end
 
 """
-    __concrete_kwargs(nlsolve, optimize, nlsolve_kwargs, optimize_kwargs[, bvp_verbose])
-
-Select and normalize the keyword arguments forwarded to the active internal nonlinear or
-optimization solver.
-"""
-@inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
-    nlsolve_kwargs...,
-)
-@inline __concrete_kwargs(::Nothing, optimize, nlsolve_kwargs, optimize_kwargs) = (;) # Doesn't support for now
-@inline __concrete_kwargs(::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
-    nlsolve_kwargs...,
-)
-
-# Overloads that handle BVP verbosity → NonlinearSolve verbosity conversion
-@inline function __concrete_kwargs(
-        nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs, bvp_verbose::BVPVerbosity
-    )
-    # Check if user already specified verbose in nlsolve_kwargs
-    if haskey(nlsolve_kwargs, :verbose)
-        return (; nlsolve_kwargs...)  # User's explicit verbose wins
-    else
-        # Convert preset to NonlinearVerbosity if needed
-        nl_verbose = bvp_verbose.nonlinear_verbosity isa NonlinearVerbosity ?
-            bvp_verbose.nonlinear_verbosity :
-            NonlinearVerbosity(bvp_verbose.nonlinear_verbosity)
-        return (; verbose = nl_verbose, nlsolve_kwargs...)
-    end
-end
-
-@inline function __concrete_kwargs(
-        ::Nothing, ::Nothing, nlsolve_kwargs, optimize_kwargs, bvp_verbose::BVPVerbosity
-    )
-    if haskey(nlsolve_kwargs, :verbose)
-        return (; nlsolve_kwargs...)
-    else
-        # Convert preset to NonlinearVerbosity if needed
-        nl_verbose = bvp_verbose.nonlinear_verbosity isa NonlinearVerbosity ?
-            bvp_verbose.nonlinear_verbosity :
-            NonlinearVerbosity(bvp_verbose.nonlinear_verbosity)
-        return (; verbose = nl_verbose, nlsolve_kwargs...)
-    end
-end
-
-@inline function __concrete_kwargs(
-        ::Nothing, optimize, nlsolve_kwargs, optimize_kwargs, bvp_verbose::BVPVerbosity
-    )
-    # Check if user already specified verbose in optimize_kwargs
-    if haskey(optimize_kwargs, :verbose)
-        return (; optimize_kwargs...)  # User's explicit verbose wins
-    else
-        # Convert preset to OptimizationVerbosity if needed
-        opt_verbose = bvp_verbose.optimization_verbosity isa OptimizationVerbosity ?
-            bvp_verbose.optimization_verbosity :
-            OptimizationVerbosity(bvp_verbose.optimization_verbosity)
-        return (; verbose = opt_verbose, optimize_kwargs...)
-    end
-end
-
-"""
     __add_singular_term!(K, singular_term, y, t)
 
 Helper function to add the singular term contribution S * y / t to K for t > 0.
@@ -1099,3 +1040,187 @@ variables, so defect-based mesh refinement cannot converge.
     end
     return nothing
 end
+
+# Backend-independent storage and callback utilities shared by collocation solvers.
+"""
+    __device_parameter(platform, p)
+
+Copy mutable parameter arrays to a backend, recursively preserving tuple and named-tuple structure.
+"""
+function __device_parameter(platform, p)
+    isbits(p) || throw(
+        ArgumentError(
+            "BVP GPU parameters must be isbits values, numeric arrays, or tuples/named tuples of these."
+        )
+    )
+    return p
+end
+
+function __device_parameter(platform, p::AbstractArray)
+    isbits(p) && return p
+    isbitstype(eltype(p)) ||
+        throw(ArgumentError("BVP GPU parameter arrays must have an isbits element type."))
+    dest = KernelAbstractions.allocate(platform, eltype(p), size(p))
+    copyto!(dest, p)
+    return dest
+end
+
+__device_parameter(platform, p::Union{Tuple, NamedTuple}) =
+    map(x -> __device_parameter(platform, x), p)
+
+"""
+    __device_copy_parameter!(dest, src)
+
+Refresh adapted parameter arrays in place, rejecting changes to their dimensions.
+"""
+__device_copy_parameter!(dest, src) = nothing
+function __device_copy_parameter!(dest::AbstractArray, src::AbstractArray)
+    isbits(src) && return nothing
+    size(dest) == size(src) || throw(
+        DimensionMismatch(
+            "BVP GPU parameter array size changed; initialize a new solve cache."
+        )
+    )
+    copyto!(dest, src)
+    return nothing
+end
+function __device_copy_parameter!(dest::Union{Tuple, NamedTuple}, src::Union{Tuple, NamedTuple})
+    foreach(__device_copy_parameter!, dest, src)
+    return nothing
+end
+
+"""
+    __reshape_buffer(buffer, dims...)
+    __reshape_buffer(buffer, dims::Tuple)
+
+Reshape an owning buffer without preventing later resizing of its storage. On CPU,
+reshape a view so Julia 1.10 does not mark the vector's allocation as shared.
+Recreate the shaped view after resizing the buffer, including on device backends.
+"""
+@inline __reshape_buffer(buffer, dims::Tuple) = reshape(buffer, dims)
+@inline __reshape_buffer(buffer::Vector, dims::Tuple) = reshape(view(buffer, :), dims)
+@inline __reshape_buffer(buffer, dims::Int...) = __reshape_buffer(buffer, dims)
+
+# Base.reshape's error path is not GPU-compatible; validate dimensions on the host.
+
+Base.size(a::DeviceReshapedArray) = a.dims
+Base.IndexStyle(::Type{<:DeviceReshapedArray}) = IndexLinear()
+Base.@propagate_inbounds Base.getindex(a::DeviceReshapedArray, i::Int) = a.data[i]
+Base.@propagate_inbounds function Base.setindex!(a::DeviceReshapedArray, value, i::Int)
+    a.data[i] = value
+    return a
+end
+
+"""
+    __device_reshape(data, dims)
+
+Expose a flat device buffer with host-validated dimensions using a kernel-compatible array view.
+"""
+@inline __device_reshape(data::AbstractVector, dims::Tuple{Int}) = data
+@inline function __device_reshape(data::AbstractVector{T}, dims::NTuple{N, Int}) where {T, N}
+    return DeviceReshapedArray{T, N, typeof(data)}(data, dims)
+end
+
+"""
+    __device_singular!(du, S, u, t)
+
+Add the singular term `S * u / t` for positive `t`; dispatch on `nothing` omits it.
+"""
+@inline __device_singular!(du, ::Nothing, u, t) = nothing
+@inline function __device_singular!(du, S, u, t)
+    if t > zero(t)
+        for j in eachindex(du)
+            value = zero(eltype(du))
+            for k in eachindex(u)
+                @inbounds value += S[j, k] * u[k]
+            end
+            @inbounds du[j] += value / t
+        end
+    end
+    return nothing
+end
+
+"""
+    __device_eval!(out, f, args, inplace)
+
+Evaluate an in-place or out-of-place callback into `out` using `Val` dispatch inside kernels.
+"""
+@inline function __device_eval!(out, f::F, args::Tuple, ::Val{true}) where {F}
+    f(out, args...)
+    return nothing
+end
+@inline function __device_eval!(out, f::F, args::Tuple, ::Val{false}) where {F}
+    value = f(args...)
+    for j in eachindex(out)
+        @inbounds out[j] = value[j]
+    end
+    return nothing
+end
+
+"""
+    __device_initial_state(u, p, t)
+
+Extract the first state from a value, initial-guess function or array of states.
+"""
+__device_initial_state(u, p, t) = __extract_u0(u, p, t)
+__device_initial_state(u::AbstractVectorOfArray, p, t) = first(u.u)
+
+# Follow array wrappers without recursing into KA's fallback when parent(u) === u.
+# Scalar-indexing traits cannot distinguish GPU views from CPU tracked arrays.
+"""
+    __device_initial_backend(u)
+
+Find an initial state's KernelAbstractions backend, following array wrappers and defaulting to CPU.
+"""
+__device_initial_backend(u) = CPU()
+function __device_initial_backend(u::AbstractArray)
+    implementation = which(KernelAbstractions.get_backend, Tuple{typeof(u)})
+    fallback = which(KernelAbstractions.get_backend, Tuple{AbstractArray})
+    implementation === fallback || return KernelAbstractions.get_backend(u)
+    source = parent(u)
+    return source === u ? CPU() : __device_initial_backend(source)
+end
+
+"""
+    __device_bc_sizes(prob, u0)
+
+Infer residual dimensions from boundary prototypes and first- or second-order problem dispatch.
+"""
+__device_bc_sizes(prob, u0) =
+    __device_bc_sizes(prob.problem_type, prob.f.bcresid_prototype, u0)
+function __device_bc_sizes(::Union{TwoPointBVProblem, TwoPointSecondOrderBVProblem}, prototype, u0)
+    prototype === nothing && throw(ArgumentError("Device two-point BVPs require bcresid_prototype = (left, right)."))
+    return map(size, prototype.x)
+end
+__device_bc_sizes(::StandardBVProblem, prototype, u0) =
+    (prototype === nothing ? size(u0) : size(prototype), ())
+__device_bc_sizes(::StandardSecondOrderBVProblem, prototype, u0) =
+    (prototype === nothing ? (2length(u0),) : size(prototype), ())
+
+"""
+    __device_validate_ad(mode)
+
+Validate resident ForwardDiff or forward/central finite differences and unwrap sparse AD modes.
+"""
+__device_validate_ad(mode::AutoSparse) = __device_validate_ad(get_dense_ad(mode))
+__device_validate_ad(mode::AutoForwardDiff) = mode
+function __device_validate_ad(mode::AutoFiniteDiff)
+    mode.fdjtype isa Union{Val{:forward}, Val{:central}} || throw(
+        ArgumentError("Device BVP finite differences support fdjtype = Val(:forward) or Val(:central).")
+    )
+    return mode
+end
+__device_validate_ad(mode) = throw(
+    ArgumentError(
+        "Device BVP Jacobians support AutoForwardDiff and AutoFiniteDiff, optionally wrapped in AutoSparse."
+    )
+)
+
+"""
+    __device_function(f)
+
+Extract the RHS from nested `ODEFunction` wrappers before passing it to a device kernel.
+"""
+__device_function(f) = f
+# Only the RHS is needed from ODEFunction wrappers.
+__device_function(f::SciMLBase.ODEFunction) = __device_function(f.f)

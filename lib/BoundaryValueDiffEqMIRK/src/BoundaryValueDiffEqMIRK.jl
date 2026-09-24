@@ -9,7 +9,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     DEFAULT_VERBOSE, GaussNewton, LevenbergMarquardt, REErrorControl,
     _process_verbose_param,
     recursive_flatten!, recursive_unflatten!,
-    __concrete_solve_algorithm, diff!, EvalSol,
+    __concrete_solve_algorithm, __needs_sparse_damping, diff!, EvalSol,
     concrete_jacobian_algorithm, eval_bc_residual,
     eval_bc_residual!, __maybe_matmul!, __resize!,
     __extract_problem_details, interval,
@@ -27,8 +27,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __concrete_kwargs, __FastShortcutNonlinearPolyalg,
     __construct_internal_problem, __internal_solve,
     __default_sparsity_detector, __build_cost, __add_singular_term!,
-    __apply_mass_matrix!, __get_algebraic_indices, __mass_mesh_entry,
-    __apply_algebraic_constraint!, __is_algebraic, __check_dae_adaptivity
+    __apply_mass_matrix!, __get_algebraic_indices, __mass_mesh_entry, __check_dae_adaptivity
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -36,7 +35,7 @@ using FastAlmostBandedMatrices: AlmostBandedMatrix, fillpart, exclusive_bandpart
     finish_part_setindex!
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff, pickchunksize
-using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using KernelAbstractions: KernelAbstractions, Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
     recursivefill!
@@ -47,7 +46,7 @@ using Setfield: @set!
 using PreallocationTools: PreallocationTools, get_tmp, LazyBufferCache
 using PrecompileTools: @compile_workload, @setup_workload
 using Preferences: Preferences
-using SparseArrays: sparse
+using SparseArrays: SparseArrays
 
 # The public API that BoundaryValueDiffEqMIRK reexports, so that
 # `using BoundaryValueDiffEqMIRK` on its own is enough to pick AD and execution
@@ -62,6 +61,13 @@ using BoundaryValueDiffEqCore: BVPVerbosity, NewtonRaphson, NoErrorControl, Trus
 using SciMLBase: EnsembleProblem, ODEFunction, init, solve!, successful_retcode
 
 using SciMLStructures: SciMLStructures
+
+using BoundaryValueDiffEqCore: SparseJacobianCache, BVPTunableRHS, __device_copy_parameter!,
+    __device_bc_sizes, __device_function, __device_jacobian!, __device_jacobian_products,
+    __device_parameter, __device_reshape, __reshape_buffer, __device_residual!, __device_singular!,
+    __device_validate_ad, __device_eval!, __device_initial_backend, __device_initial_state,
+    __device_boundary_pattern, __device_sparse_structure, __prepare_device_jacobian,
+    __device_host_parameter
 
 const DI = DifferentiationInterface
 

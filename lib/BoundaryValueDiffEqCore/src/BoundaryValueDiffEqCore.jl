@@ -8,12 +8,14 @@ using ConcreteStructs: @concrete
 using DiffEqBase: DiffEqBase, solve
 using DifferentiationInterface: SecondOrder
 using ForwardDiff: ForwardDiff, pickchunksize
+using KernelAbstractions: KernelAbstractions, CPU, @index, @kernel, synchronize
 using Integrals: Integrals, IntegralProblem
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
+using LinearSolve: KrylovJL_GMRES, KrylovJL_LSMR, UMFPACKFactorization
 using LineSearch: BackTracking
-using NonlinearSolveFirstOrder: NonlinearSolveFirstOrder, NonlinearSolvePolyAlgorithm,
-    GaussNewton, LevenbergMarquardt, NewtonRaphson, NonlinearSolveBase, TrustRegion
-using NonlinearSolveBase: NonlinearVerbosity
+using NonlinearSolveFirstOrder: NonlinearSolveFirstOrder,
+    GaussNewton, LevenbergMarquardt, NewtonRaphson, TrustRegion
+using NonlinearSolveBase: NonlinearSolveBase, NonlinearSolvePolyAlgorithm, NonlinearVerbosity
 using OptimizationBase: OptimizationBase, OptimizationVerbosity
 using PreallocationTools: PreallocationTools, DiffCache, get_tmp
 using RecursiveArrayTools: AbstractVectorOfArray, VectorOfArray, DiffEqArray
@@ -28,7 +30,7 @@ using SciMLLogging: SciMLLogging, Silent,
     None, Minimal, Standard, Detailed, All
 using SciMLPublic: @public
 using Setfield: @set!
-using SparseArrays: sparse
+using SparseArrays: SparseArrays, SparseMatrixCSC, findnz, nnz, rowvals, sparse
 using SparseConnectivityTracer: SparseConnectivityTracer, TracerLocalSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm
 using SciMLStructures: SciMLStructures
@@ -45,6 +47,8 @@ include("verbosity.jl")
 include("types.jl")
 include("solution_utils.jl")
 include("utils.jl")
+include("device_sparse.jl")
+include("device_linsolve.jl")
 include("internal_problems.jl")
 include("algorithms.jl")
 include("abstract_types.jl")
@@ -72,12 +76,33 @@ export BVPVerbosity, _process_verbose_param, DEFAULT_VERBOSE
 # BoundaryValueDiffEqMIRKN). Marked public so the sublibraries can import these
 # without ExplicitImports flagging them; not exported because they are not part
 # of the user-facing API.
+@public __device_nlls_linsolve, __device_square_linsolve
+@public __default_linsolve, __default_sparse_linsolve,
+    __concrete_device_solve_algorithm, __needs_sparse_damping
+
+@public __device_boundary_pattern, __device_sparse_structure,
+    __prepare_device_jacobian, __bvp_device_sparse_group
+
+@public __device_parameter, __device_copy_parameter!, __device_host_parameter,
+    __device_reshape, __reshape_buffer, __device_singular!, __device_eval!, __device_initial_state,
+    __device_initial_backend, __device_bc_sizes, __device_validate_ad, __device_function
+
+@public SparseJacobianCache,
+    BVPTunableRHS,
+    __bvp_device_ad_jacobian!,
+    __device_jacobian!,
+    __device_jacobian_products,
+    __device_residual!,
+    __bvp_device_unknowns, __bvp_device_residual_prototype, __bvp_device_jacobian_plan
+
 @public AbstractBoundaryValueDiffEqCache, AbstractErrorControl, DiffCacheNeeded,
+    __device_sparse_linsolve,
     EvalSol, NoDiffCacheNeeded, __FastShortcutNonlinearPolyalg, __Fix3,
     __add_singular_term!, __any_sparse_ad, __build_cost, __build_solution,
     __cache_trait, __concrete_kwargs, __concrete_solve_algorithm,
     __construct_internal_problem, __default_coloring_algorithm,
     __default_nonsparse_ad, __default_sparse_ad, __default_sparsity_detector,
+    __device_sparse_matrix, __device_sparse_supported,
     __extract_mesh, __extract_problem_details, __extract_u0,
     __flatten_initial_guess, __get_bcresid_prototype, __get_non_sparse_ad,
     __has_initial_guess, __initial_guess, __initial_guess_length,

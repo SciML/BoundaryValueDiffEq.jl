@@ -22,9 +22,8 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
 
 [compat]
-SafeTestsets = "0.1.0"
 ADTypes = "1.14"
-BoundaryValueDiffEqCore = "2.8.1"
+BoundaryValueDiffEqCore = "2.8.4"
 ConcreteStructs = "0.2.3"
 DiffEqDevTools = "3"
 DifferentiationInterface = "0.7.15"
@@ -32,25 +31,30 @@ FastClosures = "0.3.2"
 ForwardDiff = "1"
 KernelAbstractions = "0.9"
 LinearAlgebra = "1.10"
+LinearSolve = "4.2, 5"
 PreallocationTools = "1.7.1"
 Preferences = "1.4"
 Random = "1.10"
 RecursiveArrayTools = "4"
+SafeTestsets = "0.1.0"
 SciMLBase = "3.30"
 SciMLTesting = "2.4"
 Setfield = "1.1.1"
+SparseArrays = "1.10"
 StaticArrays = "1.9.8"
 Test = "1.10"
 julia = "1.10"
 
 [extras]
-SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqDevTools", "Random", "RecursiveArrayTools", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]
+test = ["SparseArrays", "DiffEqDevTools", "LinearSolve", "Random", "RecursiveArrayTools", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]

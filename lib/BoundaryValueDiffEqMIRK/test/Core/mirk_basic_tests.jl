@@ -474,11 +474,18 @@ end
 
     prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
     prob_mp_tspan = (0.0, pi / 2)
-    prob = BVProblem(prob_mp_function, prob_mp_bc!, [0.0, 1.0], prob_mp_tspan)
+    # A constant profile makes the inner critical-point solves degenerate.
+    # Perturb a smooth profile so the boundary residual is initially nonzero.
+    prob_mp_guess(p, t) = 1.1 .* prob_mp_analytic(nothing, p, t)
+    prob = BVProblem(prob_mp_function, prob_mp_bc!, prob_mp_guess, prob_mp_tspan)
 
     for order in (4, 6)
         sol = solve(prob, mirk_solver(Val(order)), dt = 0.001)
         @test SciMLBase.successful_retcode(sol)
+        @test all(
+            isapprox(sol(t), prob_mp_analytic(nothing, nothing, t); atol = 1.0e-4)
+                for t in range(prob_mp_tspan...; length = 11)
+        )
     end
 end
 

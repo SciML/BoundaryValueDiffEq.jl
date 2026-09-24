@@ -148,14 +148,28 @@ function __ascher_collocation!(
     return nothing
 end
 
-function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {iip, T}
+# Boundary type selects the existing side-condition assembly. Output storage
+# selects allocation, so in-place and allocating residuals share the solver.
+Φ(cache::AscherCache, z, pt::Union{StandardBVProblem, TwoPointBVProblem}) =
+    Φ!(cache, z, nothing, pt)
+
+__ascher_residual_matrix(::Nothing, T, n) = Matrix{T}(undef, n, n)
+__ascher_residual_matrix(::AbstractArray, T, n) = zeros(T, n, n)
+__ascher_residual_stages(cache, res, pt) = cache.dmzo
+__ascher_residual_stages(cache, ::AbstractArray, ::StandardBVProblem) = copy(cache.deldmz)
+__ascher_flatten_residual!(::Nothing, residuals) = nothing
+__ascher_flatten_residual!(res::AbstractArray, residuals) = recursive_flatten!(res, residuals)
+__ascher_residual_result(::Nothing, residuals, cache) = reduce(vcat, residuals)
+__ascher_residual_result(::AbstractArray, residuals, cache) = cache.dmz
+
+function Φ!(cache::AscherCache{iip, T}, z, res, pt::Union{StandardBVProblem, TwoPointBVProblem}) where {iip, T}
     (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, ipvtg, ipvtw) = cache
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = zeros(T, ncy, ncy)
-    dmzo = copy(deldmz)
+    df = __ascher_residual_matrix(res, T, ncy)
+    dmzo = __ascher_residual_stages(cache, res, pt)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -240,316 +254,18 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
     end
     recursive_flatten!(z, temp_z)
     residss = [r[1:ncomp] for r in resids]
-    recursive_flatten!(res, residss)
+    __ascher_flatten_residual!(res, residss)
 
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
     copyto!(cache.z, new_z)
-    return copyto!(cache.dmz, dmz)
-end
-
-function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {iip, T}
-    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw) = cache
-    ncy = ncomp + ny
-    n = length(mesh) - 1
-    Tz = eltype(z)
-    dgz = Vector{T}(undef, ncomp)
-    df = zeros(T, ncy, ncy)
-
-    temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
-    temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
-    recursive_unflatten!(temp_z, z)
-    rhs_bc = Vector{T}(undef, ncomp)
-
-    # set up the linear system of equations
-    izeta_entries, izsave = __ascher_izeta_entries(cache)
-    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
-
-    # assembly process completed
-    # solve the linear system
-    # matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
-
-    # perform forward and backward substitution.
-    deldmz .= copy(temp_rhs)
-    izet = 1
-    for i in 1:n
-        nrow = g.rows[i]
-        izeta = nrow + 1 - ncomp
-        (i == n) && (izeta = izsave)
-        while true
-            (izet == izeta) && break
-            delz[i][izet] = rhs_bc[izet]
-            izet = izet + 1
-        end
-        h = mesh_dt[i]
-        @views gblock!(cache, h, izeta, w[i], delz[i:(i + 1)], deldmz[i], ipvtw[i])
-
-        if i == n
-            while true
-                (izet > ncomp) && break
-                delz[i + 1][izet] = rhs_bc[izet]
-                izet = izet + 1
-            end
-        end
-    end
-    # perform forward and backward substitution
-    @views AlmostBlockDiagonals.substitution(g, ipvtg, delz)
-
-    # finally find deldmz
-    @views dmzsol!(cache, v, delz, deldmz)
-
-    # project current iterate into current pp-space
-    dmz .= copy(dmzo)
-    izet::Int = 1
-    for i in 1:n
-        nrow = g.rows[i]
-        izeta::Int = nrow + 1 - ncomp
-        (i == n) && (izeta = izsave)
-        while true
-            (izet == izeta) && break
-            temp_z[i][izet] = dgz[izet]
-            izet = izet + 1
-        end
-        h = mesh_dt[i]
-        @views gblock!(cache, h, izeta, w[i], temp_z[i:(i + 1)], dmz[i], ipvtw[i])
-
-        if i == n
-            while true
-                (izet > ncomp) && break
-                temp_z[i + 1][izet] = dgz[izet]
-                izet = izet + 1
-            end
-        end
-    end
-
-    @views AlmostBlockDiagonals.substitution(g, ipvtg, temp_z)
-
-    # finally find dmz
-    @views dmzsol!(cache, v, temp_z, dmz)
-
-    temp_z .= temp_z .+ delz
-    dmz .= dmz .+ deldmz
-
-    resids = [Vector{T}(undef, ncy) for _ in 1:(n + 1)]
-    for (i, item) in enumerate(temp_rhs)
-        for (j, col) in enumerate(eachrow(reduce(hcat, item)))
-            resids[i][j] = sum(abs2, col)
-        end
-    end
-    recursive_flatten!(z, temp_z)
-    residss = [r[1:ncomp] for r in resids]
-    recursive_flatten!(res, residss)
-
-    # update z in cache for next iteration
-    new_z = __get_value(temp_z)
-    copyto!(cache.z, new_z)
-    return copyto!(cache.dmz, dmz)
+    copyto!(cache.dmz, dmz)
+    return __ascher_residual_result(res, residss, cache)
 end
 
 @inline __get_value(z::Vector{<:AbstractArray}) = eltype(first(z)) <: ForwardDiff.Dual ?
     [map(x -> x.value, a) for a in z] : z
 @inline __get_value(z) = isa(z, ForwardDiff.Dual) ? z.value : z
-
-function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
-    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw) = cache
-    ncy = ncomp + ny
-    n = length(mesh) - 1
-    Tz = eltype(z)
-    dgz = Vector{T}(undef, ncomp)
-    df = Matrix{T}(undef, ncy, ncy)
-
-    temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
-    temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
-    recursive_unflatten!(temp_z, z)
-    rhs_bc = Vector{T}(undef, ncomp)
-
-    # set up the linear system of equations
-    izeta_entries, izsave = __ascher_izeta_entries(cache)
-    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
-
-    # assembly process completed
-    # solve the linear system
-    # matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
-
-    # perform forward and backward substitution.
-    deldmz .= copy(temp_rhs)
-    izet = 1
-    for i in 1:n
-        nrow = g.rows[i]
-        izeta = nrow + 1 - ncomp
-        (i == n) && (izeta = izsave)
-        while true
-            (izet == izeta) && break
-            delz[i][izet] = rhs_bc[izet]
-            izet = izet + 1
-        end
-        h = mesh_dt[i]
-        @views gblock!(cache, h, izeta, w[i], delz[i:(i + 1)], deldmz[i], ipvtw[i])
-
-        if i == n
-            while true
-                (izet > ncomp) && break
-                delz[i + 1][izet] = rhs_bc[izet]
-                izet = izet + 1
-            end
-        end
-    end
-    # perform forward and backward substitution
-    @views AlmostBlockDiagonals.substitution(g, ipvtg, delz)
-
-    # finally find deldmz
-    @views dmzsol!(cache, v, delz, deldmz)
-
-    # project current iterate into current pp-space
-    dmz .= copy(dmzo)
-    izet::Int = 1
-    for i in 1:n
-        nrow = g.rows[i]
-        izeta::Int = nrow + 1 - ncomp
-        (i == n) && (izeta = izsave)
-        while true
-            (izet == izeta) && break
-            temp_z[i][izet] = dgz[izet]
-            izet = izet + 1
-        end
-        h = mesh_dt[i]
-        @views gblock!(cache, h, izeta, w[i], temp_z[i:(i + 1)], dmz[i], ipvtw[i])
-
-        if i == n
-            while true
-                (izet > ncomp) && break
-                temp_z[i + 1][izet] = dgz[izet]
-                izet = izet + 1
-            end
-        end
-    end
-
-    @views AlmostBlockDiagonals.substitution(g, ipvtg, temp_z)
-
-    # finally find dmz
-    @views dmzsol!(cache, v, temp_z, dmz)
-
-    temp_z .= temp_z .+ delz
-    dmz .= dmz .+ deldmz
-
-    resids = [Vector{T}(undef, ncy) for _ in 1:(n + 1)]
-    for (i, item) in enumerate(temp_rhs)
-        for (j, col) in enumerate(eachrow(reduce(hcat, item)))
-            resids[i][j] = sum(abs2, col)
-        end
-    end
-    recursive_flatten!(z, temp_z)
-    residss = [r[1:ncomp] for r in resids]
-
-    # update z in cache for next iteration
-    new_z = __get_value(temp_z)
-    copyto!(cache.z, new_z)
-    copyto!(cache.dmz, dmz)
-
-    return reduce(vcat, residss)
-end
-
-function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
-    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw) = cache
-    ncy = ncomp + ny
-    n = length(mesh) - 1
-    Tz = eltype(z)
-    dgz = Vector{T}(undef, ncomp)
-    df = Matrix{T}(undef, ncy, ncy)
-
-    temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
-    temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
-    recursive_unflatten!(temp_z, z)
-    rhs_bc = Vector{T}(undef, ncomp)
-
-    # set up the linear system of equations
-    izeta_entries, izsave = __ascher_izeta_entries(cache)
-    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
-
-    # assembly process completed
-    # solve the linear system
-    # matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
-
-    # perform forward and backward substitution.
-    deldmz .= copy(temp_rhs)
-    izet = 1
-    for i in 1:n
-        nrow = g.rows[i]
-        izeta = nrow + 1 - ncomp
-        (i == n) && (izeta = izsave)
-        while true
-            (izet == izeta) && break
-            delz[i][izet] = rhs_bc[izet]
-            izet = izet + 1
-        end
-        h = mesh_dt[i]
-        @views gblock!(cache, h, izeta, w[i], delz[i:(i + 1)], deldmz[i], ipvtw[i])
-
-        if i == n
-            while true
-                (izet > ncomp) && break
-                delz[i + 1][izet] = rhs_bc[izet]
-                izet = izet + 1
-            end
-        end
-    end
-    # perform forward and backward substitution
-    @views AlmostBlockDiagonals.substitution(g, ipvtg, delz)
-
-    # finally find deldmz
-    @views dmzsol!(cache, v, delz, deldmz)
-
-    # project current iterate into current pp-space
-    dmz .= copy(dmzo)
-    izet::Int = 1
-    for i in 1:n
-        nrow = g.rows[i]
-        izeta::Int = nrow + 1 - ncomp
-        (i == n) && (izeta = izsave)
-        while true
-            (izet == izeta) && break
-            temp_z[i][izet] = dgz[izet]
-            izet = izet + 1
-        end
-        h = mesh_dt[i]
-        @views gblock!(cache, h, izeta, w[i], temp_z[i:(i + 1)], dmz[i], ipvtw[i])
-
-        if i == n
-            while true
-                (izet > ncomp) && break
-                temp_z[i + 1][izet] = dgz[izet]
-                izet = izet + 1
-            end
-        end
-    end
-
-    @views AlmostBlockDiagonals.substitution(g, ipvtg, temp_z)
-
-    # finally find dmz
-    @views dmzsol!(cache, v, temp_z, dmz)
-
-    temp_z .= temp_z .+ delz
-    dmz .= dmz .+ deldmz
-
-    resids = [Vector{T}(undef, ncy) for _ in 1:(n + 1)]
-    for (i, item) in enumerate(temp_rhs)
-        for (j, col) in enumerate(eachrow(reduce(hcat, item)))
-            resids[i][j] = sum(abs2, col)
-        end
-    end
-    recursive_flatten!(z, temp_z)
-    residss = [r[1:ncomp] for r in resids]
-
-    # update z in cache for next iteration
-    new_z = __get_value(temp_z)
-    copyto!(cache.z, new_z)
-    copyto!(cache.dmz, dmz)
-
-    return reduce(vcat, residss)
-end
 
 function approx(cache::AscherCache{iip, T}, x, zval) where {iip, T}
     (; k, z, ncomp, dmz, TU, mesh, mesh_dt) = cache
@@ -856,4 +572,172 @@ function interval(mesh, t)
     (a == length(mesh)) && (return length(mesh) - 1)
     n = length(mesh)
     return a === nothing ? (return clamp(searchsortedfirst(mesh, t) - 1, 1, n)) : a
+end
+
+function __ascher_device_residual!(r, x, cache::AscherCache{iip}) where {iip}
+    work = __ascher_device_work(cache, eltype(x))
+    (; ncomp, M, k, mesh, TU, p, f, bc) = cache
+    platform = cache.alg.platform
+    n = length(cache.host_mesh) - 1
+    __ascher_device_stages!(platform)(r, work.stages, x, f, p, mesh, TU.a, TU.rho, cache.mass, ncomp, M, k, Val(iip); ndrange = k * n)
+    __ascher_device_continuity!(platform)(r, x, mesh, TU.b, ncomp, M, k; ndrange = ncomp * n)
+    __ascher_device_boundary!(platform)(r, work.boundary, x, bc, p, mesh, cache.locations, ncomp, ncomp + M * k, cache.left, Val(iip), Val(cache.prob.problem_type isa TwoPointBVProblem); ndrange = ncomp)
+    synchronize(platform)
+    return r
+end
+
+function __ascher_device_sample(cache, times)
+    output = similar(cache.x, cache.M, length(times))
+    __ascher_device_sample!(cache.alg.platform)(output, cache.x, cache.mesh, cache.TU.coef, times, cache.ncomp, cache.M, cache.k; ndrange = size(output))
+    synchronize(cache.alg.platform)
+    return output
+end
+
+struct AscherDeviceInterpolation{X, T, C, P} <: SciMLBase.AbstractDiffEqInterpolation
+    x::X
+    mesh::T
+    coef::C
+    ncomp::Int
+    M::Int
+    k::Int
+    platform::P
+end
+SciMLBase.interp_summary(::AscherDeviceInterpolation) = "Ascher Gauss collocation polynomial on device"
+
+function (interp::AscherDeviceInterpolation)(t::Number, idxs, ::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    D == 0 || throw(ArgumentError("Device Ascher solution interpolation currently supports derivative order zero."))
+    if idxs isa Integer
+        1 <= idxs <= interp.M || throw(BoundsError(Base.OneTo(interp.M), idxs))
+    elseif idxs !== nothing
+        all(i -> i isa Integer && 1 <= i <= interp.M, idxs) || throw(BoundsError(Base.OneTo(interp.M), idxs))
+    end
+    times = __ascher_upload(interp.platform, [t])
+    output = similar(interp.x, interp.M, 1)
+    __ascher_device_sample!(interp.platform)(output, interp.x, interp.mesh, interp.coef, times, interp.ncomp, interp.M, interp.k; ndrange = size(output))
+    synchronize(interp.platform)
+    idxs === nothing && return vec(output)
+    if idxs isa Integer
+        return sum(view(output, idxs:idxs, 1))
+    end
+    return vec(output)[__ascher_upload(interp.platform, collect(idxs))]
+end
+
+function (interp::AscherDeviceInterpolation)(ts, idxs, deriv::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    times = collect(ts)
+    return DiffEqArray([interp(t, idxs, deriv, p, continuity) for t in times], times)
+end
+
+function (interp::AscherDeviceInterpolation)(out::AbstractArray, t::Number, idxs::Union{Nothing, Integer, AbstractArray, Tuple}, deriv::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    copyto!(out, interp(t, idxs, deriv, p, continuity))
+    return out
+end
+
+# One independent work item per (stage, interval); no shared scratch writes.
+# Each interval stores [z_i; q_i1; ...; q_ik], followed by a final z node.
+@kernel function __ascher_device_stages!(r, tmp, x, f, p, mesh, a, rho, mass, d, M, k, iip)
+    index = @index(Global, Linear)
+    stage = (index - 1) % k + 1
+    interval = (index - 1) ÷ k + 1
+    @inbounds begin
+        width = d + M * k
+        offset = (interval - 1) * width
+        h = mesh[interval + 1] - mesh[interval]
+        for j in 1:M
+            value = zero(eltype(x))
+            if j <= d
+                value = x[offset + j]
+                for s in 1:k
+                    value += h * a[s, stage] * x[offset + d + (s - 1) * M + j]
+                end
+            else
+                value = x[offset + d + (stage - 1) * M + j]
+            end
+            tmp[j, stage, interval] = value
+        end
+        output = view(r, (d + offset + d + (stage - 1) * M + 1):(d + offset + d + stage * M))
+        __ascher_device_eval!(output, f, (view(tmp, :, stage, interval), p, mesh[interval] + h * rho[stage]), iip)
+        for j in 1:d
+            output[j] -= mass[j] * x[offset + d + (stage - 1) * M + j]
+        end
+    end
+end
+
+@kernel function __ascher_device_continuity!(r, x, mesh, b, d, M, k)
+    index = @index(Global, Linear)
+    j = (index - 1) % d + 1
+    interval = (index - 1) ÷ d + 1
+    @inbounds begin
+        width = d + M * k
+        offset = (interval - 1) * width
+        h = mesh[interval + 1] - mesh[interval]
+        value = x[offset + width + j] - x[offset + j]
+        for s in 1:k
+            value -= h * b[s] * x[offset + d + (s - 1) * M + j]
+        end
+        r[d + offset + j] = value
+    end
+end
+
+# Ascher side condition j is bc(z(zeta[j]), p, zeta[j])[j]. Unlike the
+# general BVProblem convention, this callback takes a local differential state.
+@kernel function __ascher_device_boundary!(r, tmp, x, bc, p, mesh, locations, d, width, left, iip, twopoint)
+    j = @index(Global, Linear)
+    @inbounds begin
+        node = locations[j]
+        z = view(x, ((node - 1) * width + 1):((node - 1) * width + d))
+        if twopoint isa Val{true}
+            if j <= left
+                out = view(tmp, 1:left, j)
+                __ascher_device_eval!(out, bc[1], (z, p), iip)
+                r[j] = out[j]
+            else
+                out = view(tmp, 1:(d - left), j)
+                __ascher_device_eval!(out, bc[2], (z, p), iip)
+                r[j] = out[j - left]
+            end
+        else
+            out = view(tmp, :, j)
+            __ascher_device_eval!(out, bc, (z, p, mesh[node]), iip)
+            r[j] = out[j]
+        end
+    end
+end
+
+# Evaluate the same integrated Lagrange polynomial used by the original Ascher
+# implementation. Algebraic variables use the nonintegrated stage polynomial.
+@inline function __ascher_polynomial(x, mesh, coef, t, j, d, M, k, derivative = false)
+    n = length(mesh) - 1
+    interval = 1
+    # Binary search works in GPU kernels and avoids a mesh-sized scan per point.
+    lo, hi = 1, n
+    while lo <= hi
+        mid = (lo + hi) ÷ 2
+        if mesh[mid] <= t
+            interval = mid
+            lo = mid + 1
+        else
+            hi = mid - 1
+        end
+    end
+    @inbounds begin
+        h = mesh[interval + 1] - mesh[interval]
+        theta = (t - mesh[interval]) / h
+        offset = (interval - 1) * (d + M * k)
+        value = j <= d && !derivative ? x[offset + j] : zero(eltype(x))
+        for s in 1:k
+            basis = coef[1, s]
+            for l in 2:k
+                divisor = j <= d && !derivative ? k + 2 - l : k + 1 - l
+                basis = basis * theta / divisor + coef[l, s]
+            end
+            weight = j <= d && !derivative ? h * theta * basis : basis
+            value += weight * x[offset + d + (s - 1) * M + j]
+        end
+        return value
+    end
+end
+
+@kernel function __ascher_device_sample!(out, x, mesh, coef, times, d, M, k)
+    j, i = @index(Global, NTuple)
+    @inbounds out[j, i] = __ascher_polynomial(x, mesh, coef, times[i], j, d, M, k)
 end
