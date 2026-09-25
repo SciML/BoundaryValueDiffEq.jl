@@ -1,35 +1,47 @@
 # Algorithms from ODEInterface.jl
 """
-    BVPM2(; max_num_subintervals = 3000, method_choice = 4, diagnostic_output = 1,
-        error_control = 1, singular_term = nothing)
-    BVPM2(max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
-        error_control::Int, singular_term)
+    BVPM2(;
+        max_num_subintervals = 3000, method_choice = 4, diagnostic_output = 1,
+        error_control = 1, singular_term = nothing
+    )
+    BVPM2(
+        max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
+        error_control::Int, singular_term
+    )
 
 Fortran code for solving two-point boundary value problems. For detailed documentation, see
 [ODEInterface.jl](https://github.com/luchr/ODEInterface.jl/blob/master/doc/SolverOptions.md#bvpm2).
 
 ## Keyword Arguments:
 
-    - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
-    - `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4,
-      available choices:
-        - `2`: Runge-Kutta method of order 2.
-        - `4`: Runge-Kutta method of order 4.
-        - `6`: Runge-Kutta method of order 6.
-    - `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available
-      choices:
-        - `-1`: Full diagnostic printout.
-        - `0`: Selected printout.
-        - `1`: No printout.
-    - `error_control`: Determines the error-estimation for which RTOL is used, default as
-      defect control, available choices:
-        - `1`: Defect control.
-        - `2`: Global error control.
-        - `3`: Defect and then global error control.
-        - `4`: Linear combination of defect and global error control.
-    - `singular_term`: either nothing if the ODEs have no singular terms at the left
-      boundary or a constant (d,d) matrix for the
-        singular term.
+- `max_num_subintervals`: Number of maximal subintervals, default as 3000.
+- `method_choice`: Choice for IVP-solvers, default as Runge-Kutta method of order 4,
+  available choices:
+    - `2`: Runge-Kutta method of order 2.
+    - `4`: Runge-Kutta method of order 4.
+    - `6`: Runge-Kutta method of order 6.
+- `diagnostic_output`: Diagnostic output for BVPM2, default as non printout, available
+  choices:
+    - `-1`: Full diagnostic printout.
+    - `0`: Selected printout.
+    - `1`: No printout.
+- `error_control`: Determines the error-estimation for which RTOL is used, default as
+  defect control, available choices:
+    - `1`: Defect control.
+    - `2`: Global error control.
+    - `3`: Defect and then global error control.
+    - `4`: Linear combination of defect and global error control.
+- `singular_term`: `nothing` when the ODE has no singular term at the left boundary, or a
+  constant `(d, d)` matrix for that term.
+
+# Examples
+
+```julia
+using BoundaryValueDiffEq, ODEInterface
+
+alg = BVPM2(max_num_subintervals = 5000, method_choice = 4)
+sol = solve(prob, alg)
+```
 
 !!! note
 
@@ -42,20 +54,28 @@ struct BVPM2{S} <: AbstractBoundaryValueDiffEqAlgorithm
     error_control::Int
     singular_term::S
 
-    function BVPM2(max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
-            error_control::Int, singular_term::Union{Nothing, AbstractMatrix})
+    function BVPM2(
+            max_num_subintervals::Int, method_choice::Int, diagnostic_output::Int,
+            error_control::Int, singular_term::Union{Nothing, AbstractMatrix}
+        )
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`BVPM2` requires `ODEInterface.jl` to be loaded")
         end
-        return new{typeof(singular_term)}(max_num_subintervals, method_choice,
-            diagnostic_output, error_control, singular_term)
+        return new{typeof(singular_term)}(
+            max_num_subintervals, method_choice,
+            diagnostic_output, error_control, singular_term
+        )
     end
 end
 
-function BVPM2(; max_num_subintervals::Int = 3000, method_choice::Int = 4,
-        diagnostic_output::Int = -1, error_control::Int = 1, singular_term = nothing)
-    return BVPM2(max_num_subintervals, method_choice,
-        diagnostic_output, error_control, singular_term)
+function BVPM2(;
+        max_num_subintervals::Int = 3000, method_choice::Int = 4,
+        diagnostic_output::Int = -1, error_control::Int = 1, singular_term = nothing
+    )
+    return BVPM2(
+        max_num_subintervals, method_choice,
+        diagnostic_output, error_control, singular_term
+    )
 end
 
 """
@@ -70,18 +90,27 @@ For detailed documentation, see
 
 ## Keyword Arguments
 
-    - `bvpclass`: Boundary value problem classification, default as highly nonlinear with
-      bad initial data, available choices:
-        - `0`: Linear boundary value problem.
-        - `1`: Nonlinear with good initial data.
-        - `2`: Highly Nonlinear with bad initial data.
-        - `3`: Highly nonlinear with bad initial data and initial rank reduction to
-          separable linear boundary conditions.
-    - `sol_method`: Switch for solution methods, default as local linear solver with
-      condensing algorithm, available choices:
-        - `0`: Use local linear solver with condensing algorithm.
-        - `1`: Use global sparse linear solver.
-    - `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
+- `bvpclass`: Boundary value problem classification, default as highly nonlinear with
+  bad initial data, available choices:
+    - `0`: Linear boundary value problem.
+    - `1`: Nonlinear with good initial data.
+    - `2`: Highly Nonlinear with bad initial data.
+    - `3`: Highly nonlinear with bad initial data and initial rank reduction to
+      separable linear boundary conditions.
+- `sol_method`: Switch for solution methods, default as local linear solver with
+  condensing algorithm, available choices:
+    - `0`: Use local linear solver with condensing algorithm.
+    - `1`: Use global sparse linear solver.
+- `odesolver`: Either `nothing` or ode-solver(dopri5, dop853, seulex, etc.).
+
+# Examples
+
+```julia
+using BoundaryValueDiffEq, ODEInterface
+
+alg = BVPSOL(bvpclass = 1, sol_method = 0)
+sol = solve(prob, alg)
+```
 
 !!! note
 
@@ -105,11 +134,15 @@ function BVPSOL(; bvpclass = 2, sol_method = 0, odesolver = nothing)
 end
 
 """
-    COLNEW(; bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
+    COLNEW(;
+        bvpclass = 1, collocationpts = 7, diagnostic_output = 1,
         max_num_subintervals = 3000, bc_func = nothing, dbc_func = nothing,
-        zeta = nothing)
-    COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
-        max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector)
+        zeta = nothing
+    )
+    COLNEW(
+        bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+        max_num_subintervals::Int, bc_func, dbc_func, zeta::AbstractVector
+    )
 
 ## Keyword Arguments:
 
@@ -132,13 +165,24 @@ end
       + `0`: Selected printout.
       + `1`: No printout.
   - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
-  - `bc_func`: Boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
-  - `dbc_func`: Jacobian of boundary condition accord with ODEInterface.jl, only used for multi-points BVP.
-  - `zeta`: The points in interval where boundary conditions are specified, only used for multi-points BVP.
+  - `bc_func`: Boundary condition accepted by ODEInterface.jl, used only for multipoint BVPs.
+  - `dbc_func`: Boundary-condition Jacobian accepted by ODEInterface.jl, used only for
+    multipoint BVPs.
+  - `zeta`: Points in the interval where boundary conditions are specified, used only for
+    multipoint BVPs.
 
 A Fortran77 code solves a multi-points boundary value problems for a mixed order system of
 ODEs. It incorporates a new basis representation replacing b-splines, and improvements for
 the linear and nonlinear algebraic equation solvers.
+
+# Examples
+
+```julia
+using BoundaryValueDiffEq, ODEInterface
+
+alg = COLNEW(collocationpts = 7, max_num_subintervals = 5000)
+sol = solve(prob, alg)
+```
 
 !!! warning
 
@@ -157,21 +201,29 @@ struct COLNEW <: AbstractBoundaryValueDiffEqAlgorithm
     dbc_func::Union{Function, Nothing}
     zeta::Union{AbstractVector, Nothing}
 
-    function COLNEW(bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
+    function COLNEW(
+            bvpclass::Int, collocationpts::Int, diagnostic_output::Int,
             max_num_subintervals::Int, bc_func::Union{Function, Nothing},
-            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing})
+            dbc_func::Union{Function, Nothing}, zeta::Union{AbstractVector, Nothing}
+        )
         if Base.get_extension(@__MODULE__, :BoundaryValueDiffEqODEInterfaceExt) === nothing
             error("`COLNEW` requires `ODEInterface.jl` to be loaded")
         end
-        return new(bvpclass, collocationpts, diagnostic_output,
-            max_num_subintervals, bc_func, dbc_func, zeta)
+        return new(
+            bvpclass, collocationpts, diagnostic_output,
+            max_num_subintervals, bc_func, dbc_func, zeta
+        )
     end
 end
 
-function COLNEW(; bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
+function COLNEW(;
+        bvpclass::Int = 1, collocationpts::Int = 7, diagnostic_output::Int = 1,
         max_num_subintervals::Int = 3000, bc_func::Union{Function, Nothing} = nothing,
         dbc_func::Union{Function, Nothing} = nothing,
-        zeta::Union{AbstractVector, Nothing} = nothing)
-    return COLNEW(bvpclass, collocationpts, diagnostic_output,
-        max_num_subintervals, bc_func, dbc_func, zeta)
+        zeta::Union{AbstractVector, Nothing} = nothing
+    )
+    return COLNEW(
+        bvpclass, collocationpts, diagnostic_output,
+        max_num_subintervals, bc_func, dbc_func, zeta
+    )
 end

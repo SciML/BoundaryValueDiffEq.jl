@@ -11,3 +11,4 @@ wip
 *.json
 *.json.tmp
 *.pdf
+/docs/src/assets/Project.toml

@@ -6,7 +6,7 @@ for order in (2, 3, 4, 5, 6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
                     defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
@@ -17,6 +17,10 @@ for order in (2, 3, 4, 5, 6)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used. Optimization
+            solvers should first be loaded to allow this functionality.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -27,6 +31,8 @@ for order in (2, 3, 4, 5, 6)
                 `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
                 `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
@@ -48,9 +54,11 @@ for order in (2, 3, 4, 5, 6)
         }
         ```
         """
-        @kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractMIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end
@@ -62,7 +70,7 @@ for order in (6)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(),
+            $($alg)(; nlsolve = NewtonRaphson(), jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
                     defect_threshold = 0.1, max_num_subintervals = 3000)
 
         $($order)th order Monotonic Implicit Runge Kutta method.
@@ -73,6 +81,9 @@ for order in (6)
             `NonlinearProblem` interface can be used. Note that any autodiff argument for
             the solver will be ignored and a custom jacobian algorithm will be used.
 
+          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
+            `OptimizationProblem` interface can be used. Note that any autodiff argument for
+            the solver will be ignored and a custom jacobian algorithm will be used.
           - `jac_alg`: Jacobian Algorithm used for the nonlinear solver. Defaults to
             `BVPJacobianAlgorithm()`, which automatically decides the best algorithm to
             use based on the input types and problem type.
@@ -83,6 +94,8 @@ for order in (6)
                 `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
                 `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
+          - `platform`: KernelAbstractions backend used to evaluate the collocation
+            equations. Defaults to `CPU()`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
@@ -104,9 +117,11 @@ for order in (6)
         }
         ```
         """
-        @kwdef struct $(alg){N, J <: BVPJacobianAlgorithm, T} <: AbstractMIRK
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend, T} <: AbstractMIRK
             nlsolve::N = nothing
+            optimize::O = nothing
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             defect_threshold::T = 0.1
             max_num_subintervals::Int = 3000
         end

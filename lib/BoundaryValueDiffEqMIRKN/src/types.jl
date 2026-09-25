@@ -13,14 +13,16 @@ struct MIRKNTableau{sType, cType, vType, wType, bType, xType, vpType, bpType, xp
 
     function MIRKNTableau(s, c, v, w, b, x, vp, bp, xp)
         @assert eltype(c) ==
-                eltype(v) ==
-                eltype(w) ==
-                eltype(b) ==
-                eltype(x) ==
-                eltype(vp) ==
-                eltype(bp) ==
-                eltype(xp)
-        return new{typeof(s), typeof(c), typeof(v), typeof(w), typeof(b),
-            typeof(x), typeof(vp), typeof(bp), typeof(xp)}(s, c, v, w, b, x, vp, bp, xp)
+            eltype(v) ==
+            eltype(w) ==
+            eltype(b) ==
+            eltype(x) ==
+            eltype(vp) ==
+            eltype(bp) ==
+            eltype(xp)
+        return new{
+            typeof(s), typeof(c), typeof(v), typeof(w), typeof(b),
+            typeof(x), typeof(vp), typeof(bp), typeof(xp),
+        }(s, c, v, w, b, x, vp, bp, xp)
     end
 end

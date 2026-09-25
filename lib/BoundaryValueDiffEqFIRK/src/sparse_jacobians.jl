@@ -11,7 +11,8 @@ If the problem is a TwoPointBVProblem, then this is the complete Jacobian, else 
 computes the sparse part excluding the contributions from the boundary conditions.
 """
 function __generate_sparse_jacobian_prototype(
-        ::FIRKCacheNested, ::StandardBVProblem, ya, yb, M, N)
+        ::FIRKCacheNested, ::StandardBVProblem, ya, yb, M, N
+    )
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
@@ -19,7 +20,8 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        ::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N)
+        ::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N
+    )
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
@@ -31,7 +33,8 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N)
+        cache::FIRKCacheExpand, ::StandardBVProblem, ya, yb, M, N
+    )
     (; stage) = cache
 
     # Get number of nonzeros
@@ -67,7 +70,8 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N)
+        cache::FIRKCacheExpand, ::TwoPointBVProblem, ya, yb, M, N
+    )
     (; stage) = cache
 
     # Get number of nonzeros

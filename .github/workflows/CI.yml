@@ -1,0 +1,19 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+concurrency:
+  # Skip intermediate builds: always.
+  # Cancel intermediate builds: only if it is a pull request build.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+jobs:
+  tests:
+    uses: "SciML/.github/.github/workflows/grouped-tests.yml@v1"
+    with:
+      check-bounds: auto
+    secrets: "inherit"

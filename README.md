@@ -1,7 +1,7 @@
 # BoundaryValueDiffEq
 
 [![Join the chat at https://julialang.zulipchat.com #sciml-bridged](https://img.shields.io/static/v1?label=Zulip&message=chat&color=9558b2&labelColor=389826)](https://julialang.zulipchat.com/#narrow/stream/279055-sciml-bridged)
-[![Global Docs](https://img.shields.io/badge/docs-SciML-blue.svg)](https://docs.sciml.ai/DiffEqDocs/stable/)
+[![Global Docs](https://img.shields.io/badge/docs-SciML-blue.svg)](https://docs.sciml.ai/BoundaryValueDiffEq/dev/)
 
 [![Build Status](https://github.com/SciML/BoundaryValueDiffEq.jl/workflows/CI/badge.svg)](https://github.com/SciML/BoundaryValueDiffEq.jl/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/SciML/BoundaryValueDiffEq.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SciML/BoundaryValueDiffEq.jl)
@@ -28,10 +28,12 @@ function simplependulum!(du, u, p, t)
     dθ = u[2]
     du[1] = dθ
     du[2] = -9.81 * sin(θ)
+    return
 end
 function bc!(residual, u, p, t)
     residual[1] = u(pi / 4)[1] + pi / 2
     residual[2] = u(pi / 2)[1] - pi / 2
+    return
 end
 prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
 sol = solve(prob, MIRK4(), dt = 0.05)

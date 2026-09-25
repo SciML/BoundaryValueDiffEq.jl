@@ -3,8 +3,8 @@
 When ordinary differential equations has constraints over the time span, we should model the differential equations as a boundary value problem which has the form of:
 
 ```math
-\frac{du}{dt}=f(u, p, t)\\
-g(u(a),u(b))=0
+\frac{du}{dt} = f(u, p, t) \\
+g(u(a),u(b)) = 0
 ```
 
 BoundaryValueDiffEq.jl addresses three types of BVProblem.
@@ -22,10 +22,12 @@ using BoundaryValueDiffEq
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = u[1]
+    return
 end
 function bc!(res, u, p, t)
     res[1] = u(0.0)[1] - 1
     res[2] = u(1.0)[1]
+    return
 end
 tspan = (0.0, 1.0)
 u0 = [0.0, 0.0]
@@ -39,17 +41,21 @@ Since this problem only has constraints at the start and end of the time span, w
 function f!(du, u, p, t)
     du[1] = u[2]
     du[2] = u[1]
+    return
 end
 function bca!(res, ua, p)
     res[1] = ua[1] - 1
+    return
 end
 function bcb!(res, ub, p)
     res[1] = ub[1]
+    return
 end
 tspan = (0.0, 1.0)
 u0 = [0.0, 0.0]
 prob = TwoPointBVProblem(
-    f!, (bca!, bcb!), u0, tspan, bcresid_prototype = (zeros(1), zeros(1)))
+    f!, (bca!, bcb!), u0, tspan, bcresid_prototype = (zeros(1), zeros(1))
+)
 sol = solve(prob, MIRK4(), dt = 0.01)
 ```
 
@@ -58,27 +64,31 @@ sol = solve(prob, MIRK4(), dt = 0.01)
 Consirder the test problem from example problems in MIRKN paper [Muir2001MonoImplicitRM](@Citet).
 
 ```math
-\begin{cases}
-y_1'(x)= y_2(x),\\
-\epsilon y_2'(x)=-y_1(x)y_2'(x)- y_3(x)y_3'(x),\\
-\epsilon y_3'(x)=y_1'(x) y_3(x)- y_1(x) y_3 '(x)
-\end{cases}
+\begin{align*}
+y_1'(x) &= y_2(x),\\
+ε y_2'(x) &= -y_1(x) y_2'(x) - y_3(x) y_3'(x), \\
+ε y_3'(x) &=  y_1'(x) y_3(x) - y_1(x) y_3'(x)
+\end{align*}
 ```
 
 with initial conditions:
 
 ```math
-y_1(0) = y_1'(0)= y_1(1)=y_1'(1)=0,y_3(0)=
--1, y_3(1)=1
+\begin{align*}
+y_1(0) &= y_1'(0) = y_1(1) = y_1'(1) = 0, \\
+y_3(0) &= -1, \\
+y_3(1) &=1
+\end{align*}
 ```
 
 ```@example getting_started
 using BoundaryValueDiffEqMIRKN
 function f!(ddu, du, u, p, t)
-    ϵ = 0.1
+    ε = 0.1
     ddu[1] = u[2]
-    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ϵ
-    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ϵ
+    ddu[2] = (-u[1] * du[2] - u[3] * du[3]) / ε
+    ddu[3] = (du[1] * u[3] - u[1] * du[3]) / ε
+    return
 end
 function bc!(res, du, u, p, t)
     res[1] = u(0.0)[1]
@@ -87,6 +97,7 @@ function bc!(res, du, u, p, t)
     res[4] = u(1.0)[3] - 1
     res[5] = du(0.0)[1]
     res[6] = du(1.0)[1]
+    return
 end
 u0 = [1.0, 1.0, 1.0]
 tspan = (0.0, 1.0)
@@ -99,37 +110,43 @@ sol = solve(prob, MIRKN4(), dt = 0.01)
 Consider the nonlinear semi-explicit DAE of index at most 2 in COLDAE paper [ascher1994collocation](@Citet)
 
 ```math
-\begin{cases}
-x_1'=(\epsilon+x_2-p_2(t))y+p_1'(t) \\
-x_2'=p_2'(t) \\
-x_3'=y \\
-0=(x_1-p_1(t))(y-e^t)
-\end{cases}
+\begin{align*}
+x_1' &= (ε+ x_2 - \sin(t)) y + \cos(t) \\
+x_2' &= \cos(t) \\
+x_3' &= y \\
+0 &= [x_1-p_1(t)] \left(y - e^t\right)
+\end{align*}
 ```
 
 with boundary conditions
 
 ```math
-x_1(0)=0,x_3(0)=1,x_2(1)=\sin(1)
+\begin{align*}
+x_1(0) &= 0, \\
+x_3(0) &= 1, \\
+x_2(1) &= \sin(1)
+\end{align*}
 ```
 
 ```@example getting_started
 using BoundaryValueDiffEqAscher
 function f!(du, u, p, t)
-    e = 2.7
     du[1] = (1 + u[2] - sin(t)) * u[4] + cos(t)
     du[2] = cos(t)
     du[3] = u[4]
-    du[4] = (u[1] - sin(t)) * (u[4] - e^t)
+    du[4] = (u[1] - sin(t)) * (u[4] - exp(t))
+    return
 end
 function bc!(res, u, p, t)
     res[1] = u[1]
     res[2] = u[3] - 1
     res[3] = u[2] - sin(1.0)
+    return
 end
 u0 = [0.0, 0.0, 0.0, 0.0]
 tspan = (0.0, 1.0)
-fun = BVPFunction(f!, bc!, mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0])
+mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0]
+fun = BVPFunction(f!, bc!; mass_matrix)
 prob = BVProblem(fun, u0, tspan)
 sol = solve(prob, Ascher4(zeta = [0.0, 0.0, 1.0]), dt = 0.01)
 ```

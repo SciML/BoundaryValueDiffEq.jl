@@ -1,78 +1,170 @@
-function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval,
-        yval, gval, delz, dmz, deldmz, g, w, v, ipvtg, ipvtw, TU) = cache
+function __ascher_collocation_scratch(::Type{T}, ncomp, ny) where {T}
+    ncy = ncomp + ny
+    uval = Vector{T}(undef, ncy)
+    return (;
+        zval = view(uval, 1:ncomp),
+        yval = view(uval, (ncomp + 1):ncy),
+        gval = Vector{T}(undef, ncomp),
+        resid = Vector{T}(undef, ncy),
+        uval,
+        df = Matrix{T}(undef, ncy, ncy),
+    )
+end
+
+# Number of side conditions consumed before each mesh interval. The collocation
+# assembly consumes them in mesh order, so interval `i` starts at
+# `1 + #{ζ <= mesh[i - 1] + eps(T)}`; the value after the last interval is the
+# `izsave` marker used by the substitution sweeps below.
+function __ascher_izeta_entries(cache::AscherCache{iip, T}) where {iip, T}
+    (; mesh, zeta, ncomp) = cache
+    n = length(mesh) - 1
+    entries = Vector{Int}(undef, n)
+    izeta = 1
+    for i in 1:n
+        entries[i] = izeta
+        while (izeta <= ncomp) && (zeta[izeta] <= mesh[i] + eps(T))
+            izeta += 1
+        end
+    end
+    return entries, izeta
+end
+
+@inline function __ascher_eval_bc!(
+        gval, cache, zval, x, ::StandardBVProblem, ::Val{true}
+    )
+    cache.bc(gval, zval, cache.p, x)
+    return nothing
+end
+@inline function __ascher_eval_bc!(
+        gval, cache, zval, x, ::StandardBVProblem, ::Val{false}
+    )
+    return gval .= cache.bc(zval, cache.p, x)
+end
+@inline function __ascher_eval_bc!(
+        gval, cache, zval, _, ::TwoPointBVProblem, ::Val{true}
+    )
+    La = length(first(cache.bcresid_prototype))
+    first(cache.bc)(view(gval, 1:La), zval, cache.p)
+    last(cache.bc)(view(gval, (La + 1):length(gval)), zval, cache.p)
+    return nothing
+end
+@inline function __ascher_eval_bc!(
+        gval, cache, zval, _, ::TwoPointBVProblem, ::Val{false}
+    )
+    La = length(first(cache.bcresid_prototype))
+    gval[1:La] .= first(cache.bc)(zval, cache.p)
+    gval[(La + 1):end] .= last(cache.bc)(zval, cache.p)
+    return nothing
+end
+
+# Assemble the almost-block-diagonal collocation system for one mesh interval.
+# Every write lands in `g[i]`, `w[i]`, `v[i]`, `ipvtw[i]`, `dmzo[i]`,
+# `temp_rhs[i]` or the `izeta_entry:izeta-1` slice of `dgz`/`rhs_bc` owned by
+# this interval, so intervals can run on separate backend work items.
+@views function __ascher_collocation_interval!(
+        i, cache::AscherCache{iip, T}, scratch, temp_rhs, dgz, rhs_bc, dmzo,
+        izeta_entry::Int, pt
+    ) where {iip, T}
+    (; f, mesh, mesh_dt, ncomp, ny, k, p, zeta, g, w, v, ipvtw, TU) = cache
     (; acol, rho) = TU
+    n = length(mesh) - 1
+    ncy = ncomp + ny
+    (; zval, yval, gval, resid, uval, df) = scratch
+    xii = mesh[i]
+    h = mesh_dt[i]
+
+    # construct a block of a and a corresponding piece of rhs
+    approx(cache, xii, zval)
+    # find rhs boundary value
+    __ascher_eval_bc!(gval, cache, zval, xii, pt, Val(iip))
+    # go thru the ncomp collocation equations and side conditions
+    # in the i-th subinterval
+    izeta = izeta_entry
+    while (izeta <= ncomp) && (zeta[izeta] <= xii + eps(T))
+        rhs_bc[izeta] = -gval[izeta]
+        # build a row of a corresponding to a boundary point
+        gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
+        izeta += 1
+    end
+
+    # assemble collocation equations
+    fill!(w[i], T(0))
+    for j in 1:k
+        hrho = h * rho[j]
+        xcol = xii + hrho
+        # find rhs values
+        approx(cache, xcol, zval, yval, dmzo[i][j][1:ncomp])
+        if iip
+            f(resid, uval, p, xcol)
+        else
+            resid .= f(uval, p, xcol)
+        end
+        dmzo[i][j][(ncomp + 1):ncy] .= T(0)
+        temp_rhs[i][j] .= resid .- dmzo[i][j]
+
+        # fill in ncy rows of  w and v
+        vwblok(cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
+    end
+
+    gblock!(cache, h, g[i], izeta, w[i], v[i])
+
+    if i == n
+        # build equation for a side condition.
+        # other nonlinear case
+        zval .= __get_value(cache.z[n + 1])
+        __ascher_eval_bc!(gval, cache, zval, mesh[i + 1], pt, Val(iip))
+        while izeta <= ncomp
+            # find rhs boundary value
+            rhs_bc[izeta] = -gval[izeta]
+            # build a row of  a  corresponding to a boundary point
+            gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
+            izeta += 1
+        end
+    end
+    return nothing
+end
+
+@kernel function __ascher_collocation_kernel!(
+        cache, collocation_cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt
+    )
+    i = @index(Global, Linear)
+    __ascher_collocation_interval!(
+        i, cache, collocation_cache[i], temp_rhs, dgz, rhs_bc, dmzo,
+        izeta_entries[i], pt
+    )
+end
+
+function __ascher_collocation!(
+        cache::AscherCache{iip, T}, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt
+    ) where {iip, T}
+    platform = cache.alg.platform
+    kernel! = __ascher_collocation_kernel!(platform)
+    kernel!(
+        cache, cache.collocation_cache, temp_rhs, dgz, rhs_bc, dmzo,
+        izeta_entries, pt;
+        ndrange = length(cache.mesh) - 1
+    )
+    synchronize(platform)
+    return nothing
+end
+
+function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {iip, T}
+    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, ipvtg, ipvtw) = cache
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
-    dgz = similar(zval)
+    dgz = Vector{T}(undef, ncomp)
     df = zeros(T, ncy, ncy)
     dmzo = copy(deldmz)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rhs_bc = similar(zval)
+    rhs_bc = Vector{T}(undef, ncomp)
 
-    # zero the matrices to be computed
-    fill!.(w, T(0))
-
-    izeta = 1
-    izsave = 1
     # set up the linear system of equations
-    for i in 1:n
-        # construct a block of a and a corresponding piece of rhs
-        xii = mesh[i]
-        h = mesh_dt[i]
-        @views approx(cache, xii, zval)
-        # find rhs boundary value
-        @views bc(gval, zval, p, xii)
-        # go thru the ncomp collocation equations and side conditions
-        # in the i-th subinterval
-        while true
-            (izeta > ncomp) && break
-            (zeta[izeta] > xii + eps(T)) && break
-            rhs_bc[izeta] = -gval[izeta]
-            # build a row of a corresponding to a boundary point
-            @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
-            izeta = izeta + 1
-        end
-
-        # assemble collocation equations
-        for j in 1:k
-            hrho = h * rho[j]
-            xcol = xii + hrho
-            # find rhs values
-            @views approx(cache, xcol, zval, yval, dmzo[i][j][1:ncomp])
-            uval = vcat(zval, yval)
-
-            @views f(residual, uval, p, xcol)
-            dmzo[i][j][(ncomp + 1):ncy] .= T(0)
-            temp_rhs[i][j] .= residual .- dmzo[i][j]
-
-            # fill in ncy rows of  w and v
-            @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
-        end
-
-        @views gblock!(cache, h, g[i], izeta, w[i], v[i])
-
-        if i >= n
-            izsave = izeta
-            # build equation for a side condition.
-            # other nonlinear case
-            zval = __get_value(cache.z[n + 1])
-            @views bc(gval, zval, p, mesh[i + 1])
-            while true
-                (izeta > ncomp) && break
-                # find rhs boundary value
-                rhs_bc[izeta] = -gval[izeta]
-                # build a row of  a  corresponding to a boundary point
-                @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
-                izeta = izeta + 1
-            end
-        end
-    end
+    izeta_entries, izsave = __ascher_izeta_entries(cache)
+    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
 
     # assembly process completed
     # solve the linear system
@@ -153,86 +245,25 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
     copyto!(cache.z, new_z)
-    copyto!(cache.dmz, dmz)
+    return copyto!(cache.dmz, dmz)
 end
 
 function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, bcresid_prototype, residual,
-        zval, yval, gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
-    (; acol, rho) = TU
+    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw) = cache
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
-    dgz = similar(zval)
+    dgz = Vector{T}(undef, ncomp)
     df = zeros(T, ncy, ncy)
-    La = length(first(bcresid_prototype))
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rhs_bc = similar(zval)
+    rhs_bc = Vector{T}(undef, ncomp)
 
-    # zero the matrices to be computed
-    fill!.(w, T(0))
-
-    izeta = 1
-    izsave = 1
     # set up the linear system of equations
-    for i in 1:n
-        # construct a block of a and a corresponding piece of rhs
-        xii = mesh[i]
-        h = mesh_dt[i]
-        @views approx(cache, xii, zval)
-        # find rhs boundary value
-        @views first(bc)(gval[1:La], zval, p)
-        @views last(bc)(gval[(La + 1):end], zval, p)
-        # go thru the ncomp collocation equations and side conditions
-        # in the i-th subinterval
-        while true
-            (izeta > ncomp) && break
-            (zeta[izeta] > xii + eps(T)) && break
-            rhs_bc[izeta] = -gval[izeta]
-            # build a row of a corresponding to a boundary point
-            @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
-            izeta = izeta + 1
-        end
-        #TODO: whether the previous snippet could be available when i==1 for TwoPointBVProblem?
-        # assemble collocation equations
-        for j in 1:k
-            hrho = h * rho[j]
-            xcol = xii + hrho
-            # find rhs values
-            @views approx(cache, xcol, zval, yval, dmzo[i][j][1:ncomp])
-            uval = vcat(zval, yval)
-
-            @views f(residual, uval, p, xcol)
-            dmzo[i][j][(ncomp + 1):ncy] .= T(0)
-            temp_rhs[i][j] .= residual .- dmzo[i][j]
-
-            # fill in ncy rows of  w and v
-            @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
-        end
-
-        @views gblock!(cache, h, g[i], izeta, w[i], v[i])
-
-        if i >= n
-            izsave = izeta
-            # build equation for a side condition.
-            # other nonlinear case
-            zval = __get_value(cache.z[n + 1])
-            @views first(bc)(gval[1:La], zval, p)
-            @views last(bc)(gval[(La + 1):end], zval, p)
-            while true
-                (izeta > ncomp) && break
-                # find rhs boundary value
-                rhs_bc[izeta] = -gval[izeta]
-                # build a row of  a  corresponding to a boundary point
-                @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
-                izeta = izeta + 1
-            end
-        end
-    end
+    izeta_entries, izsave = __ascher_izeta_entries(cache)
+    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
 
     # assembly process completed
     # solve the linear system
@@ -313,87 +344,29 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     # update z in cache for next iteration
     new_z = __get_value(temp_z)
     copyto!(cache.z, new_z)
-    copyto!(cache.dmz, dmz)
+    return copyto!(cache.dmz, dmz)
 end
 
 @inline __get_value(z::Vector{<:AbstractArray}) = eltype(first(z)) <: ForwardDiff.Dual ?
-                                                  [map(x -> x.value, a) for a in z] : z
+    [map(x -> x.value, a) for a in z] : z
 @inline __get_value(z) = isa(z, ForwardDiff.Dual) ? z.value : z
 
 function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval,
-        gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
-    (; acol, rho) = TU
+    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw) = cache
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
-    dgz = similar(zval)
+    dgz = Vector{T}(undef, ncomp)
     df = Matrix{T}(undef, ncy, ncy)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rhs_bc = similar(zval)
+    rhs_bc = Vector{T}(undef, ncomp)
 
-    # zero the matrices to be computed
-    fill!.(w, T(0))
-
-    izeta = 1
-    izsave = 1
     # set up the linear system of equations
-    for i in 1:n
-        # construct a block of a and a corresponding piece of rhs
-        xii = mesh[i]
-        h = mesh_dt[i]
-        @views approx(cache, xii, zval)
-        # find rhs boundary value
-        gval = bc(zval, p, xii)
-        # go thru the ncomp collocation equations and side conditions
-        # in the i-th subinterval
-        while true
-            (izeta > ncomp) && break
-            (zeta[izeta] > xii + eps(T)) && break
-            rhs_bc[izeta] = -gval[izeta]
-            # build a row of a corresponding to a boundary point
-            @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
-            izeta = izeta + 1
-        end
-
-        # assemble collocation equations
-        for j in 1:k
-            hrho = h * rho[j]
-            xcol = xii + hrho
-            # find rhs values
-            @views approx(cache, xcol, zval, yval, dmzo[i][j][1:ncomp])
-            uval = vcat(zval, yval)
-
-            residual = f(uval, p, xcol)
-            dmzo[i][j][(ncomp + 1):ncy] .= T(0)
-            temp_rhs[i][j] .= residual .- dmzo[i][j]
-
-            # fill in ncy rows of  w and v
-            @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
-        end
-
-        @views gblock!(cache, h, g[i], izeta, w[i], v[i])
-
-        if i >= n
-            izsave = izeta
-            # build equation for a side condition.
-            # other nonlinear case
-            zval = __get_value(cache.z[n + 1])
-            gval = bc(zval, p, mesh[i + 1])
-            while true
-                (izeta > ncomp) && break
-                # find rhs boundary value
-                rhs_bc[izeta] = -gval[izeta]
-                # build a row of  a  corresponding to a boundary point
-                @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
-                izeta = izeta + 1
-            end
-        end
-    end
+    izeta_entries, izsave = __ascher_izeta_entries(cache)
+    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
 
     # assembly process completed
     # solve the linear system
@@ -479,83 +452,21 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
 end
 
 function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
-    (; f, mesh, mesh_dt, ncomp, ny, bc, k, p, zeta, residual, zval, yval,
-        gval, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw, TU) = cache
-    (; acol, rho) = TU
+    (; mesh, mesh_dt, ncomp, ny, k, delz, dmz, deldmz, g, w, v, dmzo, ipvtg, ipvtw) = cache
     ncy = ncomp + ny
     n = length(mesh) - 1
     Tz = eltype(z)
-    dgz = similar(zval)
+    dgz = Vector{T}(undef, ncomp)
     df = Matrix{T}(undef, ncy, ncy)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
     recursive_unflatten!(temp_z, z)
-    rhs_bc = similar(zval)
+    rhs_bc = Vector{T}(undef, ncomp)
 
-    # zero the matrices to be computed
-    fill!.(w, T(0))
-
-    izeta = 1
-    izsave = 1
     # set up the linear system of equations
-    for i in 1:n
-        # construct a block of a and a corresponding piece of rhs
-        xii = mesh[i]
-        h = mesh_dt[i]
-        @views approx(cache, xii, zval)
-        # find rhs boundary value
-        gvalₐ = first(bc)(zval, p)
-        gvalᵦ = last(bc)(zval, p)
-        gval = vcat(gvalₐ, gvalᵦ)
-        # go thru the ncomp collocation equations and side conditions
-        # in the i-th subinterval
-        while true
-            (izeta > ncomp) && break
-            (zeta[izeta] > xii + eps(T)) && break
-            rhs_bc[izeta] = -gval[izeta]
-            # build a row of a corresponding to a boundary point
-            @views gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
-            izeta = izeta + 1
-        end
-
-        # assemble collocation equations
-        for j in 1:k
-            hrho = h * rho[j]
-            xcol = xii + hrho
-            # find rhs values
-            @views approx(cache, xcol, zval, yval, dmzo[i][j][1:ncomp])
-            uval = vcat(zval, yval)
-
-            residual = f(uval, p, xcol)
-            dmzo[i][j][(ncomp + 1):ncy] .= T(0)
-            temp_rhs[i][j] .= residual .- dmzo[i][j]
-
-            # fill in ncy rows of  w and v
-            @views vwblok(
-                cache, xcol, hrho, j, w[i], v[i], ipvtw[i], uval, df, acol[:, j], dmzo[i])
-        end
-
-        @views gblock!(cache, h, g[i], izeta, w[i], v[i])
-
-        if i >= n
-            izsave = izeta
-            # build equation for a side condition.
-            # other nonlinear case
-            zval = __get_value(cache.z[n + 1])
-            gvalₐ = first(bc)(zval, p)
-            gvalᵦ = last(bc)(zval, p)
-            gval = vcat(gvalₐ, gvalᵦ)
-            while true
-                (izeta > ncomp) && break
-                # find rhs boundary value
-                rhs_bc[izeta] = -gval[izeta]
-                # build a row of  a  corresponding to a boundary point
-                @views gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
-                izeta = izeta + 1
-            end
-        end
-    end
+    izeta_entries, izsave = __ascher_izeta_entries(cache)
+    __ascher_collocation!(cache, temp_rhs, dgz, rhs_bc, dmzo, izeta_entries, pt)
 
     # assembly process completed
     # solve the linear system
@@ -657,7 +568,7 @@ function approx(cache::AscherCache{iip, T}, x, zval) where {iip, T}
     zsum = [sum(a[j] * dmz[i][j][jj] for j in 1:k) for jj in 1:ncomp]
     zᵢ = __get_value.(z[i])
     zsum .= zsum .* bm .+ zᵢ
-    zval .= zsum
+    return zval .= zsum
 end
 
 function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
@@ -689,6 +600,7 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval) where {iip, T}
     for j in 1:k
         yval .= yval .+ dm[j] * dmz[i][j][(ncomp + 1):end]
     end
+    return
 end
 
 function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
@@ -730,13 +642,16 @@ function approx(cache::AscherCache{iip, T}, x, zval, yval, dmval) where {iip, T}
     for j in 1:k
         @. dmval = dmval + dm[j] * dmz[i][j][1:ncomp]
     end
+    return
 end
 
 # construct a group of ncomp rows of the matrices wi and
 # corresponding to an interior collocation point
 # jj=1...k
-function vwblok(cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
-        vi, ipvtw, zyval, df, acol, dmzo) where {iip, T}
+function vwblok(
+        cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
+        vi, ipvtw, zyval, df, acol, dmzo
+    ) where {iip, T}
     (; jac, k, p, ncomp, ny) = cache
     ncy = ncomp + ny
     kdy = k * ncy
@@ -746,7 +661,7 @@ function vwblok(cache::AscherCache{iip, T}, xcol, hrho, jj, wi,
         wi[id, id] = T(1)
     end
 
-    # calculuate local basis
+    # calculate local basis
     ha = hrho .* acol
 
     @views jac(df, zyval, p, xcol)
@@ -804,7 +719,7 @@ function gblock!(cache::AscherCache, h, irow, wi, vrhsz, rhsdmz, ipvtw)
     for jcomp in 1:ncomp
         rhsz[irow + jcomp - 1] = sum(hb[j] * rhsdmz[j][jcomp] for j in 1:k)
     end
-    recursive_unflatten!(vrhsz, rhsz)
+    return recursive_unflatten!(vrhsz, rhsz)
 end
 
 function gblock!(cache::AscherCache{iip, T}, h, gi, irow, wi, vi) where {iip, T}
@@ -838,6 +753,7 @@ function gblock!(cache::AscherCache{iip, T}, h, gi, irow, wi, vi) where {iip, T}
         end
         gi[id, icomp] = gi[id, icomp] - T(1)
     end
+    return
 end
 
 function dmzsol!(cache::AscherCache{iip, T}, v, z, dmz) where {iip, T}
@@ -865,10 +781,13 @@ end
     (4 * ncy + 1 ≤ l ≤ 5 * ncy) && (return 5, l - 4 * ncy)
     (5 * ncy + 1 ≤ l ≤ 6 * ncy) && (return 6, l - 5 * ncy)
     (6 * ncy + 1 ≤ l ≤ 7 * ncy) && (return 7, l - 6 * ncy)
+    return (6 * ncy + 1 ≤ l ≤ 7 * ncy) && (return 7, l - 6 * ncy)
 end
 
-function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
-        mode::Integer, izeta, pt::StandardBVProblem) where {iip, T}
+function gderiv(
+        cache::AscherCache{iip, T}, gi, irow, zval, dgz,
+        mode::Integer, izeta, pt::StandardBVProblem
+    ) where {iip, T}
     (; ncomp, bcjac) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
@@ -883,7 +802,7 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
     dgz[izeta] = sum(dg .* zval)
 
     # branch according to mode
-    if mode !== 2
+    return if mode !== 2
         # provide coefficients of the j-th linearized side condition.
         # specifically, at x=zeta(j) the j-th side condition reads
         # dg(1)*z(1) + ... +dg(ncomp)*z(ncomp) + g = 0
@@ -898,8 +817,10 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
     end
 end
 
-function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
-        mode::Integer, izeta, pt::TwoPointBVProblem) where {iip, T}
+function gderiv(
+        cache::AscherCache{iip, T}, gi, irow, zval, dgz,
+        mode::Integer, izeta, pt::TwoPointBVProblem
+    ) where {iip, T}
     (; ncomp, bcjac) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
@@ -914,7 +835,7 @@ function gderiv(cache::AscherCache{iip, T}, gi, irow, zval, dgz,
     dgz[izeta] = sum(dg .* zval)
 
     # branch according to mode
-    if mode !== 2
+    return if mode !== 2
         # provide coefficients of the j-th linearized side condition.
         # specifically, at x=zeta(j) the j-th side condition reads
         # dg(1)*z(1) + ... +dg(ncomp)*z(ncomp) + g = 0
@@ -934,5 +855,5 @@ function interval(mesh, t)
     # CODLAE actually evaluate the value at final mesh point at mesh[n]
     (a == length(mesh)) && (return length(mesh) - 1)
     n = length(mesh)
-    a === nothing ? (return clamp(searchsortedfirst(mesh, t) - 1, 1, n)) : a
+    return a === nothing ? (return clamp(searchsortedfirst(mesh, t) - 1, 1, n)) : a
 end

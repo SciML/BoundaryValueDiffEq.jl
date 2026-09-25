@@ -14,7 +14,8 @@ function __generate_sparse_jacobian_prototype(cache::MIRKCache, ya, yb, M, N)
 end
 
 function __generate_sparse_jacobian_prototype(
-        ::MIRKCache, ::StandardBVProblem, ya, yb, M, N)
+        ::MIRKCache, ::StandardBVProblem, ya, yb, M, N
+    )
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J_c = BandedMatrix(Ones{eltype(ya)}(M * (N - 1), M * N), (1, 2M - 1))
@@ -22,7 +23,8 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        ::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N)
+        ::MIRKCache, ::TwoPointBVProblem, ya, yb, M, N
+    )
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
