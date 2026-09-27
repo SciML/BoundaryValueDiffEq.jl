@@ -99,8 +99,7 @@ end
 end
 
 @testset "__extract_problem_details ODESolution + tune_parameters" begin
-    # Regression: the ODESolution branch used `t₀`/`t₁` without binding them when
-    # `tune_parameters=true`, causing UndefVarError. Also require Non-null params.
+    # ODESolution + tune_parameters binds tspan and rejects NullParameters.
     using BoundaryValueDiffEqCore: __extract_problem_details
     using SciMLBase: BVProblem, ODEProblem, build_solution, NullParameters
 
