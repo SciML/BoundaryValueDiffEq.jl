@@ -93,3 +93,48 @@ end
         @test sol(0.5) ≈ [sinh(0.5) / sinh(1.0), -cosh(0.5) / sinh(1.0)] rtol = 1.0e-4
     end
 end
+
+@testset "Structural constraint-Jacobian pattern on the optimization path" begin
+    using OptimizationIpopt
+
+    # x' = x u, x(0) = 1, maximize x(1) with |u| <= 1: the optimum is u ≡ 1, x(1) = e.
+    # ∂(x u)/∂u = x vanishes at the all-zero guess, so a pattern detected there drops
+    # the control columns and the optimizer converges to u ≡ 0.
+    bilinear_f!(du, u, p, t) = (du[1] = u[1] * u[2]; nothing)
+    branching_f!(du, u, p, t) = (du[1] = u[1] > 0 ? u[1] * u[2] : -u[1] * u[2]; nothing)
+    bilinear_bc!(res, u, p, t) = (res[1] = u(0.0)[1] - 1; nothing)
+    bilinear_bca!(res, ua, p) = (res[1] = ua[1] - 1; nothing)
+    bilinear_bcb!(res, ub, p) = (res[1] = ub[2] - 1; nothing)
+    bilinear_cost(u, p) = -u(1.0)[1]
+    tspan = (0.0, 1.0)
+    lb, ub = [-Inf, -1.0], [Inf, 1.0]
+
+    problems = [
+        "multipoint" => BVProblem(
+            BVPFunction(
+                bilinear_f!, bilinear_bc!; cost = bilinear_cost, f_prototype = zeros(1),
+                bcresid_prototype = zeros(1)
+            ), [0.0, 0.0], tspan; lb, ub
+        ),
+        "two-point" => TwoPointBVProblem(
+            BVPFunction(
+                bilinear_f!, (bilinear_bca!, bilinear_bcb!); cost = bilinear_cost,
+                f_prototype = zeros(1), bcresid_prototype = (zeros(1), zeros(1)),
+                twopoint = Val(true)
+            ), [0.0, 0.0], tspan; lb, ub
+        ),
+        # Value-dependent control flow in `f` must not break sparsity detection.
+        "branching RHS" => BVProblem(
+            BVPFunction(
+                branching_f!, bilinear_bc!; cost = bilinear_cost, f_prototype = zeros(1),
+                bcresid_prototype = zeros(1)
+            ), [1.0, 0.5], tspan; lb, ub
+        ),
+    ]
+    @testset "$name" for (name, prob) in problems
+        sol = solve(prob, MIRK4(; optimize = IpoptOptimizer()); dt = 0.05, adaptive = false)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol(1.0)[1] ≈ exp(1) atol = 1.0e-2
+        @test sol(0.5)[2] ≈ 1.0 atol = 1.0e-4
+    end
+end
