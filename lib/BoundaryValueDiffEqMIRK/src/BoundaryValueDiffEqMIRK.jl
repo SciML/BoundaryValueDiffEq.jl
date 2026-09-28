@@ -19,14 +19,14 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     recursive_flatten_twopoint!,
     __extract_mesh,
     __initial_guess_on_mesh,
-    __build_solution, get_dense_ad,
+    __build_solution, get_dense_ad, _sparse_like,
     AbstractErrorControl, DefectControl, GlobalErrorControl,
     SequentialErrorControl, HybridErrorControl, HOErrorControl,
     __use_both_error_control, __default_coloring_algorithm,
     DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
     __concrete_kwargs, __FastShortcutNonlinearPolyalg,
     __construct_internal_problem, __internal_solve,
-    __default_sparsity_detector, __build_cost, __add_singular_term!,
+    __build_cost, __add_singular_term!,
     __apply_mass_matrix!, __get_algebraic_indices, __mass_mesh_entry, __check_dae_adaptivity
 
 using ConcreteStructs: @concrete
