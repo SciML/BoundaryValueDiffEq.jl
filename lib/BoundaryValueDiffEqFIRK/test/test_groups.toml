@@ -67,10 +67,17 @@ timeout = 180
 versions = ["lts", "1", "pre"]
 timeout = 120
 
-# Underconstrained NLLS is pathologically slow in a way splitting does not fix: single
-# solves take 4-20 min of real solve time, so the 22 cases run for hours. Isolated here
-# so it cannot take the rest of the NLLS coverage down with it.
-[NESTED_NLLS_UNDERCONSTRAINED]
+# The full underconstrained sweep exceeded the six-hour job limit on LTS.
+# Partition by nonlinear solver, preserving all 22 cases across the three jobs.
+[NESTED_NLLS_UNDERCONSTRAINED_NEWTON]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_TRUST_REGION]
 versions = ["lts", "1", "pre"]
 timeout = 360
 
