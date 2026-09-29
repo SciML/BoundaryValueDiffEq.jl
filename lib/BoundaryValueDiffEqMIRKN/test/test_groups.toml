@@ -22,3 +22,9 @@ versions = ["lts", "1"]
 
 [DeviceKernels]
 versions = ["lts", "1", "pre"]
+
+# CUDA tests run in their own environment on the SciML GPU runner.
+[GPU]
+versions = ["1"]
+runner = ["self-hosted", "Linux", "X64", "gpu"]
+timeout = 120

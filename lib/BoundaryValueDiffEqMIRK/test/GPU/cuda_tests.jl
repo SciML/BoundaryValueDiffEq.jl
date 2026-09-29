@@ -201,6 +201,6 @@ end
 
         include("adaptive_sparse_tests.jl")
     else
-        @test_skip CUDA.functional()
+        error("MIRK CUDA tests require a functional CUDA device.")
     end
 end
