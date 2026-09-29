@@ -1,4 +1,5 @@
 using BoundaryValueDiffEqFIRK, Test, SparseArrays, ForwardDiff
+using KernelAbstractions: @kernel, synchronize
 const F = BoundaryValueDiffEqFIRK
 
 regression_f!(du, u, p, t) = (du[1] = u[2]; du[2] = u[1]; nothing)
@@ -172,6 +173,9 @@ regression_singular_f!(du, u, p, t) = (du[1] = u[2]; du[2] = 0; nothing)
 regression_derivative_bc!(r, u, p, t) = (r[1] = u[1, 1] - 1; r[2] = u.du[end][1] - 4; nothing)
 regression_singular_fit_f!(du, u, p, t) = (du[1] = u[2]; du[2] = p[1]; nothing)
 regression_singular_fit_bc!(r, u, p, t) = (r[1] = u(t[1])[1] - 1; r[2] = u(t[1])[2] - 2; r[3] = u(t[end])[1] - 4; nothing)
+@kernel function regression_singular_kernel!(du, S, u, t)
+    F.__device_singular!(du, S, u, t)
+end
 function test_device_singular(upload, platform)
     return @testset "Singular term and derivative boundary condition" begin
         prob = BVProblem(
@@ -191,6 +195,16 @@ function test_device_singular(upload, platform)
         @test successful_retcode(fitted.retcode)
         @test Array(fitted.prob.p) ≈ [0.0] atol = 1.0e-6
         @test Array(fitted(1.4)) ≈ [1.4^2, 2.8] atol = 1.0e-6
+        @test Array(fitted(1.4, Val{1})) ≈ [2.8, 2.0] atol = 1.0e-6
+
+        # Parameter tuning appends a third state, but the singular term acts
+        # only on the two physical states. Sentinels make out-of-bounds reads
+        # reproducible on both CPU and CUDA instead of depending on allocation.
+        storage = upload([0.0 0.0 99.0; 0.0 1.0 99.0; 99.0 99.0 99.0])
+        du, u = upload([2.0, 0.2, 0.0]), upload([1.0, 2.0, 0.2])
+        regression_singular_kernel!(platform)(du, view(storage, 1:2, 1:2), u, 1.0; ndrange = 1)
+        synchronize(platform)
+        @test Array(du) ≈ [2.0, 2.2, 0.0]
     end
 end
 if !isdefined(@__MODULE__, :FIRK_GPU_TESTS)

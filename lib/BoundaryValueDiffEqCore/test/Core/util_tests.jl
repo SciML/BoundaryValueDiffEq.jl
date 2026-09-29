@@ -2,6 +2,30 @@ using BoundaryValueDiffEqCore
 using SciMLBase
 using Test
 
+@testset "Singular terms with appended parameters" begin
+    using BoundaryValueDiffEqCore: __device_singular!
+
+    # Keep nonzero sentinels outside the physical-state block so an unchecked
+    # read beyond S produces a deterministic failure rather than allocator noise.
+    storage = fill(99.0, 4, 4)
+    storage[1:2, 1:2] .= [1.0 2.0; 3.0 4.0]
+    S = view(storage, 1:2, 1:2)
+    u = [2.0, 3.0, 11.0, 13.0]
+    initial = [5.0, 7.0, 0.0, 0.0]
+    du = copy(initial)
+    __device_singular!(du, S, u, 2.0)
+    @test du == [9.0, 16.0, 0.0, 0.0]
+
+    for t in (0.0, -1.0)
+        du = copy(initial)
+        __device_singular!(du, S, u, t)
+        @test du == initial
+    end
+    du = copy(initial)
+    __device_singular!(du, nothing, u, 2.0)
+    @test du == initial
+end
+
 @testset "Resizable buffer views" begin
     using BoundaryValueDiffEqCore: __reshape_buffer, __device_sparse_supported,
         __device_sparse_matrix

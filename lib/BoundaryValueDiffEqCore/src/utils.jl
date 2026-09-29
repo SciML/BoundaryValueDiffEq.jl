@@ -1125,13 +1125,15 @@ end
     __device_singular!(du, S, u, t)
 
 Add the singular term `S * u / t` for positive `t`; dispatch on `nothing` omits it.
+Only the state components covered by `S` contribute; appended tunable parameters
+retain their derivatives.
 """
 @inline __device_singular!(du, ::Nothing, u, t) = nothing
 @inline function __device_singular!(du, S, u, t)
     if t > zero(t)
-        for j in eachindex(du)
+        for j in axes(S, 1)
             value = zero(eltype(du))
-            for k in eachindex(u)
+            for k in axes(S, 2)
                 @inbounds value += S[j, k] * u[k]
             end
             @inbounds du[j] += value / t
