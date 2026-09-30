@@ -384,6 +384,9 @@ function __extract_problem_details(
     _u0 = first(u0.u)
     _t = u0.t
     if tune_parameters
+        prob.p isa SciMLBase.NullParameters &&
+            throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
+        t₀, t₁ = prob.tspan
         new_u = vcat(_u0, __tunable_part(prob.p))
         return Val(false), eltype(new_u), length(new_u), Int(cld(t₁ - t₀, dt)), new_u
     end
