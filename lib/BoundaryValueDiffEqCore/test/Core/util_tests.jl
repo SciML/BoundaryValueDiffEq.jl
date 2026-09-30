@@ -97,3 +97,22 @@ end
     @test result isa BoundaryValueDiffEqCore.BVPVerbosity
     @test result === BoundaryValueDiffEqCore.DEFAULT_VERBOSE
 end
+
+@testset "SecondOrderBVProblem rejects non-MIRKN solvers" begin
+    function so_f!(ddu, du, u, p, t)
+        ddu[1] = 0
+        return
+    end
+    function so_bc!(residual, du, u, p, t)
+        residual[1] = u(0.0)[1] - 1
+        residual[2] = u(1.0)[1]
+        return
+    end
+    so_prob = SecondOrderBVProblem(so_f!, so_bc!, [1.0, -1.0], (0.0, 1.0))
+    @test_throws r"SecondOrderBVProblem is only supported by MIRKN" SciMLBase.solve(
+        so_prob, ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm(); dt = 0.2
+    )
+    @test_throws ArgumentError SciMLBase.solve(
+        so_prob, ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm(); dt = 0.2
+    )
+end

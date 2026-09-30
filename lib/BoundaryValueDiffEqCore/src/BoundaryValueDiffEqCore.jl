@@ -60,6 +60,20 @@ function SciMLBase.__solve(
     return SciMLBase.solve!(cache)
 end
 
+# MIRKN defines a more-specific `__init(::SecondOrderBVProblem, ::AbstractMIRKN)`.
+function SciMLBase.__init(
+        ::SecondOrderBVProblem, alg::AbstractBoundaryValueDiffEqAlgorithm, args...;
+        kwargs...
+    )
+    throw(
+        ArgumentError(
+            "SecondOrderBVProblem is only supported by MIRKN solvers (MIRKN4, MIRKN6). " *
+                "Got $(typeof(alg)). Reformulate as a first-order BVProblem to use other " *
+                "solvers, or choose a MIRKN algorithm."
+        )
+    )
+end
+
 export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
 export DefectControl, GlobalErrorControl, SequentialErrorControl, HybridErrorControl,
     NoErrorControl
