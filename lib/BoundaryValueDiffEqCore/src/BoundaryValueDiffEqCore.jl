@@ -60,18 +60,21 @@ function SciMLBase.__solve(
     return SciMLBase.solve!(cache)
 end
 
-# MIRKN defines a more-specific `__init(::SecondOrderBVProblem, ::AbstractMIRKN)`.
-function SciMLBase.__init(
-        ::SecondOrderBVProblem, alg::AbstractBoundaryValueDiffEqAlgorithm, args...;
-        kwargs...
+function SciMLBase.__solve(
+        prob::SecondOrderBVProblem,
+        alg::AbstractBoundaryValueDiffEqAlgorithm, args...; kwargs...
     )
-    throw(
-        ArgumentError(
-            "SecondOrderBVProblem is only supported by MIRKN solvers (MIRKN4, MIRKN6). " *
-                "Got $(typeof(alg)). Reformulate as a first-order BVProblem to use other " *
-                "solvers, or choose a MIRKN algorithm."
+    if !__supports_second_order(alg)
+        throw(
+            ArgumentError(
+                "SecondOrderBVProblem is only supported by MIRKN solvers (MIRKN4, MIRKN6). " *
+                    "Got $(nameof(typeof(alg))). Reformulate as a first-order BVProblem to use other " *
+                    "solvers, or choose a MIRKN algorithm."
+            )
         )
-    )
+    end
+    cache = SciMLBase.__init(prob, alg, args...; kwargs...)
+    return SciMLBase.solve!(cache)
 end
 
 export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm
@@ -99,8 +102,8 @@ export BVPVerbosity, _process_verbose_param, DEFAULT_VERBOSE
     __internal_optimization_problem, __internal_solve,
     __materialize_jacobian_algorithm, __maybe_allocate_diffcache, __maybe_matmul!,
     __needs_diffcache, __resize!, __restructure_sol, __split_kwargs,
-    __tunable_part, __use_both_error_control, __vec, __vec_bc, __vec_bc!,
-    __vec_f, __vec_f!, __vec_so_bc, __vec_so_bc!, _sparse_like,
+    __supports_second_order, __tunable_part, __use_both_error_control, __vec,
+    __vec_bc, __vec_bc!, __vec_f, __vec_f!, __vec_so_bc, __vec_so_bc!, _sparse_like,
     __apply_mass_matrix!, __get_algebraic_indices, __mass_stage_entry,
     __mass_mesh_entry, __subtract_mass_stage!, __apply_algebraic_constraint!,
     __is_algebraic, __check_dae_adaptivity,

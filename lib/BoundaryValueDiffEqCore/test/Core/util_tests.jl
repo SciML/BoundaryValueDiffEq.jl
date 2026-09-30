@@ -109,10 +109,55 @@ end
         return
     end
     so_prob = SecondOrderBVProblem(so_f!, so_bc!, [1.0, -1.0], (0.0, 1.0))
+    # ExternalBVPAlgorithm does not opt into second-order support.
+    @test !BoundaryValueDiffEqCore.__supports_second_order(
+        ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm()
+    )
     @test_throws r"SecondOrderBVProblem is only supported by MIRKN" SciMLBase.solve(
         so_prob, ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm(); dt = 0.2
     )
     @test_throws ArgumentError SciMLBase.solve(
         so_prob, ExternalBVPAlgorithmExtension.ExternalBVPAlgorithm(); dt = 0.2
     )
+end
+
+module SecondOrderExternalAlgorithmExtension
+    using BoundaryValueDiffEqCore, SciMLBase
+
+    struct ExtSOAlg <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm end
+    struct ExtSOCache{P} <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqCache
+        prob::P
+    end
+
+    BoundaryValueDiffEqCore.__supports_second_order(::ExtSOAlg) = true
+
+    SciMLBase.__init(
+        prob::SciMLBase.AbstractBVProblem, ::ExtSOAlg; kwargs...
+    ) = ExtSOCache(prob)
+
+    SciMLBase.solve!(cache::ExtSOCache) = (; cache.prob, reached = :ext_so_init)
+end
+
+@testset "SecondOrderBVProblem allows opted-in external algorithms" begin
+    function so_f!(ddu, du, u, p, t)
+        ddu[1] = 0
+        return
+    end
+    function so_bc!(residual, du, u, p, t)
+        residual[1] = u(0.0)[1] - 1
+        residual[2] = u(1.0)[1]
+        return
+    end
+    so_prob = SecondOrderBVProblem(so_f!, so_bc!, [1.0, -1.0], (0.0, 1.0))
+    @test BoundaryValueDiffEqCore.__supports_second_order(
+        SecondOrderExternalAlgorithmExtension.ExtSOAlg()
+    )
+    sol = SciMLBase.solve(so_prob, SecondOrderExternalAlgorithmExtension.ExtSOAlg())
+    @test sol.prob === so_prob
+    @test sol.reached === :ext_so_init
+
+    amb = Test.detect_ambiguities(
+        BoundaryValueDiffEqCore, SecondOrderExternalAlgorithmExtension
+    )
+    @test isempty(amb)
 end

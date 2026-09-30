@@ -5,3 +5,5 @@ for order in (4, 6)
 end
 
 SciMLBase.isadaptive(alg::AbstractMIRKN) = false
+
+BoundaryValueDiffEqCore.__supports_second_order(::AbstractMIRKN) = true
