@@ -23,6 +23,9 @@ timeout = 30
 
 [EXPANDED_BASIC]
 versions = ["lts", "1", "pre"]
+# The self-hosted ubuntu-latest pool repeatedly loses the LTS runner mid-test.
+# Use the GitHub-hosted image where this group has completed successfully.
+runner = ["ubuntu-24.04"]
 timeout = 120
 
 [EXPANDED_AFFINENESS]
