@@ -218,6 +218,14 @@ end
         res[3] = u[2] - sin(1.0)
     end
 
+    function bca_param!(res, ua, p)
+        res[1] = ua[1] - p.x1_left
+        res[2] = ua[3] - 1
+    end
+    function bcb_param!(res, ub, p)
+        res[1] = ub[2] - sin(1.0)
+    end
+
     function f_param_analytic(u, p, t)
         return [sin(t), sin(t), 1.0, 0.0]
     end
@@ -226,11 +234,21 @@ end
     tspan = (0.0, 1.0)
     p = AscherBCParams(1.0, 0.0)
     mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0]
+    alg = Ascher4(zeta = [0.0, 0.0, 1.0])
     fun = BVPFunction(f_param!, bc_param!; analytic = f_param_analytic, mass_matrix)
     prob = BVProblem(fun, u0, tspan, p)
-    sol = solve(prob, Ascher4(zeta = [0.0, 0.0, 1.0]); dt = 0.01)
+    sol = solve(prob, alg; dt = 0.01)
     @test SciMLBase.successful_retcode(sol)
     @test sol.errors[:final] < 1.0e-4
+
+    fun_tp = ODEFunction(f_param!; analytic = f_param_analytic, mass_matrix)
+    tpprob = TwoPointBVProblem(
+        fun_tp, (bca_param!, bcb_param!), u0, tspan, p;
+        bcresid_prototype = (zeros(2), zeros(1)),
+    )
+    tpsol = solve(tpprob, alg; dt = 0.01)
+    @test SciMLBase.successful_retcode(tpsol)
+    @test tpsol.errors[:final] < 1.0e-4
 end
 
 # JET tests have been moved to the separate QA test group (test/qa/)
