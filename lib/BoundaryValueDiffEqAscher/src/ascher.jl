@@ -86,10 +86,7 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    ig = __initial_guess_on_mesh(prob.u0, mesh, p)
-    lz = [copy(@view(u[1:ncomp])) for u in ig.u]
-    ly = [copy(@view(u[(ncomp + 1):ncy])) for u in ig.u]
-    dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
+    lz, ly, dmz = __ascher_seed_iterate(prob.u0, p, tspan, mesh, TU.rho, T, ncomp, ny)
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
@@ -142,7 +139,7 @@ function SciMLBase.__init(
     end
 
     if prob.f.bcjac === nothing
-        bcjac = construct_bc_jac(prob)
+        bcjac = construct_bc_jac(prob, u0)
     else
         bcjac = prob.f.bcjac
     end
@@ -209,24 +206,11 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     # we construct a double mesh and solve the problem on halved mesh again to obtain the error estimation
     # since we got the previous convergence on the initial mesh, we utilize this as the initial guess for our next nonlinear solving
     if info == ReturnCode.Success
-        n_old = length(cache.mesh) - 1
-        mid_z = [similar(cache.z[1]) for _ in 1:n_old]
-        mid_y = [similar(cache.y[1]) for _ in 1:n_old]
-        for i in 1:n_old
-            xmid = (cache.mesh[i] + cache.mesh[i + 1]) / 2
-            @views approx(cache, xmid, mid_z[i], mid_y[i])
-        end
-
+        z_half, dmz_half = __ascher_iterate_on_halved_mesh(cache)
         halve_mesh!(cache)
         __expand_cache_for_error!(cache)
-
-        # `__append_similar!` pads with zeros; replace those pads with midpoint
-        # samples of the current pp-iterate so residual evals are not forced
-        # through u = 0 (issue #621). Keep the coarse-mesh prefix untouched.
-        for i in 1:n_old
-            cache.z[n_old + 1 + i] .= mid_z[i]
-            cache.y[n_old + 1 + i] .= mid_y[i]
-        end
+        copyto!(cache.z, z_half)
+        copyto!(cache.dmz, dmz_half)
 
         _nlprob = __construct_nlproblem(cache)
         nlsol = solve(_nlprob, solve_alg; kwargs...)
@@ -248,6 +232,33 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     end
 
     return z, y, info, error_norm
+end
+
+# Current collocation solution sampled the way `__ascher_seed_iterate` lays out the
+# iterate, on the mesh `halve_mesh!` is about to produce.
+function __ascher_iterate_on_halved_mesh(cache::AscherCache{iip, T}) where {iip, T}
+    (; mesh, ncomp, ny, TU) = cache
+    ncy = ncomp + ny
+    n = length(mesh) - 1
+    zval, yval, dmval = Vector{T}(undef, ncomp), Vector{T}(undef, ny), Vector{T}(undef, ncomp)
+    halved = Vector{T}(undef, 2n + 1)
+    for i in 1:n
+        halved[2i - 1] = mesh[i]
+        halved[2i] = (mesh[i] + mesh[i + 1]) / 2
+    end
+    halved[end] = mesh[end]
+    z = map(halved) do x
+        approx(cache, x, zval)
+        return copy(zval)
+    end
+    dmz = map(1:(2n)) do i
+        h = halved[i + 1] - halved[i]
+        return map(TU.rho) do ρ
+            approx(cache, halved[i] + ρ * h, zval, yval, dmval)
+            return vcat(dmval, yval)
+        end
+    end
+    return z, dmz
 end
 
 # expand cache to compute the errors
