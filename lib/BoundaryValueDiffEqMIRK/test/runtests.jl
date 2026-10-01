@@ -3,6 +3,8 @@ using SciMLTesting
 
 run_tests(;
     env = "BOUNDARYVALUEDIFFEQ_TEST_GROUP",
+    # Preserve the aggregate for local runs and the uniform Core downgrade group.
+    # CI and All use BASIC/NLLS/MISC so these files are each tested once.
     core = function ()
         @time @safetestset "MIRK Basic Tests" include("Core/mirk_basic_tests.jl")
         @time @safetestset "MIRK Almost Banded Tests" include("Core/almost_banded_tests.jl")
@@ -13,14 +15,26 @@ run_tests(;
         return @time @safetestset "MIRK Dynamic Optimization Tests" include("Core/dynamic_optimization_tests.jl")
     end,
     groups = Dict(
-        # Exercise the portable device kernels in ordinary CI without extending
-        # the existing Core lane, which already runs near its time budget.
+        "BASIC" => function ()
+            @time @safetestset "MIRK Basic Tests" include("Core/mirk_basic_tests.jl")
+            return @time @safetestset "MIRK Almost Banded Tests" include("Core/almost_banded_tests.jl")
+        end,
+        "NLLS" => function ()
+            return @time @safetestset "MIRK NLLS Tests" include("Core/nlls_tests.jl")
+        end,
+        "MISC" => function ()
+            @time @safetestset "MIRK Ensemble Tests" include("Core/ensemble_tests.jl")
+            @time @safetestset "MIRK Singular BVP Tests" include("Core/singular_bvp_tests.jl")
+            @time @safetestset "MIRK VectorOfVector Initials Tests" include("Core/vectorofvector_initials_tests.jl")
+            return @time @safetestset "MIRK Dynamic Optimization Tests" include("Core/dynamic_optimization_tests.jl")
+        end,
+        # Exercise the portable device kernels separately from the solver tests.
         "DeviceKernels" => function ()
             @time @safetestset "MIRK Packed Collocation Tests" include("GPU/packed_collocation_tests.jl")
             @time @safetestset "MIRK Resident Device Tests" include("GPU/resident_tests.jl")
             return @time @safetestset "MIRK Device Interpolation Tests" include("GPU/device_interpolation_tests.jl")
         end,
-        # Keep the existing DAE group separate from the long-running Core suite.
+        # Keep the DAE group separate from the other solver tests.
         "DAE" => function ()
             return @time @safetestset "MIRK DAE Tests" include("Core/dae_tests.jl")
         end,
@@ -51,5 +65,5 @@ run_tests(;
             return @time @safetestset "Quality Assurance" include("qa/qa.jl")
         end,
     ),
-    all = ["Core", "DAE", "DeviceKernels", "AD", "QA"],
+    all = ["BASIC", "NLLS", "MISC", "DAE", "DeviceKernels", "AD", "QA"],
 )

@@ -71,7 +71,7 @@ run_tests(;
         "NESTED_NLLS" => function ()
             return @time @safetestset "FIRK Nested NLLS Tests" include("nested/nlls_tests.jl")
         end,
-        # Keep the aggregate for local runs, but split the 22 expensive cases in CI.
+        # Keep the aggregates for local runs, but partition the 22 expensive cases in CI.
         "NESTED_NLLS_UNDERCONSTRAINED" => function ()
             return @time @safetestset "FIRK Nested Underconstrained NLLS Tests" begin
                 include("nested/nlls_underconstrained_tests.jl")
@@ -88,6 +88,30 @@ run_tests(;
             return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Tests" begin
                 include("nested/nlls_underconstrained_tests.jl")
                 test_underconstrained_bvp(5:8)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_RADAU" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Radau Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(5:5)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIA" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Lobatto IIIa Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(6:6)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIB" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Lobatto IIIb Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(7:7)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIC" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Lobatto IIIc Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(8:8)
             end
         end,
         "NESTED_NLLS_UNDERCONSTRAINED_TRUST_REGION" => function ()

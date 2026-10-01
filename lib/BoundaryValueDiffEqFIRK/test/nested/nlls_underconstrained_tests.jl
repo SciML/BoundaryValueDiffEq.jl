@@ -5,7 +5,7 @@ include("nlls_test_setup.jl")
 
 using SciMLBase
 
-# Individual solves take minutes. CI runs each nonlinear solver in a separate job;
+# Individual solves take minutes. CI partitions the nonlinear/FIRK solver pairs;
 # the default still covers every case when running the aggregate group locally.
 function test_underconstrained_bvp(solver_indices = eachindex(SOLVERS))
     return @testset "Underconstrained BVP" begin
@@ -20,9 +20,12 @@ function test_underconstrained_bvp(solver_indices = eachindex(SOLVERS))
                     # Actually have successful retcode
                     continue
                 else
-                    sol = solve(
+                    @info "Solving underconstrained BVP" problem = i solver = name
+                    flush(stderr)
+                    @time sol = solve(
                         prob, solver; verbose = false, dt = 0.1, abstol = 1.0e-1, reltol = 1.0e-1
                     )
+                    flush(stdout)
                     @test SciMLBase.successful_retcode(sol.retcode)
                 end
             end

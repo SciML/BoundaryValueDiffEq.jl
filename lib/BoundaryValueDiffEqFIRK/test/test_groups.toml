@@ -71,12 +71,25 @@ versions = ["lts", "1", "pre"]
 timeout = 120
 
 # The full underconstrained sweep exceeded the six-hour job limit on LTS.
-# Partition by nonlinear solver, preserving all 22 cases across the three jobs.
+# Partition by nonlinear solver, preserving all 22 cases. The seven Gauss-Newton
+# cases also exceeded six hours on LTS, so split those by FIRK algorithm.
 [NESTED_NLLS_UNDERCONSTRAINED_NEWTON]
 versions = ["lts", "1", "pre"]
 timeout = 360
 
-[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON]
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_RADAU]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIA]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIB]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIC]
 versions = ["lts", "1", "pre"]
 timeout = 360
 
