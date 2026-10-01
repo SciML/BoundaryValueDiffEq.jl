@@ -197,10 +197,8 @@ end
     end
 end
 
-# Regression for #621: a vector-valued initial guess must seed the first residual,
-# so callbacks that are singular at zero are evaluated at the supplied guess.
-# (Ascher currently BoundsErrors on 1-state problems independently of this bug, so
-# the regression uses a 2-state ODE that the solver already handles.)
+# Regression for #621: the supplied initial guess must seed the first residual so
+# callbacks singular at zero are not evaluated at the zero state.
 @testset "Ascher initial residual uses supplied initial guess (#621)" begin
     function f_nonzero!(du, u, p, t)
         any(iszero, u) && error("f! was evaluated at a zero component")
@@ -221,6 +219,76 @@ end
     @test SciMLBase.successful_retcode(sol)
     @test sol.u[1] ≈ [1.0, 1.0]
     @test sol.u[end] ≈ [1.0, 1.0]
+end
+
+# Issue #621 MWE: one-state problem singular at zero (also covers the ABD scratch
+# sizing fix that previously BoundsError'd every 1-component Ascher solve).
+@testset "Ascher one-state initial guess (#621 MWE)" begin
+    function f621!(du, u, p, t)
+        iszero(u[1]) && error("f! was evaluated at u[1] = 0")
+        du[1] = 1 / u[1] - 1
+        return nothing
+    end
+    function bc621!(res, u, p, t)
+        iszero(u[1]) && error("bc! was evaluated at u[1] = 0")
+        res[1] = 1 / u[1] - 1
+        return nothing
+    end
+    fun = BVPFunction(f621!, bc621!; mass_matrix = ones(1, 1))
+    prob = BVProblem(fun, [1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.01, adaptive = false)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.u[1] ≈ [1.0]
+    @test sol.u[end] ≈ [1.0]
+end
+
+# Vector-of-arrays guess whose length differs from the dt mesh must be interpolated,
+# not copied as-is (regression against BoundsError on mismatched lengths).
+@testset "Ascher mismatched-length vector-of-arrays initial guess" begin
+    function f3!(du, u, p, t)
+        du[1] = -u[3]
+        du[2] = -u[3]
+        du[3] = u[2] - sin(t - 1)
+        return nothing
+    end
+    function bc3!(res, u, p, t)
+        res[1] = u[1]
+        res[2] = u[2]
+        return nothing
+    end
+    f3_analytic(t) = [sin(t - 1), sin(t - 1), -cos(t - 1)]
+    guess = [f3_analytic(t) for t in range(0.0, 1.0; length = 11)]
+    fun = ODEFunction(f3!; mass_matrix = [1 0 0; 0 1 0; 0 0 0])
+    prob = BVProblem(fun, bc3!, guess, (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [1.0, 1.0]); dt = 0.01, adaptive = false)
+    @test SciMLBase.successful_retcode(sol)
+    @test length(sol.t) == 101
+    @test maximum(
+        maximum(abs, sol.u[i] .- f3_analytic(sol.t[i]))
+            for i in eachindex(sol.t)
+    ) < 1.0e-4
+end
+
+# Algebraic components are reconstructed from dmz; seeding only `ly` is not enough.
+@testset "Ascher DAE algebraic initial guess (#621)" begin
+    function fdae!(du, u, p, t)
+        iszero(u[3]) && error("f! was evaluated at algebraic u[3] = 0")
+        du[1] = 1 / u[3] - 1
+        du[2] = 1 / u[3] - 1
+        du[3] = 1 / u[3] - 1
+        return nothing
+    end
+    function bcdae!(res, u, p, t)
+        res[1] = u[1] - 1
+        res[2] = u[2] - 1
+        return nothing
+    end
+    fun = BVPFunction(fdae!, bcdae!; mass_matrix = Float64[1 0 0; 0 1 0; 0 0 0])
+    prob = BVProblem(fun, [1.0, 1.0, 1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [0.0, 1.0]); dt = 0.1, adaptive = false)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.u[1] ≈ [1.0, 1.0, 1.0]
+    @test sol.u[end] ≈ [1.0, 1.0, 1.0]
 end
 
 # JET tests have been moved to the separate QA test group (test/qa/)

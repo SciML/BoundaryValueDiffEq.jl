@@ -86,13 +86,22 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    # Seed the collocation state from the problem's initial guess. Leaving this as
-    # zeros (the previous behavior) evaluates `f`/`bc` at the zero state on the
-    # first residual/Jacobian pass, which breaks problems singular at `u = 0`.
-    u0_mesh = __initial_guess_on_mesh(prob.u0, mesh, p)
-    lz = [Vector{T}(u[1:ncomp]) for u in u0_mesh.u]
-    ly = [Vector{T}(u[(ncomp + 1):(ncomp + ny)]) for u in u0_mesh.u]
-    dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
+    # Seed collocation state from the initial guess so the first residual / Jacobian
+    # is not evaluated at the zero state (singular for many BVDAEs).
+    u0_mesh = __ascher_guess_on_mesh(prob.u0, mesh, p)
+    lz = [Vector{T}(u[1:ncomp]) for u in u0_mesh]
+    ly = [Vector{T}(u[(ncomp + 1):(ncomp + ny)]) for u in u0_mesh]
+    # Algebraic values are reconstructed from dmz via `approx`, so seed the
+    # algebraic slots of dmz from the guess (at mesh left endpoints; piecewise
+    # constant in each interval). Differential dmz slots stay zero ⇒ piecewise
+    # constant z between mesh nodes.
+    dmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
+    for i in 1:n
+        yᵢ = ly[i]
+        for j in 1:k
+            dmz[i][j][(ncomp + 1):ncy] .= yᵢ
+        end
+    end
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
@@ -408,7 +417,8 @@ function __append_abd!(cache::AscherCache)
     # build integs (describing block structure of matrix)
     let lside = 0
         for i in 1:(n - 1)
-            lside = first(findall(x::Float64 -> x > mesh[i], zeta)) - 1
+            idxs = findall(x -> x > mesh[i], zeta)
+            lside = isempty(idxs) ? ncomp : first(idxs) - 1
             (lside == ncomp) && break
             rows[i] = ncomp + lside
         end
