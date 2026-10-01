@@ -213,7 +213,7 @@ end
     prob = BVProblem(
         BVPFunction(f_recip!, bc_recip!; mass_matrix = ones(1, 1)), [1.0], (0.0, 1.0)
     )
-    for adaptive in (false, true)
+    @testset "f and bc undefined at zero, adaptive = $adaptive" for adaptive in (false, true)
         sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.01, adaptive)
         @test SciMLBase.successful_retcode(sol)
         @test all(x -> isapprox(only(x), 1.0; atol = 1.0e-4), sol.u)
@@ -230,7 +230,7 @@ end
         BVPFunction(f_dae!, bc_dae!; mass_matrix = [1.0 0.0; 0.0 0.0]), [1.0, 1.0],
         (0.0, 1.0)
     )
-    for adaptive in (false, true)
+    @testset "algebraic guess, adaptive = $adaptive" for adaptive in (false, true)
         sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.05, adaptive)
         @test SciMLBase.successful_retcode(sol)
         @test all(u -> isapprox(u, [1.0, 1.0]; atol = 1.0e-6), sol.u)
@@ -242,7 +242,7 @@ end
     prob = BVProblem(
         BVPFunction(f_sqrt!, bc_sqrt!; mass_matrix = ones(1, 1)), [1.5], (0.0, 1.0)
     )
-    for adaptive in (false, true)
+    @testset "non-constant solution, adaptive = $adaptive" for adaptive in (false, true)
         sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.05, adaptive)
         @test SciMLBase.successful_retcode(sol)
         @test maximum(abs.(first.(sol.u) .- sqrt.(1 .+ 2 .* sol.t))) < 1.0e-6
@@ -253,11 +253,12 @@ end
     bc3!(res, u, p, t) = (res[1] = u[1]; res[2] = u[2])
     sol3(t) = [sin(t - 1), sin(t - 1), -cos(t - 1)]
     guesses = (
-        [sol3(t) for t in range(0, 1; length = 101)],
-        [sol3(t) for t in range(0, 1; length = 11)],
-        (p, t) -> sol3(t) .+ 0.2,
+        "101 samples" => [sol3(t) for t in range(0, 1; length = 101)],
+        "11 samples" => [sol3(t) for t in range(0, 1; length = 11)],
+        "function" => (p, t) -> sol3(t) .+ 0.2,
     )
-    for u0 in guesses, adaptive in (false, true)
+    @testset "$name guess, adaptive = $adaptive" for (name, u0) in guesses,
+            adaptive in (false, true)
         prob = BVProblem(
             BVPFunction(f3!, bc3!; mass_matrix = [1.0 0 0; 0 1 0; 0 0 0]), u0, (0.0, 1.0)
         )
