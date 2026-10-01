@@ -86,10 +86,9 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    lz = [similar(zval) for _ in 1:(n + 1)]
-    fill!.(lz, T(0))
-    ly = [similar(yval) for _ in 1:(n + 1)]
-    fill!.(ly, T(0))
+    ig = __initial_guess_on_mesh(prob.u0, mesh, p)
+    lz = [copy(@view(u[1:ncomp])) for u in ig.u]
+    ly = [copy(@view(u[(ncomp + 1):ncy])) for u in ig.u]
     dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
@@ -210,8 +209,24 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     # we construct a double mesh and solve the problem on halved mesh again to obtain the error estimation
     # since we got the previous convergence on the initial mesh, we utilize this as the initial guess for our next nonlinear solving
     if info == ReturnCode.Success
+        n_old = length(cache.mesh) - 1
+        mid_z = [similar(cache.z[1]) for _ in 1:n_old]
+        mid_y = [similar(cache.y[1]) for _ in 1:n_old]
+        for i in 1:n_old
+            xmid = (cache.mesh[i] + cache.mesh[i + 1]) / 2
+            @views approx(cache, xmid, mid_z[i], mid_y[i])
+        end
+
         halve_mesh!(cache)
         __expand_cache_for_error!(cache)
+
+        # `__append_similar!` pads with zeros; replace those pads with midpoint
+        # samples of the current pp-iterate so residual evals are not forced
+        # through u = 0 (issue #621). Keep the coarse-mesh prefix untouched.
+        for i in 1:n_old
+            cache.z[n_old + 1 + i] .= mid_z[i]
+            cache.y[n_old + 1 + i] .= mid_y[i]
+        end
 
         _nlprob = __construct_nlproblem(cache)
         nlsol = solve(_nlprob, solve_alg; kwargs...)
