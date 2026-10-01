@@ -27,6 +27,14 @@ import SciMLBase
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
+    # Loose ODE tolerances can stall the shooting residual above the nonlinear
+    # tolerance. Use the same integration accuracy for every problem formulation.
+    ode_tolerances = (; abstol = 1.0e-8, reltol = 1.0e-8)
+    u_exact(t) = [sin(t), cos(t)] / sin(last(tspan))
+    solution_error(sol) = maximum(
+        norm(u - u_exact(t), Inf) for (u, t) in zip(sol.u, sol.t)
+    )
+
     # Inplace
     function f1!(du, u, p, t)
         du[1] = u[2]
@@ -47,11 +55,12 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-8, reltol = 1.0e-8), maxiters = 10000
+            odesolve_kwargs = ode_tolerances, maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
+        @test solution_error(sol) < 1.0e-6
     end
 
     # Out of Place
@@ -71,20 +80,22 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp2, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+            odesolve_kwargs = ode_tolerances, maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
+        @test solution_error(sol) < 1.0e-6
     end
 
     serial_sol = solve(
         bvp2, MultipleShooting(10, Tsit5()); abstol = 1.0e-8, reltol = 1.0e-8,
-        odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000,
+        odesolve_kwargs = ode_tolerances, maxiters = 10000,
         ensemblealg = EnsembleSerial()
     )
     @test SciMLBase.successful_retcode(serial_sol)
     @test norm(serial_sol.resid, Inf) < 1.0e-8
+    @test solution_error(serial_sol) < 1.0e-6
 
     # The internal ODE caches are primal-typed, but AD evaluations can hand
     # tagged states to `solve_internal_odes!`; a matching-typed cache has to be
@@ -161,11 +172,12 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+            odesolve_kwargs = ode_tolerances, maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
+        @test solution_error(sol) < 1.0e-6
     end
 
     # Out of Place
@@ -178,11 +190,12 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp4, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+            odesolve_kwargs = ode_tolerances, maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)
         @test norm(sol.resid, Inf) < 1.0e-8
+        @test solution_error(sol) < 1.0e-6
     end
 end
 

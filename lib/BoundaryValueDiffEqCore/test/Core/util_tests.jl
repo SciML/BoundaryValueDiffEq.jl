@@ -2,6 +2,53 @@ using BoundaryValueDiffEqCore
 using SciMLBase
 using Test
 
+@testset "Singular terms with appended parameters" begin
+    using BoundaryValueDiffEqCore: __device_singular!
+
+    # Keep nonzero sentinels outside the physical-state block so an unchecked
+    # read beyond S produces a deterministic failure rather than allocator noise.
+    storage = fill(99.0, 4, 4)
+    storage[1:2, 1:2] .= [1.0 2.0; 3.0 4.0]
+    S = view(storage, 1:2, 1:2)
+    u = [2.0, 3.0, 11.0, 13.0]
+    initial = [5.0, 7.0, 0.0, 0.0]
+    du = copy(initial)
+    __device_singular!(du, S, u, 2.0)
+    @test du == [9.0, 16.0, 0.0, 0.0]
+
+    for t in (0.0, -1.0)
+        du = copy(initial)
+        __device_singular!(du, S, u, t)
+        @test du == initial
+    end
+    du = copy(initial)
+    __device_singular!(du, nothing, u, 2.0)
+    @test du == initial
+end
+
+@testset "Resizable buffer views" begin
+    using BoundaryValueDiffEqCore: __reshape_buffer, __device_sparse_supported,
+        __device_sparse_matrix
+    using SparseArrays: sparse
+
+    buffer = collect(1.0:6.0)
+    shaped = __reshape_buffer(buffer, 2, 3)
+    @test size(shaped) == (2, 3)
+    shaped[2, 2] = 42
+    @test buffer[4] == 42
+    @test __device_sparse_supported(shaped)
+    pattern = sparse([1, 2], [1, 3], [1.0, 1.0], 2, 3)
+    @test size(__device_sparse_matrix(shaped, pattern).matrix) == size(pattern)
+
+    # A normal Array reshape permanently shares storage on Julia 1.10, even
+    # when the shaped object is no longer retained by a solver cache.
+    resize!(buffer, 12)
+    fill!(buffer, 3)
+    @test __reshape_buffer(buffer, (3, 4)) == fill(3, 3, 4)
+    resize!(buffer, 3)
+    @test vec(__reshape_buffer(buffer, 1, 3)) == fill(3, 3)
+end
+
 module ExternalBVPAlgorithmExtension
     using BoundaryValueDiffEqCore, SciMLBase
 

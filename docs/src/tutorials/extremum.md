@@ -29,7 +29,10 @@ prob = BVProblem(simplependulum!, bc!, [pi / 2, pi / 2], tspan)
 ```
 
 For extremum boundary conditions, prefer a finite-difference Jacobian backend for
-the boundary condition residuals.
+the boundary condition residuals. Keep that boundary block dense: the location of
+an extremum can change during nonlinear iterations, so a local sparsity pattern
+computed at the initial guess may omit derivatives at later iterates. The
+collocation block can still use sparse differentiation.
 
 ```julia
 using Plots

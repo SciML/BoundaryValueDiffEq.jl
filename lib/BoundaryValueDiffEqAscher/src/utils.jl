@@ -216,3 +216,80 @@ end
         end
     end
 end
+
+# The device formulation keeps the Ascher unknowns: differential values at mesh
+# nodes, and differential derivatives / algebraic values at Gauss stages.
+# It solves the uncondensed system, avoiding the host-only ABD factorization.
+__ascher_initial_backend(u) = CPU()
+function __ascher_initial_backend(u::AbstractArray)
+    method = which(KernelAbstractions.get_backend, Tuple{typeof(u)})
+    fallback = which(KernelAbstractions.get_backend, Tuple{AbstractArray})
+    method === fallback || return KernelAbstractions.get_backend(u)
+    return parent(u) === u ? CPU() : __ascher_initial_backend(parent(u))
+end
+
+function __ascher_upload(platform, p)
+    isbits(p) || throw(ArgumentError("Ascher device parameters must be isbits, numeric arrays, or tuples of these."))
+    return p
+end
+function __ascher_upload(platform, p::AbstractArray)
+    isbits(p) && return p
+    isbitstype(eltype(p)) || throw(ArgumentError("Ascher device arrays require isbits elements."))
+    dest = KernelAbstractions.allocate(platform, eltype(p), size(p))
+    copyto!(dest, p)
+    return dest
+end
+__ascher_upload(platform, p::Union{Tuple, NamedTuple}) = map(x -> __ascher_upload(platform, x), p)
+
+__ascher_refresh_parameter!(dest, src) = nothing
+function __ascher_refresh_parameter!(dest::AbstractArray, src::AbstractArray)
+    isbits(src) && return nothing
+    size(dest) == size(src) || throw(DimensionMismatch("Parameter dimensions changed; initialize a new Ascher cache."))
+    copyto!(dest, src)
+    return nothing
+end
+__ascher_refresh_parameter!(dest::Union{Tuple, NamedTuple}, src::Union{Tuple, NamedTuple}) =
+    foreach(__ascher_refresh_parameter!, dest, src)
+
+@inline function __ascher_device_eval!(out, f::F, args::Tuple, ::Val{true}) where {F}
+    f(out, args...)
+    return nothing
+end
+@inline function __ascher_device_eval!(out, f::F, args::Tuple, ::Val{false}) where {F}
+    values = f(args...)
+    @inbounds for i in eachindex(out)
+        out[i] = values[i]
+    end
+    return nothing
+end
+
+function __ascher_device_mass(mass::LinearAlgebra.UniformScaling, M, T)
+    iszero(mass.λ) && throw(ArgumentError("Ascher requires at least one differential variable."))
+    return fill(T(mass.λ), M), M
+end
+function __ascher_device_mass(mass::AbstractMatrix, M, T)
+    matrix = Array(mass)
+    size(matrix) == (M, M) || throw(DimensionMismatch("Mass matrix must match the state dimension."))
+    LinearAlgebra.isdiag(matrix) || throw(ArgumentError("Device Ascher supports a constant diagonal mass matrix with differential variables first."))
+    diagonal = T.(LinearAlgebra.diag(matrix))
+    ncomp = count(!iszero, diagonal)
+    ncomp > 0 && all(!iszero, view(diagonal, 1:ncomp)) &&
+        all(iszero, view(diagonal, (ncomp + 1):M)) ||
+        throw(ArgumentError("Device Ascher requires nonzero differential mass entries followed by zero algebraic entries."))
+    return diagonal, ncomp
+end
+
+function __ascher_device_mode(alg)
+    modes = (alg.jac_alg.diffmode, alg.jac_alg.nonbc_diffmode, alg.jac_alg.bc_diffmode)
+    supplied = filter(x -> x !== missing && x !== nothing, modes)
+    mode = isempty(supplied) ? AutoForwardDiff() : first(supplied)
+    all(x -> isequal(x, mode), supplied) || throw(ArgumentError("Device Ascher currently requires the same AD mode for boundary and collocation equations."))
+    dense = get_dense_ad(mode)
+    dense isa Union{AutoForwardDiff, AutoFiniteDiff} ||
+        throw(ArgumentError("Device Ascher supports AutoForwardDiff or AutoFiniteDiff, optionally wrapped in AutoSparse."))
+    if dense isa AutoFiniteDiff
+        dense.fdjtype isa Union{Val{:forward}, Val{:central}} ||
+            throw(ArgumentError("Device Ascher finite differences support :forward and :central."))
+    end
+    return mode
+end

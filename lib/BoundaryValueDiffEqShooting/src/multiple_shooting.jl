@@ -3,6 +3,12 @@ function SciMLBase.__solve(
         nlsolve_kwargs = (; abstol), optimize_kwargs = (; abstol),
         ensemblealg = EnsembleThreads(), verbose = true, kwargs...
     )
+    if _alg.device_steps !== nothing || !(_alg.platform isa CPU)
+        return __multiple_shooting_device_solve(
+            prob, _alg; abstol, odesolve_kwargs, nlsolve_kwargs,
+            optimize_kwargs, ensemblealg, verbose, kwargs...
+        )
+    end
     verbose_spec = _process_verbose_param(verbose)
 
     (; f, tspan) = prob
@@ -665,4 +671,323 @@ end
     end
     @assert !(1 in nshoots_vec)
     return nshoots_vec
+end
+
+function __shooting_copy(platform, x::AbstractArray)
+    out = KernelAbstractions.allocate(platform, eltype(x), size(x))
+    copyto!(out, x)
+    return out
+end
+__shooting_parameter(platform, p::AbstractArray) = isbits(p) ? p : __shooting_copy(platform, p)
+__shooting_parameter(platform, p::Union{Tuple, NamedTuple}) = map(x -> __shooting_parameter(platform, x), p)
+function __shooting_parameter(platform, p)
+    isbits(p) || throw(ArgumentError("Device shooting parameters must be isbits, numeric arrays, or tuples of these."))
+    return p
+end
+
+@inline function __shooting_eval!(out, f::F, args, ::Val{true}) where {F}
+    f(out, args...)
+    return nothing
+end
+@inline function __shooting_eval!(out, f::F, args, ::Val{false}) where {F}
+    value = f(args...)
+    # Empty static boundary residuals have no valid getindex method on GPU.
+    isempty(value) && return nothing
+    @inbounds for j in eachindex(out)
+        out[j] = value[j]
+    end
+    return nothing
+end
+
+# The optional DiffEqGPU extension specializes these hooks for GPUODEAlgorithm.
+# OrdinaryDiffEq integrators are only constructed and executed on CPU.
+function __shooting_validate_ode(ode_alg, platform)
+    platform isa CPU || throw(
+        ArgumentError(
+            "GPU MultipleShooting requires a DiffEqGPU kernel algorithm. Load DiffEqGPU and use e.g. GPUTsit5() instead of Tsit5()."
+        )
+    )
+    ode_alg isa SciMLBase.AbstractODEAlgorithm || throw(
+        ArgumentError(
+            "Fixed-step CPU MultipleShooting requires an ODE algorithm, e.g. OrdinaryDiffEqTsit5.Tsit5()."
+        )
+    )
+    return nothing
+end
+
+function __shooting_odecache(ode_alg, u, cache, ::Type{T}) where {T}
+    __shooting_validate_ode(ode_alg, cache.platform)
+    (; f, p, mesh, n, steps, intervals, iip) = cache
+    return map(1:intervals) do i
+        u0 = T.(u[((i - 1) * n + 1):(i * n)])
+        tspan = (mesh[i], mesh[i + 1])
+        prob = ODEProblem{_unwrap_val(iip)}(f, u0, tspan, p)
+        SciMLBase.init(
+            prob, ode_alg; adaptive = false, dt = (tspan[2] - tspan[1]) / steps,
+            save_everystep = false, save_start = false, save_end = false, dense = false
+        )
+    end
+end
+
+@kernel function __shooting_cpu_integrate_kernel!(r, u, integrators, mesh, steps, n, na)
+    i = @index(Global, Linear)
+    integrator = integrators[i]
+    SciMLBase.reinit!(
+        integrator, view(u, ((i - 1) * n + 1):(i * n));
+        t0 = mesh[i], tf = mesh[i + 1], reset_dt = false
+    )
+    SciMLBase.set_proposed_dt!(integrator, (mesh[i + 1] - mesh[i]) / steps)
+    sol = solve!(integrator)
+    SciMLBase.successful_retcode(sol) || error("Shooting interval $i failed: $(sol.retcode)")
+    @inbounds for j in 1:n
+        r[na + (i - 1) * n + j] = integrator.u[j] - u[i * n + j]
+    end
+end
+
+function __shooting_integrate!(r, u, ode_alg, cache, integrators)
+    __shooting_cpu_integrate_kernel!(cache.platform)(
+        r, u, integrators, cache.mesh, cache.steps, cache.n, cache.na;
+        ndrange = cache.intervals
+    )
+    return nothing
+end
+
+@kernel function __shooting_derivative_kernel!(d, u, f::F, p, mesh, iip) where {F}
+    node = @index(Global, Linear)
+    n = size(d, 1)
+    __shooting_eval!(view(d, :, node), f, (view(u, ((node - 1) * n + 1):(node * n)), p, mesh[node]), iip)
+end
+
+# An allocation-free solution view for boundary functions and public interpolation.
+struct ShootingDeviceEvalSol{U, D, T}
+    state::U
+    d::D
+    t::T
+    n::Int
+end
+@inline Base.getproperty(s::ShootingDeviceEvalSol, name::Symbol) = name === :u ? s : getfield(s, name)
+Base.length(s::ShootingDeviceEvalSol) = length(s.t)
+Base.firstindex(::ShootingDeviceEvalSol) = 1
+Base.lastindex(s::ShootingDeviceEvalSol) = length(s)
+Base.@propagate_inbounds Base.getindex(s::ShootingDeviceEvalSol, i::Int) = view(s.state, ((i - 1) * s.n + 1):(i * s.n))
+Base.@propagate_inbounds Base.getindex(s::ShootingDeviceEvalSol, j::Int, i::Int) = s.state[(i - 1) * s.n + j]
+Base.@propagate_inbounds Base.getindex(s::ShootingDeviceEvalSol, ::Colon, i::Int) = s[i]
+
+struct ShootingDeviceValue{T, S, W} <: AbstractVector{T}
+    sol::S
+    interval::Int
+    weight::W
+end
+Base.size(v::ShootingDeviceValue) = (v.sol.n,)
+Base.IndexStyle(::Type{<:ShootingDeviceValue}) = IndexLinear()
+@inline function __shooting_interp(s, i, w, j, ::Val{D}) where {D}
+    @inbounds begin
+        h = s.t[i + 1] - s.t[i]
+        a, b = s.state[(i - 1) * s.n + j], s.state[i * s.n + j]
+        da, db = s.d[j, i], s.d[j, i + 1]
+        if D == 0
+            # Endpoint branches retain exact endpoint sparsity during tracing.
+            iszero(w) && return a
+            isone(w) && return b
+            return (2w^3 - 3w^2 + 1) * a + (w^3 - 2w^2 + w) * h * da +
+                (-2w^3 + 3w^2) * b + (w^3 - w^2) * h * db
+        end
+        return (6w^2 - 6w) / h * a + (3w^2 - 4w + 1) * da +
+            (-6w^2 + 6w) / h * b + (3w^2 - 2w) * db
+    end
+end
+Base.@propagate_inbounds Base.getindex(v::ShootingDeviceValue, j::Int) = __shooting_interp(v.sol, v.interval, v.weight, j, Val(0))
+@inline function (s::ShootingDeviceEvalSol)(t::Number)
+    lo, hi = 1, length(s.t)
+    @inbounds while lo + 1 < hi
+        mid = (lo + hi) ÷ 2
+        if s.t[mid] <= t
+            lo = mid
+        else
+            hi = mid
+        end
+    end
+    @inbounds w = (t - s.t[lo]) / (s.t[lo + 1] - s.t[lo])
+    return ShootingDeviceValue{eltype(s.state), typeof(s), typeof(w)}(s, lo, w)
+end
+
+@kernel function __shooting_boundary_kernel!(r, u, d, bc::B, p, mesh, n, na, nb, iip, ::Val{true}) where {B}
+    side = @index(Global, Linear)
+    if side == 1
+        __shooting_eval!(view(r, 1:na), bc[1], (view(u, 1:n), p), iip)
+    else
+        __shooting_eval!(view(r, (length(r) - nb + 1):length(r)), bc[2], (view(u, (length(u) - n + 1):length(u)), p), iip)
+    end
+end
+@kernel function __shooting_boundary_kernel!(r, u, d, bc::B, p, mesh, n, na, nb, iip, ::Val{false}) where {B}
+    __shooting_eval!(view(r, 1:na), bc, (ShootingDeviceEvalSol(u, d, mesh, n), p, mesh), iip)
+end
+
+function __shooting_buffers(u, cache, nr, ::Type{T}) where {T}
+    return (;
+        input = similar(u, T, length(u)), residual = similar(u, T, nr),
+        odecache = __shooting_odecache(cache.ode_alg, u, cache, T),
+        derivative = similar(u, T, cache.n, cache.intervals + 1),
+    )
+end
+
+function __shooting_residual!(r, u, cache, work, selection = :all)
+    (; platform, n, intervals, na, nb, f, bc, p, mesh, ode_alg, iip, twopoint) = cache
+    if selection !== :boundary
+        __shooting_integrate!(r, u, ode_alg, cache, work.odecache)
+    end
+    if !twopoint && selection !== :continuity
+        __shooting_derivative_kernel!(platform)(work.derivative, u, f, p, mesh, iip; ndrange = intervals + 1)
+    end
+    synchronize(platform)
+    if selection !== :continuity
+        __shooting_boundary_kernel!(platform)(r, u, work.derivative, bc, p, mesh, n, na, nb, iip, Val(twopoint); ndrange = twopoint ? 2 : 1)
+    end
+    synchronize(platform)
+    return r
+end
+
+struct ShootingDeviceInterpolation{S, P} <: SciMLBase.AbstractDiffEqInterpolation
+    sol::S
+    platform::P
+end
+SciMLBase.interp_summary(::ShootingDeviceInterpolation) = "Multiple shooting device cubic Hermite interpolation"
+@kernel function __shooting_interpolate_kernel!(out, u, d, mesh, n, t, idxs, deriv)
+    j = @index(Global, Linear)
+    row = idxs === nothing ? j : (idxs isa Integer ? idxs : idxs[j])
+    value = ShootingDeviceEvalSol(u, d, mesh, n)(t)
+    @inbounds out[j] = __shooting_interp(value.sol, value.interval, value.weight, row, deriv)
+end
+function (interp::ShootingDeviceInterpolation)(t::Number, idxs, ::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    D in (0, 1) || throw(ArgumentError("Device shooting interpolation supports derivative orders 0 and 1."))
+    s = interp.sol
+    ids = idxs === nothing ? (1:s.n) : (idxs isa Integer ? (idxs,) : idxs)
+    all(j -> j isa Integer && 1 <= j <= s.n, ids) || throw(BoundsError(1:s.n, idxs))
+    out = similar(s.state, length(ids))
+    device_idxs = idxs isa AbstractArray ? __shooting_copy(interp.platform, idxs) : idxs
+    __shooting_interpolate_kernel!(interp.platform)(out, s.state, s.d, s.t, s.n, t, device_idxs, Val(D); ndrange = length(out))
+    synchronize(interp.platform)
+    return idxs isa Integer ? sum(out) : out
+end
+# Supported index forms keep this call distinct from the batch-time signature.
+function (interp::ShootingDeviceInterpolation)(out::AbstractArray, t::Number, idxs::Union{Nothing, Integer, AbstractArray, Tuple}, deriv::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    copyto!(out, interp(t, idxs, deriv, p, continuity))
+    return out
+end
+function (interp::ShootingDeviceInterpolation)(ts::AbstractVector, idxs, deriv::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    times = collect(ts)
+    return DiffEqArray([interp(t, idxs, deriv, p, continuity) for t in times], times)
+end
+
+function __shooting_validate(prob, alg, odesolve_kwargs, kwargs)
+    alg.device_steps !== nothing || throw(ArgumentError("GPU MultipleShooting requires device_steps (fixed ODE steps per interval)."))
+    __shooting_validate_ode(alg.ode_alg, alg.platform)
+    alg.grid_coarsening === false || throw(ArgumentError("Device MultipleShooting requires grid_coarsening=false."))
+    alg.optimize === nothing || throw(ArgumentError("Device MultipleShooting supports nonlinear solvers, not optimize."))
+    isempty(odesolve_kwargs) || throw(ArgumentError("Device MultipleShooting uses device_steps; odesolve_kwargs are not supported."))
+    isempty(kwargs) || throw(ArgumentError("Unsupported device shooting solve keywords: $(keys(kwargs)). Use nlsolve_kwargs for nonlinear options."))
+    prob.tspan[2] > prob.tspan[1] || throw(ArgumentError("Device shooting requires an increasing tspan."))
+    prob.f.mass_matrix == LinearAlgebra.I || throw(ArgumentError("Device shooting requires the identity mass matrix."))
+    for name in (:lb, :ub, :lcons, :ucons)
+        getproperty(prob, name) === nothing || throw(ArgumentError("Device shooting does not support bounds or optimization constraints."))
+    end
+    get(prob.kwargs, :tune_parameters, false) && throw(ArgumentError("Device shooting does not support tune_parameters."))
+    return nothing
+end
+
+function __shooting_device_setup(prob, alg)
+    __shooting_validate_ode(alg.ode_alg, alg.platform)
+    host_mesh = collect(range(prob.tspan...; length = alg.nshoots + 1))
+    state = __extract_u0(prob.u0, prob.p, first(host_mesh))
+    state isa AbstractVector || throw(ArgumentError("Device shooting requires vector states."))
+    T = eltype(state)
+    T <: Union{Float32, Float64} || throw(ArgumentError("Device shooting states must use Float32 or Float64."))
+    n, intervals = length(state), alg.nshoots
+    n > 0 || throw(ArgumentError("Device shooting needs a nonempty state."))
+    # Initialization is allowed on the host. Iteration storage remains resident.
+    host_u = if prob.u0 isa AbstractVector{<:Number}
+        repeat(Array(prob.u0), intervals + 1)
+    else
+        guess = __initial_guess_on_mesh(prob.u0, host_mesh, __shooting_host(prob.p))
+        length(guess.u) == intervals + 1 && all(x -> length(x) == n, guess.u) ||
+            throw(DimensionMismatch("Initial guess must contain nshoots+1 equally sized states."))
+        # Materialize the vector of states so reduce uses Base's single-allocation
+        # vcat specialization. A generator instead repeatedly copies the prefix.
+        reduce(vcat, map(Array, guess.u))
+    end
+    length(host_u) == n * (intervals + 1) || throw(DimensionMismatch("Initial guess dimensions do not match the shooting mesh."))
+    u = __shooting_copy(alg.platform, host_u)
+    prototype = prob.f.bcresid_prototype
+    twopoint = prob.problem_type isa TwoPointBVProblem
+    if twopoint
+        prototype === nothing && throw(ArgumentError("Device TwoPointBVProblem requires bcresid_prototype=(left,right)."))
+        na, nb = map(length, prototype.x)
+    else
+        na, nb = prototype === nothing ? (n, 0) : (length(prototype), 0)
+    end
+    nr = na + n * intervals + nb
+    cache = (;
+        platform = alg.platform, n, intervals, steps = alg.device_steps, na, nb,
+        f = prob.f.f, bc = prob.f.bc, p = __shooting_parameter(alg.platform, prob.p),
+        mesh = __shooting_copy(alg.platform, host_mesh), ode_alg = alg.ode_alg,
+        iip = Val(isinplace(prob)), twopoint,
+    )
+    work = __shooting_buffers(u, cache, nr, T)
+    plan = __shooting_jacobian_plan(prob, alg, u, host_mesh, cache, work)
+    return (; u, host_mesh, cache, work, plan)
+end
+
+# The CUDSS extension specializes this hook for shooting's segment layout.
+__shooting_default_linsolve(u, cache, plan) = __default_linsolve(u)
+__shooting_default_linsolve(u::Array, cache, plan) = __default_sparse_linsolve(plan.matrix)
+
+function __multiple_shooting_device_solve(prob, alg; abstol, odesolve_kwargs, nlsolve_kwargs, optimize_kwargs, ensemblealg, verbose, kwargs...)
+    __shooting_validate(prob, alg, odesolve_kwargs, kwargs)
+    (; u, host_mesh, cache, work, plan) = __shooting_device_setup(prob, alg)
+    residual! = (r, x, p) -> __shooting_residual!(r, x, cache, work)
+    jacobian! = (J, x, p) -> __shooting_jacobian!(J, x, cache, plan)
+
+    product = copy(plan.matrix)
+    function jvp!(out, v, x, p)
+        __shooting_jacobian!(product, x, cache, plan)
+        LinearAlgebra.mul!(out, product, v)
+        return nothing
+    end
+    function vjp!(out, v, x, p)
+        __shooting_jacobian!(product, x, cache, plan)
+        LinearAlgebra.mul!(out, adjoint(product), v)
+        return nothing
+    end
+    nf = NonlinearFunction{true}(
+        residual!; jac = jacobian!, jvp = jvp!, vjp = vjp!,
+        jac_prototype = plan.matrix, resid_prototype = work.residual
+    )
+    nlprob = BoundaryValueDiffEqCore.__internal_nlsolve_problem(prob, work.residual, u, nf, u, cache.p)
+    if nlprob isa SciMLBase.NonlinearProblem && length(work.residual) != length(u)
+        throw(DimensionMismatch("Square shooting requires as many boundary residuals as states; use nlls=Val(true)."))
+    end
+    linsolve = if alg.nlsolve !== nothing
+        nothing
+    elseif nlprob isa SciMLBase.NonlinearLeastSquaresProblem
+        alg.device_linsolve === nothing ||
+            throw(ArgumentError("device_linsolve requires a square nonlinear problem; configure nlsolve for least squares."))
+        nothing
+    else
+        alg.device_linsolve === nothing ?
+            __shooting_default_linsolve(u, cache, plan) :
+            alg.device_linsolve
+    end
+    concrete_jac = nlprob isa SciMLBase.NonlinearLeastSquaresProblem || linsolve !== nothing ? true : nothing
+    solver = __concrete_device_solve_algorithm(
+        nlprob, alg.nlsolve, alg.optimize; linsolve, concrete_jac
+    )
+    nlsol = __internal_solve(nlprob, solver; abstol, nlsolve_kwargs...)
+    y = copy(nlsol.u)
+    d = similar(work.derivative)
+    __shooting_derivative_kernel!(alg.platform)(d, y, cache.f, cache.p, cache.mesh, cache.iip; ndrange = cache.intervals + 1)
+    synchronize(alg.platform)
+    interp = ShootingDeviceInterpolation(ShootingDeviceEvalSol(y, d, cache.mesh, cache.n), alg.platform)
+    states = [view(y, ((i - 1) * cache.n + 1):(i * cache.n)) for i in eachindex(host_mesh)]
+    odesol = SciMLBase.build_solution(prob, alg, host_mesh, states; interp, retcode = nlsol.retcode)
+    return __build_solution(prob, odesol, nlsol)
 end

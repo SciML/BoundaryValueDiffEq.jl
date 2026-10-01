@@ -230,3 +230,88 @@ function horder(cache::AscherCache, uhigh, hi, dmzi)
     end
     return
 end
+
+# Refine the existing immutable cache, keeping both the old interpolant and its
+# samples alive until prolongation finishes. Sparse topology is rebuilt for the
+# new mesh; every dense state/work array keeps its owning vector.
+function __ascher_refine!(cache::AscherCache, host_mesh)
+    platform = cache.alg.platform
+    scratch = cache.new_mesh
+    n = length(host_mesh) - 1
+    locations = [searchsortedfirst(host_mesh, cache.host_mesh[i]) for i in cache.host_locations]
+    all(
+        j -> locations[j] <= length(host_mesh) &&
+            host_mesh[locations[j]] == cache.host_mesh[cache.host_locations[j]], eachindex(locations)
+    ) ||
+        throw(ArgumentError("Refined Ascher meshes must retain every boundary location."))
+    resize!(scratch.mesh, n + 1)
+    copyto!(scratch.mesh, host_mesh)
+    resize!(scratch.x, n * (cache.ncomp + cache.M * cache.k) + cache.ncomp)
+    resize!(scratch.coarse, cache.M * (n + 1))
+    coarse = __reshape_buffer(scratch.coarse, cache.M, n + 1)
+    __ascher_device_sample!(platform)(
+        coarse, cache.x, cache.mesh, cache.TU.coef, scratch.mesh,
+        cache.ncomp, cache.M, cache.k; ndrange = size(coarse)
+    )
+    __ascher_device_prolong!(platform)(
+        scratch.x, cache.x, cache.mesh, cache.TU.coef, scratch.mesh,
+        cache.TU.rho, cache.ncomp, cache.M, cache.k; ndrange = length(scratch.x)
+    )
+    synchronize(platform)
+    resize!(cache.x, length(scratch.x))
+    copyto!(cache.x, scratch.x)
+    resize!(cache.residual, length(cache.x))
+    resize!(cache.mesh, n + 1)
+    copyto!(cache.mesh, scratch.mesh)
+    resize!(cache.host_mesh, n + 1)
+    copyto!(cache.host_mesh, host_mesh)
+    copyto!(cache.host_locations, locations)
+    copyto!(cache.locations, locations)
+    cache.jacobian[nothing] = __ascher_prepare_device_jacobian(
+        cache.x, platform, __ascher_device_mode(cache.alg), cache.ncomp, cache.M, cache.k, n, locations
+    )
+    return coarse
+end
+
+function __ascher_refine_solution(cache::AscherCache, result)
+    retcode = result.retcode
+    if cache.kwargs.adaptive
+        while SciMLBase.successful_retcode(retcode)
+            n = length(cache.host_mesh) - 1
+            if 2n > cache.alg.max_num_subintervals
+                retcode = ReturnCode.MaxIters
+                break
+            end
+            mesh = sort!(vcat(cache.host_mesh, (cache.host_mesh[1:(end - 1)] .+ cache.host_mesh[2:end]) ./ 2))
+            coarse = __ascher_refine!(cache, mesh)
+            result = __ascher_device_solve_once!(cache)
+            retcode = result.retcode
+            resize!(cache.new_mesh.fine, length(coarse))
+            fine = __reshape_buffer(cache.new_mesh.fine, size(coarse))
+            __ascher_device_sample!(cache.alg.platform)(
+                fine, cache.x, cache.mesh, cache.TU.coef, cache.mesh,
+                cache.ncomp, cache.M, cache.k; ndrange = size(fine)
+            )
+            synchronize(cache.alg.platform)
+            fine .-= coarse
+            error = maximum(abs, fine)
+            error <= cache.kwargs.abstol && break
+        end
+    end
+    return cache, result, retcode
+end
+
+@kernel function __ascher_device_prolong!(out, x, mesh, coef, newmesh, rho, d, M, k)
+    i = @index(Global, Linear)
+    width = d + M * k
+    interval = (i - 1) ÷ width + 1
+    localindex = (i - 1) % width + 1
+    @inbounds if localindex <= d
+        out[i] = __ascher_polynomial(x, mesh, coef, newmesh[interval], localindex, d, M, k)
+    else
+        stage = (localindex - d - 1) ÷ M + 1
+        j = (localindex - d - 1) % M + 1
+        t = newmesh[interval] + rho[stage] * (newmesh[interval + 1] - newmesh[interval])
+        out[i] = __ascher_polynomial(x, mesh, coef, t, j, d, M, k, true)
+    end
+end
