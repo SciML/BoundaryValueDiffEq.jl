@@ -197,4 +197,30 @@ end
     end
 end
 
+# Issue #621: Ascher must seed the nonlinear iterate from `u0`, not zeros, and
+# must keep that guess when the adaptive path halves the mesh. Exact solution
+# is the constant `u(t) = 1`, and both `f!`/`bc!` are undefined at zero.
+@testset "Ascher initial guess from u0 (issue #621)" begin
+    using ForwardDiff: value
+
+    function f621!(du, u, p, t)
+        iszero(value(u[1])) && error("f! was evaluated at u[1] = 0")
+        du[1] = 1 / u[1] - 1
+    end
+    function bc621!(res, u, p, t)
+        iszero(value(u[1])) && error("bc! was evaluated at u[1] = 0")
+        res[1] = 1 / u[1] - 1
+    end
+
+    u0 = [1.0]
+    fun = BVPFunction(f621!, bc621!; mass_matrix = ones(1, 1))
+    prob = BVProblem(fun, u0, (0.0, 1.0))
+
+    for adaptive in (false, true)
+        sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.01, adaptive)
+        @test SciMLBase.successful_retcode(sol)
+        @test all(x -> isapprox(only(x), 1.0; atol = 1.0e-4), sol.u)
+    end
+end
+
 # JET tests have been moved to the separate QA test group (test/qa/)
