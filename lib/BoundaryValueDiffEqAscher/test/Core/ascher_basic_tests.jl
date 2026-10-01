@@ -197,4 +197,30 @@ end
     end
 end
 
+# Regression for #621: a vector-valued initial guess must seed the first residual,
+# so callbacks that are singular at zero are evaluated at the supplied guess.
+# (Ascher currently BoundsErrors on 1-state problems independently of this bug, so
+# the regression uses a 2-state ODE that the solver already handles.)
+@testset "Ascher initial residual uses supplied initial guess (#621)" begin
+    function f_nonzero!(du, u, p, t)
+        any(iszero, u) && error("f! was evaluated at a zero component")
+        du[1] = 1 / u[1] - 1
+        du[2] = 1 / u[2] - 1
+        return nothing
+    end
+    function bc_nonzero!(res, u, p, t)
+        any(iszero, u) && error("bc! was evaluated at a zero component")
+        res[1] = 1 / u[1] - 1
+        res[2] = 1 / u[2] - 1
+        return nothing
+    end
+
+    fun = BVPFunction(f_nonzero!, bc_nonzero!; mass_matrix = Float64[1 0; 0 1])
+    prob = BVProblem(fun, [1.0, 1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [0.0, 1.0]); dt = 0.1, adaptive = false)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.u[1] ≈ [1.0, 1.0]
+    @test sol.u[end] ≈ [1.0, 1.0]
+end
+
 # JET tests have been moved to the separate QA test group (test/qa/)

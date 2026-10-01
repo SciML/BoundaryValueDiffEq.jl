@@ -86,10 +86,12 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    lz = [similar(zval) for _ in 1:(n + 1)]
-    fill!.(lz, T(0))
-    ly = [similar(yval) for _ in 1:(n + 1)]
-    fill!.(ly, T(0))
+    # Seed the collocation state from the problem's initial guess. Leaving this as
+    # zeros (the previous behavior) evaluates `f`/`bc` at the zero state on the
+    # first residual/Jacobian pass, which breaks problems singular at `u = 0`.
+    u0_mesh = __initial_guess_on_mesh(prob.u0, mesh, p)
+    lz = [Vector{T}(u[1:ncomp]) for u in u0_mesh.u]
+    ly = [Vector{T}(u[(ncomp + 1):(ncomp + ny)]) for u in u0_mesh.u]
     dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
