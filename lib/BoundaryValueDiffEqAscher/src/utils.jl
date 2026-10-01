@@ -8,10 +8,7 @@ function build_almost_block_diagonals(zeta::Vector{T}, ncomp::I, mesh, ::Type{T}
     cols = repeat([ncol], n)
     lasts = repeat([ncomp], n)
     for i in 1:(n - 1)
-        # No remaining ζ past mesh[i] means all side conditions are already placed
-        # (typically when every ζ is at the left endpoint).
-        idxs = findall(x -> x > mesh[i], zeta)
-        lside = isempty(idxs) ? ncomp : first(idxs) - 1
+        lside = something(findfirst(>(mesh[i]), zeta), ncomp + 1) - 1
         rows[i] = ncomp + lside
     end
     lasts[end] = ncol
@@ -20,30 +17,17 @@ function build_almost_block_diagonals(zeta::Vector{T}, ncomp::I, mesh, ::Type{T}
     return g
 end
 
-# Source times for a discrete initial guess. DiffEqArray / ODESolution carry their
-# own mesh; a bare vector-of-arrays is treated as uniformly spaced on [t₀, t₁].
-function __ascher_guess_times(u0, mesh)
-    if u0 isa SciMLBase.ODESolution || hasproperty(u0, :t)
-        return copy(u0.t)
-    end
-    n_src = if u0 isa AbstractVector{<:AbstractArray}
-        length(u0)
-    elseif hasproperty(u0, :u)
-        length(u0.u)
-    else
-        length(mesh)
-    end
-    return collect(range(mesh[1], mesh[end]; length = n_src))
+# Source times for a discrete initial guess: its own time points when it carries them,
+# otherwise uniformly spaced on the mesh span.
+function __ascher_guess_times(u0, us, mesh)
+    hasproperty(u0, :t) && return u0.t
+    return range(first(mesh), last(mesh); length = length(us))
 end
 
 function __ascher_linear_interp_state(us, ts, t)
-    if t <= first(ts)
-        return copy(vec(first(us)))
-    elseif t >= last(ts)
-        return copy(vec(last(us)))
-    end
-    j = searchsortedlast(ts, t)
-    j = clamp(j, 1, length(ts) - 1)
+    t <= first(ts) && return copy(vec(first(us)))
+    t >= last(ts) && return copy(vec(last(us)))
+    j = clamp(searchsortedlast(ts, t), 1, length(ts) - 1)
     θ = (t - ts[j]) / (ts[j + 1] - ts[j])
     return (1 - θ) .* vec(us[j]) .+ θ .* vec(us[j + 1])
 end
@@ -51,19 +35,14 @@ end
 """
     __ascher_guess_on_mesh(u0, mesh, p)
 
-Evaluate / interpolate the problem's initial guess onto `mesh`. Unlike MIRK, Ascher
-always builds the mesh from `dt`, so a vector-of-arrays guess whose length differs
-from `length(mesh)` is linearly interpolated onto the dt mesh.
-
-Returns a `Vector` of state vectors, one per mesh point.
+Return the initial guess as one state vector per point of `mesh`. A discrete guess whose
+length differs from `length(mesh)` is linearly interpolated onto `mesh`, since Ascher
+builds its mesh from `dt` rather than from the guess.
 """
 function __ascher_guess_on_mesh(u0, mesh, p)
-    guess = __initial_guess_on_mesh(u0, mesh, p)
-    us = guess.u
-    if length(us) == length(mesh)
-        return [copy(vec(u)) for u in us]
-    end
-    t_src = __ascher_guess_times(u0, mesh)
+    us = __initial_guess_on_mesh(u0, mesh, p).u
+    length(us) == length(mesh) && return [copy(vec(u)) for u in us]
+    t_src = __ascher_guess_times(u0, us, mesh)
     return [__ascher_linear_interp_state(us, t_src, t) for t in mesh]
 end
 

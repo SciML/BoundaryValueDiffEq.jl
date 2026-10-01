@@ -86,22 +86,10 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    # Seed collocation state from the initial guess so the first residual / Jacobian
-    # is not evaluated at the zero state (singular for many BVDAEs).
     u0_mesh = __ascher_guess_on_mesh(prob.u0, mesh, p)
     lz = [Vector{T}(u[1:ncomp]) for u in u0_mesh]
-    ly = [Vector{T}(u[(ncomp + 1):(ncomp + ny)]) for u in u0_mesh]
-    # Algebraic values are reconstructed from dmz via `approx`, so seed the
-    # algebraic slots of dmz from the guess (at mesh left endpoints; piecewise
-    # constant in each interval). Differential dmz slots stay zero ⇒ piecewise
-    # constant z between mesh nodes.
-    dmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
-    for i in 1:n
-        yᵢ = ly[i]
-        for j in 1:k
-            dmz[i][j][(ncomp + 1):ncy] .= yᵢ
-        end
-    end
+    ly = [Vector{T}(u[(ncomp + 1):ncy]) for u in u0_mesh]
+    dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
@@ -221,8 +209,12 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     # we construct a double mesh and solve the problem on halved mesh again to obtain the error estimation
     # since we got the previous convergence on the initial mesh, we utilize this as the initial guess for our next nonlinear solving
     if info == ReturnCode.Success
+        z_fine, y_fine, dmz_fine = __sample_on_halved_mesh(cache)
         halve_mesh!(cache)
         __expand_cache_for_error!(cache)
+        copyto!(cache.z, z_fine)
+        copyto!(cache.y, y_fine)
+        copyto!(cache.dmz, dmz_fine)
 
         _nlprob = __construct_nlproblem(cache)
         nlsol = solve(_nlprob, solve_alg; kwargs...)
@@ -244,6 +236,38 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     end
 
     return z, y, info, error_norm
+end
+
+"""
+    __sample_on_halved_mesh(cache)
+
+Sample the current piecewise-polynomial iterate at the nodes and collocation points of
+the halved mesh, returning `(z, y, dmz)` laid out for that mesh. Seeding the
+error-estimation solve with these values starts it from the coarse solution itself,
+including the algebraic components that `approx` reconstructs from `dmz`.
+"""
+function __sample_on_halved_mesh(cache::AscherCache{iip, T}) where {iip, T}
+    (; mesh, mesh_dt, ncomp, ny, k, TU) = cache
+    (; rho) = TU
+    n = length(mesh) - 1
+    fine_mesh = Vector{eltype(mesh)}(undef, 2n + 1)
+    for i in 1:n
+        fine_mesh[2i - 1] = mesh[i]
+        fine_mesh[2i] = mesh[i] + mesh_dt[i] / 2
+    end
+    fine_mesh[end] = mesh[end]
+    z = [Vector{T}(undef, ncomp) for _ in fine_mesh]
+    y = [Vector{T}(undef, ny) for _ in fine_mesh]
+    for (l, x) in enumerate(fine_mesh)
+        approx(cache, x, z[l], y[l])
+    end
+    dmz = [[zeros(Float64, ncomp + ny) for _ in 1:k] for _ in 1:(2n)]
+    zval = Vector{T}(undef, ncomp)
+    for l in 1:(2n), j in 1:k
+        x = fine_mesh[l] + (fine_mesh[l + 1] - fine_mesh[l]) * rho[j]
+        @views approx(cache, x, zval, dmz[l][j][(ncomp + 1):end], dmz[l][j][1:ncomp])
+    end
+    return z, y, dmz
 end
 
 # expand cache to compute the errors
@@ -415,13 +439,9 @@ function __append_abd!(cache::AscherCache)
     resize!(lasts, n)
     fill!(lasts, ncomp)
     # build integs (describing block structure of matrix)
-    let lside = 0
-        for i in 1:(n - 1)
-            idxs = findall(x -> x > mesh[i], zeta)
-            lside = isempty(idxs) ? ncomp : first(idxs) - 1
-            (lside == ncomp) && break
-            rows[i] = ncomp + lside
-        end
+    for i in 1:(n - 1)
+        lside = something(findfirst(>(mesh[i]), zeta), ncomp + 1) - 1
+        rows[i] = ncomp + lside
     end
     lasts[end] = ncol
     rows[end] = ncol
