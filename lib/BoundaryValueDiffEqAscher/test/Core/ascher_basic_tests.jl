@@ -197,4 +197,77 @@ end
     end
 end
 
+# Callbacks singular at zero: every residual and Jacobian evaluation, including the
+# error-estimation solve on the halved mesh, must start from the supplied guess.
+@testset "Ascher callbacks never see the zero state (#621), adaptive = $adaptive" for adaptive in (false, true)
+    function f_nonzero!(du, u, p, t)
+        any(iszero, u) && error("f! was evaluated at a zero component")
+        du[1] = 1 / u[1] - 1
+        du[2] = 1 / u[2] - 1
+        return nothing
+    end
+    function bc_nonzero!(res, u, p, t)
+        any(iszero, u) && error("bc! was evaluated at a zero component")
+        res[1] = 1 / u[1] - 1
+        res[2] = 1 / u[2] - 1
+        return nothing
+    end
+    fun = BVPFunction(f_nonzero!, bc_nonzero!; mass_matrix = Float64[1 0; 0 1])
+    prob = BVProblem(fun, [1.0, 1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [0.0, 1.0]); dt = 0.1, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test all(u -> u ≈ [1.0, 1.0], sol.u)
+
+    function f621!(du, u, p, t)
+        iszero(u[1]) && error("f! was evaluated at u[1] = 0")
+        du[1] = 1 / u[1] - 1
+        return nothing
+    end
+    function bc621!(res, u, p, t)
+        iszero(u[1]) && error("bc! was evaluated at u[1] = 0")
+        res[1] = 1 / u[1] - 1
+        return nothing
+    end
+    fun = BVPFunction(f621!, bc621!; mass_matrix = ones(1, 1))
+    prob = BVProblem(fun, [1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.01, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test all(u -> u ≈ [1.0], sol.u)
+end
+
+@testset "Ascher side conditions all at the left endpoint, adaptive = $adaptive" for adaptive in (false, true)
+    fun = BVPFunction(
+        (du, u, p, t) -> (du[1] = -u[1]), (res, u, p, t) -> (res[1] = u[1] - 1);
+        mass_matrix = ones(1, 1)
+    )
+    prob = BVProblem(fun, [0.5], (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [0.0]); dt = 0.1, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test maximum(abs(sol.u[i][1] - exp(-sol.t[i])) for i in eachindex(sol.t)) < 1.0e-4
+end
+
+@testset "Ascher vector-of-arrays guess of length $L, adaptive = $adaptive" for L in (5, 11, 37), adaptive in (false, true)
+    function f3!(du, u, p, t)
+        du[1] = -u[3]
+        du[2] = -u[3]
+        du[3] = u[2] - sin(t - 1)
+        return nothing
+    end
+    function bc3!(res, u, p, t)
+        res[1] = u[1]
+        res[2] = u[2]
+        return nothing
+    end
+    f3_analytic(t) = [sin(t - 1), sin(t - 1), -cos(t - 1)]
+    guess = [f3_analytic(t) for t in range(0.0, 1.0; length = L)]
+    fun = ODEFunction(f3!; mass_matrix = [1 0 0; 0 1 0; 0 0 0])
+    prob = BVProblem(fun, bc3!, guess, (0.0, 1.0))
+    sol = solve(prob, Ascher4(zeta = [1.0, 1.0]); dt = 0.01, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test length(sol.t) == 101
+    @test maximum(
+        maximum(abs, sol.u[i] .- f3_analytic(sol.t[i])) for i in eachindex(sol.t)
+    ) < 1.0e-4
+end
+
 # JET tests have been moved to the separate QA test group (test/qa/)

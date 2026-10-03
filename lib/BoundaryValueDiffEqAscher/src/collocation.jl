@@ -154,7 +154,8 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = zeros(T, ncy, ncy)
+    # factor_shift scratch must cover the widest ABD block (`rows[end] == 2*ncomp`)
+    scrtch = zeros(T, 2 * ncomp)
     dmzo = copy(deldmz)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
@@ -169,7 +170,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::StandardBVProblem) where {i
     # assembly process completed
     # solve the linear system
     # AND matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
+    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, scrtch)
 
     # perform forward and backward substitution.
     deldmz .= copy(temp_rhs)
@@ -254,7 +255,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = zeros(T, ncy, ncy)
+    scrtch = zeros(T, 2 * ncomp)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -268,7 +269,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     # assembly process completed
     # solve the linear system
     # matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
+    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, scrtch)
 
     # perform forward and backward substitution.
     deldmz .= copy(temp_rhs)
@@ -357,7 +358,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = Matrix{T}(undef, ncy, ncy)
+    scrtch = zeros(T, 2 * ncomp)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -371,7 +372,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::StandardBVProblem) where {iip, T}
     # assembly process completed
     # solve the linear system
     # matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
+    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, scrtch)
 
     # perform forward and backward substitution.
     deldmz .= copy(temp_rhs)
@@ -457,7 +458,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = Matrix{T}(undef, ncy, ncy)
+    scrtch = zeros(T, 2 * ncomp)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -471,7 +472,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
     # assembly process completed
     # solve the linear system
     # matrix decomposition
-    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, df)
+    @views AlmostBlockDiagonals.factor_shift(g, ipvtg, scrtch)
 
     # perform forward and backward substitution.
     deldmz .= copy(temp_rhs)
