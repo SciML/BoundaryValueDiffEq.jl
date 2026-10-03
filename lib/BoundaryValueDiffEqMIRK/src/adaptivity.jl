@@ -536,7 +536,7 @@ end
     (; prob, alg) = cache
 
     # Use the previous solution as the initial guess
-    high_sol = DiffEqArray(cache.y₀.u, cache.mesh)
+    high_sol = DiffEqArray(deepcopy(cache.y₀).u, cache.mesh)
     new_prob = remake(prob, u0 = high_sol)
     high_cache = SciMLBase.__init(new_prob, __high_order_method(alg), adaptive = false)
 
