@@ -97,3 +97,47 @@ end
     @test result isa BoundaryValueDiffEqCore.BVPVerbosity
     @test result === BoundaryValueDiffEqCore.DEFAULT_VERBOSE
 end
+
+module SecondOrderExternalAlgorithmExtension
+    using BoundaryValueDiffEqCore, SciMLBase
+
+    struct FirstOrderAlg <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm end
+    struct InitOnlyAlg <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm end
+    struct SolveOnlyAlg <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqAlgorithm end
+    struct ExtCache{P} <: BoundaryValueDiffEqCore.AbstractBoundaryValueDiffEqCache
+        prob::P
+    end
+
+    SciMLBase.__init(prob::SciMLBase.BVProblem, ::FirstOrderAlg; kwargs...) = ExtCache(prob)
+    SciMLBase.__init(prob::SciMLBase.AbstractBVProblem, ::InitOnlyAlg; kwargs...) =
+        ExtCache(prob)
+    SciMLBase.solve!(cache::ExtCache) = (; cache.prob, reached = :ext_init)
+
+    SciMLBase.__solve(
+        prob::SciMLBase.AbstractBVProblem, ::SolveOnlyAlg, args...; kwargs...
+    ) = (; prob, reached = :ext_solve)
+end
+
+const SO_EXT = SecondOrderExternalAlgorithmExtension
+const SO_PROB = SecondOrderBVProblem(
+    (ddu, du, u, p, t) -> (ddu .= 0; nothing), (res, du, u, p, t) -> (res .= 0; nothing),
+    [1.0, -1.0], (0.0, 1.0)
+)
+
+@testset "SecondOrderBVProblem with a first-order-only algorithm" begin
+    err = @test_throws ArgumentError SciMLBase.solve(SO_PROB, SO_EXT.FirstOrderAlg(); dt = 0.2)
+    @test occursin(
+        "SecondOrderBVProblem is only supported by MIRKN solvers (MIRKN4, MIRKN6). " *
+            "Got FirstOrderAlg.", sprint(showerror, err.value)
+    )
+end
+
+@testset "SecondOrderBVProblem with external `$(nameof(typeof(alg)))`" for (alg, reached) in (
+        (SO_EXT.InitOnlyAlg(), :ext_init), (SO_EXT.SolveOnlyAlg(), :ext_solve),
+    )
+    @test SciMLBase.solve(SO_PROB, alg; dt = 0.2) == (; prob = SO_PROB, reached)
+end
+
+@testset "No ambiguities with external `__init`/`__solve` methods" begin
+    @test isempty(Test.detect_ambiguities(BoundaryValueDiffEqCore, SO_EXT))
+end
