@@ -197,4 +197,58 @@ end
     end
 end
 
+@testset "Parameterized bc! receives p in Ascher4 bc jacobian" begin
+    using BoundaryValueDiffEqAscher, SciMLBase
+
+    struct AscherBCParams
+        epsilon::Float64
+        x1_left::Float64
+    end
+
+    function f_param!(du, u, p, t)
+        du[1] = (p.epsilon + u[2] - sin(t)) * u[4] + cos(t)
+        du[2] = cos(t)
+        du[3] = u[4]
+        du[4] = (u[1] - sin(t)) * (u[4] - exp(t))
+    end
+
+    function bc_param!(res, u, p, t)
+        res[1] = u[1] - p.x1_left
+        res[2] = u[3] - 1
+        res[3] = u[2] - sin(1.0)
+    end
+
+    function bca_param!(res, ua, p)
+        res[1] = ua[1] - p.x1_left
+        res[2] = ua[3] - 1
+    end
+    function bcb_param!(res, ub, p)
+        res[1] = ub[2] - sin(1.0)
+    end
+
+    function f_param_analytic(u, p, t)
+        return [sin(t), sin(t), 1.0, 0.0]
+    end
+
+    u0 = [0.0, 0.0, 0.0, 0.0]
+    tspan = (0.0, 1.0)
+    p = AscherBCParams(1.0, 0.0)
+    mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0]
+    alg = Ascher4(zeta = [0.0, 0.0, 1.0])
+    fun = BVPFunction(f_param!, bc_param!; analytic = f_param_analytic, mass_matrix)
+    prob = BVProblem(fun, u0, tspan, p)
+    sol = solve(prob, alg; dt = 0.01)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.errors[:final] < 1.0e-4
+
+    fun_tp = ODEFunction(f_param!; analytic = f_param_analytic, mass_matrix)
+    tpprob = TwoPointBVProblem(
+        fun_tp, (bca_param!, bcb_param!), u0, tspan, p;
+        bcresid_prototype = (zeros(2), zeros(1)),
+    )
+    tpsol = solve(tpprob, alg; dt = 0.01)
+    @test SciMLBase.successful_retcode(tpsol)
+    @test tpsol.errors[:final] < 1.0e-4
+end
+
 # JET tests have been moved to the separate QA test group (test/qa/)

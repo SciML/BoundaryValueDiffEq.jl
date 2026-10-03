@@ -83,7 +83,7 @@ end
     while (izeta <= ncomp) && (zeta[izeta] <= xii + eps(T))
         rhs_bc[izeta] = -gval[izeta]
         # build a row of a corresponding to a boundary point
-        gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, pt)
+        gderiv(cache, g[i], izeta, zval, dgz, 1, izeta, xii, pt)
         izeta += 1
     end
 
@@ -117,7 +117,7 @@ end
             # find rhs boundary value
             rhs_bc[izeta] = -gval[izeta]
             # build a row of  a  corresponding to a boundary point
-            gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, pt)
+            gderiv(cache, g[i], izeta + ncomp, zval, dgz, 2, izeta, mesh[i + 1], pt)
             izeta += 1
         end
     end
@@ -786,16 +786,16 @@ end
 
 function gderiv(
         cache::AscherCache{iip, T}, gi, irow, zval, dgz,
-        mode::Integer, izeta, pt::StandardBVProblem
+        mode::Integer, izeta, x, pt::StandardBVProblem
     ) where {iip, T}
-    (; ncomp, bcjac) = cache
+    (; ncomp, bcjac, p) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
     # mode = 2 - a row corresponding to a condition at aright
     ddg = Matrix{T}(undef, ncomp, ncomp)
 
-    # evaluate boundary conditin jacobian
-    @views bcjac(ddg, zval, nothing, nothing)
+    # evaluate boundary condition jacobian
+    @views bcjac(ddg, zval, p, x)
     dg = ddg[izeta, :]
 
     # evaluate dgz = dg * zval once for a new mesh
@@ -819,16 +819,16 @@ end
 
 function gderiv(
         cache::AscherCache{iip, T}, gi, irow, zval, dgz,
-        mode::Integer, izeta, pt::TwoPointBVProblem
+        mode::Integer, izeta, _, pt::TwoPointBVProblem
     ) where {iip, T}
-    (; ncomp, bcjac) = cache
+    (; ncomp, bcjac, p) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
     # mode = 2 - a row corresponding to a condition at aright
     ddg = Matrix{T}(undef, ncomp, ncomp)
 
-    # evaluate boundary conditin jacobian
-    @views bcjac(ddg, zval, nothing)
+    # evaluate boundary condition jacobian
+    @views bcjac(ddg, zval, p)
     dg = ddg[izeta, :]
 
     # evaluate dgz = dg * zval once for a new mesh
