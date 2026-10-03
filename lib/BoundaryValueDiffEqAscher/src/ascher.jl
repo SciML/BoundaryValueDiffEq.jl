@@ -86,11 +86,7 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    lz = [similar(zval) for _ in 1:(n + 1)]
-    fill!.(lz, T(0))
-    ly = [similar(yval) for _ in 1:(n + 1)]
-    fill!.(ly, T(0))
-    dmz = [[zeros(Float64, ncy) for _ in 1:k] for _ in 1:n]
+    lz, ly, dmz = __ascher_seed_iterate(prob.u0, p, tspan, mesh, TU.rho, T, ncomp, ny)
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(ncy) for _ in 1:k] for _ in 1:n]
@@ -143,7 +139,7 @@ function SciMLBase.__init(
     end
 
     if prob.f.bcjac === nothing
-        bcjac = construct_bc_jac(prob)
+        bcjac = construct_bc_jac(prob, u0)
     else
         bcjac = prob.f.bcjac
     end
@@ -158,7 +154,32 @@ function SciMLBase.__init(
     return cache
 end
 
-function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
+function SciMLBase.solve!(cache::AscherCache)
+    seeded = __ascher_iterate_is_nonzero(cache)
+    mesh, u, info = __ascher_solve!(cache)
+    # Newton is undamped, so a guess can diverge where the zero iterate converges
+    if seeded && !SciMLBase.successful_retcode(info)
+        mesh₀, u₀, info₀ = __ascher_solve!(__ascher_zero_start_cache(cache))
+        SciMLBase.successful_retcode(info₀) && ((mesh, u, info) = (mesh₀, u₀, info₀))
+    end
+    return SciMLBase.build_solution(cache.prob, cache.alg, mesh, u; retcode = info)
+end
+
+function __ascher_iterate_is_nonzero(cache::AscherCache)
+    return any(zᵢ -> any(!iszero, zᵢ), cache.z) ||
+        any(dmzᵢ -> any(v -> any(!iszero, v), dmzᵢ), cache.dmz)
+end
+
+function __ascher_zero_start_cache(cache::AscherCache)
+    (; prob, p) = cache
+    u0 = zero(__extract_u0(prob.u0, p, first(prob.tspan)))
+    return SciMLBase.__init(
+        remake(prob; u0), cache.alg; cache.kwargs..., cache.nlsolve_kwargs,
+        cache.optimize_kwargs, verbose = cache.verbose
+    )
+end
+
+function __ascher_solve!(cache::AscherCache{iip, T}) where {iip, T}
     (abstol, adaptive, _, _), _ = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
 
@@ -172,10 +193,7 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
         end
     end
     u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
-
-    return SciMLBase.build_solution(
-        cache.prob, cache.alg, cache.original_mesh, u; retcode = info
-    )
+    return cache.original_mesh, u, info
 end
 
 function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive::Bool) where {
@@ -198,11 +216,6 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         @views approx(cache, m, z[i], y[i])
     end
 
-    # Preserve dmz, and mesh for the mesh selection
-    dmz = copy(cache.dmz)
-    mesh = copy(cache.mesh)
-    mesh_dt = copy(cache.mesh_dt)
-
     # Early terminate if non-adaptive
     (adaptive == false) && return z, y, info, error_norm
 
@@ -210,19 +223,21 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     # we construct a double mesh and solve the problem on halved mesh again to obtain the error estimation
     # since we got the previous convergence on the initial mesh, we utilize this as the initial guess for our next nonlinear solving
     if info == ReturnCode.Success
+        z_half, dmz_half = __ascher_iterate_on_halved_mesh(cache)
         halve_mesh!(cache)
         __expand_cache_for_error!(cache)
+        copyto!(cache.z, z_half)
+        copyto!(cache.dmz, dmz_half)
 
         _nlprob = __construct_nlproblem(cache)
         nlsol = solve(_nlprob, solve_alg; kwargs...)
 
         error_norm = error_estimate!(cache)
-        if norm(error_norm) > abstol
-            mesh_selector!(cache, z, dmz, mesh, mesh_dt, abstol)
-            __expand_cache_for_next_iter!(cache)
-        end
+        (norm(error_norm) > abstol) && __expand_cache_for_next_iter!(cache)
     else # Something bad happened
-        if 2 * (length(cache.mesh) - 1) > cache.alg.max_num_subintervals
+        # a non-finite iterate would be retried unchanged forever
+        if 2 * (length(cache.mesh) - 1) > cache.alg.max_num_subintervals ||
+                any(zᵢ -> !all(isfinite, zᵢ), cache.z)
             # The solving process failed
             info = ReturnCode.Failure
         else
@@ -233,6 +248,33 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     end
 
     return z, y, info, error_norm
+end
+
+# Current collocation solution sampled the way `__ascher_seed_iterate` lays out the
+# iterate, on the mesh `halve_mesh!` is about to produce.
+function __ascher_iterate_on_halved_mesh(cache::AscherCache{iip, T}) where {iip, T}
+    (; mesh, ncomp, ny, TU) = cache
+    ncy = ncomp + ny
+    n = length(mesh) - 1
+    zval, yval, dmval = Vector{T}(undef, ncomp), Vector{T}(undef, ny), Vector{T}(undef, ncomp)
+    halved = Vector{T}(undef, 2n + 1)
+    for i in 1:n
+        halved[2i - 1] = mesh[i]
+        halved[2i] = (mesh[i] + mesh[i + 1]) / 2
+    end
+    halved[end] = mesh[end]
+    z = map(halved) do x
+        approx(cache, x, zval)
+        return copy(zval)
+    end
+    dmz = map(1:(2n)) do i
+        h = halved[i + 1] - halved[i]
+        return map(TU.rho) do ρ
+            approx(cache, halved[i] + ρ * h, zval, yval, dmval)
+            return vcat(dmval, yval)
+        end
+    end
+    return z, dmz
 end
 
 # expand cache to compute the errors

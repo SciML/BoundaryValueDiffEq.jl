@@ -164,8 +164,8 @@ end
     return nothing
 end
 
-@inline function construct_bc_jac(prob::BVProblem)
-    return construct_bc_jac(prob, __get_bcresid_prototype(prob, prob.u0), prob.problem_type)
+@inline function construct_bc_jac(prob::BVProblem, u0)
+    return construct_bc_jac(prob, __get_bcresid_prototype(prob, u0), prob.problem_type)
 end
 @inline function construct_bc_jac(prob::BVProblem, _, pt::StandardBVProblem)
     if isinplace(prob)
@@ -215,4 +215,46 @@ end
             return
         end
     end
+end
+
+# `u0` as a function of `t`; sampled guesses are linearly interpolated.
+function __ascher_guess(u0, p, tspan)
+    u0 isa Number && return Returns([u0])
+    N = __initial_guess_length(u0)
+    if N > 0
+        ts = __extract_mesh(u0, tspan[1], tspan[2], N - 1)
+        us = __flatten_initial_guess(u0)
+        return t -> __ascher_interpolate(ts, us, t)
+    end
+    u0 isa AbstractArray && return Returns(vec(u0))
+    return t -> vec(__initial_guess(u0, p, t))
+end
+
+function __ascher_interpolate(ts, us, t)
+    length(ts) == 1 && return us[:, 1]
+    j = clamp(searchsortedlast(ts, t), 1, length(ts) - 1)
+    θ = (t - ts[j]) / (ts[j + 1] - ts[j])
+    return @views (1 - θ) .* us[:, j] .+ θ .* us[:, j + 1]
+end
+
+# Initial collocation iterate taken from the guess: `z` at the mesh points, and per
+# collocation point the derivative of `z` (the slope of the piecewise-linear
+# interpolant of the guess) and the value of `y`, which is how `dmz` is read back
+# by `approx`.
+function __ascher_seed_iterate(u0, p, tspan, mesh, rho, ::Type{T}, ncomp, ny) where {T}
+    guess = __ascher_guess(u0, p, tspan)
+    ncy = ncomp + ny
+    n = length(mesh) - 1
+    us = [convert(Vector{T}, guess(t)) for t in mesh]
+    z = [u[1:ncomp] for u in us]
+    y = [u[(ncomp + 1):ncy] for u in us]
+    dmz = [[zeros(T, ncy) for _ in rho] for _ in 1:n]
+    for i in 1:n
+        h = mesh[i + 1] - mesh[i]
+        for (j, ρ) in enumerate(rho)
+            @. dmz[i][j][1:ncomp] = (z[i + 1] - z[i]) / h
+            dmz[i][j][(ncomp + 1):ncy] .= view(guess(mesh[i] + ρ * h), (ncomp + 1):ncy)
+        end
+    end
+    return z, y, dmz
 end
