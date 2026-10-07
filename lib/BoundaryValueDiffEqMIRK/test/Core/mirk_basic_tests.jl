@@ -482,6 +482,19 @@ end
     end
 end
 
+@testset "maxsol and minsol only look inside the requested time span" begin
+    f!(du, u, p, t) = (du[1] = 1.0)
+    # u(t) = u(0) + t on (0, 2): both conditions give u(0) = 0 only when restricted to the subspan.
+    bc_max!(residual, sol, p, t) = (residual[1] = maxsol(sol, (0.0, 1.0)) - 1.0)
+    bc_min!(residual, sol, p, t) = (residual[1] = minsol(sol, (1.0, 2.0)) - 1.0)
+    @testset "$(nameof(bc!)) MIRK$order" for bc! in (bc_max!, bc_min!), order in (4, 6)
+        prob = BVProblem(f!, bc!, [0.5], (0.0, 2.0))
+        sol = solve(prob, mirk_solver(Val(order)), dt = 0.1)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.u[1][1] ≈ 0.0 atol = 1.0e-8
+    end
+end
+
 @testset "Test unknown parameters estimation" begin
     tspan = (0.0, pi)
     function f!(du, u, p, t)

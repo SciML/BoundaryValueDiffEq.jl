@@ -276,17 +276,21 @@ end
 
 # Intermediate derivative solution for evaluating derivative boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
-    (; t, cache) = s
-    (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
-    z′ = zeros(typeof(tval), cache.M)
-    ii = interval(t, tval)
-    dt = mesh_dt[ii]
-    τ = (tval - t[ii]) / dt
+    ii = interval(s.t, tval)
+    return __interp_derivative(s, ii, (tval - s.t[ii]) / s.cache.mesh_dt[ii])
+end
+
+# Derivative of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`.
+function __interp_derivative(s::EvalSol{C}, ii::Int, τ) where {C <: MIRKCache}
+    (; alg, stage, k_discrete, k_interp) = s.cache
+    z′ = zeros(typeof(τ), s.cache.M)
     _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
+        @view(k_discrete[ii][:, 1:stage])
+    __maybe_matmul!(z′, K, @view(w′[1:stage]))
     __maybe_matmul!(
-        z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
-        true, true
+        z′, @view(k_interp.u[ii][:, 1:(s.cache.ITU.s_star - stage)]),
+        @view(w′[(stage + 1):s.cache.ITU.s_star]), true, true
     )
     return z′
 end
@@ -402,52 +406,73 @@ always update the intermediate solution with discrete solution + discrete stages
     return EvalSol(u.u, eval_sol.t, cache)
 end
 
-"""
-Construct n root-finding problems and solve them to find the critical points with continuous derivative polynomials
-"""
-function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) where {
-        C <:
-        MIRKCache,
-    }
-    n = first(size(sol))
-    nlprobs = Vector{SciMLBase.NonlinearProblem}(undef, n)
-    nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
-    nlsolve_alg = __FastShortcutNonlinearPolyalg(eltype(sol.cache))
-    for i in 1:n
-        f = @closure (t, p) -> sol(t, Val{1})[i]
-        nlprob = NonlinearProblem(f, sol.cache.prob.u0[i], tspan)
-        nlsols[i] = solve(nlprob, nlsolve_alg)
+# An extremum of a component over `tspan` is attained at an end of `tspan`, at a mesh point, or
+# at a zero of the component's derivative. Those zeros are bracketed by a sign change of the
+# derivative over a mesh interval and located by bisection. The candidates are sorted in time.
+function __extremum_candidates(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+    (; t) = sol
+    mesh_dt = sol.cache.mesh_dt
+    lo, hi = minmax(tspan...)
+    tvals = [lo, hi]
+    for ii in 1:(length(t) - 1)
+        lo < t[ii] < hi && push!(tvals, t[ii])
+        a, b = max(t[ii], lo), min(t[ii + 1], hi)
+        a < b || continue
+        τa, τb = (a - t[ii]) / mesh_dt[ii], (b - t[ii]) / mesh_dt[ii]
+        da, db = __interp_derivative(sol, ii, τa), __interp_derivative(sol, ii, τb)
+        for i in eachindex(da, db)
+            (iszero(da[i]) || iszero(db[i]) || signbit(da[i]) == signbit(db[i])) && continue
+            τ = __bisect(τ -> __interp_derivative(sol, ii, τ)[i], τa, τb, da[i])
+            push!(tvals, t[ii] + τ * mesh_dt[ii])
+        end
     end
-    return nlsols
+    return sort!(tvals)
 end
 
-# It turns out the critical points can't cover all possible maximum/minimum values
-# especially when the solution are monotonic, we still need to compare the extremes with
-# value at critical points to find the maximum/minimum
+function __bisect(f, a, b, fa)
+    m = (a + b) / 2
+    while a < m < b
+        fm = f(m)
+        iszero(fm) && return m
+        if signbit(fm) == signbit(fa)
+            a, fa = m, fm
+        else
+            b = m
+        end
+        m = (a + b) / 2
+    end
+    return m
+end
+
+# Ties go to the earliest candidate (and lowest component) for both the maximum and the
+# minimum, so that the boundary-condition Jacobian does not depend on an asymmetric
+# tie-breaking rule. With Base's `max`/`min`, a flat initial guess pairs the last point for the
+# maximum with the first point for the minimum, which can make the Newton system singular.
+function __extremum(isbetter::F, sol::EvalSol{C}, tspan::Tuple) where {F, C <: MIRKCache}
+    best = first(sol(minimum(tspan)))
+    for t in __extremum_candidates(sol, tspan)
+        k = searchsortedfirst(sol.t, t)
+        u = k ≤ length(sol.t) && sol.t[k] == t ? sol.u[k] : sol(t)
+        for x in u
+            isbetter(x, best) && (best = x)
+        end
+    end
+    return best
+end
 
 """
     maxsol(sol::EvalSol, tspan::Tuple)
 
-Find the maximum of the solution over the time span `tspan`.
+Find the maximum over all components of the solution over the time span `tspan`.
 """
-function maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
-    nlsols = __construct_then_solve_root_problem(sol, tspan)
-    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
-    u = sol(tvals)
-    return max(maximum(sol), maximum(Iterators.flatten(u)))
-end
+maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(>, sol, tspan)
 
 """
     minsol(sol::EvalSol, tspan::Tuple)
 
-Find the minimum of the solution over the time span `tspan`.
+Find the minimum over all components of the solution over the time span `tspan`.
 """
-function minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
-    nlsols = __construct_then_solve_root_problem(sol, tspan)
-    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
-    u = sol(tvals)
-    return min(minimum(sol), minimum(Iterators.flatten(u)))
-end
+minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(<, sol, tspan)
 
 """
     interp_weights(τ, alg)
