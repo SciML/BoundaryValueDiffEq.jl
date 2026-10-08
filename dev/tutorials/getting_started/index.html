@@ -207,9 +207,9 @@ function f!(du, u, p, t)
     return
 end
 function bc!(res, u, p, t)
-    res[1] = u[1]
-    res[2] = u[3] - 1
-    res[3] = u[2] - sin(1.0)
+    res[1] = u(0.0)[1]
+    res[2] = u(0.0)[3] - 1
+    res[3] = u(1.0)[2] - sin(1.0)
     return
 end
 u0 = [0.0, 0.0, 0.0, 0.0]
@@ -217,8 +217,8 @@ tspan = (0.0, 1.0)
 mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0]
 fun = BVPFunction(f!, bc!; mass_matrix)
 prob = BVProblem(fun, u0, tspan)
-sol = solve(prob, Ascher4(zeta = [0.0, 0.0, 1.0]), dt = 0.01)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
-Interpolation: 1st order linear
+sol = solve(prob, Ascher4(), dt = 0.01)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: Ascher collocation polynomial
 t: 101-element Vector{Float64}:
  0.0
  0.01
@@ -241,23 +241,23 @@ t: 101-element Vector{Float64}:
  0.99
  1.0
 u: 101-element Vector{Vector{Float64}}:
- [0.0, -1.0259220371532954e-15, 1.0, 4.76207231483357e-12]
- [0.009999833334154757, 0.009999833334165648, 0.999999999999988, 2.857980878195739e-11]
- [0.019998666693309266, 0.01999866669333207, 0.999999999999976, 5.2383325742515844e-11]
- [0.029995500202459936, 0.029995500202494665, 0.9999999999999641, 7.622000204888205e-11]
- [0.03998933418658653, 0.039989334186633176, 0.9999999999999521, 1.000102471914895e-10]
- [0.049979169270618795, 0.04997916927067736, 0.9999999999999404, 1.238344667101833e-10]
- [0.05996400647937318, 0.05996400647944364, 0.9999999999999286, 1.4761642450018108e-10]
- [0.06994284733744946, 0.06994284733753182, 0.9999999999999167, 1.7139787068603356e-10]
- [0.07991469396907751, 0.07991469396917175, 0.9999999999999049, 1.9509109982453815e-10]
- [0.08987854919790403, 0.08987854919801011, 0.999999999999893, 2.187532913646442e-10]
+ [0.0, -1.0946105133413653e-15, 1.0, 2.3859784841767702e-12]
+ [0.009999833334166673, 0.00999983333416558, 1.0, 4.5429100182399863e-13]
+ [0.01999866669333309, 0.019998666693332005, 0.9999999999999999, 2.5994856720622157e-13]
+ [0.029995500202495674, 0.029995500202494595, 1.0000000000000002, 1.8348465441313787e-13]
+ [0.03998933418663418, 0.039989334186633106, 1.0000000000000002, 1.4261426496333798e-13]
+ [0.04997916927067836, 0.04997916927067729, 1.0000000000000002, 1.1706991913340566e-13]
+ [0.05996400647944464, 0.05996400647944357, 1.0000000000000002, 9.871047989198557e-14]
+ [0.06994284733753282, 0.06994284733753175, 1.0000000000000002, 8.67308571627503e-14]
+ [0.07991469396917274, 0.07991469396917168, 1.0000000000000002, 7.609865476048423e-14]
+ [0.0898785491980111, 0.08987854919801005, 0.9999999999999999, 6.928010351746274e-14]
  ⋮
- [0.7956016200354142, 0.7956016200363661, 0.9999999999990486, 1.9064842718388763e-9]
- [0.8016199408828182, 0.8016199408837772, 0.9999999999990413, 1.920477040586015e-9]
- [0.8075581004041482, 0.8075581004051142, 0.9999999999990342, 1.93519104559728e-9]
- [0.8134155047884001, 0.8134155047893737, 0.9999999999990268, 1.9506648856386137e-9]
- [0.8191915683000172, 0.8191915683009983, 0.9999999999990198, 1.9651435662299495e-9]
- [0.8248857133374615, 0.8248857133384501, 0.999999999999013, 1.9803780356147215e-9]
- [0.830497370490975, 0.8304973704919705, 0.9999999999990064, 1.993021260164545e-9]
- [0.8360259785995183, 0.8360259786005205, 0.9999999999989995, 2.0074077747355337e-9]
- [0.841470984806888, 0.8414709848078965, 0.9999999999989934, -2.014617537411085e-9]</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a><a class="docs-footer-nextpage" href="../continuation/">Solve BVP with Continuation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Saturday 3 October 2026 12:35">Saturday 3 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ [0.7956016200363661, 0.7956016200363659, 0.9999999999999989, 1.0403922059013811e-14]
+ [0.8016199408837773, 0.8016199408837771, 0.9999999999999989, 1.0116821062803834e-14]
+ [0.8075581004051144, 0.8075581004051141, 0.9999999999999989, 1.0179218072266523e-14]
+ [0.813415504789374, 0.8134155047893736, 0.9999999999999989, 1.0557389983973713e-14]
+ [0.8191915683009985, 0.8191915683009982, 0.9999999999999989, 9.844951466653356e-15]
+ [0.8248857133384503, 0.82488571333845, 0.999999999999999, 9.710681586607396e-15]
+ [0.8304973704919707, 0.8304973704919704, 0.999999999999999, 9.436938759619721e-15]
+ [0.8360259786005207, 0.8360259786005204, 0.999999999999999, 9.015056010453568e-15]
+ [0.8414709848078967, 0.8414709848078964, 0.999999999999999, -1.2225781890436722e-14]</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« BoundaryValueDiffEq.jl: High-Performance Boundary Value Problem Solvers</a><a class="docs-footer-nextpage" href="../continuation/">Solve BVP with Continuation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Thursday 8 October 2026 05:35">Thursday 8 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
