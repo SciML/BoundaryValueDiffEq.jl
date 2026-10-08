@@ -1,6 +1,6 @@
 # [BoundaryValueDiffEqAscher](@id ascher)
 
-Gauss Legendre collocation methods with Ascher's error control adaptivity and mesh refinement routines. To be able to access the solvers in BoundaryValueDiffEqFIRK, you must first install them use the Julia package manager:
+Gauss Legendre collocation methods with Ascher's error control adaptivity and mesh refinement routines. To be able to access the solvers in BoundaryValueDiffEqAscher, you must first install them use the Julia package manager:
 
 ```julia
 using Pkg
