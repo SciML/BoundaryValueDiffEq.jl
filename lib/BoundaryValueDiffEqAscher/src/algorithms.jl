@@ -22,8 +22,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `jac_alg`: `BVPJacobianAlgorithm` that selects the Jacobian construction
             strategy for the collocation system. Full collocation systems use sparse
             coloring by default; an explicit dense AD backend selects a dense Jacobian.
-          - `platform`: KernelAbstractions backend used to assemble the condensed
-            two-point ODE equations.
+          - `platform`: KernelAbstractions backend retained for the internal assembly helpers.
           - `max_num_subintervals`: Maximum number of mesh subintervals permitted while
             refining the solution.
 
@@ -38,8 +37,7 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
           - `jac_alg = BVPJacobianAlgorithm()`: Jacobian construction strategy. For
             type stability, provide ForwardDiff chunk sizes in the AD types selected by
             this value.
-          - `platform`: KernelAbstractions backend for the condensed two-point ODE
-            assembly. Defaults to `CPU()`.
+          - `platform`: KernelAbstractions backend. Defaults to `CPU()`.
           - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
         ## Example
@@ -85,12 +83,7 @@ end
 function BoundaryValueDiffEqCore.concrete_jacobian_algorithm(
         jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg::AbstractAscher
     )
-    # Keep the condensed two-point ODE path dense. Full collocation systems
-    # have interval-local sparsity even when their boundary conditions couple
-    # distant intervals.
-    global_system = prob.problem_type isa StandardBVProblem ||
-        !(prob.f.mass_matrix isa LinearAlgebra.UniformScaling)
-    default = global_system ? __default_sparse_ad(prob.u0) : __default_nonsparse_ad(prob.u0)
+    default = __default_sparse_ad(prob.u0)
     diffmode = something(jac_alg.diffmode, jac_alg.nonbc_diffmode, default)
     bc_diffmode = something(jac_alg.bc_diffmode, get_dense_ad(diffmode))
     return BVPJacobianAlgorithm(diffmode; bc_diffmode, nonbc_diffmode = diffmode)

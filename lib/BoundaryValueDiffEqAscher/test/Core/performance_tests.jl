@@ -2,10 +2,10 @@ using BoundaryValueDiffEqAscher, SciMLBase, LinearAlgebra, SparseArrays, Forward
 
 const Ascher = BoundaryValueDiffEqAscher
 
-function jacobian_test_problem(inplace, twopoint; matrix_state = false)
-    f(u, p, t) = reshape([u[2], -p * u[3], u[3] - exp(u[1])], size(u))
+function jacobian_test_problem(inplace, twopoint; matrix_state = false, ode = false)
+    f(u, p, t) = reshape([u[2], -p * u[3], ode ? -u[3] + exp(u[1]) : u[3] - exp(u[1])], size(u))
     f!(du, u, p, t) = (du .= f(u, p, t); nothing)
-    bca(u, p) = [u[1] + 0.2u[3]^2]
+    bca(u, p) = ode ? [u[1] + 0.2u[3]^2, u[2]] : [u[1] + 0.2u[3]^2]
     bcb(u, p) = [u[2] * u[3]]
     bca!(res, u, p) = (res .= bca(u, p); nothing)
     bcb!(res, u, p) = (res .= bcb(u, p); nothing)
@@ -13,21 +13,24 @@ function jacobian_test_problem(inplace, twopoint; matrix_state = false)
     # branches also inspect algebraic variables and several interior points.
     function bc(u, p, t)
         point = u(0.173)[1] > 0 ? 0.811 : 0.419
-        return [u(point)[1] + u(0.619)[3]^2, u(0.287)[2] * u(0.903)[3]]
+        res = [u(point)[1] + u(0.619)[3]^2, u(0.287)[2] * u(0.903)[3]]
+        ode && push!(res, u(0.0)[2])
+        return res
     end
     bc!(res, u, p, t) = (res .= bc(u, p, t); nothing)
     u0 = matrix_state ? zeros(1, 3) : zeros(3)
-    mass_matrix = Diagonal([1.0, 1.0, 0.0])
+    nleft = ode ? 2 : 1
+    mass_matrix = ode ? I : Diagonal([1.0, 1.0, 0.0])
     if twopoint
         fun = ODEFunction(inplace ? f! : f; mass_matrix)
         return TwoPointBVProblem(
             fun, inplace ? (bca!, bcb!) : (bca, bcb), u0, (0.0, 1.0), 2.0;
-            bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
+            bcresid_prototype = (zeros(nleft), zeros(1)), nlls = Val(false)
         )
     end
     fun = BVPFunction(
         inplace ? f! : f, inplace ? bc! : bc;
-        mass_matrix, bcresid_prototype = zeros(2)
+        mass_matrix, bcresid_prototype = zeros(ode ? 3 : 2)
     )
     return BVProblem(fun, u0, (0.0, 1.0), 2.0; nlls = Val(false))
 end
@@ -60,8 +63,8 @@ function reference_collocation(cache, x, p)
 end
 
 @testset "Sparse collocation and dense reference" begin
-    for inplace in (false, true), twopoint in (false, true), matrix_state in (false, true)
-        prob = jacobian_test_problem(inplace, twopoint; matrix_state)
+    for inplace in (false, true), twopoint in (false, true), matrix_state in (false, true), ode in (false, true)
+        prob = jacobian_test_problem(inplace, twopoint; matrix_state, ode)
         for alg in (Ascher1(), Ascher4(), Ascher7())
             cache = init(prob, alg; dt = 0.25, adaptive = false)
             nlprob = Ascher.__construct_nlproblem(cache)
@@ -89,7 +92,7 @@ end
                     nlprob.f.jac(Jdense, x, prob.p)
                     @test Jdense ≈ Jreference rtol = 1.0e-10 atol = 1.0e-10
                 end
-                ncoll = length(x) - 2
+                ncoll = length(x) - (ode ? 3 : 2)
                 res = zeros(ncoll)
                 Ascher.__ascher_collocation_loss!(res, x, prob.p, cache)
                 @test res ≈ reference_collocation(cache, x, prob.p) rtol = 1.0e-8 atol = 1.0e-8
@@ -99,8 +102,8 @@ end
 end
 
 @testset "Sparse storage grows with the mesh" begin
-    for twopoint in (false, true)
-        prob = jacobian_test_problem(true, twopoint)
+    for twopoint in (false, true), ode in (false, true)
+        prob = jacobian_test_problem(true, twopoint; ode)
         prototypes = map((0.1, 0.05)) do dt
             cache = init(prob, Ascher4(); dt, adaptive = false)
             Ascher.__construct_nlproblem(cache).f.jac_prototype
@@ -145,6 +148,36 @@ end
             sol = solve(prob, alg; dt = 0.1, adaptive = false, abstol = 1.0e-10)
             @test successful_retcode(sol)
             @test sol(0.371) ≈ reference(0.371) atol = 1.0e-8
+        end
+    end
+end
+
+@testset "BVP sparse solve and adaptive interpolation" begin
+    f(u, p, t) = [u[2], -u[1]]
+    f!(du, u, p, t) = (du .= f(u, p, t); nothing)
+    bca(u, p) = [u[1]]
+    bcb(u, p) = [u[1] - 1]
+    bca!(res, u, p) = (res .= bca(u, p); nothing)
+    bcb!(res, u, p) = (res .= bcb(u, p); nothing)
+    bc(u, p, t) = [u(0.0)[1], u(pi / 2)[1] - 1]
+    bc!(res, u, p, t) = (res .= bc(u, p, t); nothing)
+    for inplace in (false, true), twopoint in (false, true), adaptive in (false, true)
+        prob = if twopoint
+            TwoPointBVProblem(
+                inplace ? f! : f, inplace ? (bca!, bcb!) : (bca, bcb),
+                [0.1, 0.1], (0.0, pi / 2); bcresid_prototype = (zeros(1), zeros(1))
+            )
+        else
+            BVProblem(inplace ? f! : f, inplace ? bc! : bc, [0.1, 0.1], (0.0, pi / 2))
+        end
+        for alg in (Ascher2(), Ascher4(), Ascher7())
+            cache = init(prob, alg; dt = 0.1, adaptive)
+            @test Ascher.__construct_nlproblem(cache).f.jac_prototype isa SparseMatrixCSC
+            sol = solve!(cache)
+            @test successful_retcode(sol)
+            for t in (0.0, 0.371, pi / 2)
+                @test sol(t) ≈ [sin(t), cos(t)] atol = 2.0e-5
+            end
         end
     end
 end

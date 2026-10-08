@@ -12,9 +12,9 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __vec, __vec_f, __vec_f!,
     __vec_bc, __vec_bc!, __extract_mesh, get_dense_ad,
     __get_bcresid_prototype, __split_kwargs, __concrete_kwargs,
-    __default_nonsparse_ad, __default_sparse_ad, __default_coloring_algorithm,
+    __default_sparse_ad, __default_coloring_algorithm,
     __construct_internal_problem,
-    __internal_solve, __build_cost
+    __internal_solve
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant

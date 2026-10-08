@@ -182,7 +182,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         cache.verbose
     )
     nlsol = __internal_solve(nlprob, solve_alg; kwargs...)
-    __ascher_uses_global_system(cache) && __ascher_store_global!(cache, nlsol.u)
+    __ascher_store_global!(cache, nlsol.u)
     error_norm = 2 * abstol
     info = nlsol.retcode
 
@@ -210,7 +210,7 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
         _nlprob = __construct_nlproblem(cache)
         nlsol = solve(_nlprob, solve_alg; kwargs...)
 
-        __ascher_uses_global_system(cache) && __ascher_store_global!(cache, nlsol.u)
+        __ascher_store_global!(cache, nlsol.u)
         error_norm = error_estimate!(cache)
         if norm(error_norm) > abstol
             mesh_selector!(cache, z, dmz, mesh, mesh_dt, abstol)
@@ -318,8 +318,6 @@ end
 
 __construct_nlproblem(cache::AscherCache) = __construct_nlproblem(cache, cache.pt)
 
-__ascher_uses_global_system(cache::AscherCache) = cache.pt isa StandardBVProblem || cache.ny > 0
-
 __construct_nlproblem(cache::AscherCache, ::StandardBVProblem) = __construct_ascher_global_nlproblem(cache)
 
 function __construct_ascher_global_nlproblem(cache::AscherCache{iip, T}) where {iip, T}
@@ -345,78 +343,9 @@ function __construct_ascher_global_nlproblem(cache::AscherCache{iip, T}) where {
     )
 end
 
-function __construct_nlproblem(cache::AscherCache{iip, T}, ::TwoPointBVProblem) where {iip, T}
-    # DAE constraints must participate in the nonlinear residual, including
-    # their stage values. The condensed ODE path updates its cache while
-    # evaluating a residual and cannot be differentiated as a DAE system.
-    cache.ny > 0 && return __construct_ascher_global_nlproblem(cache)
-    (; alg, pt, prob, f_prototype, bcresid_prototype) = cache
-    (; jac_alg) = alg
-    loss = if iip
-        @closure (res, z, p) -> @views Φ!(cache, z, res, pt)
-    else
-        @closure (z, p) -> @views Φ(cache, z, pt)
-    end
-
-    lz = reduce(vcat, cache.z)
-    resid_prototype = zero(lz)
-    diffmode = if jac_alg.diffmode isa AutoSparse
-        #AutoSparse(get_dense_ad(jac_alg.diffmode);
-        #    sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
-        #    coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode))
-        # Ascher collocation need more generalized collocation to support AutoSparse
-        get_dense_ad(jac_alg.diffmode)
-    else
-        jac_alg.diffmode
-    end
-
-    jac_cache = if iip
-        DI.prepare_jacobian(
-            loss, resid_prototype, diffmode, lz, Constant(cache.p); strict = Val(false)
-        )
-    else
-        DI.prepare_jacobian(
-            loss, diffmode, lz, Constant(cache.p); strict = Val(false)
-        )
-    end
-
-    jac_prototype = if iip
-        DI.jacobian(loss, resid_prototype, jac_cache, diffmode, lz, Constant(cache.p))
-    else
-        DI.jacobian(loss, jac_cache, diffmode, lz, Constant(cache.p))
-    end
-
-    jac = if iip
-        @closure (
-            J, u,
-            p,
-        ) -> __ascher_mpoint_jacobian!(J, u, diffmode, jac_cache, loss, lz, cache.p)
-    else
-        @closure (
-            u,
-            p,
-        ) -> __ascher_mpoint_jacobian(
-            jac_prototype, u, diffmode, jac_cache, loss, cache.p
-        )
-    end
-
-    cost_fun = __build_cost(prob.f.cost, cache, cache.mesh, cache.ncomp + cache.ny)
-
-    return __construct_internal_problem(
-        prob, prob.problem_type, alg, loss, jac, jac_prototype,
-        resid_prototype, bcresid_prototype, f_prototype, lz,
-        cache.p, cache.ncomp, length(cache.mesh), cost_fun
-    )
-end
-
-function __ascher_mpoint_jacobian!(J, x, diffmode, diffcache, loss, resid, p)
-    DI.jacobian!(loss, resid, J, diffcache, diffmode, x, Constant(p))
-    return nothing
-end
-function __ascher_mpoint_jacobian(J, x, diffmode, diffcache, loss, p)
-    DI.jacobian!(loss, J, diffcache, diffmode, x, Constant(p))
-    return J
-end
+# Use the pure global residual for ODEs as well as DAEs. The condensed
+# residual mutates its input and cache and cannot support sparse coloring.
+__construct_nlproblem(cache::AscherCache, ::TwoPointBVProblem) = __construct_ascher_global_nlproblem(cache)
 
 # rebuild a new g with new mesh
 function __append_abd!(cache::AscherCache)
