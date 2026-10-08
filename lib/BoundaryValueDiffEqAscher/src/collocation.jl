@@ -683,3 +683,206 @@ function (interp::AscherInterpolation)(out, t::Number, idxs, deriv, p, continuit
     out .= interp(t, idxs, deriv, p, continuity)
     return out
 end
+
+function __ascher_device_residual!(r, x, cache::AscherCache{iip}) where {iip}
+    work = __ascher_device_work(cache, eltype(x))
+    (; ncomp, M, k, mesh, TU, p, f, bc) = cache
+    platform = cache.alg.platform
+    n = length(cache.host_mesh) - 1
+    __ascher_device_stages!(platform)(r, work.stages, x, f, p, mesh, TU.a, TU.rho, cache.mass, ncomp, M, k, Val(iip); ndrange = k * n)
+    __ascher_device_continuity!(platform)(r, x, mesh, TU.b, ncomp, M, k; ndrange = ncomp * n)
+    __ascher_device_boundary_residual!(r, x, cache)
+    synchronize(platform)
+    return r
+end
+
+function __ascher_device_sample(cache, times)
+    output = similar(cache.x, cache.M, length(times))
+    __ascher_device_sample!(cache.alg.platform)(output, cache.x, cache.mesh, cache.TU.coef, times, cache.ncomp, cache.M, cache.k; ndrange = size(output))
+    synchronize(cache.alg.platform)
+    return output
+end
+
+struct AscherDeviceInterpolation{X, T, C, P} <: SciMLBase.AbstractDiffEqInterpolation
+    x::X
+    mesh::T
+    coef::C
+    ncomp::Int
+    M::Int
+    k::Int
+    platform::P
+end
+SciMLBase.interp_summary(::AscherDeviceInterpolation) = "Ascher Gauss collocation polynomial on device"
+
+function (interp::AscherDeviceInterpolation)(t::Number, idxs, ::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    D == 0 || throw(ArgumentError("Device Ascher solution interpolation currently supports derivative order zero."))
+    if idxs isa Integer
+        1 <= idxs <= interp.M || throw(BoundsError(Base.OneTo(interp.M), idxs))
+    elseif idxs !== nothing
+        all(i -> i isa Integer && 1 <= i <= interp.M, idxs) || throw(BoundsError(Base.OneTo(interp.M), idxs))
+    end
+    times = __ascher_upload(interp.platform, [t])
+    output = similar(interp.x, interp.M, 1)
+    __ascher_device_sample!(interp.platform)(output, interp.x, interp.mesh, interp.coef, times, interp.ncomp, interp.M, interp.k; ndrange = size(output))
+    synchronize(interp.platform)
+    idxs === nothing && return vec(output)
+    if idxs isa Integer
+        return sum(view(output, idxs:idxs, 1))
+    end
+    return vec(output)[__ascher_upload(interp.platform, collect(idxs))]
+end
+
+function (interp::AscherDeviceInterpolation)(ts, idxs, deriv::Type{Val{D}}, p, continuity::Symbol = :left) where {D}
+    times = collect(ts)
+    return DiffEqArray([interp(t, idxs, deriv, p, continuity) for t in times], times)
+end
+
+function (interp::AscherDeviceInterpolation)(out::AbstractArray, t::Number, idxs::Union{Nothing, Integer, AbstractArray, Tuple}, deriv::Type{Val{D}}, p, continuity::Symbol) where {D}
+    copyto!(out, interp(t, idxs, deriv, p, continuity))
+    return out
+end
+
+# One independent work item per (stage, interval); no shared scratch writes.
+# Each interval stores [z_i; q_i1; ...; q_ik], followed by a final z node.
+@kernel function __ascher_device_stages!(r, tmp, x, f, p, mesh, a, rho, mass, d, M, k, iip)
+    index = @index(Global, Linear)
+    stage = (index - 1) % k + 1
+    interval = (index - 1) ÷ k + 1
+    @inbounds begin
+        width = d + M * k
+        offset = (interval - 1) * width
+        h = mesh[interval + 1] - mesh[interval]
+        for j in 1:M
+            value = zero(eltype(x))
+            if j <= d
+                value = x[offset + j]
+                for s in 1:k
+                    value += h * a[s, stage] * x[offset + d + (s - 1) * M + j]
+                end
+            else
+                value = x[offset + d + (stage - 1) * M + j]
+            end
+            tmp[j, stage, interval] = value
+        end
+        output = view(r, (d + offset + d + (stage - 1) * M + 1):(d + offset + d + stage * M))
+        __ascher_device_eval!(output, f, (view(tmp, :, stage, interval), p, mesh[interval] + h * rho[stage]), iip)
+        for j in 1:d
+            output[j] -= mass[j] * x[offset + d + (stage - 1) * M + j]
+        end
+    end
+end
+
+@kernel function __ascher_device_continuity!(r, x, mesh, b, d, M, k)
+    index = @index(Global, Linear)
+    j = (index - 1) % d + 1
+    interval = (index - 1) ÷ d + 1
+    @inbounds begin
+        width = d + M * k
+        offset = (interval - 1) * width
+        h = mesh[interval + 1] - mesh[interval]
+        value = x[offset + width + j] - x[offset + j]
+        for s in 1:k
+            value -= h * b[s] * x[offset + d + (s - 1) * M + j]
+        end
+        r[d + offset + j] = value
+    end
+end
+
+# Lazy states keep u(t)[j] allocation-free inside GPU boundary kernels.
+struct AscherDeviceBoundarySolution{X, T, C}
+    x::X
+    mesh::T
+    coef::C
+    ncomp::Int
+    M::Int
+    k::Int
+end
+struct AscherDeviceBoundaryState{T, S, U} <: AbstractVector{T}
+    solution::S
+    t::U
+end
+@inline (sol::AscherDeviceBoundarySolution)(t::Number) = AscherDeviceBoundaryState{eltype(sol.x), typeof(sol), typeof(t)}(sol, t)
+Base.size(u::AscherDeviceBoundaryState) = (u.solution.M,)
+Base.IndexStyle(::Type{<:AscherDeviceBoundaryState}) = IndexLinear()
+@inline function Base.getindex(u::AscherDeviceBoundaryState, j::Int)
+    sol = u.solution
+    @boundscheck checkbounds(u, j)
+    return __ascher_polynomial(sol.x, sol.mesh, sol.coef, u.t, j, sol.ncomp, sol.M, sol.k)
+end
+@inline Base.getindex(sol::AscherDeviceBoundarySolution, i::Int) = sol(sol.mesh[i])
+Base.length(sol::AscherDeviceBoundarySolution) = length(sol.mesh)
+Base.firstindex(::AscherDeviceBoundarySolution) = 1
+Base.lastindex(sol::AscherDeviceBoundarySolution) = length(sol)
+
+function __ascher_device_boundary_residual!(r, x, cache::AscherCache{iip}) where {iip}
+    work = __ascher_device_work(cache, eltype(x))
+    platform = cache.alg.platform
+    __ascher_device_boundary!(platform)(
+        r, work.boundary, x, cache.bc, cache.p, cache.mesh, cache.TU.coef,
+        cache.ncomp, cache.M, cache.k, cache.left, Val(iip),
+        Val(cache.pt isa TwoPointBVProblem); ndrange = cache.ncomp
+    )
+    synchronize(platform)
+    return r
+end
+
+@kernel function __ascher_device_boundary!(r, tmp, x, bc, p, mesh, coef, d, M, k, left, iip, twopoint)
+    j = @index(Global, Linear)
+    @inbounds begin
+        sol = AscherDeviceBoundarySolution(x, mesh, coef, d, M, k)
+        if twopoint isa Val{true}
+            if j <= left
+                out = view(tmp, 1:left, j)
+                __ascher_device_eval!(out, bc[1], (sol(first(mesh)), p), iip)
+                r[j] = out[j]
+            else
+                out = view(tmp, 1:(d - left), j)
+                __ascher_device_eval!(out, bc[2], (sol(last(mesh)), p), iip)
+                r[j] = out[j - left]
+            end
+        else
+            out = view(tmp, :, j)
+            __ascher_device_eval!(out, bc, (sol, p, mesh), iip)
+            r[j] = out[j]
+        end
+    end
+end
+
+# Evaluate the same integrated Lagrange polynomial used by the original Ascher
+# implementation. Algebraic variables use the nonintegrated stage polynomial.
+@inline function __ascher_polynomial(x, mesh, coef, t, j, d, M, k, derivative = false)
+    n = length(mesh) - 1
+    interval = 1
+    # Binary search works in GPU kernels and avoids a mesh-sized scan per point.
+    lo, hi = 1, n
+    while lo <= hi
+        mid = (lo + hi) ÷ 2
+        if mesh[mid] <= t
+            interval = mid
+            lo = mid + 1
+        else
+            hi = mid - 1
+        end
+    end
+    @inbounds begin
+        h = mesh[interval + 1] - mesh[interval]
+        theta = (t - mesh[interval]) / h
+        offset = (interval - 1) * (d + M * k)
+        value = j <= d && !derivative ? x[offset + j] : zero(eltype(x))
+        for s in 1:k
+            basis = coef[1, s]
+            for l in 2:k
+                divisor = j <= d && !derivative ? k + 2 - l : k + 1 - l
+                basis = basis * theta / divisor + coef[l, s]
+            end
+            weight = j <= d && !derivative ? h * theta * basis : basis
+            value += weight * x[offset + d + (s - 1) * M + j]
+        end
+        return value
+    end
+end
+
+@kernel function __ascher_device_sample!(out, x, mesh, coef, times, d, M, k)
+    j, i = @index(Global, NTuple)
+    @inbounds out[j, i] = __ascher_polynomial(x, mesh, coef, times[i], j, d, M, k)
+end

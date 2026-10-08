@@ -4,6 +4,71 @@ import SciMLBase
 using SciMLBase: BVPFunction, BVProblem, TwoPointBVProblem, solve
 using Test
 
+@testset "Two-point sparse damping and zero-iteration solves" begin
+    using BandedMatrices: BandedMatrix, bandwidths
+    using LinearSolve: LUFactorization
+    using SparseArrays: SparseMatrixCSC, nnz
+
+    f!(du, u, p, t) = (du[1] = u[2]; du[2] = 0)
+    f(u, p, t) = [u[2], zero(u[1])]
+    bca!(r, u, p) = (r[1] = u[1] - 1)
+    bcb!(r, u, p) = (r[1] = u[1] - 2)
+    bca(u, p) = [u[1] - 1]
+    bcb(u, p) = [u[1] - 2]
+
+    for iip in (false, true), nlls in (Val(false), Val(true))
+        guess = [[0.2 + t, 0.3] for t in 0.0:0.25:1.0]
+        original = deepcopy(guess)
+        prob = TwoPointBVProblem(
+            iip ? f! : f, iip ? (bca!, bcb!) : (bca, bcb), guess, (0.0, 1.0);
+            bcresid_prototype = (zeros(1), zeros(1)), nlls
+        )
+        cache = init(
+            prob, MIRK4(); dt = 0.25, adaptive = false,
+            nlsolve_kwargs = (; maxiters = 0)
+        )
+        internal = BoundaryValueDiffEqMIRK.__construct_problem(
+            cache, copy(cache.y₀_flat), copy(cache.y₀)
+        )
+        @test internal.f.jac_prototype isa Union{SparseMatrixCSC, BandedMatrix}
+        J = internal.f.jac_prototype
+        if J isa BandedMatrix
+            @test sum(bandwidths(J)) + 1 < size(J, 2)
+        else
+            @test nnz(J) < length(J)
+        end
+        sol = solve!(cache)
+        @test !SciMLBase.successful_retcode(sol)
+        @test sol.u == original
+        @test guess == original
+
+        # Trust-region damping must be able to append rows beyond the original
+        # band, for both nonlinear and nonlinear least-squares problems.
+        sol = solve(prob, MIRK4(; nlsolve = TrustRegion()); dt = 0.25, adaptive = false)
+        @test SciMLBase.successful_retcode(sol)
+        @test reduce(hcat, sol.u) ≈ reduce(hcat, [[1 + t, 1] for t in sol.t])
+    end
+
+    prob = TwoPointBVProblem(
+        f!, (bca!, bcb!), [0.0, 0.0], (0.0, 1.0);
+        bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
+    )
+    for (nlsolve, keep_banded) in (
+            (NewtonRaphson(; linsolve = LUFactorization()), true),
+            (TrustRegion(; linsolve = LUFactorization()), false),
+        )
+        cache = init(prob, MIRK4(; nlsolve); dt = 0.25, adaptive = false)
+        internal = BoundaryValueDiffEqMIRK.__construct_problem(
+            cache, copy(cache.y₀_flat), copy(cache.y₀)
+        )
+        @test keep_banded ? internal.f.jac_prototype isa BandedMatrix :
+            internal.f.jac_prototype isa Union{SparseMatrixCSC, BandedMatrix}
+        sol = solve!(cache)
+        @test SciMLBase.successful_retcode(sol)
+        @test reduce(hcat, sol.u) ≈ reduce(hcat, [[1 + t, 1] for t in sol.t])
+    end
+end
+
 @testset "Overconstrained BVP" begin
     using LinearAlgebra
 

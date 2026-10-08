@@ -17,7 +17,8 @@ for order in (4, 6)
         - `optimize`: Optional optimization solver algorithm. `nothing` disables optimization-based
           initialization.
         - `jac_alg`: Jacobian construction configuration used by the nonlinear solver.
-        - `platform`: KernelAbstractions backend used to evaluate the collocation equations.
+        - `platform`: KernelAbstractions backend. Device initial guesses select their backend
+          automatically and keep the entire nonlinear solve on the device.
         - `defect_threshold`: Defect-control threshold used to refine the mesh.
         - `max_num_subintervals`: Maximum number of mesh subintervals permitted during refinement.
 
@@ -31,14 +32,16 @@ for order in (4, 6)
           package before constructing the algorithm.
         - `jac_alg = BVPJacobianAlgorithm()`: Jacobian algorithm used for the nonlinear solver.
           It automatically selects an algorithm from the problem and input types.
-          - For `TwoPointBVProblem`, only `diffmode` is used (defaults to
+          - For `TwoPointSecondOrderBVProblem`, only `diffmode` is used (defaults to
             `AutoSparse(AutoForwardDiff())` if possible else `AutoSparse(AutoFiniteDiff())`).
-          - For `BVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
+          - For `SecondOrderBVProblem`, `bc_diffmode` and `nonbc_diffmode` are used. For
             `nonbc_diffmode` defaults to `AutoSparse(AutoForwardDiff())` if possible else
             `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
             possible else `AutoFiniteDiff`.
         - `platform`: KernelAbstractions backend used to evaluate the collocation
-          equations. Defaults to `CPU()`.
+          equations for CPU initial guesses. Device initial guesses infer the backend and
+          enable resident sparse solves. CUDA requires loading `CUDA` and `CUDSS`. Defaults
+          to `CPU()` for CPU initial guesses.
         - `defect_threshold = 0.1`: Threshold for defect control.
         - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 

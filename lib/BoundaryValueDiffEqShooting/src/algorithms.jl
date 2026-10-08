@@ -118,10 +118,28 @@ it is generally more stable than [`Shooting`](@ref).
       + `Function`: Takes the current number of shooting points and returns the next number
         of shooting points. For example, if `nshoots = 10` and
         `grid_coarsening = n -> n ÷ 2`, then the grid will be coarsened to `[5, 2]`.
-  - `platform = CPU()`: KernelAbstractions backend used to evaluate the per-interval
-    internal ODE solves when the internal `ensemblealg` is `EnsembleThreads` (the default).
-    Currently only the `CPU` backend is supported, since the internal solves run through
-    the standard ODE integrator interface.
+  - `platform = CPU()`: KernelAbstractions backend. With `device_steps`, the interval
+    integrations, sparse differentiation, and nonlinear arrays use this backend.
+    Load CUDA and DiffEqGPU to use `CUDA.CUDABackend()` with CSR sparse Jacobians
+    and a kernel ODE algorithm such as `DiffEqGPU.GPUTsit5()`.
+  - `device_steps = nothing`: Set a positive integer to use the device-resident path
+    with this many fixed ODE steps per shooting interval, also available on `CPU()`.
+    On CPU, pass an OrdinaryDiffEq algorithm such as `OrdinaryDiffEqTsit5.Tsit5()`.
+    On GPU, pass a DiffEqGPU kernel algorithm such as `GPUTsit5()` or `GPUVern7()`.
+    DiffEqGPU is an optional dependency, loaded only when the user imports it.
+    This path requires vector Float32/Float64 states and kernel-compatible RHS/BC
+    functions. GPU interval states and parameters are converted to static storage;
+    both in-place and out-of-place RHS functions are supported. `grid_coarsening`
+    defaults to `false` when this is set and must remain false. No final single-shooting solve is performed. `abstol` controls the
+    nonlinear solve; increase `device_steps`/`nshoots` to check integration accuracy.
+    `odesolve_kwargs`, optimization, callbacks, and nonidentity mass matrices are
+    unsupported. The result uses cubic Hermite interpolation between shooting nodes.
+    See the Shooting solver manual for supported options and CUDA examples.
+  - `device_linsolve = nothing`: LinearSolve algorithm for the fixed-step path's
+    default Newton solver. Loading CUDA and CUDSS enables a cached direct solve
+    for square CUDA problems, including parallel segment condensation for
+    two-point boundaries. Without CUDSS, GPU problems use GMRES. An explicit
+    `device_linsolve` and `nlsolve` cannot be combined. Least squares retains LSMR.
 
 ## Fields
 
@@ -132,6 +150,8 @@ it is generally more stable than [`Shooting`](@ref).
   - `platform`: KernelAbstractions backend used for the internal ODE solves.
   - `nshoots::Int`: configured number of shooting subintervals.
   - `grid_coarsening`: configured grid-coarsening strategy.
+  - `device_steps`: fixed integration steps per interval, or `nothing` for the
+    original CPU integrator path.
 
 ## Returns
 
@@ -157,20 +177,22 @@ alg = MultipleShooting(8, Tsit5(); grid_coarsening = true)
     platform::P
     nshoots::Int
     grid_coarsening
+    device_steps
+    device_linsolve
 end
 
 function concretize_jacobian_algorithm(alg::MultipleShooting, prob)
     jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
     return MultipleShooting(
         alg.ode_alg, alg.nlsolve, alg.optimize, jac_alg, alg.platform,
-        alg.nshoots, alg.grid_coarsening
+        alg.nshoots, alg.grid_coarsening, alg.device_steps, alg.device_linsolve
     )
 end
 
 function update_nshoots(alg::MultipleShooting, nshoots::Int)
     return MultipleShooting(
         alg.ode_alg, alg.nlsolve, alg.optimize, alg.jac_alg, alg.platform,
-        nshoots, alg.grid_coarsening
+        nshoots, alg.grid_coarsening, alg.device_steps, alg.device_linsolve
     )
 end
 
@@ -179,13 +201,22 @@ function MultipleShooting(;
         ode_alg = nothing,
         nlsolve = nothing,
         optimize = nothing,
+        device_steps::Union{Nothing, Int} = nothing,
+        device_linsolve = nothing,
         grid_coarsening::Union{
             Bool, Function, <:AbstractVector{<:Integer}, Tuple{Vararg{Integer}},
-        } = true,
+        } = device_steps === nothing,
         jac_alg = nothing,
         platform = CPU()
     )
-    grid_coarsening isa Tuple && (grid_coarsening = Vector(grid_coarsening...))
+    nshoots > 0 || throw(ArgumentError("nshoots must be positive."))
+    device_steps === nothing || device_steps > 0 ||
+        throw(ArgumentError("device_steps must be positive."))
+    device_linsolve === nothing || device_steps !== nothing ||
+        throw(ArgumentError("device_linsolve requires device_steps."))
+    device_linsolve === nothing || nlsolve === nothing ||
+        throw(ArgumentError("Use either device_linsolve or nlsolve, not both."))
+    grid_coarsening isa Tuple && (grid_coarsening = collect(grid_coarsening))
     if grid_coarsening isa AbstractVector
         sort!(grid_coarsening; rev = true)
         @assert all(grid_coarsening .> 0) && 1 ∉ grid_coarsening
@@ -193,7 +224,7 @@ function MultipleShooting(;
     return MultipleShooting(
         ode_alg, nlsolve, optimize,
         __materialize_jacobian_algorithm(nlsolve, jac_alg), platform, nshoots,
-        grid_coarsening
+        grid_coarsening, device_steps, device_linsolve
     )
 end
 @inline MultipleShooting(nshoots::Int; kwargs...) = MultipleShooting(; nshoots, kwargs...)

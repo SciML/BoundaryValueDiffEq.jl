@@ -18,10 +18,23 @@ OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SciMLLogging = "a6db7da4-7206-11f0-1eab-35f2a5dbe1d1"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
+
+[weakdeps]
+DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
+LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+
+[extensions]
+BoundaryValueDiffEqShootingDiffEqGPUExt = ["DiffEqGPU", "StaticArrays"]
+BoundaryValueDiffEqShootingCUDSSExt = ["CUDA", "CUDSS", "LinearSolve"]
 
 [sources]
 BoundaryValueDiffEqCore = {path = "../BoundaryValueDiffEqCore"}
@@ -33,12 +46,18 @@ ArrayInterface = "7.18"
 BandedMatrices = "1.11.0"
 BoundaryValueDiffEqCore = "2.8.1"
 ConcreteStructs = "0.2.3"
+CUDA = "5, 6"
+CUDSS = "0.6.1, 0.7, 0.8"
 DiffEqDevTools = "3"
+DiffEqGPU = "3.21.2"
 DifferentiationInterface = "0.7.15"
 FastClosures = "0.3.2"
 ForwardDiff = "1"
 KernelAbstractions = "0.9"
 LinearAlgebra = "1.10"
+Logging = "1.10"
+# 5.4 fixes the missing issquare import when differentiating stiff ODE solves.
+LinearSolve = "5.4"
 NonlinearSolveFirstOrder = "2"
 OrdinaryDiffEqLowOrderRK = "2"
 OrdinaryDiffEqRosenbrock = "2"
@@ -54,11 +73,15 @@ SciMLLogging = "2"
 SciMLTesting = "2.4"
 Setfield = "1.1.1"
 SparseArrays = "1.10"
+SparseConnectivityTracer = "1.1.1"
 StaticArrays = "1.9.8"
 Test = "1.10"
 julia = "1.10"
 
 [extras]
+DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 NonlinearSolveFirstOrder = "5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
@@ -67,10 +90,9 @@ OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
 OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqDevTools", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Random", "RecursiveArrayTools", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]
+test = ["DiffEqGPU", "LinearSolve", "Logging", "DiffEqDevTools", "NonlinearSolveFirstOrder", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqTsit5", "OrdinaryDiffEqVerner", "Random", "SciMLTesting", "StaticArrays", "Test", "SafeTestsets"]
