@@ -204,21 +204,21 @@ ascher_sol = solve(prob, Ascher3(); dt = 0.1, adaptive = false, abstol = 1.0e-9)
 @assert successful_retcode(ascher_sol)
 ```
 
-For a standard Ascher `BVProblem`, provide one `zeta` location per boundary
-condition. Its boundary callback receives a **local state**, not an interpolating
-solution object: residual component `i` is evaluated using the state at `zeta[i]`.
+For a standard Ascher `BVProblem`, its boundary callback receives an interpolating
+solution. Use `u(time)[component]` to evaluate endpoint or interior conditions;
+several points may contribute to the same residual.
 The following imposes the same two endpoint conditions:
 
 ```julia
 function side_conditions!(r, u, p, t)
-    r[1] = u[1]
-    r[2] = u[1] - sin(one(t))
+    r[1] = u(0.0)[1]
+    r[2] = u(1.0)[1] - sin(1.0)
     return nothing
 end
 
 side_prob = BVProblem(oscillator!, side_conditions!, [0.1, 0.9], (0.0, 1.0))
 side_sol = solve(
-    side_prob, Ascher3(; platform = CUDA.CUDABackend(), zeta = [0.0, 1.0]);
+    side_prob, Ascher3(; platform = CUDA.CUDABackend());
     dt = 0.1, abstol = 1.0e-7
 )
 @assert successful_retcode(side_sol)

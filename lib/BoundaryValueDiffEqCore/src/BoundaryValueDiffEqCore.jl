@@ -60,8 +60,29 @@ function SciMLBase.__solve(
         prob::AbstractBVProblem,
         alg::AbstractBoundaryValueDiffEqAlgorithm, args...; kwargs...
     )
+    prob isa SecondOrderBVProblem && __check_second_order_support(prob, alg, args...)
     cache = SciMLBase.__init(prob, alg, args...; kwargs...)
     return SciMLBase.solve!(cache)
+end
+
+# `__init(prob)` with no algorithm resolves to the generic "no default algorithm" fallback.
+# If `(prob, alg, args...)` resolves to that same method, no solver handles this problem type.
+function __check_second_order_support(prob, alg, args...)
+    init_sig = Tuple{typeof(prob), typeof(alg), map(typeof, args)...}
+    fallback_sig = Tuple{typeof(prob)}
+    unsupported = !hasmethod(SciMLBase.__init, init_sig) ||
+        (
+        hasmethod(SciMLBase.__init, fallback_sig) &&
+            which(SciMLBase.__init, init_sig) === which(SciMLBase.__init, fallback_sig)
+    )
+    unsupported && throw(
+        ArgumentError(
+            "SecondOrderBVProblem is only supported by MIRKN solvers (MIRKN4, MIRKN6). " *
+                "Got $(nameof(typeof(alg))). Reformulate as a first-order BVProblem to use " *
+                "other solvers, or choose a MIRKN algorithm."
+        )
+    )
+    return nothing
 end
 
 export AbstractBoundaryValueDiffEqAlgorithm, BVPJacobianAlgorithm

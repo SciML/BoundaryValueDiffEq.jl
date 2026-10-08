@@ -11,7 +11,7 @@ end
 @testset "CUDA selection and cuDSS sparse Newton" begin
     for (state, platform) in ((CuArray([0.1, 0.8]), CPU()), ([0.1, 0.8], CUDA.CUDABackend()))
         prob = BVProblem(ascher_test_rhs!, ascher_test_bc!, state, (0.0, 1.0), [0.2])
-        alg = Ascher3(; zeta = [0.0, 1.0], platform, nlsolve = NewtonRaphson(linsolve = LUFactorization()))
+        alg = Ascher3(; platform, nlsolve = NewtonRaphson(linsolve = LUFactorization()))
         cache = init(prob, alg; dt = 0.1, adaptive = false, abstol = 1.0e-10)
         @test cache.x isa CuArray
         sol = solve!(cache)

@@ -13,7 +13,7 @@ using BoundaryValueDiffEqAscher
 
 ```julia
 Ascher3(;
-    nlsolve = nothing, optimize = nothing, zeta = Float64[],
+    nlsolve = nothing, optimize = nothing,
     jac_alg = BVPJacobianAlgorithm(), platform = CPU(), device = false,
     max_num_subintervals = 3000
 )
@@ -27,23 +27,21 @@ All Ascher constructors accept the keywords shown for `Ascher3`.
 |:--|:--|
 | `nlsolve` | Nonlinear solver; `nothing` selects the package default |
 | `optimize` | Optional optimization solver for the CPU workflow |
-| `zeta` | Locations of the boundary conditions; the device path can infer them for two-point problems |
 | `jac_alg` | BVP Jacobian configuration, which takes precedence over the nonlinear solver's autodiff setting |
 | `platform` | KernelAbstractions backend; defaults to `CPU()` |
 | `device` | Force the packed sparse formulation, including on the CPU |
 | `max_num_subintervals` | Maximum number of mesh subintervals |
 
 Pass mesh and tolerance options to `solve`, for example
-`solve(prob, Ascher3(; zeta = [0.0, 1.0]); dt = 0.05, abstol = 1.0e-8)`
+`solve(prob, Ascher3(); dt = 0.05, abstol = 1.0e-8)`
 for a problem with one boundary condition at each endpoint of `(0.0, 1.0)`.
 Mesh adaptivity is enabled by default; use `adaptive = false` for a fixed mesh.
 
-For a standard Ascher `BVProblem`, `bc!(r, u, p, t)` receives the local state `u`:
-component `r[i]` is evaluated at `zeta[i]`. Supply one location per differential
-variable, including repeated locations when several conditions share a point.
-For `TwoPointBVProblem`, provide endpoint callbacks and
-`bcresid_prototype = (left, right)`; the device path derives the locations from
-their sizes, while the ordinary CPU path also requires `zeta`. See
+For a standard Ascher `BVProblem`, `bc!(r, u, p, t)` receives an interpolating
+solution. Evaluate any boundary point inside `tspan` with `u(time)[component]`;
+conditions may couple several points and include algebraic components of a DAE.
+Boundary points need not be mesh nodes. For `TwoPointBVProblem`, provide endpoint
+callbacks and `bcresid_prototype = (left, right)`. See
 [Common Solver Options](@ref solver_options),
 [Error Control Adaptivity](@ref error_control), and
 [Reexported API](@ref reexports).

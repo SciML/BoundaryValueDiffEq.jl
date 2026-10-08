@@ -476,22 +476,19 @@ end
 
     prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
     prob_mp_tspan = (0.0, pi / 2)
-    # A constant profile makes the inner critical-point solves degenerate.
-    # Perturb a smooth profile so the boundary residual is initially nonzero.
-    prob_mp_guess(p, t) = 1.1 .* prob_mp_analytic(nothing, p, t)
+    # A constant guess has an identically zero interpolant derivative, making the
+    # critical-point solves inside maxsol/minsol degenerate. Use a perturbed
+    # sinusoid so this tests extrema-based boundary conditions from a nonflat guess.
+    prob_mp_guess(p, t) = 0.9 .* prob_mp_analytic(nothing, p, t)
     prob = BVProblem(prob_mp_function, prob_mp_bc!, prob_mp_guess, prob_mp_tspan)
 
-    # The active extrema can move between mesh nodes during Newton iterations.
-    # A sparsity pattern traced at the initial guess need not contain the later
-    # boundary derivatives. Keep this small boundary block dense.
-    jac_alg = BVPJacobianAlgorithm(bc_diffmode = AutoForwardDiff())
-    for alg in (MIRK4(; jac_alg), MIRK6(; jac_alg))
-        sol = solve(prob, alg, dt = 0.1)
+    for order in (4, 6)
+        sol = solve(prob, mirk_solver(Val(order); jac_alg = BVPJacobianAlgorithm(bc_diffmode = AutoForwardDiff())), dt = 0.05)
         @test SciMLBase.successful_retcode(sol)
-        @test all(
-            isapprox(sol(t), prob_mp_analytic(nothing, nothing, t); atol = 1.0e-4)
-                for t in range(prob_mp_tspan...; length = 11)
-        )
+        @test maximum(abs, sol.resid) < 1.0e-6
+        for t in range(prob_mp_tspan...; length = 21)
+            @test sol(t) ≈ prob_mp_analytic(nothing, nothing, t) atol = 1.0e-5
+        end
     end
 end
 

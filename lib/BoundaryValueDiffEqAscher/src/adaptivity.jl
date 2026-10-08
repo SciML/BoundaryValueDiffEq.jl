@@ -17,6 +17,7 @@ function mesh_selector!(
     n = length(mesh) - 1
     slope = Vector{T}(undef, n)
     accum = Vector{T}(undef, n + 1)
+    accum[1] = zero(T)
     d = Vector{T}(undef, ncomp)
     d1 = similar(d)
     d2 = similar(d)
@@ -76,71 +77,23 @@ function redistribute!(
         cache::AscherCache{iip, T}, nold::I, naccum::I,
         slope::Vector{T}, accum::Vector{T}
     ) where {iip, T, I <: Integer}
-    (; prob, fixpnt, mesh, mesh_dt) = cache
-    n::Int = length(slope)
-    nmax = copy(n)
+    (; prob, mesh, mesh_dt) = cache
     mesh_old = copy(cache.original_mesh)
-    # nmx assures mesh has at least half as many subintervals as the
-    # previous mesh
+    # Boundary evaluation uses interpolation, so mesh redistribution has no
+    # interior boundary points to preserve.
     nmx = max(nold + 1, naccum) / 2
-
-    # assures that halving will be possible later
-    nmax2 = nmax / 2
-
-    # the mesh is at most halved
-    n = min(nmax2, nold, nmx)
-
-    noldp1 = nold + 1
-    nfxp1 = length(fixpnt) + 1
-    # ensure that fixpnt is included in the new mesh
-    (n < nfxp1) && (n = nfxp1)
-
-    # having decided to generate a new mesh with n subintervals we now
-    # do so, taking into account that the nfxpnt points in the array
-    # fixpnt must be included in the new mesh.
-    inn = 1
-    accl = T(0)
-    lold = 2
-    lcarry = 0
-    lnew = 0
+    n = max(1, floor(Int, min(length(slope) / 2, nold, nmx)))
     resize!(mesh, n + 1)
     mesh[1] = first(prob.tspan)
     mesh[n + 1] = last(prob.tspan)
-
-    for i in 1:nfxp1
-        if i !== nfxp1
-            for j in lold:noldp1
-                lnew = j
-                (fixpnt[i] <= mesh_old[j]) && break
-            end
-            accr = accum[lnew] + (fixpnt[i] - mesh_old[lnew]) * slope[lnew - 1]
-            nregn = (accr - accl) / accum[noldp1] * n - T(0.5)
-            nregn = min(nregn, n - inn - nfxp1 + i)
-            mesh[inn + nregn + 1] = fixpnt[i]
-        else
-            accr = accum[noldp1]
-            lnew = noldp1
-            nregn = n - inn
-        end
-        if nregn !== 0
-            temp = accl
-            tsum = (accr - accl) / (nregn + 1)
-            for j in 1:nregn
-                inn = inn + 1
-                temp = temp + tsum
-                for l in lold:lnew
-                    lcarry = l
-                    (temp <= accum[l]) && break
-                end
-                lold = lcarry
-                mesh[inn] = mesh_old[lold - 1] + (temp - accum[lold - 1]) / slope[lold - 1]
-            end
-        end
-        inn = inn + 1
-        accl = accr
-        lold = lnew
+    for i in 2:n
+        target = (i - 1) * last(accum) / n
+        j = clamp(searchsortedfirst(accum, target), 2, length(accum))
+        mesh[i] = mesh_old[j - 1] + (target - accum[j - 1]) / slope[j - 1]
     end
-    return mesh_dt = diff(mesh)
+    resize!(mesh_dt, n)
+    mesh_dt .= diff(mesh)
+    return mesh_dt
 end
 
 function halve_mesh!(cache::AscherCache)
@@ -238,12 +191,6 @@ function __ascher_refine!(cache::AscherCache, host_mesh)
     platform = cache.alg.platform
     scratch = cache.new_mesh
     n = length(host_mesh) - 1
-    locations = [searchsortedfirst(host_mesh, cache.host_mesh[i]) for i in cache.host_locations]
-    all(
-        j -> locations[j] <= length(host_mesh) &&
-            host_mesh[locations[j]] == cache.host_mesh[cache.host_locations[j]], eachindex(locations)
-    ) ||
-        throw(ArgumentError("Refined Ascher meshes must retain every boundary location."))
     resize!(scratch.mesh, n + 1)
     copyto!(scratch.mesh, host_mesh)
     resize!(scratch.x, n * (cache.ncomp + cache.M * cache.k) + cache.ncomp)
@@ -265,10 +212,9 @@ function __ascher_refine!(cache::AscherCache, host_mesh)
     copyto!(cache.mesh, scratch.mesh)
     resize!(cache.host_mesh, n + 1)
     copyto!(cache.host_mesh, host_mesh)
-    copyto!(cache.host_locations, locations)
-    copyto!(cache.locations, locations)
     cache.jacobian[nothing] = __ascher_prepare_device_jacobian(
-        cache.x, platform, __ascher_device_mode(cache.alg), cache.ncomp, cache.M, cache.k, n, locations
+        cache.x, platform, __ascher_device_mode(cache.alg), cache.ncomp, cache.M, cache.k, n,
+        cache.pt isa TwoPointBVProblem ? cache.left : nothing
     )
     return coarse
 end

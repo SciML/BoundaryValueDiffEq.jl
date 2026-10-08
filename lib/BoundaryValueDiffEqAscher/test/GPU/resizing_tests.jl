@@ -3,15 +3,15 @@ using BoundaryValueDiffEqAscher, Test
 function test_ascher_flat_buffers(upload, platform)
     AS = BoundaryValueDiffEqAscher
     f!(du, u, p, t) = (du[1] = u[2]; du[2] = -u[1]; nothing)
-    bc!(r, u, p, t) = (r[1] = u[1]; r[2] = u[1] - sin(1); nothing)
+    bc!(r, u, p, t) = (r[1] = u(first(t))[1]; r[2] = u(last(t))[1] - sin(1); nothing)
     @testset "Flat Ascher $Alg" for Alg in (Ascher2, Ascher3)
         prob = BVProblem(f!, bc!, upload([0.1, 0.8]), (0.0, 1.0))
         cache = init(
-            prob, Alg(; platform, device = true, zeta = [0.0, 1.0]);
+            prob, Alg(; platform, device = true);
             dt = 0.125, adaptive = false, abstol = 1.0e-10
         )
         @test cache isa AS.AscherCache
-        names = (:x, :mesh, :residual, :locations)
+        names = (:x, :mesh, :residual)
         owners = map(name -> getproperty(cache, name), names)
         saved = solve!(cache)
         @test successful_retcode(saved)
@@ -30,7 +30,6 @@ function test_ascher_flat_buffers(upload, platform)
             @test Array(coarse) ≈ expected atol = 1.0e-12
             @test all(getproperty(cache, name) === owner for (name, owner) in zip(names, owners))
             @test Array(cache.mesh) == cache.host_mesh == target
-            @test Array(cache.locations) == cache.host_locations == [1, nodes]
             @test size(AS.__ascher_jacobian(cache).matrix) == (length(cache.residual), length(cache.x))
             next = solve!(cache)
             @test successful_retcode(next)
@@ -48,22 +47,21 @@ end
 function test_ascher_buffer_features(upload, platform)
     AS = BoundaryValueDiffEqAscher
     f!(du, u, p, t) = (du[1] = u[2]; du[2] = -u[1]; nothing)
-    bc!(r, u, p, t) = (r[1] = u[1]; r[2] = u[1] - sin(1); nothing)
+    bc!(r, u, p, t) = (r[1] = u(first(t))[1]; r[2] = u(last(t))[1] - sin(1); nothing)
     prob = BVProblem(f!, bc!, upload([0.1, 0.8]), (0.0, 1.0))
-    cache = init(prob, Ascher3(; platform, device = true, zeta = [0.0, 1.0]); dt = 0.25, abstol = 1.0e-8)
+    cache = init(prob, Ascher3(; platform, device = true); dt = 0.25, abstol = 1.0e-8)
     owner = cache.x
     sol = solve!(cache)
     @test successful_retcode(sol)
     @test length(cache.host_mesh) == length(sol.t) > 5
     @test cache.x === owner
-    interior_bc!(r, u, p, t) = (r[1] = u[1] - sin(0.3); r[2] = u[1] - sin(1); nothing)
+    interior_bc!(r, u, p, t) = (r[1] = u(0.3)[1] - sin(0.3); r[2] = u(last(t))[1] - sin(1); nothing)
     prob = BVProblem(f!, interior_bc!, upload([0.1, 0.8]), (0.0, 1.0))
-    cache = init(prob, Ascher2(; platform, device = true, zeta = [0.3, 1.0]); dt = 0.25, abstol = 2.0e-6)
+    cache = init(prob, Ascher2(; platform, device = true); dt = 0.25, abstol = 2.0e-6)
     sol = solve!(cache)
     @test successful_retcode(sol)
     @test Array(sol(0.47)) ≈ [sin(0.47), cos(0.47)] atol = 1.0e-5
-    @test cache.host_locations == [searchsortedfirst(cache.host_mesh, 0.3), length(cache.host_mesh)]
-    @test Array(cache.locations) == cache.host_locations
+    @test !(0.3 in cache.host_mesh)
 
     return @testset "Ascher adaptive DAE buffers" begin
         function dae_rhs!(du, u, p, t)
@@ -74,7 +72,7 @@ function test_ascher_buffer_features(upload, platform)
         end
         fun = BVPFunction(dae_rhs!, bc!; mass_matrix = AS.LinearAlgebra.Diagonal([1.0, 1.0, 0.0]), bcresid_prototype = zeros(2))
         prob = BVProblem(fun, upload([0.1, 0.8, -0.1]), (0.0, 1.0))
-        cache = init(prob, Ascher3(; device = true, platform, zeta = [0.0, 1.0]); dt = 0.25, abstol = 1.0e-7)
+        cache = init(prob, Ascher3(; device = true, platform); dt = 0.25, abstol = 1.0e-7)
         owner = cache.x
         sol = solve!(cache)
         @test successful_retcode(sol)

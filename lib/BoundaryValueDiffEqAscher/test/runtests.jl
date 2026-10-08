@@ -4,7 +4,9 @@ using SciMLTesting
 run_tests(;
     env = "BOUNDARYVALUEDIFFEQ_TEST_GROUP",
     core = function ()
-        return @time @safetestset "Ascher Basic Tests" include("Core/ascher_basic_tests.jl")
+        @time @safetestset "Ascher Basic Tests" include("Core/ascher_basic_tests.jl")
+        @time @safetestset "Ascher DAE Benchmarks" include("Core/dae_tests.jl")
+        return @time @safetestset "Ascher Sparse Collocation" include("Core/performance_tests.jl")
     end,
     groups = Dict(
         "DeviceKernels" => function ()
