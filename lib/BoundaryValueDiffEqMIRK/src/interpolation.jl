@@ -276,17 +276,21 @@ end
 
 # Intermediate derivative solution for evaluating derivative boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
-    (; t, cache) = s
-    (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
-    z′ = zeros(typeof(tval), cache.M)
-    ii = interval(t, tval)
-    dt = mesh_dt[ii]
-    τ = (tval - t[ii]) / dt
+    ii = interval(s.t, tval)
+    return __interp_derivative(s, ii, (tval - s.t[ii]) / s.cache.mesh_dt[ii])
+end
+
+# Derivative of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`.
+function __interp_derivative(s::EvalSol{C}, ii::Int, τ) where {C <: MIRKCache}
+    (; alg, stage, k_discrete, k_interp) = s.cache
     _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
+        @view(k_discrete[ii][:, 1:stage])
+    z′ = zeros(promote_type(typeof(τ), eltype(K)), s.cache.M)
+    __maybe_matmul!(z′, K, @view(w′[1:stage]))
     __maybe_matmul!(
-        z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
-        true, true
+        z′, @view(k_interp.u[ii][:, 1:(s.cache.ITU.s_star - stage)]),
+        @view(w′[(stage + 1):s.cache.ITU.s_star]), true, true
     )
     return z′
 end
@@ -402,52 +406,127 @@ always update the intermediate solution with discrete solution + discrete stages
     return EvalSol(u.u, eval_sol.t, cache)
 end
 
-"""
-Construct n root-finding problems and solve them to find the critical points with continuous derivative polynomials
-"""
-function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) where {
-        C <:
-        MIRKCache,
-    }
-    n = first(size(sol))
-    nlprobs = Vector{SciMLBase.NonlinearProblem}(undef, n)
-    nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
-    nlsolve_alg = __FastShortcutNonlinearPolyalg(eltype(sol.cache))
-    for i in 1:n
-        f = @closure (t, p) -> sol(t, Val{1})[i]
-        nlprob = NonlinearProblem(f, sol.cache.prob.u0[i], tspan)
-        nlsols[i] = solve(nlprob, nlsolve_alg)
+# An extremum of a component over `tspan` is attained at an end of `tspan`, at a mesh point, or
+# at a zero of the component's derivative. On each mesh interval the derivative of the MIRK
+# interpolant is a polynomial in the local coordinate of degree `alg_order(alg) - 1`; its
+# monomial coefficients are recovered exactly by sampling at that many Chebyshev nodes, and all
+# of its real roots inside the clipped interval are isolated by `__poly_roots!`. The candidates
+# are sorted in time.
+function __extremum_candidates(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+    (; t, cache) = sol
+    mesh_dt = cache.mesh_dt
+    T = float(promote_type(map(typeof, tspan)..., eltype(t)))
+    lo, hi = T.(minmax(tspan...))
+    tvals = T[lo, hi]
+    n = alg_order(cache.alg)
+    nodes = [(1 - cospi(T(2k - 1) / (2n))) / 2 for k in 1:n]
+    Vinv = inv([x^(j - 1) for x in nodes, j in 1:n])
+    length_z = __state_variable_count(cache, length(first(sol.u)))
+    roots = T[]
+    for ii in 1:(length(t) - 1)
+        lo < t[ii] < hi && push!(tvals, t[ii])
+        a, b = max(t[ii], lo), min(t[ii + 1], hi)
+        a < b || continue
+        τa, τb = (a - t[ii]) / mesh_dt[ii], (b - t[ii]) / mesh_dt[ii]
+        coeffs = reduce(hcat, (__interp_derivative(sol, ii, x) for x in nodes)) *
+            transpose(Vinv)
+        for i in 1:length_z
+            empty!(roots)
+            for τ in __poly_roots!(roots, coeffs[i, :], τa, τb)
+                push!(tvals, τ == τa ? a : τ == τb ? b : clamp(t[ii] + τ * mesh_dt[ii], a, b))
+            end
+        end
     end
-    return nlsols
+    return sort!(tvals)
 end
 
-# It turns out the critical points can't cover all possible maximum/minimum values
-# especially when the solution are monotonic, we still need to compare the extremes with
-# value at critical points to find the maximum/minimum
+# Append the real roots of the polynomial with monomial coefficients `c` in `[a, b]` to `roots`,
+# in increasing order. Between consecutive roots of the derivative the polynomial is monotone,
+# so each such piece holds at most one root, which a sign change brackets. Roots of even
+# multiplicity are only reported when the polynomial evaluates to exactly zero there.
+function __poly_roots!(roots, c, a, b)
+    knots = [a]
+    if length(c) > 2
+        dc = [k * c[k + 1] for k in 1:(length(c) - 1)]
+        for x in __poly_roots!(typeof(a)[], dc, a, b)
+            a < x < b && x > last(knots) && push!(knots, x)
+        end
+    end
+    push!(knots, b)
+    p = Base.Fix2(evalpoly, c)
+    for j in 1:(length(knots) - 1)
+        x, y = knots[j], knots[j + 1]
+        px, py = p(x), p(y)
+        if iszero(px)
+            push!(roots, x)
+        elseif !iszero(py) && (px < 0) != (py < 0)
+            push!(roots, __bisect(p, x, y, px))
+        end
+    end
+    iszero(p(b)) && push!(roots, b)
+    return roots
+end
+
+function __bisect(f, a, b, fa)
+    m = (a + b) / 2
+    while a < m < b
+        fm = f(m)
+        iszero(fm) && return m
+        if (fm < 0) == (fa < 0)
+            a, fa = m, fm
+        else
+            b = m
+        end
+        m = (a + b) / 2
+    end
+    return m
+end
+
+# At a mesh point the stored nodal value is used, so the boundary-condition Jacobian sees the
+# exact dependence on the unknowns.
+function __value_at(sol::EvalSol, t)
+    k = searchsortedfirst(sol.t, t)
+    return k ≤ length(sol.t) && sol.t[k] == t ? sol.u[k] : sol(t)
+end
+
+# Ties go to the earliest candidate (and lowest component) for both the maximum and the
+# minimum, so that the boundary-condition Jacobian does not depend on an asymmetric
+# tie-breaking rule. With Base's `max`/`min`, a flat initial guess pairs the last point for the
+# maximum with the first point for the minimum, which can make the Newton system singular.
+function __extremum(isbetter::F, sol::EvalSol{C}, tspan::Tuple) where {F, C <: MIRKCache}
+    tvals = __extremum_candidates(sol, tspan)
+    best = first(__value_at(sol, first(tvals)))
+    for t in tvals
+        for x in __value_at(sol, t)
+            isbetter(x, best) && (best = x)
+        end
+    end
+    return best
+end
 
 """
     maxsol(sol::EvalSol, tspan::Tuple)
 
-Find the maximum of the solution over the time span `tspan`.
+Find the maximum over all components of the solution over the time span `tspan`.
+
+The candidates are the ends of `tspan`, the mesh points inside it (using the stored
+nodal values) and the sign changes of each state component's interpolant derivative
+inside `tspan`. When several candidates attain the maximum, the earliest in time (then
+the lowest component) is returned.
 """
-function maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
-    nlsols = __construct_then_solve_root_problem(sol, tspan)
-    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
-    u = sol(tvals)
-    return max(maximum(sol), maximum(Iterators.flatten(u)))
-end
+maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(>, sol, tspan)
 
 """
     minsol(sol::EvalSol, tspan::Tuple)
 
-Find the minimum of the solution over the time span `tspan`.
+Find the minimum over all components of the solution over the time span `tspan`.
+
+The candidates are the ends of `tspan`, the mesh points inside it (using the stored
+nodal values) and the sign changes of each state component's interpolant derivative
+inside `tspan`. When several candidates attain the minimum, the earliest in time (then
+the lowest component) is returned.
 """
-function minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
-    nlsols = __construct_then_solve_root_problem(sol, tspan)
-    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
-    u = sol(tvals)
-    return min(minimum(sol), minimum(Iterators.flatten(u)))
-end
+minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(<, sol, tspan)
 
 """
     interp_weights(τ, alg)
