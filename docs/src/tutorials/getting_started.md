@@ -138,9 +138,9 @@ function f!(du, u, p, t)
     return
 end
 function bc!(res, u, p, t)
-    res[1] = u[1]
-    res[2] = u[3] - 1
-    res[3] = u[2] - sin(1.0)
+    res[1] = u(0.0)[1]
+    res[2] = u(0.0)[3] - 1
+    res[3] = u(1.0)[2] - sin(1.0)
     return
 end
 u0 = [0.0, 0.0, 0.0, 0.0]
@@ -148,5 +148,5 @@ tspan = (0.0, 1.0)
 mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0]
 fun = BVPFunction(f!, bc!; mass_matrix)
 prob = BVProblem(fun, u0, tspan)
-sol = solve(prob, Ascher4(zeta = [0.0, 0.0, 1.0]), dt = 0.01)
+sol = solve(prob, Ascher4(), dt = 0.01)
 ```

@@ -168,18 +168,17 @@ function rkbas!(s, coef, k::Integer, rkb, dm)
         dm[1] = 1.0
         return
     end
-    t = s ./ (1:k)
     for i in 1:k
         p = coef[1, i]
         for j in 2:k
-            p = p * t[k + 2 - j] + coef[j, i]
+            p = p * (s / (k + 2 - j)) + coef[j, i]
         end
         rkb[i] = p
     end
     for i in 1:k
         p = coef[1, i]
         for j in 2:k
-            p = p * t[k + 1 - j] + coef[j, i]
+            p = p * (s / (k + 1 - j)) + coef[j, i]
         end
         dm[i] = p
     end
@@ -192,11 +191,10 @@ function rkbas!(s, coef, k::Integer, rkb)
         rkb[1] = 1.0
         return
     end
-    t = s ./ (1:k)
     for i in 1:k
         p = coef[1, i]
         for j in 2:k
-            p = p * t[k + 2 - j] + coef[j, i]
+            p = p * (s / (k + 2 - j)) + coef[j, i]
         end
         rkb[i] = p
     end
