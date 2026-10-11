@@ -519,8 +519,7 @@ function __bisect(f, a, b, fa)
     return m
 end
 
-# At `τ == 1` the interpolation weights are rounded from an extended-precision evaluation:
-# their polynomial forms cancel badly there (by about 2e-5 for MIRK6 in Float32).
+# At `τ == 1` the weights `w₁` come from `__endpoint_weights`.
 function __candidate_value(sol::EvalSol, (_, kind, ii, τ), w₁)
     kind == 0 && return sol.u[ii]
     return isone(τ) ? __interp_value(sol, ii, τ, w₁) : __interp_value(sol, ii, τ)
@@ -534,8 +533,7 @@ end
 # non-finite derivative sample, makes the result NaN.
 function __extremum(isbetter::F, sol::EvalSol{C}, tspan::Tuple) where {F, C <: MIRKCache}
     candidates, valid = __extremum_candidates(sol, tspan)
-    T = typeof(first(first(candidates)))
-    w₁ = T.(first(interp_weights(BigFloat(1), sol.cache.alg)))
+    w₁ = __endpoint_weights(typeof(first(first(candidates))), sol.cache.alg)
     best = first(__candidate_value(sol, first(candidates), w₁))
     valid || return oftype(best, NaN)
     for c in candidates
@@ -850,3 +848,18 @@ for order in (6,)
         end
     end
 end
+
+# Interpolation weights at τ = 1. Their polynomial forms cancel badly there (by about 2e-5
+# for MIRK6 in Float32), so for machine floats they are evaluated once, at load time, in
+# 256-bit arithmetic and rounded to Float64.
+for alg in (:MIRK2, :MIRK3, :MIRK4, :MIRK5, :MIRK6, :MIRK6I)
+    w = setprecision(BigFloat, 256) do
+        Tuple(Float64.(first(interp_weights(BigFloat(1), getfield(@__MODULE__, alg)()))))
+    end
+    @eval __endpoint_weights(::$(alg)) = $(w)
+end
+
+function __endpoint_weights(::Type{T}, alg) where {T <: Union{Float16, Float32, Float64}}
+    return T[x for x in __endpoint_weights(alg)]
+end
+__endpoint_weights(::Type{T}, alg) where {T} = first(interp_weights(one(T), alg))

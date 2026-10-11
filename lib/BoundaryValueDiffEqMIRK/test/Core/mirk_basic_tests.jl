@@ -576,6 +576,18 @@ end
     @test abs(sol.u[1][1]) ≤ 32 * eps(Float32)
 end
 
+@testset "maxsol and minsol ignore the ambient BigFloat precision: slope $slope, MIRK$order" for slope in (1.0, -1.0), order in (4, 6)
+    f!(du, u, p, t) = (du[1] = slope)
+    extremum = slope > 0 ? maxsol : minsol
+    bc!(residual, sol, p, t) = (residual[1] = extremum(sol, (0.0, 1.0)) - slope)
+    prob = BVProblem(f!, bc!, [0.5], (0.0, 1.0))
+    sol = setprecision(BigFloat, 24) do
+        solve(prob, mirk_solver(Val(order)), dt = 1.0, adaptive = false, abstol = 1.0e-12)
+    end
+    @test SciMLBase.successful_retcode(sol)
+    @test abs(sol.u[1][1]) ≤ 1.0e-12
+end
+
 @testset "maxsol is invariant under extreme positive scaling" begin
     # u(t) = u(0) + p (t - t^2) with maxsol = 0 gives u(0) = -p / 4 for every p > 0. At
     # p = 3e307 the derivative's monomial coefficients are representable, but recovering them
