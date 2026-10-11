@@ -859,7 +859,9 @@ for alg in (:MIRK2, :MIRK3, :MIRK4, :MIRK5, :MIRK6, :MIRK6I)
     @eval __endpoint_weights(::$(alg)) = $(w)
 end
 
-function __endpoint_weights(::Type{T}, alg) where {T <: Union{Float16, Float32, Float64}}
-    return T[x for x in __endpoint_weights(alg)]
+# Types no more precise than Float64 (including dual numbers over them, whose `eps` is that
+# of their value type) use the constants; wider types evaluate the polynomial weights.
+function __endpoint_weights(::Type{T}, alg) where {T}
+    return eps(T) ≥ eps(Float64) ? T[x for x in __endpoint_weights(alg)] :
+        first(interp_weights(one(T), alg))
 end
-__endpoint_weights(::Type{T}, alg) where {T} = first(interp_weights(one(T), alg))

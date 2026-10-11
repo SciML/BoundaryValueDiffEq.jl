@@ -2,6 +2,7 @@ using BoundaryValueDiffEqMIRK
 using ADTypes: AutoFiniteDiff, AutoSparse
 using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore, BVPJacobianAlgorithm, DefectControl,
     GlobalErrorControl, HybridErrorControl, SequentialErrorControl
+using ForwardDiff: ForwardDiff
 using RecursiveArrayTools: DiffEqArray, VectorOfArray
 import SciMLBase
 using SciMLBase: BVProblem, ODEFunction, TwoPointBVProblem, init, remake, solve
@@ -586,6 +587,21 @@ end
     end
     @test SciMLBase.successful_retcode(sol)
     @test abs(sol.u[1][1]) ≤ 1.0e-12
+end
+
+@testset "maxsol and minsol with Dual{Float32} states and times: slope $s" for s in (1.0f0, -1.0f0)
+    D = typeof(ForwardDiff.Dual(1.0f0, 0.0f0))
+    slope = D(s)
+    f!(du, u, p, t) = (du[1] = slope)
+    extremum = s > 0 ? maxsol : minsol
+    bc!(residual, sol, p, t) = (residual[1] = extremum(sol, (zero(D), one(D))) - slope)
+    prob = BVProblem(f!, bc!, D[D(0.5)], (zero(D), one(D)))
+    jac_alg = BVPJacobianAlgorithm(;
+        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoFiniteDiff()
+    )
+    sol = solve(prob, MIRK6(; jac_alg), dt = one(D), adaptive = false, abstol = 1.0f-7)
+    @test SciMLBase.successful_retcode(sol)
+    @test abs(ForwardDiff.value(sol.u[1][1])) ≤ 32 * eps(Float32)
 end
 
 @testset "maxsol is invariant under extreme positive scaling" begin
