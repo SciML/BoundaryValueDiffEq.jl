@@ -561,6 +561,21 @@ end
     @test isnan(minsol(nes, (0.0, 1.0)))
 end
 
+@testset "maxsol and minsol in Float32: slope $slope, MIRK$order" for slope in (1.0f0, -1.0f0),
+        order in (2, 3, 4, 5, 6)
+    # u(t) = u(0) + slope * t on (0, 1): the extremum over the span is `slope` exactly when
+    # u(0) = 0, so the result must be exact to Float32 round-off.
+    f!(du, u, p, t) = (du[1] = slope)
+    extremum = slope > 0 ? maxsol : minsol
+    bc!(residual, sol, p, t) = (residual[1] = extremum(sol, (0.0f0, 1.0f0)) - slope)
+    prob = BVProblem(f!, bc!, Float32[0.5], (0.0f0, 1.0f0))
+    sol = solve(
+        prob, mirk_solver(Val(order)), dt = 1.0f0, adaptive = false, abstol = 1.0f-7
+    )
+    @test SciMLBase.successful_retcode(sol)
+    @test abs(sol.u[1][1]) ≤ 32 * eps(Float32)
+end
+
 @testset "maxsol is invariant under extreme positive scaling" begin
     # u(t) = u(0) + p (t - t^2) with maxsol = 0 gives u(0) = -p / 4 for every p > 0. At
     # p = 3e307 the derivative's monomial coefficients are representable, but recovering them

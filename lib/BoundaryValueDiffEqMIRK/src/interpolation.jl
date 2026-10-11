@@ -221,15 +221,17 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     return __interp_value(s, ii, (tval - t[ii]) / cache.mesh_dt[ii])
 end
 
-# Value of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`.
-function __interp_value(s::EvalSol{C}, ii::Int, τ) where {C <: MIRKCache}
+# Value of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`, using
+# the interpolation weights `w` at `τ`.
+function __interp_value(
+        s::EvalSol{C}, ii::Int, τ, w = first(interp_weights(τ, s.cache.alg))
+    ) where {C <: MIRKCache}
     (; u, cache) = s
     (; alg, stage, k_discrete, k_interp, M) = cache
     z = zero(last(u))
     has_control = __has_control_variables(cache, length(z))
     length_z = __state_variable_count(cache, length(z))
     dt = cache.mesh_dt[ii]
-    w, _ = interp_weights(τ, alg)
     K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
         @view(k_discrete[ii][:, 1:stage])
     KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
@@ -449,7 +451,8 @@ function __extremum_candidates(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCa
         lo < t[ii] < hi && push!(candidates, (t[ii], 0, ii, zero(T)))
         a, b = max(t[ii], lo), min(t[ii + 1], hi)
         a < b || continue
-        τa, τb = (a - t[ii]) / mesh_dt[ii], (b - t[ii]) / mesh_dt[ii]
+        τa = a == t[ii] ? zero(T) : (a - t[ii]) / mesh_dt[ii]
+        τb = b == t[ii + 1] ? one(T) : (b - t[ii]) / mesh_dt[ii]
         push!(candidates, (a, 1, ii, τa), (b, 1, ii, τb))
         K = __needs_diffcache(cache.alg.jac_alg) ? k_discrete[ii].du : k_discrete[ii]
         stages = hcat(
@@ -516,8 +519,12 @@ function __bisect(f, a, b, fa)
     return m
 end
 
-__candidate_value(sol::EvalSol, (_, kind, ii, τ)) = kind == 0 ? sol.u[ii] :
-    __interp_value(sol, ii, τ)
+# At `τ == 1` the interpolation weights are rounded from an extended-precision evaluation:
+# their polynomial forms cancel badly there (by about 2e-5 for MIRK6 in Float32).
+function __candidate_value(sol::EvalSol, (_, kind, ii, τ), w₁)
+    kind == 0 && return sol.u[ii]
+    return isone(τ) ? __interp_value(sol, ii, τ, w₁) : __interp_value(sol, ii, τ)
+end
 
 # Ties go to the earliest candidate (stored nodal values before interpolated ones at the same
 # time, then the lowest component) for both the maximum and the minimum, so that the
@@ -527,10 +534,12 @@ __candidate_value(sol::EvalSol, (_, kind, ii, τ)) = kind == 0 ? sol.u[ii] :
 # non-finite derivative sample, makes the result NaN.
 function __extremum(isbetter::F, sol::EvalSol{C}, tspan::Tuple) where {F, C <: MIRKCache}
     candidates, valid = __extremum_candidates(sol, tspan)
-    best = first(__candidate_value(sol, first(candidates)))
+    T = typeof(first(first(candidates)))
+    w₁ = T.(first(interp_weights(BigFloat(1), sol.cache.alg)))
+    best = first(__candidate_value(sol, first(candidates), w₁))
     valid || return oftype(best, NaN)
     for c in candidates
-        for x in __candidate_value(sol, c)
+        for x in __candidate_value(sol, c, w₁)
             isnan(x) && return x
             isbetter(x, best) && (best = x)
         end
@@ -543,10 +552,20 @@ end
 
 Find the maximum over all components of the solution over the time span `tspan`.
 
-The candidates are the ends of `tspan`, the mesh points inside it (using the stored
-nodal values) and the sign changes of each state component's interpolant derivative
-inside `tspan`. When several candidates attain the maximum, the earliest in time (then
-the lowest component) is returned.
+The candidates are
+
+  - the stored nodal values at the mesh points in `tspan` (including its ends);
+  - for every mesh interval overlapping `tspan`, that interval's interpolant at both ends
+    of its overlap with `tspan`. On a converged solution these equal the nodal values at
+    mesh points; on an intermediate Newton iterate the interpolant can be discontinuous
+    there, and both one-sided values are candidates;
+  - the interpolant at each sign change of a state component's derivative inside `tspan`;
+  - the interpolant at an end of `tspan` that is not a mesh point.
+
+When several candidates attain the maximum, the earliest in time is returned; at equal
+times a stored nodal value precedes interpolated values, which are ordered by mesh
+interval, and within one candidate the lowest component wins. If any candidate value is
+`NaN`, or the interpolant's stages are not finite, the result is `NaN`.
 """
 maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(>, sol, tspan)
 
@@ -555,10 +574,20 @@ maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(>, sol
 
 Find the minimum over all components of the solution over the time span `tspan`.
 
-The candidates are the ends of `tspan`, the mesh points inside it (using the stored
-nodal values) and the sign changes of each state component's interpolant derivative
-inside `tspan`. When several candidates attain the minimum, the earliest in time (then
-the lowest component) is returned.
+The candidates are
+
+  - the stored nodal values at the mesh points in `tspan` (including its ends);
+  - for every mesh interval overlapping `tspan`, that interval's interpolant at both ends
+    of its overlap with `tspan`. On a converged solution these equal the nodal values at
+    mesh points; on an intermediate Newton iterate the interpolant can be discontinuous
+    there, and both one-sided values are candidates;
+  - the interpolant at each sign change of a state component's derivative inside `tspan`;
+  - the interpolant at an end of `tspan` that is not a mesh point.
+
+When several candidates attain the minimum, the earliest in time is returned; at equal
+times a stored nodal value precedes interpolated values, which are ordered by mesh
+interval, and within one candidate the lowest component wins. If any candidate value is
+`NaN`, or the interpolant's stages are not finite, the result is `NaN`.
 """
 minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(<, sol, tspan)
 
