@@ -217,12 +217,18 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     # Quick handle for the case where tval is at the boundary
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
+    ii = interval(t, tval)
+    return __interp_value(s, ii, (tval - t[ii]) / cache.mesh_dt[ii])
+end
+
+# Value of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`.
+function __interp_value(s::EvalSol{C}, ii::Int, τ) where {C <: MIRKCache}
+    (; u, cache) = s
+    (; alg, stage, k_discrete, k_interp, M) = cache
     z = zero(last(u))
     has_control = __has_control_variables(cache, length(z))
     length_z = __state_variable_count(cache, length(z))
-    ii = interval(t, tval)
     dt = cache.mesh_dt[ii]
-    τ = (tval - t[ii]) / dt
     w, _ = interp_weights(τ, alg)
     K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
         @view(k_discrete[ii][:, 1:stage])
@@ -407,37 +413,65 @@ always update the intermediate solution with discrete solution + discrete stages
 end
 
 # An extremum of a component over `tspan` is attained at an end of `tspan`, at a mesh point, or
-# at a zero of the component's derivative. On each mesh interval the derivative of the MIRK
-# interpolant is a polynomial in the local coordinate of degree `alg_order(alg) - 1`; its
-# monomial coefficients are recovered exactly by sampling at that many Chebyshev nodes, and all
-# of its real roots inside the clipped interval are isolated by `__poly_roots!`. The candidates
-# are sorted in time.
+# at a zero of the component's derivative. Each candidate is `(t, kind, ii, τ)`: `kind == 0` is
+# the stored nodal value `sol.u[ii]`, and `kind == 1` is the interpolant of mesh interval `ii`
+# at local coordinate `τ`. Every mesh interval overlapping `tspan` contributes its one-sided
+# values at both clipped ends, so on an unconverged iterate (where the interpolant is
+# discontinuous at mesh points) enlarging `tspan` never drops a value. On each interval the
+# derivative of the interpolant is a polynomial in `τ` of degree `alg_order(alg) - 1`. Its
+# monomial coefficients are recovered from that many Chebyshev samples. Each component's stages
+# and samples are scaled to unit maximum first, so neither the sampling nor the recovery can
+# overflow, and `__poly_roots!` isolates all real roots in the clipped interval. Returns the
+# candidates sorted by `(t, kind, ii)` and whether all stages were finite.
 function __extremum_candidates(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
     (; t, cache) = sol
     mesh_dt = cache.mesh_dt
     T = float(promote_type(map(typeof, tspan)..., eltype(t)))
     lo, hi = T.(minmax(tspan...))
-    tvals = T[lo, hi]
+    candidates = Tuple{T, Int, Int, T}[]
+    for x in (lo, hi)
+        k = searchsortedfirst(t, x)
+        if k ≤ length(t) && t[k] == x
+            push!(candidates, (x, 0, k, zero(T)))
+        else
+            ii = interval(t, x)
+            push!(candidates, (x, 1, ii, (x - t[ii]) / mesh_dt[ii]))
+        end
+    end
     n = alg_order(cache.alg)
     nodes = [(1 - cospi(T(2k - 1) / (2n))) / 2 for k in 1:n]
     Vinv = inv([x^(j - 1) for x in nodes, j in 1:n])
+    W′ = reduce(hcat, (last(interp_weights(x, cache.alg)) for x in nodes))
+    k_discrete = cache.k_discrete
     length_z = __state_variable_count(cache, length(first(sol.u)))
     roots = T[]
     for ii in 1:(length(t) - 1)
-        lo < t[ii] < hi && push!(tvals, t[ii])
+        lo < t[ii] < hi && push!(candidates, (t[ii], 0, ii, zero(T)))
         a, b = max(t[ii], lo), min(t[ii + 1], hi)
         a < b || continue
         τa, τb = (a - t[ii]) / mesh_dt[ii], (b - t[ii]) / mesh_dt[ii]
-        coeffs = reduce(hcat, (__interp_derivative(sol, ii, x) for x in nodes)) *
-            transpose(Vinv)
+        push!(candidates, (a, 1, ii, τa), (b, 1, ii, τb))
+        K = __needs_diffcache(cache.alg.jac_alg) ? k_discrete[ii].du : k_discrete[ii]
+        stages = hcat(
+            K[1:length_z, 1:(cache.stage)],
+            cache.k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - cache.stage)]
+        )
+        all(isfinite, stages) || return sort!(candidates), false
+        rowscale = map(x -> iszero(x) ? one(x) : x, maximum(abs, stages; dims = 2))
+        samples = (stages ./ rowscale) * W′
         for i in 1:length_z
+            d = @view samples[i, :]
+            scale = maximum(abs, d)
+            iszero(scale) && continue
+            coeffs = Vinv * (d ./ scale)
             empty!(roots)
-            for τ in __poly_roots!(roots, coeffs[i, :], τa, τb)
-                push!(tvals, τ == τa ? a : τ == τb ? b : clamp(t[ii] + τ * mesh_dt[ii], a, b))
+            for τ in __poly_roots!(roots, coeffs, τa, τb)
+                tc = τ == τa ? a : τ == τb ? b : clamp(t[ii] + τ * mesh_dt[ii], a, b)
+                push!(candidates, (tc, 1, ii, τ))
             end
         end
     end
-    return sort!(tvals)
+    return sort!(candidates), true
 end
 
 # Append the real roots of the polynomial with monomial coefficients `c` in `[a, b]` to `roots`,
@@ -482,22 +516,22 @@ function __bisect(f, a, b, fa)
     return m
 end
 
-# At a mesh point the stored nodal value is used, so the boundary-condition Jacobian sees the
-# exact dependence on the unknowns.
-function __value_at(sol::EvalSol, t)
-    k = searchsortedfirst(sol.t, t)
-    return k ≤ length(sol.t) && sol.t[k] == t ? sol.u[k] : sol(t)
-end
+__candidate_value(sol::EvalSol, (_, kind, ii, τ)) = kind == 0 ? sol.u[ii] :
+    __interp_value(sol, ii, τ)
 
-# Ties go to the earliest candidate (and lowest component) for both the maximum and the
-# minimum, so that the boundary-condition Jacobian does not depend on an asymmetric
-# tie-breaking rule. With Base's `max`/`min`, a flat initial guess pairs the last point for the
-# maximum with the first point for the minimum, which can make the Newton system singular.
+# Ties go to the earliest candidate (stored nodal values before interpolated ones at the same
+# time, then the lowest component) for both the maximum and the minimum, so that the
+# boundary-condition Jacobian does not depend on an asymmetric tie-breaking rule. With Base's
+# `max`/`min`, a flat initial guess pairs the last point for the maximum with the first point
+# for the minimum, which can make the Newton system singular. A NaN candidate value, or a
+# non-finite derivative sample, makes the result NaN.
 function __extremum(isbetter::F, sol::EvalSol{C}, tspan::Tuple) where {F, C <: MIRKCache}
-    tvals = __extremum_candidates(sol, tspan)
-    best = first(__value_at(sol, first(tvals)))
-    for t in tvals
-        for x in __value_at(sol, t)
+    candidates, valid = __extremum_candidates(sol, tspan)
+    best = first(__candidate_value(sol, first(candidates)))
+    valid || return oftype(best, NaN)
+    for c in candidates
+        for x in __candidate_value(sol, c)
+            isnan(x) && return x
             isbetter(x, best) && (best = x)
         end
     end

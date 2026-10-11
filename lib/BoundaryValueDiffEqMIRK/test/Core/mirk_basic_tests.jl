@@ -526,17 +526,56 @@ end
     end
 end
 
-@testset "maxsol and minsol use stored values at mesh points" begin
-    f!(du, u, p, t) = (du[1] = 1.0)
+@testset "maxsol and minsol on unconverged iterates (slope $slope)" for slope in (1.0, -1.0)
+    f!(du, u, p, t) = (du[1] = slope)
     bc!(residual, sol, p, t) = (residual[1] = sol(0.0)[1])
     sol = solve(BVProblem(f!, bc!, [0.0], (0.0, 1.0)), MIRK4(), dt = 0.5, adaptive = false)
-    # An unconverged iterate whose first interval interpolates to 10.5 at t = 0.5.
-    es = BoundaryValueDiffEqCore.EvalSol([[10.0], [0.0], [0.0]], sol.t, sol.interp.cache)
-    @test es(0.5)[1] ≈ 10.5
-    @test maxsol(es, (0.5, 0.5)) == 0.0
-    @test minsol(es, (0.5, 0.5)) == 0.0
-    @test maxsol(es, (0.5, 0.75)) ≈ 0.25
-    @test minsol(es, (0.5, 0.75)) == 0.0
+    extremum, opposite = slope > 0 ? (maxsol, minsol) : (minsol, maxsol)
+    # Nodal values inconsistent with the stages: the first interval reaches 10.5 * slope at
+    # t = 0.5 and the second reaches 0.5 * slope at t = 1, where both stored values are 0.
+    es = BoundaryValueDiffEqCore.EvalSol(
+        [[10.0 * slope], [0.0], [0.0]], sol.t, sol.interp.cache
+    )
+    @test es(0.5)[1] ≈ 10.5 * slope
+    @test extremum(es, (0.5, 0.5)) == 0.0
+    @test opposite(es, (0.5, 0.5)) == 0.0
+    @test extremum(es, (0.5, 0.75)) ≈ 0.25 * slope
+    @test opposite(es, (0.5, 0.75)) == 0.0
+    @test extremum(es, (0.5, 1.0)) ≈ 0.5 * slope
+    @test extremum(es, (0.0, 0.5)) ≈ 10.5 * slope
+
+    @testset "NaN propagates from $vals" for vals in (
+            [[0.0], [NaN], [1.0]], [[0.0], [1.0], [NaN]],
+        )
+        nes = BoundaryValueDiffEqCore.EvalSol(vals, sol.t, sol.interp.cache)
+        @test isnan(maxsol(nes, (0.0, 1.0)))
+        @test isnan(minsol(nes, (0.0, 1.0)))
+    end
+    cache = deepcopy(sol.interp.cache)
+    for k in cache.k_discrete
+        fill!(hasproperty(k, :du) ? k.du : k, NaN)
+    end
+    foreach(k -> fill!(k, NaN), cache.k_interp.u)
+    nes = BoundaryValueDiffEqCore.EvalSol(sol.u, sol.t, cache)
+    @test isnan(maxsol(nes, (0.0, 1.0)))
+    @test isnan(minsol(nes, (0.0, 1.0)))
+end
+
+@testset "maxsol is invariant under extreme positive scaling" begin
+    # u(t) = u(0) + p (t - t^2) with maxsol = 0 gives u(0) = -p / 4 for every p > 0. At
+    # p = 3e307 the derivative's monomial coefficients are representable, but recovering them
+    # from unscaled samples overflows.
+    f!(du, u, p, t) = (du[1] = p * (1 - 2t))
+    bc!(residual, sol, p, t) = (residual[1] = maxsol(sol, (0.0, 1.0)))
+    @testset "p = $p, MIRK$order" for p in (1.0, 3.0e307), order in (4, 6)
+        prob = BVProblem(f!, bc!, [0.0], (0.0, 1.0), p)
+        sol = solve(
+            prob, mirk_solver(Val(order)), dt = 1.0, adaptive = false, abstol = 1.0e-12
+        )
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.u[1][1] / p ≈ -0.25 atol = 1.0e-8
+        @test sol(0.5)[1] / p ≈ 0.0 atol = 1.0e-8
+    end
 end
 
 @testset "Test unknown parameters estimation" begin
