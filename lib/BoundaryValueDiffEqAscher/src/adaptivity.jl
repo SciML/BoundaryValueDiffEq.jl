@@ -1,3 +1,101 @@
+# mesh_selector refine nd redistribute according to the initial mesh
+function mesh_selector!(
+        cache::AscherCache{iip, T}, z, dmz, mesh, mesh_dt, abstol
+    ) where {iip, T}
+    (; k, ncomp) = cache
+    # weights for mesh selection
+    cnsts2 = [
+        1.25e-1, 2.604e-3, 8.019e-3, 2.17e-5, 7.453e-5, 5.208e-4, 9.689e-8,
+        3.689e-7, 3.1e-6, 2.451e-5, 2.691e-10, 1.12e-9, 1.076e-8, 9.405e-8,
+        1.033e-6, 5.097e-13, 2.29e-12, 2.446e-11, 2.331e-10, 2.936e-9, 3.593e-8,
+        7.001e-16, 3.363e-15, 3.921e-14, 4.028e-13, 5.646e-12, 7.531e-11, 1.129e-9,
+    ]
+
+    koff = Int(k * (k + 1) / 2)
+    wgtmsh = 10 * cnsts2[koff]
+    root = 1 / (k + 1)
+    n = length(mesh) - 1
+    slope = Vector{T}(undef, n)
+    accum = Vector{T}(undef, n + 1)
+    accum[1] = zero(T)
+    d = Vector{T}(undef, ncomp)
+    d1 = similar(d)
+    d2 = similar(d)
+    # the first interval has to be treated separately from the
+    # other intervals (generally the solution on the (i-1)st and ith
+    # intervals will be used to approximate the needed derivative, but
+    # here the 1st and second intervals are used.)
+    hiold = mesh_dt[1]
+    @views horder(cache, d1, hiold, dmz[1])
+    hiold = mesh_dt[2]
+    @views horder(cache, d2, hiold, dmz[2])
+    oneovh = 2.0 / (mesh[3] - mesh[1])
+    slp = @. (abs(d2 - d1) * wgtmsh * oneovh / (abstol * (T(1) + abs(z[1]))))^root
+    slope[1] = maximum(slp)
+    slphmx = slope[1] * mesh_dt[1]
+    accum[2] = slphmx
+    iflip = 1
+
+    # go through the remaining intervals generating slope
+    # and  accum
+    for i in 2:n
+        hiold = mesh_dt[i]
+        iflip == -1 && @views horder(cache, d1, hiold, dmz[i])
+        iflip == 1 && @views horder(cache, d2, hiold, dmz[i])
+        oneovh = 2.0 / (mesh[i + 1] - mesh[i - 1])
+
+        # evaluate function to be equidistributed
+        slp = @. (abs(d2 - d1) * wgtmsh * oneovh / (abstol * (T(1) + abs(z[i]))))^root
+        slope[i] = maximum(slp)
+
+        # accumulate approximate integral of function to be equidistributed
+        temp = slope[i] * hiold
+        slphmx = max(slphmx, temp)
+        accum[i + 1] = accum[i] + temp
+        iflip = -iflip
+    end
+
+    avrg = accum[n + 1] / n
+    # `degequ` is the degree of equidistribution which then is used to
+    # determine whether the mesh redistribution is worthwhile or just
+    # halving the mesh is enough.
+    degequ = avrg / max(slphmx, eps(T))
+
+    # expected n to achieve 0.1x user requested tolerances
+    naccum = floor(Int, accum[n + 1] + 1)
+
+    # decide if mesh selection is worthwhile (otherwise, directly halving mesh is enough)
+    if (avrg < eps(T)) || (degequ >= 0.5)
+        # Just continue with utilizing the halved mesh which was used for error estimation
+        return
+    else
+        redistribute!(cache, length(cache.original_mesh), naccum, slope, accum)
+    end
+end
+
+function redistribute!(
+        cache::AscherCache{iip, T}, nold::I, naccum::I,
+        slope::Vector{T}, accum::Vector{T}
+    ) where {iip, T, I <: Integer}
+    (; prob, mesh, mesh_dt) = cache
+    mesh_old = copy(cache.original_mesh)
+    # Boundary evaluation uses interpolation, so mesh redistribution has no
+    # interior boundary points to preserve.
+    nmx = max(nold + 1, naccum) / 2
+    n = max(1, floor(Int, min(length(slope) / 2, nold, nmx)))
+    resize!(mesh, n + 1)
+    mesh[1] = first(prob.tspan)
+    mesh[n + 1] = last(prob.tspan)
+    for i in 2:n
+        target = (i - 1) * last(accum) / n
+        j = clamp(searchsortedfirst(accum, target), 2, length(accum))
+        mesh[i] = mesh_old[j - 1] + (target - accum[j - 1]) / slope[j - 1]
+    end
+    resize!(mesh_dt, n)
+    mesh_dt .= diff(mesh)
+    return mesh_dt
+end
+
 function halve_mesh!(cache::AscherCache)
     (; mesh, mesh_dt, valstr) = cache
     n = length(mesh) - 1
@@ -64,4 +162,24 @@ function error_estimate!(cache::AscherCache)
         )
     end
     return maximum(reduce(hcat, error), dims = 2)
+end
+
+# determine highest order (piecewise constant) derivatives
+# of the current collocation solution
+function horder(cache::AscherCache, uhigh, hi, dmzi)
+    (; ncomp, k, TU) = cache
+    (; coef) = TU
+    dn = 1.0 / hi^(k - 1)
+    uhigh[1:ncomp] .= 0.0
+
+    idmz = 1
+    vdmzi = reduce(vcat, dmzi)
+    for j in 1:k
+        fact = dn * coef[1, j]
+        for id in 1:ncomp
+            uhigh[id] = uhigh[id] + fact * vdmzi[idmz]
+            idmz = idmz + 1
+        end
+    end
+    return
 end

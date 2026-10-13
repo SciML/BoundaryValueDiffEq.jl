@@ -474,11 +474,19 @@ end
 
     prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
     prob_mp_tspan = (0.0, pi / 2)
-    prob = BVProblem(prob_mp_function, prob_mp_bc!, [0.0, 1.0], prob_mp_tspan)
+    # A constant guess has an identically zero interpolant derivative, making the
+    # critical-point solves inside maxsol/minsol degenerate. Use a perturbed
+    # sinusoid so this tests extrema-based boundary conditions from a nonflat guess.
+    prob_mp_guess(p, t) = 0.9 .* prob_mp_analytic(nothing, p, t)
+    prob = BVProblem(prob_mp_function, prob_mp_bc!, prob_mp_guess, prob_mp_tspan)
 
     for order in (4, 6)
-        sol = solve(prob, mirk_solver(Val(order)), dt = 0.001)
+        sol = solve(prob, mirk_solver(Val(order)), dt = 0.05)
         @test SciMLBase.successful_retcode(sol)
+        @test maximum(abs, sol.resid) < 1.0e-6
+        for t in range(prob_mp_tspan...; length = 21)
+            @test sol(t) ≈ prob_mp_analytic(nothing, nothing, t) atol = 1.0e-5
+        end
     end
 end
 

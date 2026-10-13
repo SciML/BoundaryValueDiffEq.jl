@@ -13,8 +13,9 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __vec_bc, __vec_bc!, __extract_mesh, __extract_u0, __flatten_initial_guess,
     __initial_guess, __initial_guess_length, get_dense_ad,
     __get_bcresid_prototype, __split_kwargs, __concrete_kwargs,
-    __default_nonsparse_ad, __construct_internal_problem,
-    __internal_solve, __build_cost
+    __default_sparse_ad, __default_coloring_algorithm,
+    __construct_internal_problem,
+    __internal_solve
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
@@ -22,6 +23,7 @@ using FastClosures: @closure
 using ForwardDiff: ForwardDiff
 using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra, I, norm, rank
+using RecursiveArrayTools: DiffEqArray
 using SciMLBase: SciMLBase, BVProblem, ReturnCode, StandardBVProblem,
     TwoPointBVProblem, isinplace, solve
 
@@ -41,6 +43,7 @@ using BoundaryValueDiffEqCore: BVPVerbosity, DefectControl, GaussNewton, HOError
 using SciMLBase: BVPFunction, init, remake, solve!, successful_retcode
 
 using Setfield: @set!
+using SparseArrays: SparseMatrixCSC, sparse, nzrange, nonzeros
 
 const DI = DifferentiationInterface
 
@@ -50,6 +53,7 @@ include("algorithms.jl")
 include("alg_utils.jl")
 include("ascher_tableaus.jl")
 include("ascher.jl")
+include("sparse_jacobian.jl")
 include("adaptivity.jl")
 include("collocation.jl")
 
