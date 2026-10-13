@@ -210,9 +210,9 @@ end
     end
 
     function bc_param!(res, u, p, t)
-        res[1] = u[1] - p.x1_left
-        res[2] = u[3] - 1
-        res[3] = u[2] - sin(1.0)
+        res[1] = u(0.0)[1] - p.x1_left
+        res[2] = u(0.0)[3] - 1
+        res[3] = u(1.0)[2] - sin(1.0)
     end
 
     function bca_param!(res, ua, p)
@@ -231,7 +231,7 @@ end
     tspan = (0.0, 1.0)
     p = AscherBCParams(1.0, 0.0)
     mass_matrix = [1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 0]
-    alg = Ascher4(zeta = [0.0, 0.0, 1.0])
+    alg = Ascher4()
     fun = BVPFunction(f_param!, bc_param!; analytic = f_param_analytic, mass_matrix)
     prob = BVProblem(fun, u0, tspan, p)
     sol = solve(prob, alg; dt = 0.01)
