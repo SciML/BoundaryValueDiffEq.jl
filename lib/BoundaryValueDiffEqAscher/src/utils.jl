@@ -1,22 +1,13 @@
-function build_almost_block_diagonals(zeta::Vector{T}, ncomp::I, mesh, ::Type{T}) where {
-        T, I,
-    }
-    lside = 0
+function build_almost_block_diagonals(nleft::Integer, ncomp::Integer, mesh, ::Type{T}) where {T}
     ncol = 2 * ncomp
     n = length(mesh) - 1
     # build integs (describing block structure of matrix)
-    rows = Vector{I}(undef, n)
+    rows = fill(ncomp + nleft, n)
     cols = repeat([ncol], n)
     lasts = repeat([ncomp], n)
-    let lside = 0
-        for i in 1:(n - 1)
-            lside = first(findall(x::Float64 -> x > mesh[i], zeta)) - 1
-            rows[i] = ncomp + lside
-        end
-    end
     lasts[end] = ncol
     rows[end] = ncol
-    g = IntermediateAlmostBlockDiagonal([zeros(rows[i], cols[i]) for i in 1:n], lasts)
+    g = IntermediateAlmostBlockDiagonal([zeros(T, rows[i], cols[i]) for i in 1:n], lasts)
     return g
 end
 
@@ -165,28 +156,9 @@ end
 end
 
 @inline function construct_bc_jac(prob::BVProblem)
-    return construct_bc_jac(prob, __get_bcresid_prototype(prob, prob.u0), prob.problem_type)
+    bcresid_prototype, _ = __get_bcresid_prototype(prob, prob.u0)
+    return construct_bc_jac(prob, bcresid_prototype, prob.problem_type)
 end
-@inline function construct_bc_jac(prob::BVProblem, _, pt::StandardBVProblem)
-    if isinplace(prob)
-        bcjac = (df, u, p, t) -> begin
-            _du = similar(u)
-            prob.f.bc(_du, u, p, t)
-            _f = @closure (du, u) -> prob.f.bc(du, u, p, t)
-            ForwardDiff.jacobian!(df, _f, _du, u)
-            return
-        end
-    else
-        bcjac = (df, u, p, t) -> begin
-            _du = prob.f.bc(u, p, t)
-            _f = @closure (du, u) -> (du .= prob.f.bc(u, p, t))
-            ForwardDiff.jacobian!(df, _f, _du, u)
-            return
-        end
-    end
-    return bcjac
-end
-
 @inline function construct_bc_jac(prob::BVProblem, bcresid_prototype, pt::TwoPointBVProblem)
     return if isinplace(prob)
         bcjac = (df, u, p) -> begin
