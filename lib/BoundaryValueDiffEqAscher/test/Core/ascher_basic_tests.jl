@@ -204,14 +204,14 @@ end
         du[1] = 1 / u[1] - 1
     end
     function bc_recip!(res, u, p, t)
-        iszero(value(u[1])) && error("bc! was evaluated at u[1] = 0")
-        res[1] = 1 / u[1] - 1
+        iszero(value(u(1.0)[1])) && error("bc! was evaluated at u[1] = 0")
+        res[1] = 1 / u(1.0)[1] - 1
     end
     prob = BVProblem(
         BVPFunction(f_recip!, bc_recip!; mass_matrix = ones(1, 1)), [1.0], (0.0, 1.0)
     )
     @testset "f and bc undefined at zero, adaptive = $adaptive" for adaptive in (false, true)
-        sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.01, adaptive)
+        sol = solve(prob, Ascher4(); dt = 0.01, adaptive)
         @test SciMLBase.successful_retcode(sol)
         @test all(x -> isapprox(only(x), 1.0; atol = 1.0e-4), sol.u)
     end
@@ -222,32 +222,32 @@ end
         du[1] = 1 / u[2] + u[1] - 2
         du[2] = u[2] - 1
     end
-    bc_dae!(res, u, p, t) = (res[1] = u[1] - 1)
+    bc_dae!(res, u, p, t) = (res[1] = u(1.0)[1] - 1)
     prob = BVProblem(
         BVPFunction(f_dae!, bc_dae!; mass_matrix = [1.0 0.0; 0.0 0.0]), [1.0, 1.0],
         (0.0, 1.0)
     )
     @testset "algebraic guess, adaptive = $adaptive" for adaptive in (false, true)
-        sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.05, adaptive)
+        sol = solve(prob, Ascher4(); dt = 0.05, adaptive)
         @test SciMLBase.successful_retcode(sol)
         @test all(u -> isapprox(u, [1.0, 1.0]; atol = 1.0e-6), sol.u)
     end
 
     # non-constant solution u(t) = sqrt(1 + 2t)
     f_sqrt!(du, u, p, t) = (du[1] = 1 / u[1])
-    bc_sqrt!(res, u, p, t) = (res[1] = u[1] - sqrt(3.0))
+    bc_sqrt!(res, u, p, t) = (res[1] = u(1.0)[1] - sqrt(3.0))
     prob = BVProblem(
         BVPFunction(f_sqrt!, bc_sqrt!; mass_matrix = ones(1, 1)), [1.5], (0.0, 1.0)
     )
     @testset "non-constant solution, adaptive = $adaptive" for adaptive in (false, true)
-        sol = solve(prob, Ascher4(zeta = [1.0]); dt = 0.05, adaptive)
+        sol = solve(prob, Ascher4(); dt = 0.05, adaptive, abstol = 1.0e-8)
         @test SciMLBase.successful_retcode(sol)
         @test maximum(abs.(first.(sol.u) .- sqrt.(1 .+ 2 .* sol.t))) < 1.0e-6
     end
 
     # sampled and functional guesses, including one with fewer samples than mesh points
     f3!(du, u, p, t) = (du[1] = -u[3]; du[2] = -u[3]; du[3] = u[2] - sin(t - 1))
-    bc3!(res, u, p, t) = (res[1] = u[1]; res[2] = u[2])
+    bc3!(res, u, p, t) = (res[1] = u(1.0)[1]; res[2] = u(1.0)[2])
     sol3(t) = [sin(t - 1), sin(t - 1), -cos(t - 1)]
     guesses = (
         "101 samples" => [sol3(t) for t in range(0, 1; length = 101)],
@@ -259,7 +259,7 @@ end
         prob = BVProblem(
             BVPFunction(f3!, bc3!; mass_matrix = [1.0 0 0; 0 1 0; 0 0 0]), u0, (0.0, 1.0)
         )
-        sol = solve(prob, Ascher4(zeta = [1.0, 1.0]); dt = 0.01, adaptive)
+        sol = solve(prob, Ascher4(); dt = 0.01, adaptive)
         @test SciMLBase.successful_retcode(sol)
         @test maximum(maximum(abs.(sol.u[i] .- sol3(sol.t[i]))) for i in eachindex(sol.t)) <
             1.0e-6
