@@ -185,7 +185,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = zeros(T, ncy, ncy)
+    df = zeros(T, 2 * ncomp)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -256,7 +256,7 @@ function Φ!(cache::AscherCache{iip, T}, z, res, pt::TwoPointBVProblem) where {i
     temp_z .= temp_z .+ delz
     dmz .= dmz .+ deldmz
 
-    resids = [Vector{T}(undef, ncy) for _ in 1:(n + 1)]
+    resids = [zeros(T, ncy) for _ in 1:(n + 1)]
     for (i, item) in enumerate(temp_rhs)
         for (j, col) in enumerate(eachrow(reduce(hcat, item)))
             resids[i][j] = sum(abs2, col)
@@ -282,7 +282,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
     n = length(mesh) - 1
     Tz = eltype(z)
     dgz = Vector{T}(undef, ncomp)
-    df = Matrix{T}(undef, ncy, ncy)
+    df = Vector{T}(undef, 2 * ncomp)
 
     temp_rhs = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in 1:n]
     temp_z = [Vector{Tz}(undef, ncomp) for _ in 1:(n + 1)]
@@ -353,7 +353,7 @@ function Φ(cache::AscherCache{iip, T}, z, pt::TwoPointBVProblem) where {iip, T}
     temp_z .= temp_z .+ delz
     dmz .= dmz .+ deldmz
 
-    resids = [Vector{T}(undef, ncy) for _ in 1:(n + 1)]
+    resids = [zeros(T, ncy) for _ in 1:(n + 1)]
     for (i, item) in enumerate(temp_rhs)
         for (j, col) in enumerate(eachrow(reduce(hcat, item)))
             resids[i][j] = sum(abs2, col)
