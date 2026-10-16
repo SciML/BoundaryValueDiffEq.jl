@@ -26,7 +26,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
     __concrete_kwargs, __FastShortcutNonlinearPolyalg,
     __construct_internal_problem, __internal_solve,
-    __default_sparsity_detector, __build_cost, __add_singular_term!,
+    __build_cost, __add_singular_term!, _sparse_like,
     __apply_mass_matrix!, __get_algebraic_indices, __mass_mesh_entry,
     __apply_algebraic_constraint!, __is_algebraic, __check_dae_adaptivity
 

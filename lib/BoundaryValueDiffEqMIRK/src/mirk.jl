@@ -639,9 +639,12 @@ function __construct_problem(
         )
     end
 
+    sparse_jacobian_prototype = __generate_control_jacobian_prototype(
+        cache, cache.problem_type, y, cache.M, N, L_f_prototype
+    )
     nonbc_diffmode = AutoSparse(
         get_dense_ad(jac_alg.nonbc_diffmode),
-        sparsity_detector = __default_sparsity_detector(jac_alg.nonbc_diffmode),
+        sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
         coloring_algorithm = __default_coloring_algorithm(jac_alg.nonbc_diffmode)
     )
     cache_collocation = if iip
@@ -887,9 +890,14 @@ function __construct_problem(
     )
 
     diffmode = if jac_alg.diffmode isa AutoSparse
+        L_a = prod(cache.resid_size[1])
+        sparse_jacobian_prototype = __generate_control_jacobian_prototype(
+            cache, cache.problem_type, y, cache.M, N, L_f_prototype,
+            L_a, length(bcresid_prototype) - L_a
+        )
         AutoSparse(
             get_dense_ad(jac_alg.diffmode);
-            sparsity_detector = __default_sparsity_detector(jac_alg.diffmode),
+            sparsity_detector = ADTypes.KnownJacobianSparsityDetector(sparse_jacobian_prototype),
             coloring_algorithm = __default_coloring_algorithm(jac_alg.diffmode)
         )
     else
