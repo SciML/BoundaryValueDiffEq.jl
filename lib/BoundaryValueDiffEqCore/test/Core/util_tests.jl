@@ -143,7 +143,6 @@ end
 end
 
 @testset "__extract_problem_details ODESolution + tune_parameters" begin
-    # ODESolution + tune_parameters binds tspan and rejects NullParameters.
     using BoundaryValueDiffEqCore: __extract_problem_details
     using SciMLBase: BVProblem, ODEProblem, build_solution, NullParameters
 
@@ -165,9 +164,9 @@ end
     ig, T, N, Nig, new_u = __extract_problem_details(
         prob, ode_sol; dt = 0.1, tune_parameters = true
     )
-    @test ig === Val(false)
+    @test ig === Val(true)
     @test T === Float64
     @test N == 4  # 2 state + 2 tunable params
-    @test Nig == 10  # cld(1.0 - 0.0, 0.1)
+    @test Nig == length(ode_sol.t) - 1  # the mesh is `ode_sol.t`, independent of `dt`
     @test new_u == [1.0, 0.0, 0.25, 0.75]
 end
