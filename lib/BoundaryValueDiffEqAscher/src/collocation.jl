@@ -607,14 +607,14 @@ function gderiv(
         cache::AscherCache{iip, T}, gi, irow, zval, dgz,
         mode::Integer, ibc, pt::TwoPointBVProblem
     ) where {iip, T}
-    (; ncomp, bcjac) = cache
+    (; ncomp, bcjac, p) = cache
     # construct a collocation matrix row according to mode:
     # mode = 1 - a row corresponding to a initial condition
     # mode = 2 - a row corresponding to a condition at aright
     ddg = Matrix{T}(undef, ncomp, ncomp)
 
-    # evaluate boundary conditin jacobian
-    @views bcjac(ddg, zval, nothing)
+    # evaluate boundary condition jacobian
+    @views bcjac(ddg, zval, p)
     dg = ddg[ibc, :]
 
     # evaluate dgz = dg * zval once for a new mesh
