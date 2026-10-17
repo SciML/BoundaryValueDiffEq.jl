@@ -1,8 +1,10 @@
 using BoundaryValueDiffEqMIRK
-using ADTypes: AutoFiniteDiff, AutoSparse
+using ADTypes: AutoFiniteDiff, AutoForwardDiff, AutoSparse
 using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, DefectControl, GlobalErrorControl,
     HybridErrorControl, SequentialErrorControl
 using RecursiveArrayTools: DiffEqArray, VectorOfArray
+using LineSearch: BackTracking
+using NonlinearSolveFirstOrder: NewtonRaphson
 import SciMLBase
 using SciMLBase: BVProblem, ODEFunction, TwoPointBVProblem, init, remake, solve
 using Test
@@ -481,7 +483,7 @@ end
     prob = BVProblem(prob_mp_function, prob_mp_bc!, prob_mp_guess, prob_mp_tspan)
 
     for order in (4, 6)
-        sol = solve(prob, mirk_solver(Val(order)), dt = 0.05)
+        sol = solve(prob, mirk_solver(Val(order); jac_alg = BVPJacobianAlgorithm(bc_diffmode = AutoForwardDiff())), dt = 0.05)
         @test SciMLBase.successful_retcode(sol)
         @test maximum(abs, sol.resid) < 1.0e-6
         for t in range(prob_mp_tspan...; length = 21)
@@ -842,7 +844,9 @@ end
     end
     u0 = (p, t) -> vcat(a1 .+ t .* (a2 .- a1), zero(a1))
     bvp = BVProblem(chart_log_problem!, bc1!, u0, (0.0, 1.0))
-    sol = solve(bvp, MIRK4(); dt = 0.05)
+    # Exercise the directional-derivative path explicitly. An undamped Newton
+    # step can diverge before the default polyalgorithm reaches its line search.
+    sol = solve(bvp, MIRK4(nlsolve = NewtonRaphson(linesearch = BackTracking())); dt = 0.05)
     @test SciMLBase.successful_retcode(sol)
     @test sol.u[1][1:2] ≈ a1
     @test sol.u[end][1:2] ≈ a2
