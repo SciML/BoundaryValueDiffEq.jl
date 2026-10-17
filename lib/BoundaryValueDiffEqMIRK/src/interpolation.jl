@@ -217,13 +217,21 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     # Quick handle for the case where tval is at the boundary
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
+    ii = interval(t, tval)
+    return __interp_value(s, ii, (tval - t[ii]) / cache.mesh_dt[ii])
+end
+
+# Value of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`, using
+# the interpolation weights `w` at `τ`.
+function __interp_value(
+        s::EvalSol{C}, ii::Int, τ, w = first(interp_weights(τ, s.cache.alg))
+    ) where {C <: MIRKCache}
+    (; u, cache) = s
+    (; alg, stage, k_discrete, k_interp, M) = cache
     z = zero(last(u))
     has_control = __has_control_variables(cache, length(z))
     length_z = __state_variable_count(cache, length(z))
-    ii = interval(t, tval)
     dt = cache.mesh_dt[ii]
-    τ = (tval - t[ii]) / dt
-    w, _ = interp_weights(τ, alg)
     K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
         @view(k_discrete[ii][:, 1:stage])
     KI = @view(k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - stage)])
@@ -276,17 +284,21 @@ end
 
 # Intermediate derivative solution for evaluating derivative boundary conditions
 function (s::EvalSol{C})(tval::Number, ::Type{Val{1}}) where {C <: MIRKCache}
-    (; t, cache) = s
-    (; alg, stage, k_discrete, k_interp, mesh_dt) = cache
-    z′ = zeros(typeof(tval), cache.M)
-    ii = interval(t, tval)
-    dt = mesh_dt[ii]
-    τ = (tval - t[ii]) / dt
+    ii = interval(s.t, tval)
+    return __interp_derivative(s, ii, (tval - s.t[ii]) / s.cache.mesh_dt[ii])
+end
+
+# Derivative of the continuous MIRK solution on mesh interval `ii` at local coordinate `τ`.
+function __interp_derivative(s::EvalSol{C}, ii::Int, τ) where {C <: MIRKCache}
+    (; alg, stage, k_discrete, k_interp) = s.cache
     _, w′ = interp_weights(τ, alg)
-    __maybe_matmul!(z′, @view(k_discrete[ii].du[:, 1:stage]), @view(w′[1:stage]))
+    K = __needs_diffcache(alg.jac_alg) ? @view(k_discrete[ii].du[:, 1:stage]) :
+        @view(k_discrete[ii][:, 1:stage])
+    z′ = zeros(promote_type(typeof(τ), eltype(K)), s.cache.M)
+    __maybe_matmul!(z′, K, @view(w′[1:stage]))
     __maybe_matmul!(
-        z′, @view(k_interp.u[ii][:, 1:(cache.ITU.s_star - stage)]), @view(w′[(stage + 1):cache.ITU.s_star]),
-        true, true
+        z′, @view(k_interp.u[ii][:, 1:(s.cache.ITU.s_star - stage)]),
+        @view(w′[(stage + 1):s.cache.ITU.s_star]), true, true
     )
     return z′
 end
@@ -402,52 +414,180 @@ always update the intermediate solution with discrete solution + discrete stages
     return EvalSol(u.u, eval_sol.t, cache)
 end
 
-"""
-Construct n root-finding problems and solve them to find the critical points with continuous derivative polynomials
-"""
-function __construct_then_solve_root_problem(sol::EvalSol{C}, tspan::Tuple) where {
-        C <:
-        MIRKCache,
-    }
-    n = first(size(sol))
-    nlprobs = Vector{SciMLBase.NonlinearProblem}(undef, n)
-    nlsols = Vector{SciMLBase.NonlinearSolution}(undef, length(nlprobs))
-    nlsolve_alg = __FastShortcutNonlinearPolyalg(eltype(sol.cache))
-    for i in 1:n
-        f = @closure (t, p) -> sol(t, Val{1})[i]
-        nlprob = NonlinearProblem(f, sol.cache.prob.u0[i], tspan)
-        nlsols[i] = solve(nlprob, nlsolve_alg)
+# An extremum of a component over `tspan` is attained at an end of `tspan`, at a mesh point, or
+# at a zero of the component's derivative. Each candidate is `(t, kind, ii, τ)`: `kind == 0` is
+# the stored nodal value `sol.u[ii]`, and `kind == 1` is the interpolant of mesh interval `ii`
+# at local coordinate `τ`. Every mesh interval overlapping `tspan` contributes its one-sided
+# values at both clipped ends, so on an unconverged iterate (where the interpolant is
+# discontinuous at mesh points) enlarging `tspan` never drops a value. On each interval the
+# derivative of the interpolant is a polynomial in `τ` of degree `alg_order(alg) - 1`. Its
+# monomial coefficients are recovered from that many Chebyshev samples. Each component's stages
+# and samples are scaled to unit maximum first, so neither the sampling nor the recovery can
+# overflow, and `__poly_roots!` isolates all real roots in the clipped interval. Returns the
+# candidates sorted by `(t, kind, ii)` and whether all stages were finite.
+function __extremum_candidates(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
+    (; t, cache) = sol
+    mesh_dt = cache.mesh_dt
+    T = float(promote_type(map(typeof, tspan)..., eltype(t)))
+    lo, hi = T.(minmax(tspan...))
+    candidates = Tuple{T, Int, Int, T}[]
+    for x in (lo, hi)
+        k = searchsortedfirst(t, x)
+        if k ≤ length(t) && t[k] == x
+            push!(candidates, (x, 0, k, zero(T)))
+        else
+            ii = interval(t, x)
+            push!(candidates, (x, 1, ii, (x - t[ii]) / mesh_dt[ii]))
+        end
     end
-    return nlsols
+    n = alg_order(cache.alg)
+    nodes = [(1 - cospi(T(2k - 1) / (2n))) / 2 for k in 1:n]
+    Vinv = inv([x^(j - 1) for x in nodes, j in 1:n])
+    W′ = reduce(hcat, (last(interp_weights(x, cache.alg)) for x in nodes))
+    k_discrete = cache.k_discrete
+    length_z = __state_variable_count(cache, length(first(sol.u)))
+    roots = T[]
+    for ii in 1:(length(t) - 1)
+        lo < t[ii] < hi && push!(candidates, (t[ii], 0, ii, zero(T)))
+        a, b = max(t[ii], lo), min(t[ii + 1], hi)
+        a < b || continue
+        τa = a == t[ii] ? zero(T) : (a - t[ii]) / mesh_dt[ii]
+        τb = b == t[ii + 1] ? one(T) : (b - t[ii]) / mesh_dt[ii]
+        push!(candidates, (a, 1, ii, τa), (b, 1, ii, τb))
+        K = __needs_diffcache(cache.alg.jac_alg) ? k_discrete[ii].du : k_discrete[ii]
+        stages = hcat(
+            K[1:length_z, 1:(cache.stage)],
+            cache.k_interp.u[ii][1:length_z, 1:(cache.ITU.s_star - cache.stage)]
+        )
+        all(isfinite, stages) || return sort!(candidates), false
+        rowscale = map(x -> iszero(x) ? one(x) : x, maximum(abs, stages; dims = 2))
+        samples = (stages ./ rowscale) * W′
+        for i in 1:length_z
+            d = @view samples[i, :]
+            scale = maximum(abs, d)
+            iszero(scale) && continue
+            coeffs = Vinv * (d ./ scale)
+            empty!(roots)
+            for τ in __poly_roots!(roots, coeffs, τa, τb)
+                tc = τ == τa ? a : τ == τb ? b : clamp(t[ii] + τ * mesh_dt[ii], a, b)
+                push!(candidates, (tc, 1, ii, τ))
+            end
+        end
+    end
+    return sort!(candidates), true
 end
 
-# It turns out the critical points can't cover all possible maximum/minimum values
-# especially when the solution are monotonic, we still need to compare the extremes with
-# value at critical points to find the maximum/minimum
+# Append the real roots of the polynomial with monomial coefficients `c` in `[a, b]` to `roots`,
+# in increasing order. Between consecutive roots of the derivative the polynomial is monotone,
+# so each such piece holds at most one root, which a sign change brackets. Roots of even
+# multiplicity are only reported when the polynomial evaluates to exactly zero there.
+function __poly_roots!(roots, c, a, b)
+    knots = [a]
+    if length(c) > 2
+        dc = [k * c[k + 1] for k in 1:(length(c) - 1)]
+        for x in __poly_roots!(typeof(a)[], dc, a, b)
+            a < x < b && x > last(knots) && push!(knots, x)
+        end
+    end
+    push!(knots, b)
+    p = Base.Fix2(evalpoly, c)
+    for j in 1:(length(knots) - 1)
+        x, y = knots[j], knots[j + 1]
+        px, py = p(x), p(y)
+        if iszero(px)
+            push!(roots, x)
+        elseif !iszero(py) && (px < 0) != (py < 0)
+            push!(roots, __bisect(p, x, y, px))
+        end
+    end
+    iszero(p(b)) && push!(roots, b)
+    return roots
+end
+
+function __bisect(f, a, b, fa)
+    m = (a + b) / 2
+    while a < m < b
+        fm = f(m)
+        iszero(fm) && return m
+        if (fm < 0) == (fa < 0)
+            a, fa = m, fm
+        else
+            b = m
+        end
+        m = (a + b) / 2
+    end
+    return m
+end
+
+# At `τ == 1` the weights `w₁` come from `__endpoint_weights`.
+function __candidate_value(sol::EvalSol, (_, kind, ii, τ), w₁)
+    kind == 0 && return sol.u[ii]
+    return isone(τ) ? __interp_value(sol, ii, τ, w₁) : __interp_value(sol, ii, τ)
+end
+
+# Ties go to the earliest candidate (stored nodal values before interpolated ones at the same
+# time, then the lowest component) for both the maximum and the minimum, so that the
+# boundary-condition Jacobian does not depend on an asymmetric tie-breaking rule. With Base's
+# `max`/`min`, a flat initial guess pairs the last point for the maximum with the first point
+# for the minimum, which can make the Newton system singular. A NaN candidate value, or a
+# non-finite derivative sample, makes the result NaN.
+function __extremum(isbetter::F, sol::EvalSol{C}, tspan::Tuple) where {F, C <: MIRKCache}
+    candidates, valid = __extremum_candidates(sol, tspan)
+    w₁ = __endpoint_weights(typeof(first(first(candidates))), sol.cache.alg)
+    best = first(__candidate_value(sol, first(candidates), w₁))
+    valid || return oftype(best, NaN)
+    for c in candidates
+        for x in __candidate_value(sol, c, w₁)
+            isnan(x) && return x
+            isbetter(x, best) && (best = x)
+        end
+    end
+    return best
+end
 
 """
     maxsol(sol::EvalSol, tspan::Tuple)
 
-Find the maximum of the solution over the time span `tspan`.
+Find the maximum over all components of the solution over the time span `tspan`.
+
+The candidates are
+
+  - the stored nodal values at the mesh points in `tspan` (including its ends);
+  - for every mesh interval overlapping `tspan`, that interval's interpolant at both ends
+    of its overlap with `tspan`. On a converged solution these equal the nodal values at
+    mesh points; on an intermediate Newton iterate the interpolant can be discontinuous
+    there, and both one-sided values are candidates;
+  - the interpolant at each sign change of a state component's derivative inside `tspan`;
+  - the interpolant at an end of `tspan` that is not a mesh point.
+
+When several candidates attain the maximum, the earliest in time is returned; at equal
+times a stored nodal value precedes interpolated values, which are ordered by mesh
+interval, and within one candidate the lowest component wins. If any candidate value is
+`NaN`, or the interpolant's stages are not finite, the result is `NaN`.
 """
-function maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
-    nlsols = __construct_then_solve_root_problem(sol, tspan)
-    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
-    u = sol(tvals)
-    return max(maximum(sol), maximum(Iterators.flatten(u)))
-end
+maxsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(>, sol, tspan)
 
 """
     minsol(sol::EvalSol, tspan::Tuple)
 
-Find the minimum of the solution over the time span `tspan`.
+Find the minimum over all components of the solution over the time span `tspan`.
+
+The candidates are
+
+  - the stored nodal values at the mesh points in `tspan` (including its ends);
+  - for every mesh interval overlapping `tspan`, that interval's interpolant at both ends
+    of its overlap with `tspan`. On a converged solution these equal the nodal values at
+    mesh points; on an intermediate Newton iterate the interpolant can be discontinuous
+    there, and both one-sided values are candidates;
+  - the interpolant at each sign change of a state component's derivative inside `tspan`;
+  - the interpolant at an end of `tspan` that is not a mesh point.
+
+When several candidates attain the minimum, the earliest in time is returned; at equal
+times a stored nodal value precedes interpolated values, which are ordered by mesh
+interval, and within one candidate the lowest component wins. If any candidate value is
+`NaN`, or the interpolant's stages are not finite, the result is `NaN`.
 """
-function minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache}
-    nlsols = __construct_then_solve_root_problem(sol, tspan)
-    tvals = map(nlsol -> (SciMLBase.successful_retcode(nlsol); return nlsol.u), nlsols)
-    u = sol(tvals)
-    return min(minimum(sol), minimum(Iterators.flatten(u)))
-end
+minsol(sol::EvalSol{C}, tspan::Tuple) where {C <: MIRKCache} = __extremum(<, sol, tspan)
 
 """
     interp_weights(τ, alg)
@@ -707,4 +847,21 @@ for order in (6,)
             return T.(w), T.(wp)
         end
     end
+end
+
+# Interpolation weights at τ = 1. Their polynomial forms cancel badly there (by about 2e-5
+# for MIRK6 in Float32), so for machine floats they are evaluated once, at load time, in
+# 256-bit arithmetic and rounded to Float64.
+for alg in (:MIRK2, :MIRK3, :MIRK4, :MIRK5, :MIRK6, :MIRK6I)
+    w = setprecision(BigFloat, 256) do
+        Tuple(Float64.(first(interp_weights(BigFloat(1), getfield(@__MODULE__, alg)()))))
+    end
+    @eval __endpoint_weights(::$(alg)) = $(w)
+end
+
+# Types no more precise than Float64 (including dual numbers over them, whose `eps` is that
+# of their value type) use the constants; wider types evaluate the polynomial weights.
+function __endpoint_weights(::Type{T}, alg) where {T}
+    return eps(T) ≥ eps(Float64) ? T[x for x in __endpoint_weights(alg)] :
+        first(interp_weights(one(T), alg))
 end

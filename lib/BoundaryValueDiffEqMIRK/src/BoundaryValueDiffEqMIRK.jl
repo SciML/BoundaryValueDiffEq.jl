@@ -24,7 +24,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     SequentialErrorControl, HybridErrorControl, HOErrorControl,
     __use_both_error_control, __default_coloring_algorithm,
     DiffCacheNeeded, NoDiffCacheNeeded, __split_kwargs,
-    __concrete_kwargs, __FastShortcutNonlinearPolyalg,
+    __concrete_kwargs,
     __construct_internal_problem, __internal_solve,
     __build_cost, __add_singular_term!, _sparse_like,
     __apply_mass_matrix!, __get_algebraic_indices, __mass_mesh_entry,
@@ -41,7 +41,7 @@ using LinearAlgebra: LinearAlgebra
 using RecursiveArrayTools: AbstractVectorOfArray, DiffEqArray, VectorOfArray, recursivecopy,
     recursivefill!
 using SciMLBase: SciMLBase, AbstractDiffEqInterpolation, BVPFunction, BVProblem,
-    NonlinearProblem, ReturnCode, StandardBVProblem, TwoPointBVProblem,
+    ReturnCode, StandardBVProblem, TwoPointBVProblem,
     __solve, isinplace, remake, solve
 using Setfield: @set!
 using PreallocationTools: PreallocationTools, get_tmp, LazyBufferCache

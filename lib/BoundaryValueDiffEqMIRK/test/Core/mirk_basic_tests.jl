@@ -1,7 +1,8 @@
 using BoundaryValueDiffEqMIRK
 using ADTypes: AutoFiniteDiff, AutoSparse
-using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, DefectControl, GlobalErrorControl,
-    HybridErrorControl, SequentialErrorControl
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore, BVPJacobianAlgorithm, DefectControl,
+    GlobalErrorControl, HybridErrorControl, SequentialErrorControl
+using ForwardDiff: ForwardDiff
 using RecursiveArrayTools: DiffEqArray, VectorOfArray
 import SciMLBase
 using SciMLBase: BVProblem, ODEFunction, TwoPointBVProblem, init, remake, solve
@@ -474,8 +475,7 @@ end
 
     prob_mp_function = ODEFunction(prob_mp_f!, analytic = prob_mp_analytic)
     prob_mp_tspan = (0.0, pi / 2)
-    # A constant guess has an identically zero interpolant derivative, making the
-    # critical-point solves inside maxsol/minsol degenerate. Use a perturbed
+    # A constant guess has an identically zero interpolant derivative. Use a perturbed
     # sinusoid so this tests extrema-based boundary conditions from a nonflat guess.
     prob_mp_guess(p, t) = 0.9 .* prob_mp_analytic(nothing, p, t)
     prob = BVProblem(prob_mp_function, prob_mp_bc!, prob_mp_guess, prob_mp_tspan)
@@ -487,6 +487,137 @@ end
         for t in range(prob_mp_tspan...; length = 21)
             @test sol(t) ≈ prob_mp_analytic(nothing, nothing, t) atol = 1.0e-5
         end
+    end
+end
+
+@testset "maxsol and minsol only look inside the requested time span" begin
+    f!(du, u, p, t) = (du[1] = 1.0)
+    # u(t) = u(0) + t on (0, 2): both conditions give u(0) = 0 only when restricted to the subspan.
+    bc_max!(residual, sol, p, t) = (residual[1] = maxsol(sol, (0.0, 1.0)) - 1.0)
+    bc_min!(residual, sol, p, t) = (residual[1] = minsol(sol, (1.0, 2.0)) - 1.0)
+    @testset "$(nameof(bc!)) MIRK$order" for bc! in (bc_max!, bc_min!), order in (4, 6)
+        prob = BVProblem(f!, bc!, [0.5], (0.0, 2.0))
+        sol = solve(prob, mirk_solver(Val(order)), dt = 0.1)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.u[1][1] ≈ 0.0 atol = 1.0e-8
+    end
+end
+
+@testset "maxsol and minsol find every interior extremum" begin
+    # u(t) = u(0) + t^3 - 1.5t^2 + 0.48t: u' > 0 at both ends of (0, 1), with a local maximum
+    # 0.044 at t = 0.2 and a local minimum -0.064 at t = 0.8.
+    f_cubic!(du, u, p, t) = (du[1] = 3t^2 - 3t + 0.48)
+    bc_cubic_max!(residual, sol, p, t) = (residual[1] = maxsol(sol, (0.0, 1.0)) - 0.044)
+    bc_cubic_min!(residual, sol, p, t) = (residual[1] = minsol(sol, (0.0, 1.0)) + 0.064)
+    # u(t) = u(0) + t^2/2 - 2t^3/3: u'(0) = 0 and the maximum 1/24 is at t = 1/2. The integer
+    # span checks that fractional candidates are accepted.
+    f_endroot!(du, u, p, t) = (du[1] = t * (1 - 2t))
+    bc_endroot!(residual, sol, p, t) = (residual[1] = maxsol(sol, (0, 1)) - 1 / 24)
+    cases = (
+        (f_cubic!, bc_cubic_max!, 0.2, 0.044),
+        (f_cubic!, bc_cubic_min!, 0.8, -0.064),
+        (f_endroot!, bc_endroot!, 0.5, 1 / 24),
+    )
+    @testset "$(nameof(bc!)) MIRK$order" for (f!, bc!, t★, u★) in cases, order in (4, 6)
+        prob = BVProblem(f!, bc!, [0.3], (0.0, 1.0))
+        sol = solve(prob, mirk_solver(Val(order)), dt = 1.0, abstol = 1.0e-12)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.u[1][1] ≈ 0.0 atol = 1.0e-8
+        @test sol(t★)[1] ≈ u★ atol = 1.0e-8
+    end
+end
+
+@testset "maxsol and minsol on unconverged iterates (slope $slope)" for slope in (1.0, -1.0)
+    f!(du, u, p, t) = (du[1] = slope)
+    bc!(residual, sol, p, t) = (residual[1] = sol(0.0)[1])
+    sol = solve(BVProblem(f!, bc!, [0.0], (0.0, 1.0)), MIRK4(), dt = 0.5, adaptive = false)
+    extremum, opposite = slope > 0 ? (maxsol, minsol) : (minsol, maxsol)
+    # Nodal values inconsistent with the stages: the first interval reaches 10.5 * slope at
+    # t = 0.5 and the second reaches 0.5 * slope at t = 1, where both stored values are 0.
+    es = BoundaryValueDiffEqCore.EvalSol(
+        [[10.0 * slope], [0.0], [0.0]], sol.t, sol.interp.cache
+    )
+    @test es(0.5)[1] ≈ 10.5 * slope
+    @test extremum(es, (0.5, 0.5)) == 0.0
+    @test opposite(es, (0.5, 0.5)) == 0.0
+    @test extremum(es, (0.5, 0.75)) ≈ 0.25 * slope
+    @test opposite(es, (0.5, 0.75)) == 0.0
+    @test extremum(es, (0.5, 1.0)) ≈ 0.5 * slope
+    @test extremum(es, (0.0, 0.5)) ≈ 10.5 * slope
+
+    @testset "NaN propagates from $vals" for vals in (
+            [[0.0], [NaN], [1.0]], [[0.0], [1.0], [NaN]],
+        )
+        nes = BoundaryValueDiffEqCore.EvalSol(vals, sol.t, sol.interp.cache)
+        @test isnan(maxsol(nes, (0.0, 1.0)))
+        @test isnan(minsol(nes, (0.0, 1.0)))
+    end
+    cache = deepcopy(sol.interp.cache)
+    for k in cache.k_discrete
+        fill!(hasproperty(k, :du) ? k.du : k, NaN)
+    end
+    foreach(k -> fill!(k, NaN), cache.k_interp.u)
+    nes = BoundaryValueDiffEqCore.EvalSol(sol.u, sol.t, cache)
+    @test isnan(maxsol(nes, (0.0, 1.0)))
+    @test isnan(minsol(nes, (0.0, 1.0)))
+end
+
+@testset "maxsol and minsol in Float32: slope $slope, MIRK$order" for slope in (1.0f0, -1.0f0),
+        order in (2, 3, 4, 5, 6)
+    # u(t) = u(0) + slope * t on (0, 1): the extremum over the span is `slope` exactly when
+    # u(0) = 0, so the result must be exact to Float32 round-off.
+    f!(du, u, p, t) = (du[1] = slope)
+    extremum = slope > 0 ? maxsol : minsol
+    bc!(residual, sol, p, t) = (residual[1] = extremum(sol, (0.0f0, 1.0f0)) - slope)
+    prob = BVProblem(f!, bc!, Float32[0.5], (0.0f0, 1.0f0))
+    sol = solve(
+        prob, mirk_solver(Val(order)), dt = 1.0f0, adaptive = false, abstol = 1.0f-7
+    )
+    @test SciMLBase.successful_retcode(sol)
+    @test abs(sol.u[1][1]) ≤ 32 * eps(Float32)
+end
+
+@testset "maxsol and minsol ignore the ambient BigFloat precision: slope $slope, MIRK$order" for slope in (1.0, -1.0), order in (4, 6)
+    f!(du, u, p, t) = (du[1] = slope)
+    extremum = slope > 0 ? maxsol : minsol
+    bc!(residual, sol, p, t) = (residual[1] = extremum(sol, (0.0, 1.0)) - slope)
+    prob = BVProblem(f!, bc!, [0.5], (0.0, 1.0))
+    sol = setprecision(BigFloat, 24) do
+        solve(prob, mirk_solver(Val(order)), dt = 1.0, adaptive = false, abstol = 1.0e-12)
+    end
+    @test SciMLBase.successful_retcode(sol)
+    @test abs(sol.u[1][1]) ≤ 1.0e-12
+end
+
+@testset "maxsol and minsol with Dual{Float32} states and times: slope $s" for s in (1.0f0, -1.0f0)
+    D = typeof(ForwardDiff.Dual(1.0f0, 0.0f0))
+    slope = D(s)
+    f!(du, u, p, t) = (du[1] = slope)
+    extremum = s > 0 ? maxsol : minsol
+    bc!(residual, sol, p, t) = (residual[1] = extremum(sol, (zero(D), one(D))) - slope)
+    prob = BVProblem(f!, bc!, D[D(0.5)], (zero(D), one(D)))
+    jac_alg = BVPJacobianAlgorithm(;
+        bc_diffmode = AutoFiniteDiff(), nonbc_diffmode = AutoFiniteDiff()
+    )
+    sol = solve(prob, MIRK6(; jac_alg), dt = one(D), adaptive = false, abstol = 1.0f-7)
+    @test SciMLBase.successful_retcode(sol)
+    @test abs(ForwardDiff.value(sol.u[1][1])) ≤ 32 * eps(Float32)
+end
+
+@testset "maxsol is invariant under extreme positive scaling" begin
+    # u(t) = u(0) + p (t - t^2) with maxsol = 0 gives u(0) = -p / 4 for every p > 0. At
+    # p = 3e307 the derivative's monomial coefficients are representable, but recovering them
+    # from unscaled samples overflows.
+    f!(du, u, p, t) = (du[1] = p * (1 - 2t))
+    bc!(residual, sol, p, t) = (residual[1] = maxsol(sol, (0.0, 1.0)))
+    @testset "p = $p, MIRK$order" for p in (1.0, 3.0e307), order in (4, 6)
+        prob = BVProblem(f!, bc!, [0.0], (0.0, 1.0), p)
+        sol = solve(
+            prob, mirk_solver(Val(order)), dt = 1.0, adaptive = false, abstol = 1.0e-12
+        )
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.u[1][1] / p ≈ -0.25 atol = 1.0e-8
+        @test sol(0.5)[1] / p ≈ 0.0 atol = 1.0e-8
     end
 end
 
