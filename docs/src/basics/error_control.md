@@ -13,9 +13,12 @@ sol = solve(prob, MIRK4(), dt = 0.01, adaptive = true)
 Actually, BoundaryValueDiffEq.jl supports both defect and global error control adaptivity(while the defect control is the default controller) [boisvert2013runge](@Citet), to specify different error control methods, we simply need to specify the `controller` keyword in `solve`:
 
 ```julia
-sol = solve(prob, MIRK4(), dt = 0.01, controller = GlobalErrorControl()) # Use global error control
-sol = solve(prob, MIRK4(), dt = 0.01, controller = SequentialErrorControl()) # Use Sequential error control
-sol = solve(prob, MIRK4(), dt = 0.01, controller = HybridErrorControl()) # Use Hybrid error control
+# Use global error control
+sol = solve(prob, MIRK4(), dt = 0.01, controller = GlobalErrorControl())
+# Use Sequential error control
+sol = solve(prob, MIRK4(), dt = 0.01, controller = SequentialErrorControl())
+# Use Hybrid error control
+sol = solve(prob, MIRK4(), dt = 0.01, controller = HybridErrorControl())
 ```
 
 ## Error control methods

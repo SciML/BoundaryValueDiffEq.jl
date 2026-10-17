@@ -5,6 +5,8 @@
     M::Int                     # The number of equations
     in_size
     f
+    mass_matrix
+    algebraic_indices
     bc
     prob                       # BVProblem
     problem_type               # StandardBVProblem
@@ -21,9 +23,11 @@
     y
     y₀
     residual
-    # The following 2 caches are never resized
+    # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
+    # One scratch cache per mesh interval, so backend work items do not alias
+    collocation_cache
     defect
     nest_prob
     resid_size
@@ -43,6 +47,8 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     M::Int                     # The number of equations
     in_size
     f
+    mass_matrix
+    algebraic_indices
     bc
     prob                       # BVProblem
     problem_type               # StandardBVProblem
@@ -59,9 +65,11 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     y
     y₀
     residual
-    # The following 2 caches are never resized
+    # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
+    # One scratch cache per mesh interval, so backend work items do not alias
+    collocation_cache
     defect
     resid_size
     singular_term
@@ -93,28 +101,28 @@ end
 
 function SciMLBase.__init(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        controller = DefectControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     if alg.nested_nlsolve
         return init_nested(
-            prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
-            controller = controller, nlsolve_kwargs = nlsolve_kwargs,
-            optimize_kwargs = optimize_kwargs, verbose = verbose, kwargs...
+            prob, alg; dt, abstol, adaptive,
+            controller, nlsolve_kwargs,
+            optimize_kwargs, verbose, kwargs...
         )
     else
         return init_expanded(
-            prob, alg; dt = dt, abstol = abstol, adaptive = adaptive,
-            controller = controller, nlsolve_kwargs = nlsolve_kwargs,
-            optimize_kwargs = optimize_kwargs, verbose = verbose, kwargs...
+            prob, alg; dt, abstol, adaptive,
+            controller, nlsolve_kwargs,
+            optimize_kwargs, verbose, kwargs...
         )
     end
 end
 
 function init_nested(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        controller = DefectControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
@@ -140,7 +148,7 @@ function init_nested(
     ig, T,
         M,
         Nig,
-        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
+        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -149,9 +157,10 @@ function init_nested(
 
     fᵢ_cache = __alloc(zero(u0))
     fᵢ₂_cache = vec(zero(u0))
+    collocation_cache = [__alloc(zeros(T, M + 2)) for _ in 1:Nig]
 
     # Don't flatten this here, since we need to expand it later if needed
-    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
+    y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters)
 
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructRK(alg, T)
@@ -257,31 +266,43 @@ function init_nested(
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
+    # Initial guess objects (`ODESolution`, `VectorOfArray`, functions, ...) must be
+    # stripped down to the extracted `u0` vector here: under RecursiveArrayTools v4
+    # `AbstractVectorOfArray <: AbstractArray`, so a plain `isa AbstractArray` check
+    # would embed e.g. an entire previous solution's type in the cache and force
+    # recompilation of all downstream code against it (issue #500).
+    prob_ = if !(prob.u0 isa AbstractArray) || prob.u0 isa AbstractVectorOfArray
+        remake(prob; u0)
+    else
+        prob
+    end
 
     # Somewhat arbitrary initialization of K
-    K0 = __K0_on_u0(prob, stage; tune_parameters = tune_parameters)
+    K0 = __K0_on_u0(prob, stage; tune_parameters)
 
     nestprob_p = zeros(T, M + 2)
 
+    algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+
     if iip
-        nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p), K0, nestprob_p)
+        nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p, prob.f.mass_matrix), K0, nestprob_p)
     else
-        nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p), K0, nestprob_p)
+        nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p, prob.f.mass_matrix), K0, nestprob_p)
     end
 
     return FIRKCacheNested{iip, T, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, nestprob, resid₁_size, prob.singular_term,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, defect, nestprob, resid₁_size, prob.singular_term,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
 
 function init_expanded(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
-        controller = DefectControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        controller = DefectControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
@@ -305,7 +326,7 @@ function init_expanded(
     ig, T,
         M,
         Nig,
-        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters = tune_parameters)
+        u0 = __extract_problem_details(prob; dt, check_positive_dt = true, tune_parameters)
     mesh = __extract_mesh(prob.u0, t₀, t₁, Nig)
     mesh_dt = diff(mesh)
 
@@ -319,9 +340,10 @@ function init_expanded(
 
     fᵢ_cache = __alloc(zero(u0)) # Runtime dispatch
     fᵢ₂_cache = vec(zero(u0))
+    collocation_cache = [__alloc(zero(u0)) for _ in 1:Nig]
 
     # Don't flatten this here, since we need to expand it later if needed
-    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters = tune_parameters)
+    _y₀ = __initial_guess_on_mesh(prob.u0, mesh, prob.p; tune_parameters)
     y₀ = extend_y(_y₀, Nig + 1, stage)
     y = __alloc.(copy.(y₀.u)) # Runtime dispatch
 
@@ -424,12 +446,24 @@ function init_expanded(
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
+    # Initial guess objects (`ODESolution`, `VectorOfArray`, functions, ...) must be
+    # stripped down to the extracted `u0` vector here: under RecursiveArrayTools v4
+    # `AbstractVectorOfArray <: AbstractArray`, so a plain `isa AbstractArray` check
+    # would embed e.g. an entire previous solution's type in the cache and force
+    # recompilation of all downstream code against it (issue #500).
+    prob_ = if !(prob.u0 isa AbstractArray) || prob.u0 isa AbstractVectorOfArray
+        remake(prob; u0)
+    else
+        prob
+    end
+
+    algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
+    __check_dae_adaptivity(algebraic_indices, adaptive)
 
     return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
-        alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type, prob.p,
+        alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,
         alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
+        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
@@ -443,20 +477,22 @@ match the length of the new mesh.
 function __expand_cache!(cache::FIRKCacheExpand)
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M, cache.TU)
+    __resize!(cache.collocation_cache, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M, cache.TU)
-    __resize!(cache.y₀, Nₙ, cache.M, cache.TU)
+    __resize!(cache.y₀.u, Nₙ, cache.M, cache.TU)
     __resize!(cache.residual, Nₙ, cache.M, cache.TU)
-    __resize!(cache.defect, Nₙ - 1, cache.M)
+    __resize!(cache.defect.u, Nₙ - 1, cache.M)
     return cache
 end
 
 function __expand_cache!(cache::FIRKCacheNested)
     Nₙ = length(cache.mesh)
     __resize!(cache.k_discrete, Nₙ - 1, cache.M)
+    __resize!(cache.collocation_cache, Nₙ - 1, cache.M)
     __resize!(cache.y, Nₙ, cache.M)
-    __resize!(cache.y₀, Nₙ, cache.M)
+    __resize!(cache.y₀.u, Nₙ, cache.M)
     __resize!(cache.residual, Nₙ, cache.M)
-    __resize!(cache.defect, Nₙ - 1, cache.M)
+    __resize!(cache.defect.u, Nₙ - 1, cache.M)
     return cache
 end
 
@@ -485,18 +521,18 @@ function SciMLBase.solve!(
     if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
-        new_p = repack(first(cache.y₀)[(length_u + 1):end])
+        new_p = repack(cache.y₀.u[1][(length_u + 1):end])
         prob = remake(prob; p = new_p)
-        map(x -> resize!(x, length_u), cache.y₀)
+        foreach(x -> resize!(x, length_u), cache.y₀.u)
         resize!(cache.fᵢ₂_cache, length_u)
     elseif tune_parameters
         length_u = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
-        map(x -> resize!(x, length_u), cache.y₀)
+        prob = remake(prob; p = cache.y₀.u[1][(length_u + 1):end])
+        foreach(x -> resize!(x, length_u), cache.y₀.u)
         resize!(cache.fᵢ₂_cache, length_u)
     end
 
-    u = shrink_y([reshape(y, length_u) for y in cache.y₀], length(cache.mesh), cache.stage)
+    u = shrink_y([reshape(y, length_u) for y in cache.y₀.u], length(cache.mesh), cache.stage)
 
     interpolation = __build_interpolation(cache, u)
 
@@ -530,14 +566,14 @@ function SciMLBase.solve!(
     if tune_parameters && SciMLStructures.isscimlstructure(prob.p)
         tunable_part, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
         length_u = cache.M - length(tunable_part)
-        new_p = repack(first(cache.y₀)[(length_u + 1):end])
+        new_p = repack(cache.y₀.u[1][(length_u + 1):end])
         prob = remake(prob; p = new_p)
-        map(x -> resize!(x, length_u), cache.y₀)
+        foreach(x -> resize!(x, length_u), cache.y₀.u)
         resize!(cache.fᵢ₂_cache, length_u)
     elseif tune_parameters
         length_u = cache.M - length(prob.p)
-        prob = remake(prob; p = first(cache.y₀)[(length_u + 1):end])
-        map(x -> resize!(x, length_u), cache.y₀)
+        prob = remake(prob; p = cache.y₀.u[1][(length_u + 1):end])
+        foreach(x -> resize!(x, length_u), cache.y₀.u)
         resize!(cache.fᵢ₂_cache, length_u)
     end
 
@@ -552,7 +588,7 @@ function SciMLBase.solve!(
 end
 
 function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}, abstol, adaptive::Bool)
-    nlprob = __construct_problem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlprob = __construct_problem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
@@ -579,7 +615,7 @@ function __perform_firk_iteration(cache::Union{FIRKCacheExpand, FIRKCacheNested}
             # We construct a new mesh to equidistribute the defect
             mesh, mesh_dt, _, info = mesh_selector!(cache)
             if info == ReturnCode.Success
-                __resize!(cache.y₀, length(cache.mesh), cache.M, cache.TU)
+                __resize!(cache.y₀.u, length(cache.mesh), cache.M, cache.TU)
                 for (i, m) in enumerate(cache.mesh)
                     interp_eval!(cache.y₀.u[i], cache, m, mesh, mesh_dt)
                 end
@@ -687,6 +723,14 @@ function __construct_problem(
     return __construct_problem(cache, y, loss_bc, loss_collocation, loss, pt, constraint)
 end
 
+@inline function __firk_eval_sol!(eval_sol, y, mesh, cache)
+    if eltype(first(y)) <: eltype(first(eval_sol.u))
+        eval_sol.u[1:end] .= y
+        return eval_sol
+    end
+    return EvalSol(__restructure_sol(y, cache.in_size), mesh, cache)
+end
+
 function __construct_problem(
         cache::FIRKCacheExpand{iip, T, DC, tune_parameters}, y, loss_bc::BC, loss_collocation::C,
         loss::LF, ::StandardBVProblem, ::Val{true}
@@ -702,9 +746,13 @@ function __construct_problem(
     resid_collocation = safe_similar(y, L_f_prototype * (N - 1) * (stage + 1))
 
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = AutoSparse(
@@ -715,10 +763,13 @@ function __construct_problem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -759,7 +810,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -784,9 +835,13 @@ function __construct_problem(
     resid_collocation = safe_similar(y, cache.M * (N - 1) * (stage + 1))
 
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
@@ -821,10 +876,13 @@ function __construct_problem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -870,7 +928,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -908,9 +966,11 @@ function __construct_problem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p); strict = Val(false))
     end
 
     jac_prototype = if iip
@@ -935,7 +995,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = copy(resid)
@@ -988,9 +1048,11 @@ function __construct_problem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p); strict = Val(false))
     end
 
     jac_prototype = if iip
@@ -1015,7 +1077,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = copy(resid)
@@ -1038,9 +1100,13 @@ function __construct_problem(
     L = length(resid_bc)
     resid_collocation = safe_similar(y, cache.M * (N - 1))
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = AutoSparse(
@@ -1051,10 +1117,13 @@ function __construct_problem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -1095,7 +1164,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -1117,9 +1186,13 @@ function __construct_problem(
     L = length(resid_bc)
     resid_collocation = safe_similar(y, cache.M * (N - 1))
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
@@ -1150,10 +1223,13 @@ function __construct_problem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -1199,7 +1275,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = vcat(resid_bc, resid_collocation)
@@ -1234,9 +1310,11 @@ function __construct_problem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p); strict = Val(false))
     end
 
     jac_prototype = if iip
@@ -1261,7 +1339,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = copy(resid)
@@ -1302,9 +1380,11 @@ function __construct_problem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p); strict = Val(false))
     end
 
     jac_prototype = if iip
@@ -1329,7 +1409,7 @@ function __construct_problem(
 
     cost_fun = __build_cost(
         prob.f.cost, cache, cache.mesh, cache.M;
-        tune_parameters, p = cache.p
+        tune_parameters, cache.p
     )
 
     resid_prototype = copy(resid)
@@ -1346,7 +1426,7 @@ end
     y_ = recursive_unflatten!(y, u)
     resids = [get_tmp(r, u) for r in residual]
     Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
+    eval_sol = __firk_eval_sol!(eval_sol, y_, mesh, cache)
     eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
     recursive_flatten!(resid, resids)
     return nothing
@@ -1357,11 +1437,10 @@ end
         cache, eval_sol, trait::NoDiffCacheNeeded, constraint
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual]
-    Φ!(resids[2:end], cache, y_, u, trait, constraint)
-    eval_sol.u[1:end] .= y_
-    eval_bc_residual!(resids[1], pt, bc!, eval_sol, p, mesh)
-    recursive_flatten!(resid, resids)
+    Φ!(residual[2:end], cache, y_, u, trait, constraint)
+    eval_sol = __firk_eval_sol!(eval_sol, y_, mesh, cache)
+    eval_bc_residual!(residual[1], pt, bc!, eval_sol, p, mesh)
+    recursive_flatten!(resid, residual)
     return nothing
 end
 
@@ -1419,7 +1498,7 @@ end
         u, p, y, pt::StandardBVProblem, bc::BC, mesh, cache, eval_sol, trait
     ) where {BC}
     y_ = recursive_unflatten!(y, u)
-    eval_sol.u[1:end] .= y_
+    eval_sol = __firk_eval_sol!(eval_sol, y_, mesh, cache)
     resid_bc = eval_bc_residual(pt, bc, eval_sol, p, mesh)
     resid_co = Φ(cache, y_, u, trait)
     return vcat(resid_bc, mapreduce(vec, vcat, resid_co))
@@ -1468,10 +1547,19 @@ end
         resid, u, p, y, mesh, residual, cache, trait::NoDiffCacheNeeded, constraint
     )
     y_ = recursive_unflatten!(y, u)
-    resids = [r for r in residual[2:end]]
+    resids = view(residual, 2:lastindex(residual))
     Φ!(resids, cache, y_, u, trait, constraint)
-    recursive_flatten!(resid, resids)
+    __firk_flatten_residuals!(resid, resids)
     return nothing
+end
+
+@views function __firk_flatten_residuals!(y::AbstractVector, x)
+    i = 0
+    for xᵢ in x
+        copyto!(y[(i + 1):(i + length(xᵢ))], xᵢ)
+        i += length(xᵢ)
+    end
+    return y
 end
 
 @views function __firk_loss_collocation(u, p, y, mesh, residual, cache, trait)

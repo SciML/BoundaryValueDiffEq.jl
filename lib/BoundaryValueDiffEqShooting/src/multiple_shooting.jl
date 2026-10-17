@@ -1,6 +1,6 @@
 function SciMLBase.__solve(
         prob::BVProblem, _alg::MultipleShooting; abstol = 1.0e-6, odesolve_kwargs = (;),
-        nlsolve_kwargs = (; abstol = abstol), optimize_kwargs = (; abstol = abstol),
+        nlsolve_kwargs = (; abstol), optimize_kwargs = (; abstol),
         ensemblealg = EnsembleThreads(), verbose = true, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
@@ -12,7 +12,7 @@ function SciMLBase.__solve(
                              `EnsembleThreads`!"))
     end
 
-    ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1)
+    ig, T, N, Nig, u0 = __extract_problem_details(prob; dt = 0.1 * oneunit(first(tspan)))
     has_initial_guess = _unwrap_val(ig)
 
     @assert u0 isa AbstractVector "Non-Vector Inputs for Multiple-Shooting hasn't been implemented yet!"
@@ -43,8 +43,21 @@ function SciMLBase.__solve(
         M = length(bcresid_prototype)
     end
 
-    internal_ode_kwargs = (; verbose, kwargs..., odesolve_kwargs..., save_end = true)
+    internal_ode_kwargs = (; kwargs..., odesolve_kwargs..., save_end = true)
 
+    # This gets all the nshoots except the final SingleShooting case
+    all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
+    u_at_nodes, nodes = similar(u0, 0), typeof(first(tspan))[]
+
+    # Lazily builds an ODE integrator whose state element type matches `us`, for
+    # AD evaluations that pass tagged states into the loss functions
+    odecache_for_states = GeneralLazyBufferCache(
+        @closure us -> __multiple_shooting_init_odecache(
+            ensemblealg, prob, alg.ode_alg,
+            copy(reshape(@view(us[1:N]), u0_size)), maximum(all_nshoots);
+            internal_ode_kwargs...
+        )
+    )
     solve_internal_odes! = @closure (
         resid_nodes,
         us,
@@ -53,12 +66,10 @@ function SciMLBase.__solve(
         nodes,
         odecache,
     ) -> __multiple_shooting_solve_internal_odes!(
-        resid_nodes, us, cur_nshoot, odecache, nodes, u0_size, N, ensemblealg, tspan
+        resid_nodes, us, cur_nshoot,
+        __multiple_shooting_matching_odecache(odecache, odecache_for_states, us),
+        nodes, u0_size, N, ensemblealg, tspan, alg.platform
     )
-
-    # This gets all the nshoots except the final SingleShooting case
-    all_nshoots = __get_all_nshoots(alg.grid_coarsening, nshoots)
-    u_at_nodes, nodes = similar(u0, 0), typeof(first(tspan))[]
 
     ode_cache_loss_fn = __multiple_shooting_init_odecache(
         ensemblealg, prob, alg.ode_alg, u0, maximum(all_nshoots); internal_ode_kwargs...
@@ -172,8 +183,8 @@ function __solve_nlproblem!(
     )
 
     loss_function! = NonlinearFunction{true}(
-        loss_fn; jac = jac_fn, resid_prototype = resid_prototype,
-        jac_prototype = jac_prototype
+        loss_fn; jac = jac_fn, resid_prototype,
+        jac_prototype
     )
 
     # NOTE: u_at_nodes is updated inplace
@@ -329,10 +340,7 @@ function __multiple_shooting_init_odecache(
         ::EnsembleThreads, prob, alg, u0, nshoots; kwargs...
     )
     odeprob = ODEProblem{isinplace(prob)}(prob.f, u0, prob.tspan, prob.p)
-    return [
-        SciMLBase.__init(odeprob, alg; kwargs...)
-            for _ in 1:min(Threads.nthreads(), nshoots)
-    ]
+    return [SciMLBase.__init(odeprob, alg; kwargs...) for _ in 1:nshoots]
 end
 
 function __multiple_shooting_init_jacobian_odecache(
@@ -362,10 +370,15 @@ function __multiple_shooting_init_jacobian_odecache(
     )
 end
 
+function __multiple_shooting_matching_odecache(odecache, odecache_for_states, us)
+    cache = odecache isa Vector ? first(odecache) : odecache
+    return eltype(cache.u) === eltype(us) ? odecache : odecache_for_states[us]
+end
+
 # Not using `EnsembleProblem` since it is hard to initialize the cache and stuff
 function __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoots::Int, odecache,
-        nodes, u0_size, N::Int, ::EnsembleSerial, tspan
+        nodes, u0_size, N::Int, ::EnsembleSerial, tspan, platform
     )
     ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
@@ -385,35 +398,37 @@ function __multiple_shooting_solve_internal_odes!(
     return reduce(vcat, us_), reduce(vcat, ts_)
 end
 
+# Each work item owns `odecaches[i]` and writes only to `us_[i]`, `ts_[i]` and the
+# `resid_nodes` block of interval `i`.
+@kernel function __ms_solve_internal_odes_kernel!(
+        resid_nodes, us_, ts_, us, odecaches, nodes, u0_size, N
+    )
+    i = @index(Global, Linear)
+    cache = odecaches[i]
+    SciMLBase.reinit!(
+        cache, reshape(view(us, ((i - 1) * N + 1):(i * N)), u0_size);
+        t0 = nodes[i], tf = nodes[i + 1]
+    )
+    sol = solve!(cache)
+    us_[i] = deepcopy(sol.u)
+    ts_[i] = deepcopy(sol.t)
+    resid_nodes[((i - 1) * N + 1):(i * N)] .= view(us, (i * N + 1):((i + 1) * N)) .-
+        vec(sol.u[end])
+end
+
 function __multiple_shooting_solve_internal_odes!(
         resid_nodes, us, cur_nshoots::Int, odecache::Vector,
-        nodes, u0_size, N::Int, ::EnsembleThreads, tspan
+        nodes, u0_size, N::Int, ::EnsembleThreads, tspan, platform
     )
     ts_ = Vector{Vector{typeof(first(tspan))}}(undef, cur_nshoots)
     us_ = Vector{Vector{typeof(us)}}(undef, cur_nshoots)
 
-    n_splits = min(cur_nshoots, Threads.nthreads())
-    n_per_chunk, n_remaining = divrem(cur_nshoots, n_splits)
-    data_partition = map(1:n_splits) do i
-        first = 1 + (i - 1) * n_per_chunk + ifelse(i ≤ n_remaining, i - 1, n_remaining)
-        last = (first - 1) + n_per_chunk + ifelse(i <= n_remaining, 1, 0)
-        return first:1:last
-    end
-
-    Threads.@threads for idx in eachindex(data_partition)
-        cache = odecache[idx]
-        for i in data_partition[idx]
-            SciMLBase.reinit!(
-                cache, reshape(@view(us[((i - 1) * N + 1):(i * N)]), u0_size);
-                t0 = nodes[i], tf = nodes[i + 1]
-            )
-            sol = solve!(cache)
-            us_[i] = deepcopy(sol.u)
-            ts_[i] = deepcopy(sol.t)
-            resid_nodes[((i - 1) * N + 1):(i * N)] .= @view(us[(i * N + 1):((i + 1) * N)]) .-
-                vec(sol.u[end])
-        end
-    end
+    kernel! = __ms_solve_internal_odes_kernel!(platform)
+    kernel!(
+        resid_nodes, us_, ts_, us, odecache, nodes, u0_size, N;
+        ndrange = cur_nshoots
+    )
+    synchronize(platform)
 
     return reduce(vcat, us_), reduce(vcat, ts_)
 end
@@ -526,11 +541,12 @@ end
 
     resize!(nodes, nshoots + 1)
     nodes .= range(tspan[1], tspan[2]; length = nshoots + 1)
-    u0_ = __initial_guess_on_mesh(u0, nodes, p)
+    u0_ = __extract_u0(u0, p, tspan[1])
+    guess = __initial_guess_on_mesh(u0, nodes, p)
 
-    N = length(first(u0_))
-    u_at_nodes = similar(first(u0_), (nshoots + 1) * N)
-    recursive_flatten!(u_at_nodes, u0_.u)
+    N = length(u0_)
+    u_at_nodes = similar(u0_, (nshoots + 1) * N)
+    recursive_flatten!(u_at_nodes, guess.u)
 
     return u_at_nodes
 end

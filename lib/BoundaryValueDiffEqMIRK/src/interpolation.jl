@@ -9,6 +9,11 @@ function SciMLBase.interp_summary(interp::MIRKInterpolation)
     return "MIRK Order $(interp.cache.order) Interpolation"
 end
 
+__has_control_variables(cache::MIRKCache, length_z) = !isnothing(cache.f_prototype) &&
+    length(cache.f_prototype) < length_z
+__state_variable_count(cache::MIRKCache, length_z) = __has_control_variables(cache, length_z) ?
+    length(cache.f_prototype) : length_z
+
 function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
     return interpolation(tvals, id, idxs, deriv, p, continuity)
 end
@@ -19,9 +24,9 @@ function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol 
 end
 
 @inline function interpolation(
-        tvals, id::MIRKInterpolation, idxs, deriv::D,
+        tvals, id::MIRKInterpolation, idxs, deriv,
         p, continuity::Symbol = :left
-    ) where {D}
+    )
     (; t, u, cache) = id
     (; mesh, mesh_dt) = cache
     tdir = sign(t[end] - t[1])
@@ -45,8 +50,8 @@ end
 
 @inline function interpolation!(
         vals, tvals, id::MIRKInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     (; t, cache) = id
     (; mesh, mesh_dt) = cache
     tdir = sign(t[end] - t[1])
@@ -62,8 +67,8 @@ end
 
 @inline function interpolation(
         tval::Number, id::MIRKInterpolation, idxs,
-        deriv::D, p, continuity::Symbol = :left
-    ) where {D}
+        deriv, p, continuity::Symbol = :left
+    )
     z = similar(id.u[1])
     interpolant!(z, id, id.cache, tval, id.cache.mesh, id.cache.mesh_dt, deriv)
     return idxs !== nothing ? z[idxs] : z
@@ -99,10 +104,10 @@ end
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
 
-    has_control = !isnothing(cache.prob.f.f_prototype)
+    has_control = __has_control_variables(cache, length(z))
 
     # state variables have their interpolation polynomials
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
+    length_z = __state_variable_count(cache, length(z))
     z .= zero(z)
     __maybe_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
     __maybe_matmul!(
@@ -128,8 +133,8 @@ end
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
 
-    has_control = !isnothing(cache.prob.f.f_prototype)
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z)
+    has_control = __has_control_variables(cache, length(z))
+    length_z = __state_variable_count(cache, length(z))
 
     z .= zero(z)
     __maybe_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
@@ -155,8 +160,8 @@ end
     ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
-    has_control = !isnothing(cache.prob.f.f_prototype)
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
+    has_control = __has_control_variables(cache, length(z′))
+    length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
     __maybe_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
@@ -167,7 +172,7 @@ end
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* id.u[i + 1] .+ (1 - τ) .* id.u[i]
+        inc = (id.u[i + 1] .- id.u[i]) ./ cache.mesh_dt[i]
         copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
     end
 
@@ -179,8 +184,8 @@ end
     ) where {iip, T, use_both}
     (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
-    has_control = !isnothing(cache.prob.f.f_prototype)
-    length_z = has_control ? length(cache.prob.f.f_prototype) : length(z′)
+    has_control = __has_control_variables(cache, length(z′))
+    length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
     __maybe_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
@@ -191,7 +196,7 @@ end
 
     # control variable just use linear interpolation
     if has_control
-        inc = τ .* id.u[i + 1] .+ (1 - τ) .* id.u[i]
+        inc = (id.u[i + 1] .- id.u[i]) ./ cache.mesh_dt[i]
         copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
     end
 
@@ -213,9 +218,8 @@ function (s::EvalSol{C})(tval::Number) where {C <: MIRKCache}
     (tval == t[1]) && return first(u)
     (tval == t[end]) && return last(u)
     z = zero(last(u))
-    f_prototype = cache.prob.f.f_prototype
-    has_control = !isnothing(f_prototype)
-    length_z = has_control ? length(f_prototype) : length(z)
+    has_control = __has_control_variables(cache, length(z))
+    length_z = __state_variable_count(cache, length(z))
     ii = interval(t, tval)
     dt = cache.mesh_dt[ii]
     τ = (tval - t[ii]) / dt
@@ -243,9 +247,8 @@ function (s::EvalSol{C})(tvals::AbstractArray{<:Number}) where {C <: MIRKCache}
     (; alg, stage, k_discrete, k_interp, mesh_dt, M) = cache
     # Quick handle for the case where tval is at the boundary
     zvals = [zero(last(u)) for _ in tvals]
-    f_prototype = cache.prob.f.f_prototype
-    has_control = !isnothing(f_prototype)
-    length_z = has_control ? length(f_prototype) : length(first(zvals))
+    has_control = __has_control_variables(cache, length(first(zvals)))
+    length_z = __state_variable_count(cache, length(first(zvals)))
     for (i, tval) in enumerate(tvals)
         (tval == t[1]) && return first(u)
         (tval == t[end]) && return last(u)
@@ -308,13 +311,13 @@ Here, the `ki_interp`` is the stages in one subinterval.
             __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
         end
         if r > 1
-            for j in eachindex(k_interp)
+            for j in eachindex(k_interp.u)
                 __maybe_matmul!(
                     new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
                 )
             end
         end
-        for i in eachindex(new_stages)
+        for i in eachindex(new_stages.u)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                 (1 - v_star[r]) .* vec(y[i].du) .+
                 v_star[r] .* vec(y[i + 1].du)
@@ -345,13 +348,13 @@ end
             __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
         end
         if r > 1
-            for j in eachindex(k_interp)
+            for j in eachindex(k_interp.u)
                 __maybe_matmul!(
                     new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
                 )
             end
         end
-        for i in eachindex(new_stages)
+        for i in eachindex(new_stages.u)
             new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
                 (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
             if iip
@@ -377,11 +380,26 @@ always update the intermediate solution with discrete solution + discrete stages
 (Continuous MIRK: u(meshᵢ + τ*dt) = yᵢ + dt sum br(τ)*kr).
 """
 @views function update_eval_sol!(eval_sol::EvalSol, y_, cache::MIRKCache)
-    eval_sol.u[1:end] .= __restructure_sol(y_, cache.in_size)
+    restructured = __restructure_sol(y_, cache.in_size)
     eval_sol.cache.k_discrete[1:end] .= cache.k_discrete
     eval_sol.cache.k_interp.u[1:end] .= cache.k_interp.u
     interp_setup!(eval_sol.cache)
-    return nothing
+    # On an ordinary residual evaluation `y_` matches `eval_sol.u`'s element type, so the
+    # preallocated buffer is updated in place (works for e.g. StaticArray states too).
+    if promote_type(eltype(eltype(restructured)), eltype(eltype(eval_sol.u))) ===
+            eltype(eltype(eval_sol.u))
+        eval_sol.u[1:end] .= restructured
+        return eval_sol
+    end
+    # When the residual is differentiated directly (e.g. a line-search directional
+    # derivative), `y_` carries ForwardDiff.Duals that cannot be written into the Float64
+    # buffer. The lazy cache hands back a matching-eltype buffer, allocated once per eltype
+    # and reused afterwards. On this path `y_` is DiffCache-backed (plain Arrays), so the
+    # VectorOfArray buffer is safe to allocate via `similar`.
+    voa = VectorOfArray(restructured)
+    u = get_tmp(cache.eval_sol_cache, voa)
+    u .= voa
+    return EvalSol(u.u, eval_sol.t, cache)
 end
 
 """

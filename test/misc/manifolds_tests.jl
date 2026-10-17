@@ -1,4 +1,8 @@
-@testitem "Manifolds.jl Integration" begin
+using BoundaryValueDiffEq
+using SciMLBase
+using Test
+
+@testset "Manifolds.jl Integration" begin
     using LinearAlgebra, OrdinaryDiffEqTsit5
 
     struct EmbeddedTorus
@@ -49,7 +53,7 @@
     @testset "Successful Convergence" begin
         u0 = [vcat(a1, zero(a1)), vcat(a2, zero(a1))]
         bvp1 = BVProblem(chart_log_problem!, bc1!, u0, tspan, (M, i, a1, a2))
-        sol1 = solve(bvp1, solver, dt = dt)
+        sol1 = solve(bvp1, solver; dt)
         @test SciMLBase.successful_retcode(sol1.retcode)
     end
 

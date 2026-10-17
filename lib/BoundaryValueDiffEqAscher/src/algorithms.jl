@@ -5,25 +5,46 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
 
     @eval begin
         """
-            $($alg)(; nlsolve = NewtonRaphson(), max_num_subintervals = 3000)
+            $($alg)(; nlsolve = nothing, optimize = nothing,
+                jac_alg = BVPJacobianAlgorithm(), platform = CPU(),
+                max_num_subintervals = 3000)
 
-        $($stage)th stage Gauss Legendre collocation methods with adaptivity adapted from Ascher's implementation.
+        $($stage)-stage Gauss-Legendre collocation method with Ascher error-control
+        adaptivity and mesh refinement for boundary-value problems, including problems
+        with algebraic constraints.
+
+        ## Fields
+
+          - `nlsolve`: Nonlinear solver used for the collocation system. `nothing`
+            selects the package default.
+          - `optimize`: Optimization solver used by the mesh-refinement machinery.
+            `nothing` selects the package default.
+          - `jac_alg`: `BVPJacobianAlgorithm` that selects the Jacobian construction
+            strategy for the collocation system. Full collocation systems use sparse
+            coloring by default; an explicit dense AD backend selects a dense Jacobian.
+          - `platform`: KernelAbstractions backend retained for the internal assembly helpers.
+          - `max_num_subintervals`: Maximum number of mesh subintervals permitted while
+            refining the solution.
 
         ## Keyword Arguments
 
-          - `nlsolve`: Internal Nonlinear solver. Any solver which conforms to the SciML
-            `NonlinearProblem` interface can be used. Note that any autodiff argument for
-            the solver will be ignored and a custom jacobian algorithm will be used.
-          - `optimize`: Internal Optimization solver. Any solver which conforms to the SciML
-            `OptimizationProblem` interface can be used. Note that any autodiff argument for
-            the solver will be ignored and a custom jacobian algorithm will be used.
-          - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
-          - `zeta`: side condition points, should always be provided.
+          - `nlsolve = nothing`: Internal nonlinear solver. Any solver implementing the
+            SciML `NonlinearProblem` interface may be used. Its autodifferentiation
+            setting is ignored because this solver uses `jac_alg`.
+          - `optimize = nothing`: Internal optimization solver. Any solver implementing
+            the SciML `OptimizationProblem` interface may be used. Its
+            autodifferentiation setting is ignored because this solver uses `jac_alg`.
+          - `jac_alg = BVPJacobianAlgorithm()`: Jacobian construction strategy. For
+            type stability, provide ForwardDiff chunk sizes in the AD types selected by
+            this value.
+          - `platform`: KernelAbstractions backend. Defaults to `CPU()`.
+          - `max_num_subintervals = 3000`: Maximum number of mesh subintervals.
 
-        !!! note
+        ## Example
 
-            For type-stability, the chunksizes for ForwardDiff ADTypes in
-            `BVPJacobianAlgorithm` must be provided.
+        ```julia
+        alg = $($alg)()
+        ```
 
         ## References
 
@@ -49,11 +70,11 @@ for stage in (1, 2, 3, 4, 5, 6, 7)
         }
         ```
         """
-        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm} <: AbstractAscher
+        @kwdef struct $(alg){N, O, J <: BVPJacobianAlgorithm, P <: Backend} <: AbstractAscher
             nlsolve::N = nothing
             optimize::O = nothing
-            zeta::Vector{Float64} = Float64[]
             jac_alg::J = BVPJacobianAlgorithm()
+            platform::P = CPU()
             max_num_subintervals::Int = 3000
         end
     end
@@ -62,5 +83,8 @@ end
 function BoundaryValueDiffEqCore.concrete_jacobian_algorithm(
         jac_alg::BVPJacobianAlgorithm, prob::BVProblem, alg::AbstractAscher
     )
-    return BVPJacobianAlgorithm(__default_nonsparse_ad(prob.u0))
+    default = __default_sparse_ad(prob.u0)
+    diffmode = something(jac_alg.diffmode, jac_alg.nonbc_diffmode, default)
+    bc_diffmode = something(jac_alg.bc_diffmode, get_dense_ad(diffmode))
+    return BVPJacobianAlgorithm(diffmode; bc_diffmode, nonbc_diffmode = diffmode)
 end

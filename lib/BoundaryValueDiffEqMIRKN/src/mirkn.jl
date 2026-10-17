@@ -17,8 +17,8 @@
     y
     y₀
     residual
-    fᵢ_cache
-    fᵢ₂_cache
+    # One scratch pair per mesh interval, so backend work items do not alias
+    collocation_cache
     resid_size
     nlsolve_kwargs
     optimize_kwargs
@@ -31,8 +31,8 @@ Base.eltype(::MIRKNCache{iip, T}) where {iip, T} = T
 function SciMLBase.__init(
         prob::SecondOrderBVProblem, alg::AbstractMIRKN;
         dt = 0.0, adaptive = false, abstol = 1.0e-6,
-        controller = NoErrorControl(), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = DEFAULT_VERBOSE, kwargs...
+        controller = NoErrorControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
@@ -51,8 +51,7 @@ function SciMLBase.__init(
     __alloc = @closure x -> __maybe_allocate_diffcache(vec(zero(x)), chunksize, alg.jac_alg)
 
     y = __alloc.(copy.(y₀.u))
-    fᵢ_cache = __alloc(zero(u0))
-    fᵢ₂_cache = __alloc(zero(u0))
+    collocation_cache = [(__alloc(zero(u0)), __alloc(zero(u0))) for _ in 1:Nig]
     stage = alg_stage(alg)
     bcresid_prototype = zero(vcat(u0, u0))
     k_discrete = [
@@ -113,12 +112,21 @@ function SciMLBase.__init(
         vecf, vecbc
     end
 
-    prob_ = !(prob.u0 isa AbstractArray) ? remake(prob; u0 = u0) : prob
+    # Initial guess objects (`ODESolution`, `VectorOfArray`, functions, ...) must be
+    # stripped down to the extracted `u0` vector here: under RecursiveArrayTools v4
+    # `AbstractVectorOfArray <: AbstractArray`, so a plain `isa AbstractArray` check
+    # would embed e.g. an entire previous solution's type in the cache and force
+    # recompilation of all downstream code against it (issue #500).
+    prob_ = if !(prob.u0 isa AbstractArray) || prob.u0 isa AbstractVectorOfArray
+        remake(prob; u0)
+    else
+        prob
+    end
 
     return MIRKNCache{iip, T}(
         alg_order(alg), stage, M, size(u0), f, bc, prob_, prob.problem_type,
         prob.p, alg, TU, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, resid_size, nlsolve_kwargs,
+        y, y₀, residual, collocation_cache, resid_size, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
@@ -137,7 +145,7 @@ function SciMLBase.solve!(cache::MIRKNCache{iip, T}) where {iip, T}
 end
 
 function __perform_mirkn_iteration(cache::MIRKNCache)
-    nlprob = __construct_nlproblem(cache, vec(cache.y₀), copy(cache.y₀))
+    nlprob = __construct_nlproblem(cache, copy(vec(cache.y₀)), copy(cache.y₀))
     solve_alg = __concrete_solve_algorithm(nlprob, cache.alg.nlsolve, cache.alg.optimize)
     kwargs = __concrete_kwargs(
         cache.alg.nlsolve, cache.alg.optimize, cache.nlsolve_kwargs, cache.optimize_kwargs,
@@ -224,9 +232,13 @@ function __construct_nlproblem(
     end
 
     cache_bc = if iip
-        DI.prepare_jacobian(loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, resid_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss_bc, bc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_bc, bc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     nonbc_diffmode = if jac_alg.nonbc_diffmode isa AutoSparse
@@ -241,10 +253,13 @@ function __construct_nlproblem(
 
     cache_collocation = if iip
         DI.prepare_jacobian(
-            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p)
+            loss_collocation, resid_collocation, nonbc_diffmode, y, Constant(cache.p);
+            strict = Val(false)
         )
     else
-        DI.prepare_jacobian(loss_collocation, nonbc_diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss_collocation, nonbc_diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     J_bc = if iip
@@ -314,9 +329,13 @@ function __construct_nlproblem(
     end
 
     diffcache = if iip
-        DI.prepare_jacobian(loss, resid, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, resid, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     else
-        DI.prepare_jacobian(loss, diffmode, y, Constant(cache.p))
+        DI.prepare_jacobian(
+            loss, diffmode, y, Constant(cache.p); strict = Val(false)
+        )
     end
 
     jac_prototype = if iip

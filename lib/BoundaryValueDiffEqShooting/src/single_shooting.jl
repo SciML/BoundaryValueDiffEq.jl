@@ -1,7 +1,7 @@
 function SciMLBase.__solve(
         prob::BVProblem, alg_::Shooting; abstol = 1.0e-6,
-        odesolve_kwargs = (;), nlsolve_kwargs = (; abstol = abstol),
-        optimize_kwargs = (; abstol = abstol), verbose = true, kwargs...
+        odesolve_kwargs = (;), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = true, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
 
@@ -30,7 +30,7 @@ function SciMLBase.__solve(
     resid_prototype = __vec(bcresid_prototype)
 
     # Construct the residual function
-    actual_ode_kwargs = (; kwargs..., verbose, odesolve_kwargs...)
+    actual_ode_kwargs = (; kwargs..., odesolve_kwargs...)
     # For TwoPointBVPs we don't need to save every step
     if prob.problem_type isa TwoPointBVProblem
         ode_kwargs = (; save_everystep = false, actual_ode_kwargs...)

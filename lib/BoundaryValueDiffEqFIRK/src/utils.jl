@@ -1,4 +1,4 @@
-function BoundaryValueDiffEqCore.__resize!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTableau{false})
+function BoundaryValueDiffEqCore.__resize!(x::AbstractVector{<:AbstractArray}, n, _, TU::FIRKTableau)
     (; s) = TU
     N = (n - 1) * (s + 1) + 1 - length(x)
     N == 0 && return x
@@ -42,7 +42,7 @@ end
     prob,
     stage;
     tune_parameters = false
-) = __K0_on_u0(prob, prob.u0, stage; tune_parameters = tune_parameters)
+) = __K0_on_u0(prob, prob.u0, stage; tune_parameters)
 @inline __K0_on_u0(
     prob,
     u0::AbstractArray,

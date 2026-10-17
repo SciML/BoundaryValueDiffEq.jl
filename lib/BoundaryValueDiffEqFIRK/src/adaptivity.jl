@@ -10,7 +10,7 @@ After we construct an interpolant, we use interp_eval to evaluate it.
     ) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -55,7 +55,7 @@ end
     ) where {iip, T}
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -103,7 +103,7 @@ end
 
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -150,7 +150,7 @@ end
 
     j = interval(mesh, t)
     h = mesh_dt[j]
-    lf = (length(cache.y₀) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
+    lf = (length(cache.y₀.u) - 1) / (length(cache.y) - 1) # Cache length factor. We use a h corresponding to cache.y. Note that this assumes equidistributed mesh
     if lf > 1
         h *= lf
     end
@@ -260,7 +260,7 @@ Generate new mesh based on the defect.
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in defect]  # Broadcasting breaks GPU Compilation
+    ŝ = [maximum(abs, d) for d in defect.u]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -399,6 +399,7 @@ an interpolant
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix)
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -409,6 +410,7 @@ an interpolant
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix)
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -446,6 +448,7 @@ end
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix)
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -456,6 +459,7 @@ end
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix)
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -502,6 +506,7 @@ end
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix)
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -512,6 +517,7 @@ end
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix)
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -557,6 +563,7 @@ end
         else
             yᵢ₁ = f(z₁, cache.p, mesh[i] + τ_star * h)
         end
+        __apply_mass_matrix!(z₁′, cache.mass_matrix)
         yᵢ₁ .= (z₁′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -567,6 +574,7 @@ end
         else
             yᵢ₂ = f(z₂, cache.p, mesh[i] + (T(1) - τ_star) * h)
         end
+        __apply_mass_matrix!(z₂′, cache.mass_matrix)
         yᵢ₂ .= (z₂′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 

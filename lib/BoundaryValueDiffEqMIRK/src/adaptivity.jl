@@ -36,7 +36,7 @@ Generate new mesh based on the defect or the global error.
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in errors]  # Broadcasting breaks GPU Compilation
+    ŝ = [maximum(abs, d) for d in errors.u]  # Broadcasting breaks GPU Compilation
     ŝ .= (ŝ ./ abstol) .^ (T(1) / (order + 1))
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -90,7 +90,7 @@ end
 
     info = ReturnCode.Success
 
-    ŝ = [maximum(abs, d) for d in errors]
+    ŝ = [maximum(abs, d) for d in errors.u]
     ŝ .= (ŝ ./ abstol) .^ (T(1) / order)
     r₁ = maximum(ŝ)
     r₂ = sum(ŝ)
@@ -310,14 +310,14 @@ The input sol has length of `n + 1`. Divide the original mesh and u from origina
 """
 function halve_sol(sol::AbstractVectorOfArray{T}, mesh) where {T}
     new_sol = copy(sol)
-    n = length(sol) - 1
+    n = length(sol.u) - 1
     resize!(new_sol, 2 * n + 1)
-    new_sol[2n + 1] = sol[n + 1]
+    new_sol.u[2n + 1] = sol.u[n + 1]
     for i in (2n - 1):-2:1
-        new_sol[i] = new_sol[(i + 1) ÷ 2]
+        new_sol.u[i] = new_sol.u[(i + 1) ÷ 2]
     end
     @simd for i in (2n):-2:2
-        new_sol[i] = (new_sol[i + 1] + new_sol[i - 1]) ./ T(2)
+        new_sol.u[i] = (new_sol.u[i + 1] + new_sol.u[i - 1]) ./ T(2)
     end
     new_mesh = deepcopy(mesh)
     resize!(new_mesh, 2 * n + 1)
@@ -391,6 +391,7 @@ end
         else
             yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix)
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -401,6 +402,7 @@ end
         else
             yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix)
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -437,6 +439,7 @@ end
         else
             yᵢ₁ = f(z, cache.p, mesh[i] + τ_star * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix)
         yᵢ₁ .= (z′ .- yᵢ₁) ./ (abs.(yᵢ₁) .+ T(1))
         est₁ = maximum(abs, yᵢ₁)
 
@@ -447,6 +450,7 @@ end
         else
             yᵢ₂ = f(z, cache.p, mesh[i] + (T(1) - τ_star) * dt)
         end
+        __apply_mass_matrix!(z′, cache.mass_matrix)
         yᵢ₂ .= (z′ .- yᵢ₂) ./ (abs.(yᵢ₂) .+ T(1))
         est₂ = maximum(abs, yᵢ₂)
 
@@ -561,7 +565,7 @@ end
         errors.u,
         [
             ifelse(maximum(abs.(err.u[i])) >= maximum(abs.(err.u[i + 1])), err.u[i], err.u[i + 1])
-                for i in 1:(length(err) - 1)
+                for i in 1:(length(err.u) - 1)
         ]
     )
 end

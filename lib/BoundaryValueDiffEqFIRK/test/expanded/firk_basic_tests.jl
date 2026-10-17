@@ -1,205 +1,14 @@
-@testsetup module FIRKExpandedConvergenceTests
-
 using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using NonlinearSolveFirstOrder: NewtonRaphson
+using SciMLBase
+using Test
 
-nested = false
-
-for stage in (2, 3, 4, 5)
-    s = Symbol("LobattoIIIa$(stage)")
-    @eval lobattoIIIa_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
-end
-
-for stage in (2, 3, 4, 5)
-    s = Symbol("LobattoIIIb$(stage)")
-    @eval lobattoIIIb_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
-end
-
-for stage in (2, 3, 4, 5)
-    s = Symbol("LobattoIIIc$(stage)")
-    @eval lobattoIIIc_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
-end
-
-for stage in (2, 3, 5, 7)
-    s = Symbol("RadauIIa$(stage)")
-    @eval radau_solver(::Val{$stage}, args...; kwargs...) = $(s)(args...; kwargs...)
-end
-
-# First order test
-function f1!(du, u, p, t)
-    du[1] = u[2]
-    du[2] = 0
-end
-f1(u, p, t) = [u[2], 0]
-
-# Second order linear test
-function f2!(du, u, p, t)
-    du[1] = u[2]
-    du[2] = -u[1]
-end
-f2(u, p, t) = [u[2], -u[1]]
-
-function boundary!(residual, u, p, t)
-    residual[1] = u(0.0)[1] - 5
-    residual[2] = u(5.0)[1]
-end
-boundary(u, p, t) = [u(0.0)[1] - 5, u(5.0)[1]]
-
-# Array indexing for boundary conditions
-function boundary_indexing!(residual, u, p, t)
-    residual[1] = u[:, 1][1] - 5
-    residual[2] = u[:, end][1]
-end
-boundary_indexing(u, p, t) = [u[:, 1][1] - 5, u[:, end][1]]
-
-function boundary_two_point_a!(resida, ua, p)
-    resida[1] = ua[1] - 5
-end
-function boundary_two_point_b!(residb, ub, p)
-    residb[1] = ub[1]
-end
-
-boundary_two_point_a(ua, p) = [ua[1] - 5]
-boundary_two_point_b(ub, p) = [ub[1]]
-
-# Not able to change the initial condition.
-# Hard coded solution.
-odef1! = ODEFunction(f1!, analytic = (u0, p, t) -> [5 - t, -1])
-odef1 = ODEFunction(f1, analytic = (u0, p, t) -> [5 - t, -1])
-
-odef2! = ODEFunction(
-    f2!, analytic = (
-        u0, p, t,
-    ) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))]
-)
-odef2 = ODEFunction(
-    f2, analytic = (
-        u0, p, t,
-    ) -> [5 * (cos(t) - cot(5) * sin(t)), 5 * (-cos(t) * cot(5) - sin(t))]
-)
-
-bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
-
-tspan = (0.0, 5.0)
-u0 = [5.0, -3.5]
-
-probArr = [
-    BVProblem(odef1!, boundary!, u0, tspan, nlls = Val(false)),
-    BVProblem(odef1, boundary, u0, tspan, nlls = Val(false)),
-    BVProblem(odef2!, boundary!, u0, tspan, nlls = Val(false)),
-    BVProblem(odef2, boundary, u0, tspan, nlls = Val(false)),
-    BVProblem(odef2!, boundary_indexing!, u0, tspan, nlls = Val(false)),
-    BVProblem(odef2, boundary_indexing, u0, tspan, nlls = Val(false)),
-    TwoPointBVProblem(
-        odef1!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype, nlls = Val(false)
-    ),
-    TwoPointBVProblem(
-        odef1, (boundary_two_point_a, boundary_two_point_b),
-        u0, tspan; bcresid_prototype, nlls = Val(false)
-    ),
-    TwoPointBVProblem(
-        odef2!, (boundary_two_point_a!, boundary_two_point_b!),
-        u0, tspan; bcresid_prototype, nlls = Val(false)
-    ),
-    TwoPointBVProblem(
-        odef2, (boundary_two_point_a, boundary_two_point_b),
-        u0, tspan; bcresid_prototype, nlls = Val(false)
-    ),
-]
-
-testTol = 0.3
-affineTol = 1.0e-2
-dts = 1 .// 2 .^ (5:-1:3)
-
-export probArr, testTol, affineTol, dts, lobattoIIIa_solver, lobattoIIIb_solver,
-    lobattoIIIc_solver, radau_solver
-
-end
-
-@testitem "Affineness" setup = [FIRKExpandedConvergenceTests] begin
-    using LinearAlgebra
-
-    @testset "Problem: $i" for i in (1, 2, 7, 8)
-        prob = probArr[i]
-
-        @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-            @time sol = solve(prob, lobattoIIIa_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
-        end
-        @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-            @time sol = solve(prob, lobattoIIIb_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
-        end
-        @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-            @time sol = solve(prob, lobattoIIIc_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
-        end
-
-        @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-            @time sol = solve(prob, radau_solver(Val(stage)); dt = 0.2, adaptive = false)
-            @test norm(diff(first.(sol.u)) .+ 0.2, Inf) + abs(sol.u[1][1] - 5) < affineTol
-        end
-    end
-end
-
-# JET tests have been moved to the separate QA test group (test/qa/)
-
-@testitem "Convergence on Linear" setup = [FIRKExpandedConvergenceTests] begin
-    using LinearAlgebra, DiffEqDevTools
-
-    @testset "Problem: $i" for i in (3, 4, 9, 10)
-        prob = probArr[i]
-
-        @testset "LobattoIIIa$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(dts, prob, lobattoIIIa_solver(Val(stage)); abstol = 1.0e-8)
-            if (stage == 5) || (((i == 9) || (i == 10)) && stage == 4)
-                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            else
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            end
-        end
-
-        @testset "LobattoIIIb$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(
-                dts, prob, lobattoIIIb_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
-            )
-            if (stage == 5) || (stage == 4 && i == 10)
-                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            elseif stage == 4
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = 0.6
-            else
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            end
-        end
-
-        @testset "LobattoIIIc$stage" for stage in (2, 3, 4, 5)
-            @time sim = test_convergence(
-                dts, prob, lobattoIIIc_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
-            )
-            if stage == 4
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            elseif first(sim.errors[:final]) < 1.0e-12
-                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            else
-                @test sim.𝒪est[:final] ≈ 2 * stage - 2 atol = testTol
-            end
-        end
-
-        @testset "RadauIIa$stage" for stage in (2, 3, 5, 7)
-            @time sim = test_convergence(
-                dts, prob, radau_solver(Val(stage)); abstol = 1.0e-8, reltol = 1.0e-8
-            )
-            if first(sim.errors[:final]) < 1.0e-12
-                @test_broken sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
-            else
-                @test sim.𝒪est[:final] ≈ 2 * stage - 1 atol = testTol
-            end
-        end
-    end
-end
+include("firk_test_setup.jl")
 
 # FIXME: This is a really bad test. Needs interpolation
-@testitem "Simple Pendulum" begin
+@testset "Simple Pendulum" begin
     using StaticArrays
 
     tspan = (0.0, π / 2)
@@ -252,7 +61,7 @@ end
     @test_nowarn solve(bvp1, RadauIIa7(; nlsolve, jac_alg, nested_nlsolve = nested); dt = 0.05)
 end
 
-@testitem "Interpolation" setup = [FIRKExpandedConvergenceTests] begin
+@testset "Interpolation" begin
     using LinearAlgebra
 
     λ = 1
@@ -323,7 +132,7 @@ end
                         )
                         adaptive = ifelse(stage == 2, false, true) # LobattoIIIa2 is not adaptive
                         @time sol = solve(
-                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive
                         )
                         @test sol(0.001) ≈ [0.998687464, -1.312035941] atol = testTol
                         @test sol(0.001; idxs = [1, 2]) ≈ [0.998687464, -1.312035941] atol = testTol
@@ -337,7 +146,7 @@ end
                         )
                         adaptive = ifelse(stage == 2, false, true) # LobattoIIIa2 is not adaptive
                         @time sol = solve(
-                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive = adaptive
+                            prob_bvp_linear, lobatto_solver(Val(stage)); dt = 0.001, adaptive
                         )
                         sol_analytic = prob_bvp_linear_analytic(nothing, λ, 0.04)
                         dsol_analytic = prob_bvp_linear_analytic_derivative(nothing, λ, 0.04)
@@ -351,7 +160,7 @@ end
     end
 end
 
-@testitem "Swirling Flow III" begin
+@testset "Swirling Flow III" begin
     # Reported in https://github.com/SciML/BoundaryValueDiffEq.jl/issues/153
     eps = 0.01
     function swirling_flow!(du, u, p, t)
@@ -382,7 +191,7 @@ end
     @test_nowarn solve(prob, RadauIIa5(); dt = 0.01)
 end
 
-@testitem "Solve using Continuation" begin
+@testset "Solve using Continuation" begin
     using RecursiveArrayTools
 
     g = 9.81
@@ -423,7 +232,7 @@ end
     @test SciMLBase.successful_retcode(solve(bvp5, RadauIIa5(), dt = 0.05))
 end
 
-@testitem "Test unknown parameters estimation" setup = [FIRKExpandedConvergenceTests] begin
+@testset "Test unknown parameters estimation" begin
     tspan = (0.0, pi)
     function f!(du, u, p, t)
         du[1] = u[2]
@@ -469,7 +278,7 @@ end
     @test sol.prob.p ≈ [17.09658] atol = 1.0e-5
 end
 
-@testitem "Test unknown parameters estimation with SciMLStructures" begin
+@testset "Test unknown parameters estimation with SciMLStructures" begin
     using BoundaryValueDiffEqFIRK, SciMLStructures
 
     # Define a custom struct that wraps parameters
@@ -528,7 +337,7 @@ end
 
 #=
 # The initial guess for expanded FIRK just stall the CI, need to find out why.
-@testitem "Test initial guess" begin
+@testset "Test initial guess" begin
     tspan = (0.0, 1.0)
     function f!(du, u, p, t)
         cond = 0.002
@@ -566,5 +375,48 @@ end
     bvp2 = TwoPointBVProblem(f!, (bca!, bcb!), sol1, tspan; bcresid_prototype = (zeros(2), zeros(1)))
     sol2 = solve(bvp2, LobattoIIIa3(), dt = 0.1, adaptive = false, nlsolve_kwargs = (; maxiters = 0))
     @test sol2.u == u_guess
+
+    # Ensure the initial guess is not modified in-place
+    sol2 = solve(bvp2, LobattoIIIa3(), dt = 0.1, adaptive = false)
+    @test bvp2.u0 == u_guess
 end
 =#
+
+# https://github.com/SciML/BoundaryValueDiffEq.jl/issues/500
+# An initial-guess object (previous solution, VectorOfArray, ...) must be
+# stripped to a plain vector before being stored in the cache's problem.
+# Under RecursiveArrayTools v4 solutions are `AbstractArray`s, so without the
+# explicit strip the entire solution type gets embedded in the cache type and
+# every downstream method recompiles against it (~20x compile-time blowup).
+@testset "Initial-guess object does not leak into cache type (issue 500)" begin
+    using SciMLBase, RecursiveArrayTools
+
+    tspan = (0.0, 1.0)
+    function f!(du, u, p, t)
+        du[1] = -u[2] / p[1]
+        du[2] = p[2]
+        du[3] = 0.0
+    end
+    function bca!(res_a, u_a, p)
+        res_a[1] = u_a[2]
+        res_a[2] = u_a[1] - 100.0
+    end
+    function bcb!(res_b, u_b, p)
+        res_b[1] = u_b[3] * (u_b[1] - 20.0) - u_b[2]
+    end
+    u_guess = [[100.0 - 0.5 * i, 0.02 * i, 0.006666666666666668] for i in 0:10]
+    p = [0.002, 0.2]
+    bvp1 = TwoPointBVProblem(
+        f!, (bca!, bcb!), u_guess, tspan, p; bcresid_prototype = (zeros(2), zeros(1))
+    )
+    sol1 = solve(bvp1, RadauIIa5(), dt = 0.1, adaptive = false)
+    @test SciMLBase.successful_retcode(sol1)
+
+    bvp2 = remake(bvp1, p = [0.0015, 0.03], u0 = sol1)
+    for nested in (true, false)
+        cache = init(bvp2, RadauIIa5(; nested_nlsolve = nested), dt = 0.1, adaptive = false)
+        @test cache.prob.u0 isa Vector{Float64}
+    end
+    sol2 = solve(bvp2, RadauIIa5(), dt = 0.1, adaptive = false)
+    @test SciMLBase.successful_retcode(sol2)
+end

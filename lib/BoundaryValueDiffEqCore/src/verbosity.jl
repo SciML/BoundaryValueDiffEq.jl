@@ -1,7 +1,5 @@
 @verbosity_specifier BVPVerbosity begin
     toggles = (
-        :nonlinear_verbosity,
-        :optimization_verbosity,
         :bvpsol_convergence,
         :bvpsol_integrator,
         :bvpsol_linear_solver,
@@ -19,6 +17,8 @@
         :convergence_result,
         :deprecations,
     )
+
+    sub_specifiers = (:nonlinear_verbosity, :optimization_verbosity)
 
     presets = (
         None = (
@@ -63,7 +63,11 @@
         ),
         Standard = (
             nonlinear_verbosity = Standard(),
-            optimization_verbosity = Standard(),
+            # BVP forwards common tolerances (e.g. `abstol`) into the inner optimizer as
+            # plumbing; whether a given backend consumes them (Ipopt ignores `abstol`) is
+            # not something the BVP user chose, so the default preset silences the
+            # `:unsupported_kwargs` notice. Higher presets (Detailed/All) still surface it.
+            optimization_verbosity = OptimizationVerbosity(; preset = Standard(), unsupported_kwargs = Silent()),
             bvpsol_convergence = WarnLevel(),
             bvpsol_integrator = WarnLevel(),
             bvpsol_linear_solver = WarnLevel(),
@@ -217,41 +221,47 @@ solve(prob, MIRK4(); verbose = BVPVerbosity(All()))
 
 ```julia
 # Show only BVPSOL convergence issues
-solve(prob, BVPSOL(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     bvpsol_convergence = WarnLevel(),
     # All others default to Silent in None preset
-))
+)
+solve(prob, BVPSOL(); verbose)
 
 # Silence initial guess warnings but keep solver failures
-solve(prob, MultipleShooting(10); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     Standard(),
     multiple_shooting_initial_guess = Silent()
-))
+)
+solve(prob, MultipleShooting(10); verbose)
 
 # Only show linear algebra issues
-solve(prob, BVPSOL(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),
     bvpsol_linear_solver = WarnLevel(),
     colnew_matrix = WarnLevel()
-))
+)
+solve(prob, BVPSOL(); verbose)
 
 # Control NonlinearSolve verbosity independently
-solve(prob, MIRK4(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),  # Silence BVP messages
     nonlinear_verbosity = All()  # Show all NonlinearSolve convergence info
-))
+)
+solve(prob, MIRK4(); verbose)
 
 # Silence NonlinearSolve but keep BVP messages
-solve(prob, MIRK4(); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     Standard(),  # Standard BVP messages
     nonlinear_verbosity = None()  # No NonlinearSolve output
-))
+)
+solve(prob, MIRK4(); verbose)
 
 # Control Optimization.jl verbosity independently
-solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose = BVPVerbosity(
+verbose = BVPVerbosity(
     None(),  # Silence BVP messages
     optimization_verbosity = All()  # Show all Optimization.jl convergence info
-))
+)
+solve(prob, MIRK4(optimize = NLopt.LN_NELDERMEAD()); verbose)
 ```
 
 ## Using Groups
@@ -344,8 +354,20 @@ Groups for convenient toggle control:
 """
 function BVPVerbosity end
 
+"""
+    DEFAULT_VERBOSE
+
+Default `BVPVerbosity()` value used by BoundaryValueDiffEq solvers when `verbose` is not
+specified.
+"""
 const DEFAULT_VERBOSE = BVPVerbosity()
 
+"""
+    _process_verbose_param(verbose) -> BVPVerbosity
+
+Convert supported verbosity presets, booleans, and `BVPVerbosity` values to the concrete
+verbosity configuration used by solver caches.
+"""
 @inline function _process_verbose_param(verbose::SciMLLogging.AbstractVerbosityPreset)
     return BVPVerbosity(verbose)
 end
@@ -355,3 +377,10 @@ end
 end
 
 @inline _process_verbose_param(verbose::BVPVerbosity) = verbose
+
+# A foreign AbstractVerbositySpecifier (e.g. DiffEqBase.DEVerbosity) can flow in
+# through DiffEqBase's `solve`/`init` default kwargs (`verbose = DEFAULT_VERBOSE`,
+# which is a `DEVerbosity`). BVPVerbosity's toggles differ from DEVerbosity's, so
+# we cannot meaningfully translate it; fall back to BVP's own default rather than
+# dispatch-missing at precompile time.
+@inline _process_verbose_param(::SciMLLogging.AbstractVerbositySpecifier) = DEFAULT_VERBOSE

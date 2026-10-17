@@ -1,4 +1,7 @@
-@testitem "Non-Vector Inputs" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Non-Vector Inputs" begin
     using LinearAlgebra, NonlinearSolveFirstOrder, OrdinaryDiffEqTsit5
 
     for order in (2, 3, 4, 5, 6)

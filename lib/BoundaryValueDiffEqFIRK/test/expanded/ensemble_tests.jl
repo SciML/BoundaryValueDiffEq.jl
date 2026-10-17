@@ -1,4 +1,11 @@
-@testitem "EnsembleProblem" begin
+using BoundaryValueDiffEqFIRK
+using ADTypes
+using BoundaryValueDiffEqCore
+using NonlinearSolveFirstOrder: NewtonRaphson
+using SciMLBase
+using Test
+
+@testset "EnsembleProblem" begin
     using BoundaryValueDiffEqFIRK, Random
 
     function ode!(du, u, p, t)
@@ -11,7 +18,7 @@
         residual[2] = u(1.0)[1]
     end
 
-    prob_func(prob, i, repeat) = remake(prob, p = [rand()])
+    prob_func(prob, ctx) = remake(prob, p = [rand()])
 
     u0 = [0.0, 1.0]
     tspan = (0, pi / 2)

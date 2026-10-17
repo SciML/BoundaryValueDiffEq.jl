@@ -1,12 +1,30 @@
+"""
+    _unwrap_val(x)
+
+Return the value carried by `Val(x)`, or return `x` unchanged for non-`Val` inputs.
+"""
+_unwrap_val(::Val{B}) where {B} = B
+_unwrap_val(B) = B
+
 recursive_length(x::Vector{<:AbstractArray}) = sum(length, x)
 recursive_length(x::Vector{<:DiffCache}) = sum(xᵢ -> length(xᵢ.u), x)
 
+"""
+    recursive_flatten(x)
+
+Flatten a vector of array-like states into a single vector.
+"""
 function recursive_flatten(x::Vector{<:AbstractArray})
     y = zero(first(x), recursive_length(x))
     recursive_flatten!(y, x)
     return y
 end
 
+"""
+    recursive_flatten!(y, x)
+
+Flatten a vector of array-like states into the preallocated vector `y`.
+"""
 @views function recursive_flatten!(y::AbstractVector, x::Vector{<:AbstractArray})
     i = 0
     for xᵢ in x
@@ -15,6 +33,12 @@ end
     end
     return y
 end
+
+"""
+    recursive_flatten_twopoint!(y, x, sizes)
+
+Flatten a two-point boundary value state vector while preserving the endpoint block sizes.
+"""
 @views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = first(x), x[2:end]
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
@@ -27,6 +51,11 @@ end
     return y
 end
 
+"""
+    recursive_unflatten!(y, x)
+
+Copy a flattened vector `x` back into the array-like storage `y`.
+"""
 @views function recursive_unflatten!(y::Vector{<:AbstractArray}, x::AbstractVector)
     i = 0
     for yᵢ in y
@@ -42,13 +71,18 @@ end
 
 @views function recursive_unflatten!(y::AbstractVectorOfArray, x::AbstractVector)
     i = 0
-    for yᵢ in y
+    for yᵢ in y.u
         copyto!(yᵢ, x[(i + 1):(i + length(yᵢ))])
         i += length(yᵢ)
     end
     return y
 end
 
+"""
+    diff!(dx, x)
+
+Write the forward differences of `x` into `dx`.
+"""
 function diff!(dx, x)
     for i in eachindex(dx)
         dx[i] = x[i + 1] - x[i]
@@ -56,6 +90,12 @@ function diff!(dx, x)
     return dx
 end
 
+"""
+    __maybe_matmul!(z, A, b, alpha = one(eltype(z)), beta = zero(eltype(z)))
+
+Compute `z = alpha * A * b + beta * z`, using a fallback loop for array types where
+`mul!` is not appropriate.
+"""
 function __maybe_matmul!(z::AbstractArray, A, b, α = eltype(z)(1), β = eltype(z)(0))
     return mul!(z, A, b, α, β)
 end
@@ -81,6 +121,12 @@ function interval(mesh, t)
 end
 
 ## Easier to dispatch
+"""
+    eval_bc_residual(problem_type, bc, sol, p, t)
+
+Evaluate an out-of-place boundary condition residual for standard, two-point, and
+second-order boundary value problem forms.
+"""
 eval_bc_residual(pt, bc::BC, sol, p) where {BC} = eval_bc_residual(pt, bc, sol, p, sol.t)
 eval_bc_residual(_, bc::BC, sol, p, t) where {BC} = bc(sol, p, t)
 function eval_bc_residual(
@@ -102,6 +148,12 @@ function eval_bc_residual(
     return (resida, residb)
 end
 
+"""
+    eval_bc_residual!(resid, problem_type, bc!, sol, p, t)
+
+Evaluate an in-place boundary condition residual into `resid` for standard, two-point,
+and second-order boundary value problem forms.
+"""
 function eval_bc_residual!(resid, pt, bc!::BC, sol, p) where {BC}
     return eval_bc_residual!(resid, pt, bc!, sol, p, sol.t)
 end
@@ -149,8 +201,8 @@ end
         resid::Tuple, ::TwoPointBVProblem, (bca!, bcb!)::BC,
         sol::SciMLBase.ODESolution, p, t
     ) where {BC}
-    ua = first(sol)
-    ub = last(sol)
+    ua = sol.u[1]
+    ub = sol.u[end]
     bca!(resid[1], ua, p)
     bcb!(resid[2], ub, p)
     return resid
@@ -196,7 +248,7 @@ function eval_bc_residual!(
         resid::AbstractArray{<:AbstractArray},
         ::StandardSecondOrderBVProblem, bc!::BC, sol, dsol, p, t
     ) where {BC}
-    M = length(sol[1])
+    M = length(sol.u[1])
     res_bc = vcat(resid[1], resid[2])
     bc!(res_bc, dsol, sol, p, t)
     copyto!(resid[1], res_bc[1:M])
@@ -268,13 +320,22 @@ function __resize!(x::AbstractVectorOfArray, n, M)
     return x
 end
 
+"Helper function to check if a positive `dt` was passed, switched on by `check`."
+positive_dt(check, dt) = check && dt ≤ zero(dt) && throw(ArgumentError("dt must be positive"))
+
 ## Problem with Initial Guess
+"""
+    __extract_problem_details(prob; kwargs...)
+
+Extract solver setup information from a BVP, including in-place status, state element type,
+state dimension, subinterval count, and starting state.
+"""
 function __extract_problem_details(prob; kwargs...)
     return __extract_problem_details(prob, prob.u0; kwargs...)
 end
 function __extract_problem_details(prob, u0::Number; dt = 0.0, check_positive_dt::Bool = false, kwargs...)
     # Scalar BVP
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    positive_dt(check_positive_dt, dt)
     t₀, t₁ = prob.tspan
     return Val(true), typeof(u0), 1, Int(cld(t₁ - t₀, dt)), [u0]
 end
@@ -293,7 +354,7 @@ function __extract_problem_details(
         check_positive_dt::Bool = false, tune_parameters::Bool = false
     )
     # Problem does not have Initial Guess
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    positive_dt(check_positive_dt, dt)
     t₀, t₁ = prob.tspan
     if tune_parameters
         prob.p isa SciMLBase.NullParameters &&
@@ -308,9 +369,9 @@ function __extract_problem_details(
         tune_parameters::Bool = false
     ) where {F <: Function}
     # Problem passes in a initial guess function
-    check_positive_dt && dt ≤ 0 && throw(ArgumentError("dt must be positive"))
+    positive_dt(check_positive_dt, dt)
 
-    u0 = __initial_guess(f, prob.p, prob.tspan[1]; tune_parameters = tune_parameters)
+    u0 = __initial_guess(f, prob.p, prob.tspan[1]; tune_parameters)
     t₀, t₁ = prob.tspan
     return Val(true), eltype(u0), length(u0), Int(cld(t₁ - t₀, dt)), u0
 end
@@ -329,6 +390,11 @@ function __extract_problem_details(
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
 end
 
+"""
+    __initial_guess(f, p, t; tune_parameters = false)
+
+Evaluate an initial guess function with the supported `(p, t)` calling convention.
+"""
 function __initial_guess(f::F, p::P, t::T; tune_parameters = false) where {F, P, T}
     if hasmethod(f, Tuple{P, T})
         tune_parameters && return vcat(f(p, t), __tunable_part(p))
@@ -347,6 +413,12 @@ function __initial_guess(f::F, p::P, t::T; tune_parameters = false) where {F, P,
     end
 end
 
+"""
+    __tunable_part(p)
+
+Return the SciMLStructures tunable portion of `p`, or `p` itself for plain parameter
+containers.
+"""
 function __tunable_part(p)
     if SciMLStructures.isscimlstructure(p)
         part, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
@@ -356,6 +428,11 @@ function __tunable_part(p)
     end
 end
 
+"""
+    __get_bcresid_prototype(prob, u)
+
+Construct the boundary condition residual prototype and its shape metadata for `prob`.
+"""
 function __get_bcresid_prototype(prob::BVProblem, u)
     return __get_bcresid_prototype(prob.problem_type, prob, u)
 end
@@ -387,6 +464,11 @@ function __get_bcresid_prototype(::StandardSecondOrderBVProblem, prob::BVProblem
     return prototype, size(prototype)
 end
 
+"""
+    safe_similar(x, dims...)
+
+Allocate `similar(x, dims...)` and initialize numeric storage with zeros.
+"""
 @inline function safe_similar(x::AbstractArray{<:T}, args...) where {T <: Number}
     y = similar(x, args...)
     fill!(y, T(0))
@@ -405,6 +487,11 @@ end
 @inline __safe_vec(x) = vec(x)
 @inline __safe_vec(x::Tuple) = mapreduce(__safe_vec, vcat, x)
 
+"""
+    __vec(x)
+
+Convert scalar, array, or tuple states to a vector representation.
+"""
 @inline __vec(x::Number) = [x]
 @inline __vec(x::AbstractArray) = vec(x)
 @inline __vec(x::Tuple) = mapreduce(__vec, vcat, x)
@@ -419,13 +506,29 @@ end
 @inline __maybe_scalar_state(x) = x
 
 # Restructure Non-Vector Inputs
+"""
+    __vec_f!(du, u, p, t, f!, u_size)
+
+Call an in-place problem function on reshaped non-vector state storage.
+"""
 function __vec_f!(du, u, p, t, f!, u_size)
     f!(reshape(du, u_size), reshape(u, u_size), p, t)
     return nothing
 end
 
+"""
+    __vec_f(u, p, t, f, u_size)
+
+Call an out-of-place problem function on reshaped non-vector state storage and vectorize
+the result.
+"""
 __vec_f(u, p, t, f, u_size) = vec(f(reshape(u, u_size), p, t))
 
+"""
+    __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
+
+Call an in-place boundary condition on reshaped non-vector residual and state storage.
+"""
 function __vec_bc!(resid, sol, p, t, bc!, resid_size, u_size)
     bc!(reshape(resid, resid_size), sol, p, t)
     return nothing
@@ -436,6 +539,12 @@ function __vec_bc!(resid, sol, p, bc!, resid_size, u_size)
     return nothing
 end
 
+"""
+    __vec_bc(sol, p, t, bc, u_size)
+
+Call an out-of-place boundary condition on reshaped non-vector state storage and vectorize
+the result.
+"""
 __vec_bc(sol, p, t, bc, u_size) = vec(bc(sol, p, t))
 __vec_bc(sol, p, bc, u_size) = vec(bc(reshape(sol, u_size), p))
 
@@ -447,6 +556,11 @@ end
 
 __vec_f(du, u, p, t, f, u_size) = vec(f(reshape(du, u_size), reshape(u, u_size), p, t))
 
+"""
+    __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
+
+Call an in-place second-order boundary condition on reshaped derivative and state storage.
+"""
 function __vec_so_bc!(resid, dsol, sol, p, t, bc!, resid_size, u_size)
     bc!(
         reshape(resid, resid_size), __restructure_sol(dsol, u_size),
@@ -460,6 +574,12 @@ function __vec_so_bc!(resid, dsol, sol, p, bc!, resid_size, u_size)
     return nothing
 end
 
+"""
+    __vec_so_bc(dsol, sol, p, t, bc, u_size)
+
+Call an out-of-place second-order boundary condition on reshaped derivative and state
+storage and vectorize the result.
+"""
 function __vec_so_bc(dsol, sol, p, t, bc, u_size)
     return vec(bc(__restructure_sol(dsol, u_size), __restructure_sol(sol, u_size), p, t))
 end
@@ -467,20 +587,35 @@ function __vec_so_bc(dsol, sol, p, bc, u_size)
     return vec(bc(reshape(dsol, u_size), reshape(sol, u_size), p))
 end
 
+"""
+    __get_non_sparse_ad(ad)
+
+Return the dense AD backend inside `AutoSparse`, or return non-sparse backends unchanged.
+"""
 @inline __get_non_sparse_ad(ad::AbstractADType) = ad
 @inline __get_non_sparse_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
 # Restructure Solution
+"""
+    __restructure_sol(sol, u_size)
+
+Reshape stored solution values to the original non-vector state shape `u_size`.
+"""
 function __restructure_sol(sol::AbstractVectorOfArray, u_size)
-    (size(first(sol)) == u_size) && return sol
-    return VectorOfArray(map(Base.Fix2(reshape, u_size), sol))
+    (size(first(sol.u)) == u_size) && return sol
+    return VectorOfArray(map(Base.Fix2(reshape, u_size), sol.u))
 end
 function __restructure_sol(sol::AbstractArray{<:AbstractArray}, u_size)
     (size(first(sol)) == u_size) && return sol
     return map(Base.Fix2(reshape, u_size), sol)
 end
 
-# Construct the internal NonlinearProblem
+"""
+    __internal_nlsolve_problem(prob, resid_prototype, u0, args...; kwargs...)
+
+Construct the internal `NonlinearProblem` or `NonlinearLeastSquaresProblem` for a BVP
+discretization.
+"""
 @inline function __internal_nlsolve_problem(
         ::BVProblem{uType, tType, iip, nlls}, resid_prototype,
         u0, args...; kwargs...
@@ -519,7 +654,11 @@ end
     return NonlinearProblem(args...; kwargs...)
 end
 
-# Construct the internal OptimizationProblem
+"""
+    __internal_optimization_problem(prob, args...; kwargs...)
+
+Construct the internal `OptimizationProblem` for optimization-based BVP solves.
+"""
 @inline function __internal_optimization_problem(
         ::BVProblem{uType, tType, iip}, args...; kwargs...
     ) where {uType, tType, iip}
@@ -586,7 +725,7 @@ Returns the length of the initial guess. If the initial guess is a function or n
 guess is supplied, it returns `-1`.
 """
 @inline __initial_guess_length(u₀::AbstractVector{<:AbstractArray}) = length(u₀)
-@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀)
+@inline __initial_guess_length(u₀::VectorOfArray) = length(u₀.u)
 @inline __initial_guess_length(u₀::DiffEqArray) = length(u₀.t)
 @inline __initial_guess_length(u₀::SciMLBase.ODESolution) = length(u₀.t)
 @inline __initial_guess_length(u₀::F) where {F} = -1
@@ -617,15 +756,15 @@ as the mesh of the `DiffEqArray`.
 end
 @inline function __initial_guess_on_mesh(u₀::VectorOfArray, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return copy(u₀)
+    return deepcopy(u₀)
 end
 @inline function __initial_guess_on_mesh(u₀::DiffEqArray, mesh, p; tune_parameters = false)
     tune_parameters && return DiffEqArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return copy(u₀)
+    return deepcopy(u₀)
 end
 @inline function __initial_guess_on_mesh(u₀::SciMLBase.ODESolution, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u), __tunable_part(p)) for u in u₀.u])
-    return copy(VectorOfArray(u₀.u))
+    return VectorOfArray(deepcopy(u₀.u))
 end
 @inline function __initial_guess_on_mesh(u₀::AbstractArray, mesh, p; tune_parameters = false)
     tune_parameters && return VectorOfArray([vcat(vec(u₀), __tunable_part(p)) for _ in mesh])
@@ -653,16 +792,27 @@ end
 end
 
 # Construct BVP Solution
+"""
+    __build_solution(prob, odesol, nonlinear_or_optimization_solution)
+
+Combine the interpolating ODE-style solution with the internal nonlinear or optimization
+solver result and propagate the appropriate retcode.
+"""
 function __build_solution(prob::AbstractBVProblem, odesol, nlsol::SciMLBase.NonlinearSolution)
     retcode = ifelse(SciMLBase.successful_retcode(nlsol), odesol.retcode, nlsol.retcode)
     return SciMLBase.solution_new_original_retcode(odesol, nlsol, retcode, nlsol.resid)
 end
 function __build_solution(prob::AbstractBVProblem, odesol, optsol::SciMLBase.OptimizationSolution)
     retcode = ifelse(SciMLBase.successful_retcode(optsol), odesol.retcode, optsol.retcode)
-    return SciMLBase.solution_new_original_retcode(odesol, optsol, retcode, zeros(length(first(odesol)))) # Need a patch in SciMLBase
+    return SciMLBase.solution_new_original_retcode(odesol, optsol, retcode, zeros(length(first(odesol.u)))) # Need a patch in SciMLBase
 end
 
 # Fix3
+"""
+    __Fix3(f, x)
+
+Callable helper that fixes the third argument of a three-argument function.
+"""
 @concrete struct __Fix3
     f
     x
@@ -670,12 +820,23 @@ end
 
 @inline (f::__Fix3{F})(a, b) where {F} = f.f(a, b, f.x)
 
+"""
+    get_dense_ad(ad)
+
+Return the dense AD backend for `AutoSparse` wrappers, preserving `nothing` and dense AD
+backends unchanged.
+"""
 get_dense_ad(::Nothing) = nothing
 get_dense_ad(ad) = ad
 get_dense_ad(ad::AutoSparse) = ADTypes.dense_ad(ad)
 
 # traits for forward or reverse mode AutoForwardDiff
 
+"""
+    _sparse_like(I, J, x, m = maximum(I), n = maximum(J))
+
+Build a sparse matrix with index storage adapted to `x` and values shaped like `x`.
+"""
 function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     I′ = adapt(parameterless_type(x), I)
     J′ = adapt(parameterless_type(x), J)
@@ -683,6 +844,11 @@ function _sparse_like(I, J, x::AbstractArray, m = maximum(I), n = maximum(J))
     return sparse(I′, J′, V, m, n)
 end
 
+"""
+    nodual_value(x)
+
+Strip ForwardDiff and SparseConnectivityTracer dual numbers from scalars or arrays.
+"""
 nodual_value(x) = x
 nodual_value(x::ForwardDiff.Dual) = ForwardDiff.value(x)
 nodual_value(x::AbstractArray{<:ForwardDiff.Dual}) = map(ForwardDiff.value, x)
@@ -691,10 +857,22 @@ function nodual_value(x::AbstractArray{<:SparseConnectivityTracer.Dual})
     return map(SparseConnectivityTracer.primal, x)
 end
 
+"""
+    __split_kwargs(; abstol, adaptive, controller, verbose = DEFAULT_VERBOSE, kwargs...)
+
+Split BVP solve keywords into cache fields and the keyword set forwarded to internal
+solvers.
+"""
 function __split_kwargs(; abstol, adaptive, controller, verbose = DEFAULT_VERBOSE, kwargs...)
     return ((abstol, adaptive, controller, verbose), (; abstol, adaptive, kwargs...))
 end
 
+"""
+    __concrete_kwargs(nlsolve, optimize, nlsolve_kwargs, optimize_kwargs[, bvp_verbose])
+
+Select and normalize the keyword arguments forwarded to the active internal nonlinear or
+optimization solver.
+"""
 @inline __concrete_kwargs(nlsolve, ::Nothing, nlsolve_kwargs, optimize_kwargs) = (;
     nlsolve_kwargs...,
 )
@@ -761,6 +939,163 @@ end
 @inline function __add_singular_term!(K, singular_term::AbstractMatrix, y, t)
     if t > 0
         mul!(K, singular_term, y, one(t) / t, one(t))
+    end
+    return nothing
+end
+
+"""
+    __apply_mass_matrix!(residᵢ, mass_matrix)
+
+Overwrite `residᵢ` with `mass_matrix * residᵢ` in place. Used in defect estimation so that
+the defect compares `M * z′` against `f(z)` for mass-matrix problems. No-op for
+`UniformScaling` mass matrices, so plain ODEs pay no cost.
+"""
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::UniformScaling)
+    return nothing
+end
+
+@inline function __apply_mass_matrix!(residᵢ, mass_matrix::AbstractMatrix)
+    copyto!(residᵢ, mass_matrix * residᵢ)
+    return nothing
+end
+
+"""
+    __get_algebraic_indices(mass_matrix)
+
+Return the indices of the zero rows of `mass_matrix`, i.e. the algebraic equations of an
+index-1 DAE, or `nothing` when there are none (always for `UniformScaling`).
+"""
+@inline function __get_algebraic_indices(mass_matrix::UniformScaling)
+    return nothing
+end
+
+@inline function __get_algebraic_indices(mass_matrix::AbstractMatrix)
+    indices = [i for i in axes(mass_matrix, 1) if iszero(mass_matrix[i, :])]
+    return isempty(indices) ? nothing : indices
+end
+
+"""
+    __mass_stage_entry(mass_matrix, K, j, r)
+
+Return `(mass_matrix * K)[j, r]`, the `j`-th entry of the mass-matrix-weighted `r`-th
+collocation stage slope. For `UniformScaling` this is just `K[j, r]`. Rows beyond the
+extent of `mass_matrix` are treated as having an identity mass row, which is the correct
+semantics for the constant-parameter equations appended by `tune_parameters`.
+"""
+@inline function __mass_stage_entry(mass_matrix::UniformScaling, K, j, r)
+    return K[j, r]
+end
+
+@inline function __mass_stage_entry(mass_matrix::AbstractMatrix, K, j, r)
+    j > size(mass_matrix, 1) && return K[j, r]
+    stage_sum = zero(promote_type(eltype(mass_matrix), eltype(K)))
+    for l in axes(mass_matrix, 2)
+        stage_sum += mass_matrix[j, l] * K[l, r]
+    end
+    return stage_sum
+end
+
+"""
+    __mass_mesh_entry(mass_matrix, yᵢ₊₁, yᵢ, j)
+
+Return `(mass_matrix * (yᵢ₊₁ - yᵢ))[j]`, the `j`-th entry of the mass-matrix-weighted mesh
+difference, for MIRK residuals where the stage values store `f` evaluations rather than
+slopes. For `UniformScaling` this is `yᵢ₊₁[j] - yᵢ[j]`; rows beyond the extent of
+`mass_matrix` are treated as identity rows (see [`__mass_stage_entry`](@ref)).
+"""
+@inline function __mass_mesh_entry(mass_matrix::UniformScaling, yᵢ₊₁, yᵢ, j)
+    return yᵢ₊₁[j] - yᵢ[j]
+end
+
+@inline function __mass_mesh_entry(mass_matrix::AbstractMatrix, yᵢ₊₁, yᵢ, j)
+    j > size(mass_matrix, 1) && return yᵢ₊₁[j] - yᵢ[j]
+    mesh_sum = zero(promote_type(eltype(mass_matrix), eltype(yᵢ₊₁)))
+    for l in axes(mass_matrix, 2)
+        mesh_sum += mass_matrix[j, l] * (yᵢ₊₁[l] - yᵢ[l])
+    end
+    return mesh_sum
+end
+
+"""
+    __subtract_mass_stage!(res, mass_matrix, K_r, tmp)
+
+Subtract `mass_matrix * K_r` from `res` in place, using `tmp` as workspace. Turns the
+collocation stage residual `f(...) - K_r` into `f(...) - M * K_r`, i.e. collocation of
+`M * u′ = f(u, p, t)`. Entries beyond the extent of `mass_matrix` are treated as having
+an identity mass row (see [`__mass_stage_entry`](@ref)).
+"""
+@inline function __subtract_mass_stage!(res, ::UniformScaling, K_r, tmp)
+    res .-= K_r
+    return nothing
+end
+
+@inline function __subtract_mass_stage!(res, M::AbstractMatrix, K_r, tmp)
+    n = size(M, 1)
+    mul!(@view(tmp[1:n]), M, @view(K_r[1:n]))
+    res[1:n] .-= @view(tmp[1:n])
+    res[(n + 1):end] .-= @view(K_r[(n + 1):end])
+    return nothing
+end
+
+"""
+    __apply_algebraic_constraint!(residᵢ, algebraic_indices, f, yᵢ₊₁, p, t, iip)
+
+When `algebraic_indices !== nothing`, overwrite `residᵢ` with `f(yᵢ₊₁, p, t)` so that the
+algebraic rows of the mesh-point residual hold the DAE constraint residual evaluated at
+the right mesh point, following the unprojected collocation approach for index-1 DAEs of
+Ascher & Spiteri (1994). The caller must then fill the non-algebraic rows with the usual
+continuity residual, skipping the entries selected by [`__is_algebraic`](@ref). `iip` is
+a `Val` indicating whether `f` is in-place. No-op when `algebraic_indices === nothing`.
+"""
+@inline function __apply_algebraic_constraint!(
+        residᵢ, ::Nothing, f, yᵢ₊₁, p, t, ::Val{iip}
+    ) where {iip}
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices::Vector{Int}, f!, yᵢ₊₁, p, t, ::Val{true}
+    )
+    f!(residᵢ, yᵢ₊₁, p, t)
+    return nothing
+end
+
+@inline function __apply_algebraic_constraint!(
+        residᵢ, algebraic_indices::Vector{Int}, f, yᵢ₊₁, p, t, ::Val{false}
+    )
+    residᵢ .= f(yᵢ₊₁, p, t)
+    return nothing
+end
+
+"""
+    __is_algebraic(algebraic_indices, j)
+
+Whether row `j` of the mesh-point residual is an algebraic (zero mass-matrix row)
+equation. Always `false` when `algebraic_indices === nothing`.
+"""
+@inline __is_algebraic(::Nothing, j) = false
+@inline __is_algebraic(algebraic_indices::Vector{Int}, j) = j in algebraic_indices
+
+"""
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+
+Throw an `ArgumentError` when mesh adaptivity is requested for a DAE problem
+(`algebraic_indices !== nothing`): the collocation interpolant is inaccurate for algebraic
+variables, so defect-based mesh refinement cannot converge.
+"""
+@inline __check_dae_adaptivity(::Nothing, adaptive::Bool) = nothing
+
+@inline function __check_dae_adaptivity(::Vector{Int}, adaptive::Bool)
+    if adaptive
+        throw(
+            ArgumentError(
+                "Adaptive mesh refinement is not supported for DAE problems (mass " *
+                    "matrices with zero rows): the collocation interpolant is inaccurate " *
+                    "for algebraic variables, so the defect estimate cannot converge. " *
+                    "Pass `adaptive = false`, or use a solver from " *
+                    "BoundaryValueDiffEqAscher.jl, which supports mesh adaptivity for DAEs."
+            )
+        )
     end
     return nothing
 end

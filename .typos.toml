@@ -1,5 +1,10 @@
+[default.extend-identifiers]
+# Beam-bending equation EIy'(x) = q(x): E (Young's modulus), I (moment of
+# inertia), y (deflection). Not a typo of "EIt".
+EIy = "EIy"
+
 [default.extend-words]
-# BVP-specific functions 
+# BVP-specific functions
 Comput = "Comput"
 ABD = "ABD"
 

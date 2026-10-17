@@ -1,0 +1,13 @@
+# Test group matrix for the sublibrary CI discovery (SciML reusable
+# sublibrary-project-tests workflow). Each table header is a test group;
+# runtests.jl dispatches on BOUNDARYVALUEDIFFEQ_TEST_GROUP matching the name.
+#
+# Core: the sublibrary's solver tests in test/Core/, run on the base version
+# matrix. QA (Aqua) adds extra deps via test/qa/Project.toml, is excluded from
+# the default "All" run, and runs on release + LTS Julia only.
+
+[Core]
+versions = ["lts", "1", "pre"]
+
+[QA]
+versions = ["lts", "1"]

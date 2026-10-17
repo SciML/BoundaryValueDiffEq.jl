@@ -1,4 +1,8 @@
-@testitem "BigFloat compatibility" begin
+using BoundaryValueDiffEq
+using SciMLBase
+using Test
+
+@testset "BigFloat compatibility" begin
     using BoundaryValueDiffEq
     # Need Sparspak for BigFloat
     using Sparspak
@@ -62,6 +66,6 @@
     u0 = BigFloat.([1.0, 1.0, 1.0])
     tspan = (0.0, 1.0)
     prob = SecondOrderBVProblem(second_f!, second_bc!, u0, tspan)
-    @test_broken sol4 = solve(prob, MIRKN4(), dt = 0.01)
-    @test_broken SciMLBase.successful_retcode(sol4.retcode)
+    sol4 = solve(prob, MIRKN4(), dt = 0.01)
+    @test SciMLBase.successful_retcode(sol4.retcode)
 end

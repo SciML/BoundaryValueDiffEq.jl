@@ -7,20 +7,33 @@ using Pkg
 Pkg.add("BoundaryValueDiffEqShooting")
 ```
 
-!!! note "Require OrdinaryDiffEq"
-    
-    Shooting methods require OrdinaryDiffEq.jl loaded to use the ODE solvers
+`BoundaryValueDiffEqShooting` reexports the problem constructors, `solve` and
+`ReturnCode` its documented workflow uses (see [Reexported API](@ref reexports)); the ODE
+algorithm has to come from its own solver package:
 
-```julia
-solve(prob::BVProblem, alg; kwargs...)
-solve(prob::TwoPointBVProblem, alg; kwargs...)
-```
+```jldoctest
+using BoundaryValueDiffEqShooting
+using OrdinaryDiffEqTsit5: Tsit5
 
-Shooting methods should be use together with ODE solvers:
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = 0
+    return
+end
 
-```
-BoundaryValueDiffEqShooting.Shooting
-BoundaryValueDiffEqShooting.MultipleShooting
+function bc!(residual, u, p, t)
+    residual[1] = u(0.0)[1] - 1
+    residual[2] = u(1.0)[1]
+    return
+end
+
+prob = BVProblem(f!, bc!, [1.0, -1.0], (0.0, 1.0); nlls = Val(false))
+sol = solve(prob, Shooting(Tsit5()); abstol = 1.0e-8)
+
+@assert sol.retcode == ReturnCode.Success
+@assert isapprox(sol(0.0)[1], 1.0; atol = 1.0e-6)
+@assert isapprox(sol(1.0)[1], 0.0; atol = 1.0e-6)
+# output
 ```
 
 ## Full List of Methods

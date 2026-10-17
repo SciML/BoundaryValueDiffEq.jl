@@ -1,6 +1,10 @@
-@testitem "Verbose field in caches" begin
+using BoundaryValueDiffEq
+using SciMLBase
+using Test
+
+@testset "Verbose field in caches" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
-    using BoundaryValueDiffEqCore: @SciMLMessage, SciMLLogging
+    using BoundaryValueDiffEqCore: SciMLLogging
 
     # Simple pendulum problem for testing
     tspan = (0.0, pi / 2)
@@ -89,9 +93,9 @@
     end
 end
 
-@testitem "Verbose field in MIRKN cache" begin
+@testset "Verbose field in MIRKN cache" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
-    using BoundaryValueDiffEqCore: @SciMLMessage, SciMLLogging
+    using BoundaryValueDiffEqCore: SciMLLogging
 
     # Second order BVP for MIRKN
     tspan = (0.0, 1.0)
@@ -125,9 +129,9 @@ end
     end
 end
 
-@testitem "Verbose persistence through solve" begin
+@testset "Verbose persistence through solve" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
-    using BoundaryValueDiffEqCore: @SciMLMessage, SciMLLogging
+    using BoundaryValueDiffEqCore: SciMLLogging
 
     # Simple test problem
     tspan = (0.0, 1.0)
@@ -160,9 +164,18 @@ end
     end
 end
 
-@testitem "Internal solver verbosity integration" begin
+@testset "Internal solver verbosity integration" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: SciMLLogging
+    using OptimizationBase: OptimizationVerbosity
+
+    # The Standard preset silences the optimizer's `:unsupported_kwargs` notice
+    # (BVP forwards common tolerances into the inner optimizer as plumbing), so
+    # `optimization_verbosity` is a customized OptimizationVerbosity, not the bare
+    # `Standard()` preset.
+    standard_opt_verbosity = OptimizationVerbosity(;
+        preset = SciMLLogging.Standard(), unsupported_kwargs = SciMLLogging.Silent()
+    )
 
     # Test BVPVerbosity has both verbosity fields
     @testset "Verbosity fields exist" begin
@@ -170,7 +183,7 @@ end
         @test hasfield(typeof(v), :nonlinear_verbosity)
         @test hasfield(typeof(v), :optimization_verbosity)
         @test v.nonlinear_verbosity == SciMLLogging.Standard()
-        @test v.optimization_verbosity == SciMLLogging.Standard()
+        @test v.optimization_verbosity == standard_opt_verbosity
     end
 
     # Test preset matching for both verbosity controls
@@ -193,7 +206,7 @@ end
         v = BVPVerbosity(SciMLLogging.Standard())
         @test v.bvpsol_convergence == SciMLLogging.WarnLevel()
         @test v.nonlinear_verbosity == SciMLLogging.Standard()
-        @test v.optimization_verbosity == SciMLLogging.Standard()
+        @test v.optimization_verbosity == standard_opt_verbosity
     end
 
     # Test integration with solve - verify it doesn't error
@@ -244,7 +257,7 @@ end
     end
 end
 
-@testitem "Verbosity propagation via cache inspection" begin
+@testset "Verbosity propagation via cache inspection" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: __concrete_kwargs, SciMLLogging
     using NonlinearSolveFirstOrder: NewtonRaphson
@@ -409,7 +422,7 @@ end
     end
 end
 
-@testitem "Solve problems with various verbosity settings" begin
+@testset "Solve problems with various verbosity settings" begin
     using BoundaryValueDiffEq, BoundaryValueDiffEqCore
     using BoundaryValueDiffEqCore: SciMLLogging
     using NonlinearSolveFirstOrder: NewtonRaphson

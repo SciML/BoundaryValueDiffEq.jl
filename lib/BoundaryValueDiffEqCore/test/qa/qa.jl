@@ -1,0 +1,40 @@
+using SciMLTesting
+using BoundaryValueDiffEqCore
+using Test
+
+include(joinpath(@__DIR__, "..", "..", "..", "..", "test", "qa", "reexports.jl"))
+
+run_qa(
+    BoundaryValueDiffEqCore;
+    aqua_kwargs = (;
+        stale_deps = (; ignore = [:TimerOutputs]),
+    ),
+    ei_kwargs = (;
+        # All remaining entries are external internals with no public replacement:
+        #   - SciMLBase: BVP problem/algorithm abstract types that BVP solvers
+        #     legitimately subtype/extend, and solution_new_original_retcode (no
+        #     public counterpart; solution_new_retcode does not preserve the
+        #     original retcode).
+        #   - ForwardDiff Dual/value/can_dual/pickchunksize: not marked public.
+        #   - ArrayInterface.parameterless_type: not marked public.
+        #   - SciMLStructures Tunable/canonicalize/isscimlstructure/replace: the
+        #     SciMLStructures interface is not marked public.
+        #   - SparseConnectivityTracer Dual/primal: internal tracer types.
+        all_explicit_imports_are_public = (;
+            ignore = (
+                :AbstractBVProblem, :StandardBVProblem, :StandardSecondOrderBVProblem,
+                :parameterless_type, :pickchunksize,
+            ),
+        ),
+        all_qualified_accesses_are_public = (;
+            ignore = (
+                :AbstractBVPAlgorithm, :AbstractBVProblem, :solution_new_original_retcode,
+                :Dual, :value, :can_dual, :primal,
+                :Tunable, :canonicalize, :isscimlstructure, :replace,
+            ),
+        ),
+    ),
+    reexports_allow = CORE_REEXPORTS,
+)
+
+test_reexport_surface(BoundaryValueDiffEqCore, CORE_REEXPORTS, @__MODULE__)

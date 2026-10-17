@@ -1,4 +1,7 @@
-@testitem "Scalar BVP tests" begin
+using BoundaryValueDiffEq
+using Test
+
+@testset "Scalar BVP tests" begin
     using BoundaryValueDiffEq, LinearAlgebra, OrdinaryDiffEqTsit5, SciMLBase
     tspan = (0.0, 2.0)
 
