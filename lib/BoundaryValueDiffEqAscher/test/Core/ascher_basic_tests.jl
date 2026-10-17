@@ -323,6 +323,26 @@ end
     ) < 1.0e-4
 end
 
+@testset "Ascher singleton guesses" begin
+    using RecursiveArrayTools: VectorOfArray
+    f!(du, u, p, t) = (du[1] = 0; du[2] = u[1]; nothing)
+    function bc!(res, u, p, t)
+        res[1] = u(0.0)[1] - 1
+        res[2] = u(1.0)[2] - 1
+        return nothing
+    end
+    for alg in (Ascher1(), Ascher2(), Ascher3(), Ascher4(), Ascher5(), Ascher6(), Ascher7()),
+            guess in ([[1.0, 0.0]], VectorOfArray([[1.0, 0.0]])),
+            adaptive in (false, true)
+        @testset "$(typeof(alg)), $(typeof(guess)), adaptive = $adaptive" begin
+            prob = BVProblem(f!, bc!, guess, (0.0, 1.0))
+            sol = solve(prob, alg; dt = 0.1, adaptive)
+            @test successful_retcode(sol)
+            @test all(u ≈ [1.0, t] for (u, t) in zip(sol.u, sol.t))
+        end
+    end
+end
+
 # JET tests have been moved to the separate QA test group (test/qa/)
 
 @testset "Two-point boundary allocation" begin

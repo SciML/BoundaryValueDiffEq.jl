@@ -35,6 +35,7 @@ builds its mesh from `dt` rather than from the guess.
 """
 function __ascher_guess_on_mesh(u0, mesh, p)
     us = __initial_guess_on_mesh(u0, mesh, p).u
+    length(us) == 1 && return [copy(vec(only(us))) for _ in mesh]
     length(us) == length(mesh) && return [copy(vec(u)) for u in us]
     t_src = __ascher_guess_times(u0, us, mesh)
     return [__ascher_linear_interp_state(us, t_src, t) for t in mesh]
