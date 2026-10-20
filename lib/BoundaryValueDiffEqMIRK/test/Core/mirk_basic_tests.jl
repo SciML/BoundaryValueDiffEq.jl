@@ -1,6 +1,7 @@
 using BoundaryValueDiffEqMIRK
 using ADTypes: AutoFiniteDiff, AutoSparse
 using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, DefectControl, GlobalErrorControl,
+    __split_kwargs,
     HybridErrorControl, SequentialErrorControl
 using RecursiveArrayTools: DiffEqArray, VectorOfArray
 import SciMLBase
@@ -777,7 +778,7 @@ end
         alg = mirk_solver(Val(order))
         sol_coarse = solve(prob, alg; dt = 0.25, abstol = 1.0e-10, adaptive = false)
         cache = init(prob, alg; dt = 0.25, abstol = 1.0e-10)
-        (_, _, controller, _), _ = BoundaryValueDiffEqMIRK.__split_kwargs(; cache.kwargs...)
+        (_, _, controller, _), _ = __split_kwargs(; cache.kwargs...)
         BoundaryValueDiffEqMIRK.__perform_mirk_iteration(cache, 1.0e-10, true, controller)
         @test length(cache.mesh) != length(sol_coarse.t)
         for (i, t) in enumerate(cache.mesh)
