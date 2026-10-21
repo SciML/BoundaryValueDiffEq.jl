@@ -22,3 +22,5 @@ struct FIRKInterpTableau{nested, c, m}
         return new{nested, typeof(q_coeff), typeof(τ_star)}(q_coeff, τ_star, stage)
     end
 end
+
+struct FIRKNestedJacobianTag end

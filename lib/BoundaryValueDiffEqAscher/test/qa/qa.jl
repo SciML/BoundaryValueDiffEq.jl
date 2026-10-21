@@ -12,7 +12,7 @@ run_qa(
         all_explicit_imports_are_public = (; ignore = (:StandardBVProblem,)),
         # ForwardDiff.Dual / ForwardDiff.jacobian! are ForwardDiff internals with
         # no public replacement.
-        all_qualified_accesses_are_public = (; ignore = (:Dual, :jacobian!)),
+        all_qualified_accesses_are_public = (; ignore = (:Dual, :jacobian!, :Partials, :Tag, :partials)),
     ),
     reexports_allow = ASCHER_REEXPORTS,
 )

@@ -23,6 +23,9 @@ timeout = 30
 
 [EXPANDED_BASIC]
 versions = ["lts", "1", "pre"]
+# The self-hosted ubuntu-latest pool repeatedly loses the LTS runner mid-test.
+# Use the GitHub-hosted image where this group has completed successfully.
+runner = ["ubuntu-24.04"]
 timeout = 120
 
 [EXPANDED_AFFINENESS]
@@ -67,10 +70,30 @@ timeout = 180
 versions = ["lts", "1", "pre"]
 timeout = 120
 
-# Underconstrained NLLS is pathologically slow in a way splitting does not fix: single
-# solves take 4-20 min of real solve time, so the 22 cases run for hours. Isolated here
-# so it cannot take the rest of the NLLS coverage down with it.
-[NESTED_NLLS_UNDERCONSTRAINED]
+# The full underconstrained sweep exceeded the six-hour job limit on LTS.
+# Partition by nonlinear solver, preserving all 22 cases. The seven Gauss-Newton
+# cases also exceeded six hours on LTS, so split those by FIRK algorithm.
+[NESTED_NLLS_UNDERCONSTRAINED_NEWTON]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_RADAU]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIA]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIB]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIC]
+versions = ["lts", "1", "pre"]
+timeout = 360
+
+[NESTED_NLLS_UNDERCONSTRAINED_TRUST_REGION]
 versions = ["lts", "1", "pre"]
 timeout = 360
 
@@ -88,3 +111,13 @@ timeout = 240
 
 [QA]
 versions = ["lts", "1"]
+
+[DeviceKernels]
+versions = ["lts", "1", "pre"]
+timeout = 120
+
+# CUDA tests run in their own environment on the SciML GPU runner.
+[GPU]
+versions = ["1"]
+runner = ["self-hosted", "Linux", "X64", "gpu"]
+timeout = 120

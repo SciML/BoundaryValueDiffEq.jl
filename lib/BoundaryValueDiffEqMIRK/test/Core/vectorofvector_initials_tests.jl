@@ -74,6 +74,11 @@ using Test
     @test SciMLBase.successful_retcode(sol6.retcode)
 
     bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1.0e-15)
+    # This tests initial-guess handling. Keep the tolerance above the Float64
+    # roundoff floor of the cancelling RHS terms at the equilibrium solution.
+    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1.0e-12)
     @test SciMLBase.successful_retcode(sol6.retcode)
+    residual = zeros(3)
+    bc_po!(residual, sol6, nothing, sol6.t)
+    @test maximum(abs, residual) < 1.0e-12
 end

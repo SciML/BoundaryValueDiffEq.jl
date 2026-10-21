@@ -1,11 +1,11 @@
 # MIRK Interpolation
-@concrete struct MIRKInterpolation <: AbstractDiffEqInterpolation
+@concrete struct MIRKInterpolation{C} <: AbstractDiffEqInterpolation
     t
     u
-    cache
+    cache::C
 end
 
-function SciMLBase.interp_summary(interp::MIRKInterpolation)
+function SciMLBase.interp_summary(interp::MIRKInterpolation{<:MIRKCache})
     return "MIRK Order $(interp.cache.order) Interpolation"
 end
 
@@ -14,17 +14,33 @@ __has_control_variables(cache::MIRKCache, length_z) = !isnothing(cache.f_prototy
 __state_variable_count(cache::MIRKCache, length_z) = __has_control_variables(cache, length_z) ?
     length(cache.f_prototype) : length_z
 
-function (id::MIRKInterpolation)(tvals, idxs, deriv, p, continuity::Symbol = :left)
+@inline __mirk_interp_values(value, ::DiffCacheNeeded) = value.du
+@inline __mirk_interp_values(value, ::NoDiffCacheNeeded) = value
+
+function (id::MIRKInterpolation)(
+        tvals, idxs, deriv::Union{Type{<:Val}, Val}, p, continuity::Symbol = :left
+    )
     return interpolation(tvals, id, idxs, deriv, p, continuity)
 end
 
-function (id::MIRKInterpolation)(val, tvals, idxs, deriv, p, continuity::Symbol = :left)
+function (id::MIRKInterpolation)(
+        val, tvals, idxs, deriv::Union{Type{<:Val}, Val}, p, continuity::Symbol = :left
+    )
     interpolation!(val, tvals, id, idxs, deriv, p, continuity)
     return
 end
 
+# A Val parameter and explicit continuity overlap with the in-place call's
+# derivative and parameter positions; this intersection is an out-of-place call.
+function (id::MIRKInterpolation)(
+        tvals, idxs, deriv::Union{Type{<:Val}, Val}, p::Union{Type{<:Val}, Val},
+        continuity::Symbol
+    )
+    return interpolation(tvals, id, idxs, deriv, p, continuity)
+end
+
 @inline function interpolation(
-        tvals, id::MIRKInterpolation, idxs, deriv,
+        tvals, id::MIRKInterpolation{<:MIRKCache}, idxs, deriv,
         p, continuity::Symbol = :left
     )
     (; t, u, cache) = id
@@ -49,7 +65,7 @@ end
 end
 
 @inline function interpolation!(
-        vals, tvals, id::MIRKInterpolation, idxs,
+        vals, tvals, id::MIRKInterpolation{<:MIRKCache}, idxs,
         deriv, p, continuity::Symbol = :left
     )
     (; t, cache) = id
@@ -66,7 +82,7 @@ end
 end
 
 @inline function interpolation(
-        tval::Number, id::MIRKInterpolation, idxs,
+        tval::Number, id::MIRKInterpolation{<:MIRKCache}, idxs,
         deriv, p, continuity::Symbol = :left
     )
     z = similar(id.u[1])
@@ -75,7 +91,7 @@ end
 end
 
 @inline function interpolant!(
-        z::AbstractArray, id::MIRKInterpolation, cache::MIRKCache, t, mesh, mesh_dt, T::Type{Val{0}}
+        z::AbstractArray, id::MIRKInterpolation{<:MIRKCache}, cache::MIRKCache, t, mesh, mesh_dt, T::Type{Val{0}}
     )
     i = interval(mesh, t)
     dt = mesh_dt[i]
@@ -85,7 +101,7 @@ end
 end
 
 @inline function interpolant!(
-        dz::AbstractArray, id::MIRKInterpolation,
+        dz::AbstractArray, id::MIRKInterpolation{<:MIRKCache},
         cache::MIRKCache, t, mesh, mesh_dt, T::Type{Val{1}}
     )
     i = interval(mesh, t)
@@ -96,10 +112,10 @@ end
 end
 
 @views function sum_stages!(
-        z::AbstractArray, id::MIRKInterpolation,
-        cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        z::AbstractArray, id::MIRKInterpolation{<:MIRKCache},
+        cache::MIRKCache{iip, T, use_both, diffcache},
         w, i::Int, τ, ::Type{Val{0}}
-    ) where {iip, T, use_both}
+    ) where {iip, T, use_both, diffcache}
     (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     dt = cache.mesh_dt[i]
@@ -109,7 +125,10 @@ end
     # state variables have their interpolation polynomials
     length_z = __state_variable_count(cache, length(z))
     z .= zero(z)
-    __maybe_matmul!(z[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w[1:stage])
+    __maybe_matmul!(
+        z[1:length_z], __mirk_interp_values(k_discrete[i], diffcache())[1:length_z, 1:stage],
+        w[1:stage]
+    )
     __maybe_matmul!(
         z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w[(stage + 1):s_star], true, true
@@ -125,70 +144,19 @@ end
     return nothing
 end
 @views function sum_stages!(
-        z::AbstractArray, id::MIRKInterpolation,
-        cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w, i::Int, τ, ::Type{Val{0}}
-    ) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp, M) = cache
-    (; s_star) = cache.ITU
-    dt = cache.mesh_dt[i]
-
-    has_control = __has_control_variables(cache, length(z))
-    length_z = __state_variable_count(cache, length(z))
-
-    z .= zero(z)
-    __maybe_matmul!(z[1:length_z], k_discrete[i][1:length_z, 1:stage], w[1:stage])
-    __maybe_matmul!(
-        z[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
-        w[(stage + 1):s_star], true, true
-    )
-
-    # control variable just use linear interpolation
-    if has_control
-        inc = τ / dt .* (id.u[i + 1] .- id.u[i])
-        copyto!(z, (length_z + 1):M, inc, (length_z + 1):M)
-    end
-
-    z .= z .* dt .+ id.u[i]
-
-    return nothing
-end
-
-@views function sum_stages!(
-        z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, DiffCacheNeeded},
+        z′, id::MIRKInterpolation{<:MIRKCache}, cache::MIRKCache{iip, T, use_both, diffcache},
         w′, i::Int, τ, ::Type{Val{1}}
-    ) where {iip, T, use_both}
+    ) where {iip, T, use_both, diffcache}
     (; stage, k_discrete, k_interp, M) = cache
     (; s_star) = cache.ITU
     has_control = __has_control_variables(cache, length(z′))
     length_z = __state_variable_count(cache, length(z′))
 
     z′ .= zero(z′)
-    __maybe_matmul!(z′[1:length_z], k_discrete[i].du[1:length_z, 1:stage], w′[1:stage])
     __maybe_matmul!(
-        z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
-        w′[(stage + 1):s_star], true, true
+        z′[1:length_z], __mirk_interp_values(k_discrete[i], diffcache())[1:length_z, 1:stage],
+        w′[1:stage]
     )
-
-    # control variable just use linear interpolation
-    if has_control
-        inc = (id.u[i + 1] .- id.u[i]) ./ cache.mesh_dt[i]
-        copyto!(z′, (length_z + 1):M, inc, (length_z + 1):M)
-    end
-
-    return nothing
-end
-@views function sum_stages!(
-        z′, id::MIRKInterpolation, cache::MIRKCache{iip, T, use_both, NoDiffCacheNeeded},
-        w′, i::Int, τ, ::Type{Val{1}}
-    ) where {iip, T, use_both}
-    (; stage, k_discrete, k_interp, M) = cache
-    (; s_star) = cache.ITU
-    has_control = __has_control_variables(cache, length(z′))
-    length_z = __state_variable_count(cache, length(z′))
-
-    z′ .= zero(z′)
-    __maybe_matmul!(z′[1:length_z], k_discrete[i][1:length_z, 1:stage], w′[1:stage])
     __maybe_matmul!(
         z′[1:length_z], k_interp.u[i][1:length_z, 1:(s_star - stage)],
         w′[(stage + 1):s_star], true, true
@@ -294,81 +262,76 @@ end
 """
     interp_setup!(cache::MIRKCache)
 
-`interp_setup!` prepare the extra stages in `ki_interp`` for interpolant construction.
-Here, the `ki_interp`` is the stages in one subinterval.
+Prepare the extra stages in `k_interp` for interpolant construction.
 """
-@views function interp_setup!(
-        cache::MIRKCache{
-            iip, T, use_both, DiffCacheNeeded,
-        }
-    ) where {iip, T, use_both}
-    (; x_star, s_star, c_star, v_star) = cache.ITU
-    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
-    for r in 1:(s_star - stage)
-        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
-        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
-        for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages.u[j], k_discrete[j].du[:, 1:stage], x_star[idx₁])
-        end
-        if r > 1
-            for j in eachindex(k_interp.u)
-                __maybe_matmul!(
-                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
-                )
-            end
-        end
-        for i in eachindex(new_stages.u)
-            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
-                (1 - v_star[r]) .* vec(y[i].du) .+
-                v_star[r] .* vec(y[i + 1].du)
-            if iip
-                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
-            else
-                k_interp.u[i][:, r] .= f(
-                    new_stages.u[i], p, mesh[i] +
-                        c_star[r] * mesh_dt[i]
-                )
-            end
-        end
+function interp_setup!(
+        cache::MIRKCache{iip, T, use_both, diffcache}
+    ) where {iip, T, use_both, diffcache}
+    (; x_star, c_star, v_star) = cache.ITU
+    (; k_interp, k_discrete, f, new_stages, y, p, mesh, mesh_dt) = cache
+    trait = diffcache()
+    # Preserve the CPU interpolation RHS, including its existing wrappers.
+    for i in eachindex(new_stages.u)
+        __mirk_interp_interval_values!(
+            k_interp.u[i], new_stages.u[i], __mirk_interp_values(k_discrete[i], trait),
+            vec(__mirk_interp_values(y[i], trait)),
+            vec(__mirk_interp_values(y[i + 1], trait)),
+            p, mesh[i], mesh_dt[i], c_star, v_star, x_star, f, Val(iip), nothing, nothing
+        )
     end
-
     return k_interp
 end
-@views function interp_setup!(
-        cache::MIRKCache{
-            iip, T, use_both, NoDiffCacheNeeded,
-        }
-    ) where {iip, T, use_both}
-    (; x_star, s_star, c_star, v_star) = cache.ITU
-    (; k_interp, k_discrete, f, stage, new_stages, y, p, mesh, mesh_dt) = cache
-    for r in 1:(s_star - stage)
-        idx₁ = ((1:stage) .- 1) .* (s_star - stage) .+ r
-        idx₂ = ((1:(r - 1)) .+ stage .- 1) .* (s_star - stage) .+ r
-        for j in eachindex(k_discrete)
-            __maybe_matmul!(new_stages.u[j], k_discrete[j][:, 1:stage], x_star[idx₁])
-        end
-        if r > 1
-            for j in eachindex(k_interp.u)
-                __maybe_matmul!(
-                    new_stages.u[j], k_interp.u[j][:, 1:(r - 1)], x_star[idx₂], T(1), T(1)
-                )
-            end
-        end
-        for i in eachindex(new_stages.u)
-            new_stages.u[i] .= new_stages.u[i] .* mesh_dt[i] .+
-                (1 - v_star[r]) .* vec(y[i]) .+ v_star[r] .* vec(y[i + 1])
-            if iip
-                f(k_interp.u[i][:, r], new_stages.u[i], p, mesh[i] + c_star[r] * mesh_dt[i])
-            else
-                k_interp.u[i][:, r] .= f(
-                    new_stages.u[i], p, mesh[i] +
-                        c_star[r] * mesh_dt[i]
-                )
-            end
-        end
-    end
 
-    return k_interp
+# Extra interpolation stages on one interval, shared by nested and packed storage.
+# The RHS adapter accounts for the state's shape and any singular contribution.
+@inline function __mirk_interp_interval_values!(
+        KI, tmp, K, y_left, y_right, p, t_left, h, c, v, x, f::F, iip, singular_term, metadata
+    ) where {F}
+    stage = size(K, 2)
+    extra = size(KI, 2)
+    nstates = size(K, 1)
+    @inbounds for r in 1:extra
+        for j in eachindex(tmp)
+            value = zero(eltype(tmp))
+            # Control components, when present, use linear interpolation.
+            if j <= nstates
+                for s in 1:stage
+                    value += K[j, s] * x[(s - 1) * extra + r]
+                end
+                for s in 1:(r - 1)
+                    value += KI[j, s] * x[(stage + s - 1) * extra + r]
+                end
+            end
+            tmp[j] = (1 - v[r]) * y_left[j] + v[r] * y_right[j] + h * value
+        end
+        __mirk_rhs!(view(KI, :, r), f, tmp, p, t_left + c[r] * h, iip, singular_term, metadata)
+    end
+    return nothing
+end
+
+# Interpolant stages
+@kernel function __mirk_device_interp_setup_kernel!(
+        KI, tmp, K, y, f, p, mesh, mesh_dt, c, v, x, in_size, iip, singular_term
+    )
+    i = @index(Global, Linear)
+    metadata = (; in_size, f_size = in_size, nparameters = 0, tune_parameters = Val(false))
+    @inbounds __mirk_interp_interval_values!(
+        view(KI, :, :, i), view(tmp, :, i), view(K, :, :, i),
+        view(y, :, i), view(y, :, i + 1), p, mesh[i], mesh_dt[i], c, v, x,
+        f, iip, singular_term, metadata
+    )
+end
+
+function __mirk_device_interp_setup!(
+        platform, KI, tmp, K, y, f, p, mesh, mesh_dt,
+        itableau::MIRKInterpTableau, in_size, iip, singular_term
+    )
+    __mirk_device_interp_setup_kernel!(platform)(
+        KI, tmp, K, y, f, p, mesh, mesh_dt, itableau.c_star, itableau.v_star,
+        itableau.x_star, in_size, iip, singular_term; ndrange = length(mesh_dt)
+    )
+    synchronize(platform)
+    return KI
 end
 
 """
@@ -456,49 +419,55 @@ interp_weights: solver-specified interpolation weights and its first derivative
 """
 function interp_weights end
 
+# Tuple weights keep the identical polynomials available inside device kernels.
+# The CPU interface still returns vectors for its matrix multiplication helpers.
 for order in (2, 3, 4, 5, 6)
     alg = Symbol("MIRK$(order)")
     @eval begin
         function interp_weights(τ::T, ::$(alg)) where {T}
+            w, wp = __mirk_interp_weights(τ, Val($(QuoteNode(alg))))
+            return collect(w), collect(wp)
+        end
+        @inline function __mirk_interp_weights(τ::T, ::Val{$(QuoteNode(alg))}) where {T}
             if $(order == 2)
-                w = [0, τ * (1 - τ / 2), τ^2 / 2]
+                w = (0, τ * (1 - τ / 2), τ^2 / 2)
 
                 #     Derivative polynomials.
 
-                wp = [0, 1 - τ, τ]
+                wp = (0, 1 - τ, τ)
             elseif $(order == 3)
-                w = [
+                w = (
                     τ / 4.0 * (2.0 * τ^2 - 5.0 * τ + 4.0),
                     -3.0 / 4.0 * τ^2 * (2.0 * τ - 3.0), τ^2 * (τ - 1.0),
-                ]
+                )
 
                 #     Derivative polynomials.
 
-                wp = [
+                wp = (
                     3.0 / 2.0 * (τ - 2.0 / 3.0) * (τ - 1.0),
                     -9.0 / 2.0 * τ * (τ - 1.0), 3.0 * τ * (τ - 2.0 / 3.0),
-                ]
+                )
             elseif $(order == 4)
                 t2 = τ * τ
                 tm1 = τ - 1.0
                 t4m3 = τ * 4.0 - 3.0
                 t2m1 = τ * 2.0 - 1.0
 
-                w = [
+                w = (
                     -τ * (2.0 * τ - 3.0) * (2.0 * t2 - 3.0 * τ + 2.0) / 6.0,
                     t2 * (12.0 * t2 - 20.0 * τ + 9.0) / 6.0,
                     2.0 * t2 * (6.0 * t2 - 14.0 * τ + 9.0) / 3.0,
                     -16.0 * t2 * tm1 * tm1 / 3.0,
-                ]
+                )
 
                 #   Derivative polynomials
 
-                wp = [
+                wp = (
                     -tm1 * t4m3 * t2m1 / 3.0, τ * t2m1 * t4m3,
                     4.0 * τ * t4m3 * tm1, -32.0 * τ * t2m1 * tm1 / 3.0,
-                ]
+                )
             elseif $(order == 5)
-                w = [
+                w = (
                     τ * (
                         22464.0 - 83910.0 * τ + 143041.0 * τ^2 - 113808.0 * τ^3 +
                             33256.0 * τ^4
@@ -508,11 +477,11 @@ for order in (2, 3, 4, 5, 6)
                     -25 / 1134 * τ^2 * (-390.0 + 1045.0 * τ - 1020.0 * τ^2 + 328.0 * τ^3),
                     -25 / 5184 * τ^2 * (390.0 + 255.0 * τ - 1680.0 * τ^2 + 2072.0 * τ^3),
                     279841 / 168480 * τ^2 * (-6.0 + 21.0 * τ - 24.0 * τ^2 + 8.0 * τ^3),
-                ]
+                )
 
                 #   Derivative polynomials
 
-                wp = [
+                wp = (
                     1.0 - 13985 // 1872 * τ + 143041 // 7488 * τ^2 - 2371 // 117 * τ^3 +
                         20785 // 2808 * τ^4,
                     -403 // 280 * τ + 12303 // 1120 * τ^2 - 813 // 35 * τ^3 +
@@ -524,9 +493,9 @@ for order in (2, 3, 4, 5, 6)
                         32375 // 648 * τ^4,
                     -279841 // 14040 * τ + 1958887 // 18720 * τ^2 - 279841 // 1755 * τ^3 +
                         279841 // 4212 * τ^4,
-                ]
+                )
             elseif $(order == 6)
-                w = [
+                w = (
                     τ - 28607 // 7434 * τ^2 - 166210 // 33453 * τ^3 +
                         334780 // 11151 * τ^4 - 1911296 // 55755 * τ^5 + 406528 // 33453 * τ^6,
                     777 // 590 * τ^2 - 2534158 // 234171 * τ^3 + 2088580 // 78057 * τ^4 -
@@ -547,11 +516,11 @@ for order in (2, 3, 4, 5, 6)
                         137363456 // 234171 * τ^6,
                     16384 // 441 * τ^3 - 16384 // 147 * τ^4 + 16384 // 147 * τ^5 -
                         16384 // 441 * τ^6,
-                ]
+                )
 
                 #     Derivative polynomials.
 
-                wp = [
+                wp = (
                     1 - 28607 // 3717 * τ - 166210 // 11151 * τ^2 + 1339120 // 11151 * τ^3 -
                         1911296 // 11151 * τ^4 + 813056 // 11151 * τ^5,
                     777 // 295 * τ - 2534158 // 78057 * τ^2 + 8354320 // 78057 * τ^3 -
@@ -572,7 +541,7 @@ for order in (2, 3, 4, 5, 6)
                         274726912 // 78057 * τ^5,
                     16384 // 147 * τ^2 - 65536 // 147 * τ^3 + 81920 // 147 * τ^4 -
                         32768 // 147 * τ^5,
-                ]
+                )
             end
             return T.(w), T.(wp)
         end
@@ -583,8 +552,12 @@ for order in (6,)
     alg = Symbol("MIRK$(order)I")
     @eval begin
         function interp_weights(τ::T, ::$(alg)) where {T}
+            w, wp = __mirk_interp_weights(τ, Val($(QuoteNode(alg))))
+            return collect(w), collect(wp)
+        end
+        @inline function __mirk_interp_weights(τ::T, ::Val{$(QuoteNode(alg))}) where {T}
             if $(order == 6)
-                w = [
+                w = (
                     -(12233 + 1450 * sqrt(7)) *
                         (
                         800086000 * τ^5 + 63579600 * sqrt(7) * τ^4 - 2936650584 * τ^4 +
@@ -644,11 +617,11 @@ for order in (6,)
                         (τ - 1)^2 *
                         τ^2,
                     -1250000000 / 889206903 * (28 * τ^2 - 28 * τ + 9) * (τ - 1)^2 * τ^2,
-                ]
+                )
 
                 #     Derivative polynomials.
 
-                wp = [
+                wp = (
                     (1450 * sqrt(7) + 12233) *
                         (14 * τ - 7 + sqrt(7)) *
                         (τ - 1) *
@@ -702,9 +675,235 @@ for order in (6,)
                         (14 * τ - 7 - sqrt(7)) *
                         (2 * τ - 1) *
                         τ,
-                ]
+                )
             end
             return T.(w), T.(wp)
         end
     end
+end
+
+# Packed storage reuses the CPU interpolation and intermediate solution wrappers.
+# The cache is a concrete NamedTuple that can be constructed from adapted arrays
+# inside a kernel; no host solver cache enters device code.
+@inline function __build_interpolation(
+        y::AbstractMatrix, k, ki, mesh, mesh_dt, algid, in_size, platform = nothing
+    )
+    return MIRKInterpolation(mesh, y, (; k, ki, mesh_dt, algid, in_size, platform))
+end
+
+struct MIRKMeshValues{I, D}
+    interp::I
+    deriv::D
+end
+
+Base.length(u::MIRKMeshValues) = size(u.interp.u, 2)
+Base.size(u::MIRKMeshValues) = (length(u),)
+Base.firstindex(::MIRKMeshValues) = 1
+Base.lastindex(u::MIRKMeshValues) = length(u)
+Base.eachindex(u::MIRKMeshValues) = Base.OneTo(length(u))
+Base.@propagate_inbounds Base.getindex(u::MIRKMeshValues{I, Val{0}}, i::Int) where {I} =
+    __device_reshape(view(u.interp.u, :, i), u.interp.cache.in_size)
+Base.@propagate_inbounds Base.getindex(u::MIRKMeshValues{I, Val{1}}, i::Int) where {I} =
+    interpolation(u.interp.t[i], u.interp, Val(1))
+Base.first(u::MIRKMeshValues) = u[1]
+Base.last(u::MIRKMeshValues) = u[length(u)]
+@inline Base.iterate(u::MIRKMeshValues, i::Int = 1) =
+    i > length(u) ? nothing : (u[i], i + 1)
+
+BoundaryValueDiffEqCore.EvalSol(id::MIRKInterpolation{<:NamedTuple}) =
+    EvalSol(MIRKMeshValues(id, Val(0)), id.t, id)
+
+@inline function Base.getproperty(sol::EvalSol{<:MIRKInterpolation}, name::Symbol)
+    name === :du && return MIRKMeshValues(getfield(sol, :cache), Val(1))
+    return getfield(sol, name)
+end
+
+# Core's generic indexing materializes a VectorOfArray, so packed interpolation
+# dispatches directly to views of its matrix instead.
+Base.size(sol::EvalSol{<:MIRKInterpolation}) =
+    (sol.cache.cache.in_size..., size(sol.cache.u, 2))
+Base.firstindex(::EvalSol{<:MIRKInterpolation}, d::Int) = 1
+Base.lastindex(sol::EvalSol{<:MIRKInterpolation}, d::Int) = size(sol, d)
+Base.@propagate_inbounds Base.getindex(sol::EvalSol{<:MIRKInterpolation}, i::Int) = sol.u[i]
+Base.@propagate_inbounds Base.getindex(sol::EvalSol{<:MIRKInterpolation}, ::Colon, i::Int) =
+    view(sol.cache.u, :, i)
+Base.@propagate_inbounds Base.getindex(sol::EvalSol{<:MIRKInterpolation}, i::Int, j::Int) =
+    sol.cache.u[i, j]
+Base.@propagate_inbounds function Base.getindex(
+        sol::EvalSol{<:MIRKInterpolation}, indices::Vararg{Int, N}
+    ) where {N}
+    in_size = sol.cache.cache.in_size
+    @boundscheck N == length(in_size) + 1 || throw(BoundsError(sol, indices))
+    row = indices[1]
+    stride = in_size[1]
+    for d in 2:(N - 1)
+        row += (indices[d] - 1) * stride
+        stride *= in_size[d]
+    end
+    return sol.cache.u[row, indices[N]]
+end
+Base.@propagate_inbounds Base.getindex(sol::EvalSol{<:MIRKInterpolation}, ::Colon, ::Colon, node::Int) =
+    sol.u[node]
+@inline Base.iterate(sol::EvalSol{<:MIRKInterpolation}, i::Int = 1) =
+    i > length(sol) ? nothing : (sol[i], i + 1)
+
+# Match the CPU interpolant's left continuity for either mesh direction.
+@inline function __mirk_device_interval(mesh, t)
+    lo = 1
+    hi = length(mesh)
+    @inbounds increasing = mesh[hi] >= mesh[lo]
+    while lo < hi
+        mid = (lo + hi) >>> 1
+        @inbounds before = increasing ? mesh[mid] < t : mesh[mid] > t
+        if before
+            lo = mid + 1
+        else
+            hi = mid
+        end
+    end
+    return min(max(lo - 1, 1), length(mesh) - 1)
+end
+
+struct MIRKDeviceInterpolatedArray{T, N, S, W, D} <: AbstractArray{T, N}
+    sol::S
+    weights::W
+    interval::Int
+    endpoint::Int
+    deriv::D
+end
+
+Base.size(u::MIRKDeviceInterpolatedArray) = u.sol.cache.in_size
+Base.IndexStyle(::Type{<:MIRKDeviceInterpolatedArray}) = IndexLinear()
+
+@inline function interpolation(
+        t::Number, sol::MIRKInterpolation{<:NamedTuple}, deriv::Union{Val{0}, Val{1}}
+    )
+    (; u, cache) = sol
+    (; k, ki, mesh_dt, algid, in_size) = cache
+    D = deriv isa Val{0} ? 0 : 1
+    i = __mirk_device_interval(sol.t, t)
+    @inbounds τ = (t - sol.t[i]) / mesh_dt[i]
+    w, wp = __mirk_interp_weights(τ, algid)
+    weights = D == 0 ? w : wp
+    endpoint = 0
+    if D == 0
+        @inbounds endpoint = t == sol.t[1] ? 1 :
+            (t == sol.t[end] ? length(sol.t) : 0)
+    end
+    return MIRKDeviceInterpolatedArray{
+        eltype(u), length(in_size), typeof(sol), typeof(weights), typeof(deriv),
+    }(sol, weights, i, endpoint, deriv)
+end
+
+@inline (sol::EvalSol{<:MIRKInterpolation})(
+    t::Number, deriv::Union{Val{0}, Val{1}} = Val(0)
+) = interpolation(t, sol.cache, deriv)
+@inline (sol::EvalSol{<:MIRKInterpolation})(t::Number, ::Type{Val{D}}) where {D} =
+    sol(t, Val(D))
+
+Base.@propagate_inbounds function Base.getindex(u::MIRKDeviceInterpolatedArray, j::Int)
+    sol = u.sol
+    (; k, ki, mesh_dt) = sol.cache
+    i = u.interval
+    if u.endpoint != 0
+        return sol.u[j, u.endpoint]
+    end
+    stage = size(k, 2)
+    value = zero(eltype(u))
+    for r in 1:stage
+        value += k[j, r, i] * u.weights[r]
+    end
+    for r in 1:size(ki, 2)
+        value += ki[j, r, i] * u.weights[stage + r]
+    end
+    result = u.deriv isa Val{0} ? sol.u[j, i] + mesh_dt[i] * value : value
+    return convert(eltype(u), result)
+end
+
+SciMLBase.interp_summary(id::MIRKInterpolation{<:NamedTuple}) =
+    "$(typeof(id.cache.algid).parameters[1]) device interpolation"
+
+@inline __mirk_device_interpolation_index(::Nothing, j) = j
+@inline __mirk_device_interpolation_index(idxs::Integer, j) = idxs
+@inline __mirk_device_interpolation_index(idxs, j) = @inbounds idxs[j]
+
+@kernel function __mirk_device_interpolate_kernel!(
+        out, y, K, KI, mesh, mesh_dt, algid, in_size, t, deriv, idxs
+    )
+    j = @index(Global, Linear)
+    @inbounds begin
+        id = __build_interpolation(y, K, KI, mesh, mesh_dt, algid, in_size)
+        row = __mirk_device_interpolation_index(idxs, j)
+        out[j] = interpolation(t, id, deriv)[row]
+    end
+end
+
+function interpolation!(
+        out, t::Number, id::MIRKInterpolation{<:NamedTuple}, idxs,
+        ::Type{Val{D}}, p, continuity::Symbol = :left
+    ) where {D}
+    return interpolation!(out, t, id, idxs, Val(D), p, continuity)
+end
+
+function interpolation!(
+        out, t::Number, id::MIRKInterpolation{<:NamedTuple}, idxs,
+        deriv::Val{D}, p, continuity::Symbol = :left
+    ) where {D}
+    D in (0, 1) || throw(ArgumentError("MIRK interpolation supports derivatives of order zero or one."))
+    (; u, cache) = id
+    (; k, ki, mesh_dt, algid, in_size, platform) = cache
+    nstates = size(u, 1)
+    if idxs isa Integer
+        1 <= idxs <= nstates || throw(BoundsError(Base.OneTo(nstates), idxs))
+    elseif idxs !== nothing
+        idxs isa Union{AbstractArray, Tuple} || throw(
+            ArgumentError("MIRK interpolation indices must be integers or an integer collection.")
+        )
+        all(i -> i isa Integer && 1 <= i <= nstates, idxs) ||
+            throw(BoundsError(Base.OneTo(nstates), idxs))
+    end
+    expected_length = idxs === nothing ? nstates : (idxs isa Integer ? 1 : length(idxs))
+    length(out) == expected_length || throw(
+        DimensionMismatch("MIRK interpolation output length must be $expected_length.")
+    )
+    typeof(__device_initial_backend(out)) === typeof(platform) || throw(
+        ArgumentError("MIRK interpolation output must use the solution backend.")
+    )
+    device_idxs = idxs isa AbstractArray ? __device_parameter(platform, idxs) : idxs
+    __mirk_device_interpolate_kernel!(platform)(
+        out, u, k, ki, id.t, mesh_dt, algid,
+        in_size, t, deriv, device_idxs; ndrange = length(out)
+    )
+    synchronize(platform)
+    return nothing
+end
+
+function interpolation(
+        t::Number, id::MIRKInterpolation{<:NamedTuple}, idxs,
+        deriv::Union{Type{<:Val}, Val}, p, continuity::Symbol = :left
+    )
+    dims = idxs === nothing ? id.cache.in_size : (idxs isa Integer ? (1,) : (length(idxs),))
+    out = similar(id.u, eltype(id.u), dims)
+    interpolation!(out, t, id, idxs, deriv, p, continuity)
+    return idxs isa Integer ? sum(out) : out
+end
+
+function interpolation(
+        tvals, id::MIRKInterpolation{<:NamedTuple}, idxs,
+        deriv::Union{Type{<:Val}, Val}, p, continuity::Symbol = :left
+    )
+    # Keep time metadata on the host.
+    times = collect(tvals)
+    values = [id(t, idxs, deriv, p, continuity) for t in times]
+    return DiffEqArray(values, times)
+end
+
+function interpolation!(
+        out, tvals, id::MIRKInterpolation{<:NamedTuple}, idxs,
+        deriv::Union{Type{<:Val}, Val}, p, continuity::Symbol = :left
+    )
+    for (i, t) in enumerate(tvals)
+        interpolation!(out[i], t, id, idxs, deriv, p, continuity)
+    end
+    return nothing
 end
