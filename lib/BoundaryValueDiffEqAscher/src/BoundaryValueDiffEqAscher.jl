@@ -14,7 +14,7 @@ using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
     __get_bcresid_prototype, __split_kwargs, __concrete_kwargs,
     __default_sparse_ad, __default_coloring_algorithm,
     __construct_internal_problem,
-    __internal_solve
+    __initial_guess_on_mesh, __internal_solve
 
 using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
