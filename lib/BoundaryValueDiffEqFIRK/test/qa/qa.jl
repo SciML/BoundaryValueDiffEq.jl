@@ -14,9 +14,10 @@ run_qa(
             ignore = (:StandardBVProblem, :pickchunksize),
         ),
         # SciMLStructures interface (Tunable/canonicalize/isscimlstructure) is not
-        # marked public.
+        # marked public. Nested-stage sensitivities also use ForwardDiff's
+        # Dual representation, whose accessors are not marked public upstream.
         all_qualified_accesses_are_public = (;
-            ignore = (:Tunable, :canonicalize, :isscimlstructure),
+            ignore = (:Tunable, :canonicalize, :isscimlstructure, :Dual, :Partials, :partials, :value),
         ),
     ),
     reexports_allow = FIRK_REEXPORTS,

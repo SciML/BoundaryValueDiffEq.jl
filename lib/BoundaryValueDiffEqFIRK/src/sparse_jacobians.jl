@@ -20,16 +20,18 @@ function __generate_sparse_jacobian_prototype(
 end
 
 function __generate_sparse_jacobian_prototype(
-        ::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N
+        cache::FIRKCacheNested, ::TwoPointBVProblem, ya, yb, M, N
     )
     fast_scalar_indexing(ya) ||
         error("Sparse Jacobians are only supported for Fast Scalar Index-able Arrays")
     J₁ = length(ya) + length(yb) + M * (N - 1)
     J₂ = M * N
     J = BandedMatrix(Ones{eltype(ya)}(J₁, J₂), (M + 1, M + 1))
-    # for underdetermined systems we don't have banded qr implemented. use sparse
-    J₁ < J₂ && return sparse(J)
-    return J
+    # Trust-region damping appends rows outside the original band. Sparse storage
+    # also supports the QR needed by underdetermined systems.
+    damping = cache.alg.optimize === nothing &&
+        __needs_sparse_damping(cache.alg.nlsolve, ya)
+    return J₁ < J₂ || damping ? sparse(J) : J
 end
 
 function __generate_sparse_jacobian_prototype(
@@ -124,4 +126,55 @@ function __generate_sparse_jacobian_prototype(
     J = _sparse_like(Is, Js, ya, row_size + length(ya) + length(yb), row_size + M)
 
     return J
+end
+
+# Structural discovery and coloring run on the host before solves and after
+# mesh refinement. Only
+# index metadata and sparse storage are transferred to the device; neither the
+# current state nor a numerically evaluated Jacobian is copied to the host.
+
+function __firk_device_boundary_pattern(
+        prob, alg, y, host_mesh, TU, ITU, bc_sizes, p, in_size
+    )
+    M, nodes = size(y)
+    stencil_stage = alg.nested_nlsolve ? 0 : TU.s
+    nbc, nunknowns = prod(bc_sizes[1]), length(y)
+    return __device_boundary_pattern(alg.jac_alg.bc_diffmode, eltype(y), nbc, nunknowns) do
+        host_p = __device_host_parameter(p)
+        mesh_dt = diff(host_mesh)
+        iip = Val(isinplace(prob))
+        function boundary!(residual, x)
+            states = reshape(x, M, nodes)
+            coefficients = Array{eltype(x)}(undef, M, 6, length(host_mesh) - 1)
+            for i in 1:(length(host_mesh) - 1)
+                ctr = (i - 1) * (stencil_stage + 1) + 1
+                dependencies = sum(view(states, :, ctr:(ctr + stencil_stage + 1)))
+                fill!(view(coefficients, :, :, i), dependencies)
+            end
+            sol = __firk_eval_sol(states, host_mesh, mesh_dt, coefficients, in_size, stencil_stage)
+            __device_eval!(
+                __device_reshape(residual, bc_sizes[1]), prob.f.bc,
+                (
+                    sol, get(prob.kwargs, :tune_parameters, false) ?
+                        view(states, (M - length(host_p) + 1):M, 1) : host_p, host_mesh,
+                ), iip
+            )
+            return nothing
+        end
+        return boundary!
+    end
+end
+
+function __generate_sparse_jacobian_prototype(
+        prob::BVProblem, alg::AbstractFIRK, y::AbstractMatrix, host_mesh,
+        TU, ITU, bc_sizes, p, in_size = (size(y, 1),)
+    )
+    boundary = () -> __firk_device_boundary_pattern(prob, alg, y, host_mesh, TU, ITU, bc_sizes, p, in_size)
+    return __device_sparse_structure(prob.problem_type, alg.jac_alg, y, bc_sizes, alg.nested_nlsolve ? 0 : TU.s, boundary)
+end
+
+function __firk_prepare_device_jacobian(prob, alg, y, host_mesh, TU, ITU, bc_sizes, p, in_size)
+    return __prepare_device_jacobian(y, prob.problem_type, bc_sizes) do
+        __generate_sparse_jacobian_prototype(prob, alg, y, host_mesh, TU, ITU, bc_sizes, p, in_size)
+    end
 end

@@ -16,7 +16,9 @@ run_qa(
         # SciMLStructures interface (Tunable/canonicalize/isscimlstructure) is not
         # marked public.
         all_qualified_accesses_are_public = (;
-            ignore = (:Tunable, :canonicalize, :isscimlstructure),
+            ignore = (
+                :Tunable, :canonicalize, :isscimlstructure,
+            ),
         ),
     ),
     reexports_allow = MIRK_REEXPORTS,

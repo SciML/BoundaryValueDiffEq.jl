@@ -30,11 +30,16 @@ for stage in (1, 2, 3, 5, 7)
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
-            equations. Defaults to `CPU()`.
+            equations. Defaults to `CPU()`. A device initial guess selects its own
+            backend. A CPU initial guess
+            with a device platform offloads collocation while retaining host solver
+            control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
-            nonlinear solver.
+            nonlinear solver. On the resident GPU path, stages use batched Newton with
+            backtracking and pivoted local LU; supported options are `abstol`,
+            `reltol` and `maxiters`. Stage sensitivities use implicit differentiation.
           - `defect_threshold = 0.1`: defect threshold used by mesh adaptivity.
           - `max_num_subintervals = 3000`: maximum number of mesh subintervals.
 
@@ -156,11 +161,16 @@ for stage in (2, 3, 4, 5)
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
-            equations. Defaults to `CPU()`.
+            equations. Defaults to `CPU()`. A device initial guess selects its own
+            backend. A CPU initial guess
+            with a device platform offloads collocation while retaining host solver
+            control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
-            nonlinear solver.
+            nonlinear solver. On the resident GPU path, stages use batched Newton with
+            backtracking and pivoted local LU; supported options are `abstol`,
+            `reltol` and `maxiters`. Stage sensitivities use implicit differentiation.
           - `defect_threshold = 0.1`: defect threshold used by mesh adaptivity.
           - `max_num_subintervals = 3000`: maximum number of mesh subintervals.
 
@@ -282,11 +292,16 @@ for stage in (2, 3, 4, 5)
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
-            equations. Defaults to `CPU()`.
+            equations. Defaults to `CPU()`. A device initial guess selects its own
+            backend. A CPU initial guess
+            with a device platform offloads collocation while retaining host solver
+            control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
-            nonlinear solver.
+            nonlinear solver. On the resident GPU path, stages use batched Newton with
+            backtracking and pivoted local LU; supported options are `abstol`,
+            `reltol` and `maxiters`. Stage sensitivities use implicit differentiation.
           - `defect_threshold = 0.1`: defect threshold used by mesh adaptivity.
           - `max_num_subintervals = 3000`: maximum number of mesh subintervals.
 
@@ -408,11 +423,16 @@ for stage in (2, 3, 4, 5)
                 otherwise `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, the default is
                 `AutoForwardDiff()` if possible, otherwise `AutoFiniteDiff()`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
-            equations. Defaults to `CPU()`.
+            equations. Defaults to `CPU()`. A device initial guess selects its own
+            backend. A CPU initial guess
+            with a device platform offloads collocation while retaining host solver
+            control. Both expanded and nested resident formulations are supported.
           - `nested_nlsolve = false`: solve each implicit Runge-Kutta step with a nested
             nonlinear solve instead of including its stages in the global residual.
           - `nested_nlsolve_kwargs = (;)`: keyword arguments forwarded to the nested
-            nonlinear solver.
+            nonlinear solver. On the resident GPU path, stages use batched Newton with
+            backtracking and pivoted local LU; supported options are `abstol`,
+            `reltol` and `maxiters`. Stage sensitivities use implicit differentiation.
           - `defect_threshold = 0.1`: defect threshold used by mesh adaptivity.
           - `max_num_subintervals = 3000`: maximum number of mesh subintervals.
 

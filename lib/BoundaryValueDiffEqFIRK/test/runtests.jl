@@ -71,11 +71,54 @@ run_tests(;
         "NESTED_NLLS" => function ()
             return @time @safetestset "FIRK Nested NLLS Tests" include("nested/nlls_tests.jl")
         end,
-        # Underconstrained NLLS is separated because it is pathologically slow rather than
-        # merely compilation-bound: single solves take 4-20 min of solve time apiece, so the
-        # 22 cases run for hours. Keeping it apart lets the rest of NLLS report quickly.
+        # Keep the aggregates for local runs, but partition the 22 expensive cases in CI.
         "NESTED_NLLS_UNDERCONSTRAINED" => function ()
-            return @time @safetestset "FIRK Nested Underconstrained NLLS Tests" include("nested/nlls_underconstrained_tests.jl")
+            return @time @safetestset "FIRK Nested Underconstrained NLLS Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp()
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_NEWTON" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Newton Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(1:4)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(5:8)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_RADAU" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Radau Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(5:5)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIA" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Lobatto IIIa Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(6:6)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIB" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Lobatto IIIb Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(7:7)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_GAUSS_NEWTON_LOBATTO_IIIC" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Gauss-Newton Lobatto IIIc Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(8:8)
+            end
+        end,
+        "NESTED_NLLS_UNDERCONSTRAINED_TRUST_REGION" => function ()
+            return @time @safetestset "FIRK Nested Underconstrained Trust-Region Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp(9:12)
+            end
         end,
         "NESTED_MISC" => function ()
             @time @safetestset "FIRK Nested Ensemble Tests" include("nested/ensemble_tests.jl")
@@ -90,7 +133,10 @@ run_tests(;
             @time @safetestset "FIRK Nested Convergence Tests" include("nested/firk_convergence_tests.jl")
             @time @safetestset "FIRK Nested Simple Pendulum Tests" include("nested/firk_pendulum_tests.jl")
             @time @safetestset "FIRK Nested NLLS Tests" include("nested/nlls_tests.jl")
-            @time @safetestset "FIRK Nested Underconstrained NLLS Tests" include("nested/nlls_underconstrained_tests.jl")
+            @time @safetestset "FIRK Nested Underconstrained NLLS Tests" begin
+                include("nested/nlls_underconstrained_tests.jl")
+                test_underconstrained_bvp()
+            end
             @time @safetestset "FIRK Nested Ensemble Tests" include("nested/ensemble_tests.jl")
             @time @safetestset "FIRK Nested DAE Tests" include("nested/dae_tests.jl")
             return @time @safetestset "FIRK Nested VectorOfVector Initials Tests" include("nested/vectorofvector_initials_tests.jl")
@@ -99,6 +145,22 @@ run_tests(;
         # heavy optional backends kept out of the main test environment (they force a
         # large joint at-floor resolve on the Downgrade lane); they live in this
         # group's own test/AD/Project.toml, auto-activated before the body runs.
+        "DeviceKernels" => function ()
+            @time @safetestset "FIRK flat buffer resizing" begin
+                include("GPU/resizing_tests.jl")
+                test_firk_flat_buffers(identity, CPU())
+            end
+            @time @safetestset "FIRK device kernels" include("GPU/device_backend_tests.jl")
+            @time @safetestset "FIRK device regressions" include("GPU/device_regression_tests.jl")
+            @time @safetestset "FIRK resident nested solves" include("GPU/device_nested_tests.jl")
+            return @time @safetestset "FIRK device adaptivity and structure" include("GPU/device_features_tests.jl")
+        end,
+        "GPU" => (;
+            env = joinpath(@__DIR__, "GPU"),
+            body = function ()
+                return @time @safetestset "FIRK CUDA" include("GPU/cuda_tests.jl")
+            end,
+        ),
         "AD" => (;
             env = joinpath(@__DIR__, "AD"),
             body = function ()
@@ -122,6 +184,6 @@ run_tests(;
         "EXPANDED_NLLS", "EXPANDED_MISC",
         "NESTED_BASIC", "NESTED_AFFINENESS", "NESTED_CONVERGENCE",
         "NESTED_PENDULUM", "NESTED_NLLS", "NESTED_NLLS_UNDERCONSTRAINED", "NESTED_MISC",
-        "AD", "QA",
+        "DeviceKernels", "AD", "QA",
     ],
 )

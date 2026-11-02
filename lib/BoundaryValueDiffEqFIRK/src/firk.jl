@@ -19,15 +19,23 @@
     # Everything below gets resized in adaptive methods
     mesh                       # Discrete mesh
     mesh_dt                    # Step size
+    host_mesh                  # Host mesh metadata for packed storage; nothing on CPU
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
     y
     y₀
+    unknowns                   # Flat nonlinear unknowns for packed storage; nothing on CPU
     residual
+    jac_prototype              # Flat dense Jacobian buffer; nothing for sparse/CPU
+    jacobian_cache             # Sparse matrix and plan; nothing for dense/CPU
     # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
     # One scratch cache per mesh interval, so backend work items do not alias
     collocation_cache
+    device_cache
+    work_buffers               # Owning packed scratch vectors, retained across resizing
+    new_mesh                   # Packed refinement buffers; nothing on CPU
+    nparameters::Int
     defect
     nest_prob
     resid_size
@@ -61,15 +69,23 @@ Base.eltype(::FIRKCacheNested{iip, T}) where {iip, T} = T
     # Everything below gets resized in adaptive methods
     mesh                       # Discrete mesh
     mesh_dt                    # Step size
+    host_mesh                  # Host mesh metadata for packed storage; nothing on CPU
     k_discrete                 # Stage information associated with the discrete Runge-Kutta method
     y
     y₀
+    unknowns                   # Aliases y for packed storage; nothing on CPU
     residual
+    jac_prototype              # Flat dense Jacobian buffer; nothing for sparse/CPU
+    jacobian_cache             # Sparse matrix and plan; nothing for dense/CPU
     # Scratch caches used outside collocation are never resized
     fᵢ_cache
     fᵢ₂_cache
     # One scratch cache per mesh interval, so backend work items do not alias
     collocation_cache
+    device_cache
+    work_buffers               # Owning packed scratch vectors, retained across resizing
+    new_mesh                   # Packed refinement buffers; nothing on CPU
+    nparameters::Int
     defect
     resid_size
     singular_term
@@ -103,6 +119,20 @@ function SciMLBase.__init(
         prob::BVProblem, alg::AbstractFIRK; dt = 0.0, abstol = 1.0e-6, adaptive = true,
         controller = DefectControl(), nlsolve_kwargs = (; abstol),
         optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
+    )
+    initial_state = __device_initial_state(prob.u0, prob.p, first(prob.tspan))
+    return __init_firk_backend(
+        __device_initial_backend(initial_state), prob, alg, initial_state;
+        dt, abstol, adaptive, controller, nlsolve_kwargs, optimize_kwargs, verbose, kwargs...
+    )
+end
+
+__init_firk_backend(::Backend, prob, alg, initial_state; kwargs...) =
+    __init_firk_device(prob, alg, initial_state; kwargs...)
+
+function __init_firk_backend(
+        ::CPU, prob, alg, initial_state;
+        dt, abstol, adaptive, controller, nlsolve_kwargs, optimize_kwargs, verbose, kwargs...
     )
     if alg.nested_nlsolve
         return init_nested(
@@ -165,6 +195,7 @@ function init_nested(
     y = __alloc.(copy.(y₀.u))
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
+    device_cache = __firk_offload_cache(alg.platform, prob, alg, u0, TU)
     f_prototype = isnothing(prob.f.f_prototype) ? nothing : __vec(prob.f.f_prototype)
     L_f_prototype = isnothing(f_prototype) ? M : length(f_prototype)
 
@@ -285,7 +316,15 @@ function init_nested(
     algebraic_indices = __get_algebraic_indices(prob.f.mass_matrix)
     __check_dae_adaptivity(algebraic_indices, adaptive)
 
-    if iip
+    if device_cache !== nothing
+        if iip
+            loss! = (res, K, p) -> __firk_offload_nested!(res, K, p, f, TU, prob.p, device_cache, Val(true))
+            nestprob = NonlinearProblem(loss!, K0, nestprob_p)
+        else
+            loss = (K, p) -> __firk_offload_nested(K, p, f, TU, prob.p, device_cache)
+            nestprob = NonlinearProblem(loss, K0, nestprob_p)
+        end
+    elseif iip
         nestprob = NonlinearProblem((res, K, p) -> FIRK_nlsolve!(res, K, p, f, TU, prob.p, prob.f.mass_matrix), K0, nestprob_p)
     else
         nestprob = NonlinearProblem((K, p) -> FIRK_nlsolve(K, p, f, TU, prob.p, prob.f.mass_matrix), K0, nestprob_p)
@@ -293,8 +332,9 @@ function init_nested(
 
     return FIRKCacheNested{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, defect, nestprob, resid₁_size, prob.singular_term,
+        alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, nothing, k_discrete,
+        y, y₀, nothing, residual, nothing, nothing, fᵢ_cache, fᵢ₂_cache, collocation_cache,
+        device_cache, nothing, nothing, 0, defect, nestprob, resid₁_size, prob.singular_term,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
@@ -332,6 +372,7 @@ function init_expanded(
 
     TU, ITU = constructRK(alg, T)
     stage = alg_stage(alg)
+    device_cache = __firk_offload_cache(alg.platform, prob, alg, u0, TU)
     f_prototype = isnothing(prob.f.f_prototype) ? nothing : __vec(prob.f.f_prototype)
     L_f_prototype = isnothing(f_prototype) ? M : length(f_prototype)
 
@@ -462,8 +503,9 @@ function init_expanded(
 
     return FIRKCacheExpand{iip, T, typeof(diffcache), tune_parameters}(
         alg_order(alg), stage, M, size(u0), f, prob.f.mass_matrix, algebraic_indices, bc, prob_, prob.problem_type, prob.p,
-        alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, k_discrete,
-        y, y₀, residual, fᵢ_cache, fᵢ₂_cache, collocation_cache, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
+        alg, TU, ITU, f_prototype, bcresid_prototype, mesh, mesh_dt, nothing, k_discrete,
+        y, y₀, nothing, residual, nothing, nothing, fᵢ_cache, fᵢ₂_cache, collocation_cache,
+        device_cache, nothing, nothing, 0, defect, resid₁_size, prob.singular_term, nlsolve_kwargs,
         optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
 end
@@ -501,6 +543,7 @@ function SciMLBase.solve!(
             iip, T, diffcache, tune_parameters,
         }
     ) where {iip, T, diffcache, tune_parameters}
+    cache.host_mesh === nothing || return __solve_firk_device!(cache)
     (abstol, adaptive, _, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
@@ -547,6 +590,7 @@ function SciMLBase.solve!(
             iip, T, diffcache, tune_parameters,
         }
     ) where {iip, T, diffcache, tune_parameters}
+    cache.host_mesh === nothing || return __solve_firk_device!(cache)
     (abstol, adaptive, _, _), kwargs = __split_kwargs(; cache.kwargs...)
     info::ReturnCode.T = ReturnCode.Success
     prob = cache.prob
@@ -1631,3 +1675,229 @@ function __firk_2point_jacobian(x, J, diffmode, diffcache, loss_fn::L, p) where 
     DI.jacobian!(loss_fn, J, diffcache, diffmode, x, Constant(p))
     return J
 end
+
+# Packed state/stage storage for interpolation and error estimates. The expanded
+# formulation aliases `unknowns` to `y`; nested solves keep only mesh states in
+# `unknowns`. All resizable arrays own flat storage; shaped views are regenerated
+# after resizing, since device reshapes can retain the previous allocation.
+@inline __firk_states(cache::Union{FIRKCacheExpand, FIRKCacheNested}) =
+    __reshape_buffer(cache.y, prod(cache.in_size), (length(cache.host_mesh) - 1) * (cache.TU.s + 1) + 1)
+@inline __firk_unknowns(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.alg.nested_nlsolve ?
+    __reshape_buffer(cache.unknowns, prod(cache.in_size), length(cache.host_mesh)) : __firk_states(cache)
+@inline __firk_jacobian(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.jacobian_cache === nothing ?
+    __reshape_buffer(cache.jac_prototype, length(cache.residual), length(cache.unknowns)) :
+    cache.jacobian_cache[nothing].matrix
+@inline __firk_jacobian_plan(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.jacobian_cache === nothing ?
+    nothing : cache.jacobian_cache[nothing].plan
+BoundaryValueDiffEqCore.__bvp_device_residual_prototype(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = cache.residual
+BoundaryValueDiffEqCore.__bvp_device_jacobian_plan(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = __firk_jacobian_plan(cache)
+
+# Cache owning vectors separately from the primal/AD views. Only the latter are
+# invalidated during refinement; scratch allocations can be reused on every mesh.
+function __firk_work_array(cache, key, ::Type{T}, dims...) where {T}
+    buffer = get!(cache.work_buffers, key) do
+        similar(cache.y, T, prod(dims))
+    end
+    resize!(buffer, prod(dims))
+    return __reshape_buffer(buffer, dims...)
+end
+
+function __init_firk_device(
+        prob, alg, u0; dt = 0.0, abstol = 1.0e-6, adaptive = true,
+        controller = DefectControl(), nlsolve_kwargs = (; abstol),
+        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
+    )
+    platform = __device_initial_backend(u0)
+    platform = platform isa CPU ? alg.platform : platform
+    typeof(alg.platform) === typeof(platform) && (platform = alg.platform)
+    @set! alg.platform = platform
+    if !isnothing(alg.optimize) || !isnothing(prob.f.inequality) ||
+            !isnothing(prob.f.equality) || !isnothing(prob.lb) || !isnothing(prob.ub)
+        throw(ArgumentError("GPU FIRK currently supports nonlinear and least-squares BVP solves, not optimization constraints."))
+    end
+    tune_parameters = get(prob.kwargs, :tune_parameters, false)
+    if tune_parameters
+        isinplace(prob) && u0 isa AbstractVector && prob.p isa AbstractVector{<:Number} ||
+            throw(ArgumentError("Resident FIRK parameter tuning requires an in-place RHS, vector states and numeric vector parameters."))
+    end
+    adaptive = adaptive && !(controller isa NoErrorControl)
+    adaptive && alg isa FIRKNoAdaptivity && throw(
+        ArgumentError("This FIRK algorithm does not support adaptivity; use adaptive = false or a higher-order method.")
+    )
+    host_mass = __device_host_parameter(prob.f.mass_matrix)
+    algebraic_indices = __get_algebraic_indices(host_mass)
+    __check_dae_adaptivity(algebraic_indices, adaptive)
+    @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
+    modes = prob.problem_type isa TwoPointBVProblem ? (alg.jac_alg.diffmode,) :
+        (alg.jac_alg.bc_diffmode, alg.jac_alg.nonbc_diffmode)
+    foreach(__device_validate_ad, modes)
+    _, T, M, N, _ = __extract_problem_details(prob; dt, check_positive_dt = true)
+    alg.nested_nlsolve && __firk_nested_options(alg, T, abstol)
+    nparameters = tune_parameters ? length(prob.p) : 0
+    nstates = M
+    M += nparameters
+    in_size = tune_parameters ? (M,) : size(u0)
+    host_mesh = collect(__extract_mesh(prob.u0, prob.tspan..., N))
+    upload(x) = __device_parameter(platform, x)
+    TU, ITU = constructRK(alg, T)
+    TU = FIRKTableau(TU.s, upload(TU.a), upload(TU.c), upload(TU.b), false)
+    ITU = FIRKInterpTableau(upload(ITU.q_coeff), ITU.τ_star, ITU.stage, false)
+    y_buffer = KernelAbstractions.allocate(platform, T, (M * (N * (TU.s + 1) + 1),))
+    y = __reshape_buffer(y_buffer, M, N * (TU.s + 1) + 1)
+    states = prob.u0 isa AbstractVector{<:AbstractArray} ? prob.u0 :
+        (prob.u0 isa Union{AbstractVectorOfArray, SciMLBase.ODESolution} ? prob.u0.u : nothing)
+    if states === nothing && !(prob.u0 isa Function)
+        # A constant guess needs one broadcast, rather than a host-to-device
+        # dispatch for every state and stage column of a large mesh.
+        view(y, 1:nstates, :) .= vec(u0)
+    else
+        for i in eachindex(host_mesh)
+            state = states === nothing ? __device_initial_state(prob.u0, prob.p, host_mesh[i]) : states[i]
+            size(state) == size(u0) || throw(DimensionMismatch("Initial guess state sizes differ."))
+            copyto!(view(y, 1:nstates, (i - 1) * (TU.s + 1) + 1), vec(state))
+            if i < length(host_mesh)
+                for r in 1:TU.s
+                    copyto!(view(y, 1:nstates, (i - 1) * (TU.s + 1) + 1 + r), vec(state))
+                end
+            end
+        end
+    end
+    if tune_parameters
+        parameters = upload(prob.p)
+        view(y, (nstates + 1):M, :) .= parameters
+    end
+    bc_sizes = __device_bc_sizes(prob, tune_parameters ? view(y, :, 1) : u0)
+    nbc = prob.problem_type isa TwoPointBVProblem ? sum(prod, bc_sizes) : prod(first(bc_sizes))
+    unknowns_buffer = alg.nested_nlsolve ? similar(y_buffer, M * (N + 1)) : y_buffer
+    unknowns = alg.nested_nlsolve ? __reshape_buffer(unknowns_buffer, M, N + 1) : y
+    alg.nested_nlsolve && copyto!(unknowns, view(y, :, 1:(TU.s + 1):size(y, 2)))
+    residual = similar(y, M * (size(unknowns, 2) - 1) + nbc)
+    jacobian = __firk_prepare_device_jacobian(
+        prob, alg, unknowns, host_mesh, TU, ITU, bc_sizes, prob.p, in_size
+    )
+    f = __device_function(prob.f.f)
+    tune_parameters && (f = BVPTunableRHS(f, nparameters))
+    cache_type = alg.nested_nlsolve ? FIRKCacheNested : FIRKCacheExpand
+    # Resident nested stages are solved by kernels, so no host nest_prob is needed.
+    nest_prob = alg.nested_nlsolve ? (nothing,) : ()
+    return cache_type{isinplace(prob), T, NoDiffCacheNeeded, tune_parameters}(
+        alg_order(alg), TU.s, M, in_size, f, upload(host_mass), upload(algebraic_indices),
+        prob.f.bc, prob, prob.problem_type, upload(prob.p), alg, TU, ITU, nothing, nothing,
+        upload(host_mesh), upload(diff(host_mesh)), host_mesh, nothing, y_buffer, nothing, unknowns_buffer,
+        residual, jacobian.plan === nothing ? copy(vec(jacobian.matrix)) : nothing,
+        jacobian.plan === nothing ? nothing : Dict(nothing => jacobian),
+        nothing, nothing, nothing, Dict{DataType, Any}(),
+        Dict{Any, Any}(), (; y = similar(y_buffer, 0), mesh = similar(y_buffer, eltype(host_mesh), 0)),
+        nparameters, nothing, nest_prob..., bc_sizes, upload(prob.singular_term),
+        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...),
+        _process_verbose_param(verbose)
+    )
+end
+
+function __firk_device_buffers(cache::Union{FIRKCacheExpand, FIRKCacheNested}, ::Type{T}) where {T}
+    return get!(cache.device_cache, T) do
+        M, N = size(__firk_states(cache), 1), length(cache.host_mesh) - 1
+        (;
+            tmp = __firk_work_array(cache, (T, :tmp), T, (M, N)...),
+            endpoints = __firk_work_array(cache, (T, :endpoints), T, (M, 2, N)...),
+            coefficients = __firk_work_array(cache, (T, :coefficients), T, (M, 6, N)...),
+            defect = __firk_work_array(cache, (T, :defect), T, (N,)...),
+        )
+    end
+end
+
+function __construct_problem(
+        cache::Union{FIRKCacheExpand, FIRKCacheNested}, u0::AbstractVector
+    )
+    loss! = (r, u, p) -> __device_residual!(r, u, cache)
+    jac! = (J, u, p) -> __device_jacobian!(J, u, cache)
+    nf = SciMLBase.NonlinearFunction{true}(
+        loss!; jac = jac!,
+        __device_jacobian_products(cache)...,
+        resid_prototype = cache.residual, jac_prototype = __firk_jacobian(cache)
+    )
+    return BoundaryValueDiffEqCore.__internal_nlsolve_problem(
+        cache.prob, cache.residual, u0, nf, u0, cache.p
+    )
+end
+
+function __solve_firk_device!(cache::Union{FIRKCacheExpand, FIRKCacheNested})
+    (; abstol, adaptive, controller) = cache.kwargs
+    __device_copy_parameter!(cache.p, cache.prob.p)
+    __device_copy_parameter!(cache.singular_term, cache.prob.singular_term)
+    # Repeated solve! may follow changes to parameter-dependent boundary structure.
+    __firk_rebuild_jacobian!(cache)
+    kwargs = __concrete_kwargs(
+        cache.alg.nlsolve, nothing, cache.nlsolve_kwargs,
+        cache.optimize_kwargs, cache.verbose
+    )
+    sol, info = __firk_solve_iteration!(cache, kwargs)
+    while adaptive
+        if successful_retcode(info)
+            errors, error_norm, estimate_info = __firk_device_error!(cache, controller, abstol)
+            if !successful_retcode(estimate_info)
+                info = estimate_info
+                break
+            end
+            error_norm <= abstol && break
+            isfinite(error_norm) || (info = ReturnCode.Unstable; break)
+            host_mesh = __firk_select_mesh(
+                cache, Array(errors), abstol;
+                bisect = __firk_bisect_defect(controller, error_norm)
+            )
+        else
+            host_mesh = __firk_select_mesh(cache, fill(one(abstol), length(cache.host_mesh) - 1), abstol; bisect = true)
+        end
+        if host_mesh === nothing || any(iszero, diff(host_mesh))
+            info = ReturnCode.Failure
+            break
+        end
+        __firk_refine!(cache, host_mesh)
+        sol, info = __firk_solve_iteration!(cache, kwargs)
+    end
+    work = __firk_device_buffers(cache, eltype(cache))
+    __firk_device_interp_setup!(cache, __firk_states(cache), work)
+    # Returned solutions own their interpolation storage, so another solve! cannot
+    # invalidate a previously returned solution or its time metadata.
+    interp = FIRKDeviceInterpolation(
+        copy(cache.mesh), copy(__firk_states(cache)), copy(cache.mesh_dt),
+        copy(work.coefficients), cache.in_size, cache.TU.s, cache.alg.platform
+    )
+    prob = cache.prob
+    if cache.nparameters > 0
+        nstates = size(__firk_states(cache), 1) - cache.nparameters
+        prob = remake(prob; p = copy(view(__firk_states(cache), (nstates + 1):size(__firk_states(cache), 1), 1)))
+        interp = FIRKDeviceInterpolation(
+            interp.t, copy(view(interp.u, 1:nstates, :)), interp.mesh_dt,
+            copy(view(interp.coefficients, 1:nstates, :, :)), (nstates,), interp.stage, interp.platform
+        )
+    end
+    values = [
+        reshape(copy(view(interp.u, :, (i - 1) * (cache.TU.s + 1) + 1)), interp.in_size)
+            for i in eachindex(cache.host_mesh)
+    ]
+    odesol = SciMLBase.build_solution(
+        prob, cache.alg, copy(cache.host_mesh), values;
+        interp, retcode = info
+    )
+    return __build_solution(prob, odesol, sol)
+end
+function __firk_solve_iteration!(cache, kwargs)
+    prob = __construct_problem(cache, copy(vec(__firk_unknowns(cache))))
+    alg = __concrete_solve_algorithm(prob, cache)
+    sol = __internal_solve(prob, alg; kwargs...)
+    copyto!(vec(__firk_unknowns(cache)), sol.u)
+    info = sol.retcode
+    if cache.alg.nested_nlsolve
+        # The last line-search evaluation need not be the accepted solution.
+        __firk_nested_residual!(cache.residual, sol.u, cache, true)
+        work = __firk_nested_buffers(cache, eltype(cache))
+        all(iszero, work.status) || (info = ReturnCode.Failure)
+    end
+    return sol, info
+end
+
+BoundaryValueDiffEqCore.__bvp_device_unknowns(cache::Union{FIRKCacheExpand, FIRKCacheNested}) = __firk_unknowns(cache)
+
+BoundaryValueDiffEqCore.__device_square_linsolve(cache::Union{FIRKCacheExpand, FIRKCacheNested}) =
+    __device_sparse_linsolve(__firk_jacobian(cache))

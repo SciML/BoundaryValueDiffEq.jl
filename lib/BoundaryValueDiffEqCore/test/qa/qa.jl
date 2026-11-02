@@ -29,7 +29,7 @@ run_qa(
         all_qualified_accesses_are_public = (;
             ignore = (
                 :AbstractBVPAlgorithm, :AbstractBVProblem, :solution_new_original_retcode,
-                :Dual, :value, :can_dual, :primal,
+                :Dual, :value, :can_dual, :primal, :Tag, :Partials, :partials,
                 :Tunable, :canonicalize, :isscimlstructure, :replace,
             ),
         ),
