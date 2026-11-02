@@ -11,6 +11,36 @@ function build_almost_block_diagonals(nleft::Integer, ncomp::Integer, mesh, ::Ty
     return g
 end
 
+# Source times for a discrete initial guess: its own time points when it carries them,
+# otherwise uniformly spaced on the mesh span.
+function __ascher_guess_times(u0, us, mesh)
+    hasproperty(u0, :t) && return u0.t
+    return range(first(mesh), last(mesh); length = length(us))
+end
+
+function __ascher_linear_interp_state(us, ts, t)
+    t <= first(ts) && return copy(vec(first(us)))
+    t >= last(ts) && return copy(vec(last(us)))
+    j = clamp(searchsortedlast(ts, t), 1, length(ts) - 1)
+    θ = (t - ts[j]) / (ts[j + 1] - ts[j])
+    return (1 - θ) .* vec(us[j]) .+ θ .* vec(us[j + 1])
+end
+
+"""
+    __ascher_guess_on_mesh(u0, mesh, p)
+
+Return the initial guess as one state vector per point of `mesh`. A discrete guess whose
+length differs from `length(mesh)` is linearly interpolated onto `mesh`, since Ascher
+builds its mesh from `dt` rather than from the guess.
+"""
+function __ascher_guess_on_mesh(u0, mesh, p)
+    us = __initial_guess_on_mesh(u0, mesh, p).u
+    length(us) == 1 && return [copy(vec(only(us))) for _ in mesh]
+    length(us) == length(mesh) && return [copy(vec(u)) for u in us]
+    t_src = __ascher_guess_times(u0, us, mesh)
+    return [__ascher_linear_interp_state(us, t_src, t) for t in mesh]
+end
+
 # Custom pivot LU factorization and substitution for simple usage and
 # customized array types
 function __factorize!(a::Matrix{T}, ipvt::Vector) where {T}
