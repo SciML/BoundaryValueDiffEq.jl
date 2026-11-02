@@ -161,7 +161,7 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = (; abstol = 1.0e-6, reltol = 1.0e-3), maxiters = 10000
+            odesolve_kwargs = (; abstol = 1.0e-10, reltol = 1.0e-10), maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)
