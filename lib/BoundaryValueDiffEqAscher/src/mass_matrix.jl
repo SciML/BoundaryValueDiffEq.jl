@@ -95,6 +95,13 @@ function __ascher_permuted_problem(prob::BVProblem, perm)
         )
     )
     n = length(pv)
+    length(prob.u0) == n || throw(
+        ArgumentError(
+            "Ascher solvers need the mass matrix to cover the whole state when it has to be " *
+                "reordered into semi-explicit form: `u0` has $(length(prob.u0)) entries but the " *
+                "mass matrix is $n × $n (e.g. control inputs appended to the state)."
+        )
+    )
     iip = isinplace(prob)
     mass_matrix = LinearAlgebra.Diagonal([ones(ndiff); zeros(n - ndiff)])
     twopoint = Val(prob.problem_type isa TwoPointBVProblem)
