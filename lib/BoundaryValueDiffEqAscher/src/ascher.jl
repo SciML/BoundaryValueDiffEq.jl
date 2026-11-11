@@ -39,14 +39,26 @@
     optimize_kwargs
     kwargs
     verbose
+    # The problem as the user posed it, and the variable permutation (`nothing` when the
+    # mass matrix was already semi-explicit with differential variables first). `prob`
+    # holds the internally reordered problem.
+    user_prob
+    pv
 end
 
 Base.eltype(::AscherCache{iip, T}) where {iip, T} = T
 
-function SciMLBase.__init(
-        prob::BVProblem, alg::AbstractAscher; dt = 0.0, controller = GlobalErrorControl(),
-        adaptive = true, abstol = 1.0e-4, nlsolve_kwargs = (; abstol),
-        optimize_kwargs = (; abstol), verbose = DEFAULT_VERBOSE, kwargs...
+function SciMLBase.__init(prob::BVProblem, alg::AbstractAscher; kwargs...)
+    perm = __ascher_semi_explicit_permutation(prob.f.mass_matrix)
+    isnothing(perm) && return __ascher_init(prob, prob, nothing, alg; kwargs...)
+    return __ascher_init(__ascher_permuted_problem(prob, perm), prob, perm.pv, alg; kwargs...)
+end
+
+function __ascher_init(
+        prob::BVProblem, user_prob, pv, alg::AbstractAscher; dt = 0.0,
+        controller = GlobalErrorControl(), adaptive = true, abstol = 1.0e-4,
+        nlsolve_kwargs = (; abstol), optimize_kwargs = (; abstol),
+        verbose = DEFAULT_VERBOSE, kwargs...
     )
     verbose_spec = _process_verbose_param(verbose)
     (; tspan, p) = prob
@@ -79,6 +91,14 @@ function SciMLBase.__init(
         end
     end
     dmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
+    # The stage entries of the algebraic components hold their values at the collocation
+    # points, so seed them from `u0` like the differential mesh values, not with zeros: a
+    # zero guess can make the algebraic Jacobian singular (e.g. x^2 + y^2 = 1 at x = 0).
+    if ny > 0 && u0 isa AbstractArray{<:Number}
+        for interval in dmz, stage in interval
+            stage[(ncomp + 1):ncy] .= vec(u0)[(ncomp + 1):ncy]
+        end
+    end
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
@@ -145,7 +165,8 @@ function SciMLBase.__init(
         prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
         alg, prob.problem_type, f_prototype, bcresid_prototype, collocation_cache,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
-        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
+        nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec,
+        user_prob, pv
     )
     return cache
 end
@@ -163,10 +184,10 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
             z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive)
         end
     end
-    u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
+    u = [__ascher_unpermute(vcat(zᵢ, yᵢ), cache.pv) for (zᵢ, yᵢ) in zip(z, y)]
 
     return SciMLBase.build_solution(
-        cache.prob, cache.alg, cache.original_mesh, u;
+        cache.user_prob, cache.alg, cache.original_mesh, u;
         interp = __ascher_interpolation(cache), retcode = info
     )
 end
@@ -392,7 +413,7 @@ function __ascher_interpolation(cache)
     metadata = (;
         mesh = copy(cache.mesh), mesh_dt = copy(cache.mesh_dt),
         ncomp = cache.ncomp, ny = cache.ny, k = cache.k, TU = cache.TU,
-        prob = cache.prob,
+        prob = cache.prob, pv = cache.pv,
     )
     z = reduce(hcat, cache.z)
     stages = reshape(

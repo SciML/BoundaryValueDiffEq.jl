@@ -272,4 +272,63 @@ estimation_dae() = (;
             @test length(sol.t) > 11
         end
     end
+
+    # Semi-explicit mass matrices need not list the differential variables first or put
+    # them on the diagonal (ModelingToolkit, for instance, may order algebraic variables
+    # first). Bratu's DAE with variables (z, x2, x1), equations (2 f1, g, f2), so that
+    # M[1, 3] = 2, M[3, 2] = 1 and row 2 is algebraic, must reproduce the canonical solve.
+    @testset "Semi-explicit mass matrix in a different ordering" begin
+        fixture = bratu_dae()
+        (; f, p, tspan) = fixture
+        kw = (; dt = 0.05, adaptive = false, abstol = 1.0e-11)
+        ref = solve(dae_problem(fixture, true, false), Ascher4(); kw...)
+        to_canonical(w) = [w[3], w[2], w[1]]
+        function f_scrambled!(dw, w, p, t)
+            du = f(to_canonical(w), p, t)
+            dw[1] = 2 * du[1]
+            dw[2] = du[3]
+            dw[3] = du[2]
+            return nothing
+        end
+        bc_scrambled!(res, w, p, t) = (res[1] = w(first(tspan))[3]; res[2] = w(last(tspan))[3]; nothing)
+        mass_matrix = [0.0 0.0 2.0; 0.0 0.0 0.0; 0.0 1.0 0.0]
+        prob = BVProblem(
+            BVPFunction(f_scrambled!, bc_scrambled!; mass_matrix, bcresid_prototype = zeros(2)),
+            to_canonical(fixture.u0), tspan, p; nlls = Val(false)
+        )
+        sol = solve(prob, Ascher4(); kw...)
+        @test successful_retcode(sol)
+        @test sol.t ≈ ref.t
+        @test maximum(norm(to_canonical(w) - u, Inf) for (w, u) in zip(sol.u, ref.u)) < 1.0e-10
+        t_mid = first(tspan) + 0.371 * (last(tspan) - first(tspan))
+        @test to_canonical(sol(t_mid)) ≈ ref(t_mid) atol = 1.0e-10
+
+        not_semi_explicit = [1.0 1.0 0.0; 0.0 1.0 0.0; 0.0 0.0 0.0]
+        bad = BVProblem(
+            BVPFunction(f_scrambled!, bc_scrambled!; mass_matrix = not_semi_explicit, bcresid_prototype = zeros(2)),
+            to_canonical(fixture.u0), tspan, p; nlls = Val(false)
+        )
+        @test_throws ArgumentError solve(bad, Ascher4(); kw...)
+
+        # Two-point problem in algebraic-first order with 2 + 1 boundary residuals:
+        # x1' = x2, x2' = -y, x3' = x1, 0 = y^3 + y - (x1^3 + x1) on [0, π/2] with
+        # x1(0) = 0, x3(0) = -1, x1(π/2) = 1  =>  y = x1 = sin t, x2 = cos t, x3 = -cos t.
+        f_tp!(du, u, p, t) = (
+            du[1] = u[1]^3 + u[1] - (u[2]^3 + u[2]); du[2] = u[3]; du[3] = -u[1]; du[4] = u[2]; nothing
+        )
+        bca_tp!(res, ua, p) = (res[1] = ua[2]; res[2] = ua[4] + 1; nothing)
+        bcb_tp!(res, ub, p) = (res[1] = ub[2] - 1; nothing)
+        tp = TwoPointBVProblem(
+            BVPFunction(
+                f_tp!, (bca_tp!, bcb_tp!); mass_matrix = Diagonal([0.0, 1.0, 1.0, 1.0]),
+                twopoint = Val(true), bcresid_prototype = (zeros(2), zeros(1))
+            ),
+            [0.0, 0.0, 0.5, -0.5], (0.0, pi / 2); nlls = Val(false)
+        )
+        sol_tp = solve(tp, Ascher4(); kw...)
+        @test successful_retcode(sol_tp)
+        @test maximum(
+            norm(u - [sin(t), sin(t), cos(t), -cos(t)], Inf) for (u, t) in zip(sol_tp.u, sol_tp.t)
+        ) < 1.0e-8
+    end
 end
