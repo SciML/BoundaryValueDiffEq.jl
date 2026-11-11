@@ -272,4 +272,42 @@ estimation_dae() = (;
             @test length(sol.t) > 11
         end
     end
+
+    # Semi-explicit mass matrices need not list the differential variables first or put
+    # them on the diagonal (ModelingToolkit, for instance, may order algebraic variables
+    # first). Bratu's DAE with variables (z, x2, x1), equations (2 f1, g, f2), so that
+    # M[1, 3] = 2, M[3, 2] = 1 and row 2 is algebraic, must reproduce the canonical solve.
+    @testset "Semi-explicit mass matrix in a different ordering" begin
+        fixture = bratu_dae()
+        (; f, p, tspan) = fixture
+        kw = (; dt = 0.05, adaptive = false, abstol = 1.0e-11)
+        ref = solve(dae_problem(fixture, true, false), Ascher4(); kw...)
+        to_canonical(w) = [w[3], w[2], w[1]]
+        function f_scrambled!(dw, w, p, t)
+            du = f(to_canonical(w), p, t)
+            dw[1] = 2 * du[1]
+            dw[2] = du[3]
+            dw[3] = du[2]
+            return nothing
+        end
+        bc_scrambled!(res, w, p, t) = (res[1] = w(first(tspan))[3]; res[2] = w(last(tspan))[3]; nothing)
+        mass_matrix = [0.0 0.0 2.0; 0.0 0.0 0.0; 0.0 1.0 0.0]
+        prob = BVProblem(
+            BVPFunction(f_scrambled!, bc_scrambled!; mass_matrix, bcresid_prototype = zeros(2)),
+            to_canonical(fixture.u0), tspan, p; nlls = Val(false)
+        )
+        sol = solve(prob, Ascher4(); kw...)
+        @test successful_retcode(sol)
+        @test sol.t ≈ ref.t
+        @test maximum(norm(to_canonical(w) - u, Inf) for (w, u) in zip(sol.u, ref.u)) < 1.0e-10
+        t_mid = first(tspan) + 0.371 * (last(tspan) - first(tspan))
+        @test to_canonical(sol(t_mid)) ≈ ref(t_mid) atol = 1.0e-10
+
+        not_semi_explicit = [1.0 1.0 0.0; 0.0 1.0 0.0; 0.0 0.0 0.0]
+        bad = BVProblem(
+            BVPFunction(f_scrambled!, bc_scrambled!; mass_matrix = not_semi_explicit, bcresid_prototype = zeros(2)),
+            to_canonical(fixture.u0), tspan, p; nlls = Val(false)
+        )
+        @test_throws ArgumentError solve(bad, Ascher4(); kw...)
+    end
 end

@@ -23,7 +23,7 @@ using ForwardDiff: ForwardDiff
 using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra, I, norm, rank
 using RecursiveArrayTools: DiffEqArray
-using SciMLBase: SciMLBase, BVProblem, ReturnCode, StandardBVProblem,
+using SciMLBase: SciMLBase, BVProblem, BVPFunction, ReturnCode, StandardBVProblem,
     TwoPointBVProblem, isinplace, solve
 
 # The public API that BoundaryValueDiffEqAscher reexports, so that
@@ -51,6 +51,7 @@ include("utils.jl")
 include("algorithms.jl")
 include("alg_utils.jl")
 include("ascher_tableaus.jl")
+include("mass_matrix.jl")
 include("ascher.jl")
 include("sparse_jacobian.jl")
 include("adaptivity.jl")

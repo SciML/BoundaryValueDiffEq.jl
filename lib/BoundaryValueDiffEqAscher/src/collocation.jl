@@ -661,6 +661,8 @@ function (sol::AscherBoundarySolution)(t)
         end
         u[c] = c <= ncomp ? sol.z[c, i] + (t - mesh[i]) * value : value
     end
+    # Boundary conditions, the cost and the interpolant all see the user's ordering.
+    u = __ascher_unpermute(u, sol.cache.pv)
     shape = sol.cache.prob.u0 isa AbstractArray{<:Number} ? size(sol.cache.prob.u0) : (ncomp + ny,)
     return reshape(u, shape)
 end
