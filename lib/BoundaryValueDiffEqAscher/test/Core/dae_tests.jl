@@ -309,5 +309,26 @@ estimation_dae() = (;
             to_canonical(fixture.u0), tspan, p; nlls = Val(false)
         )
         @test_throws ArgumentError solve(bad, Ascher4(); kw...)
+
+        # Two-point problem in algebraic-first order with 2 + 1 boundary residuals:
+        # x1' = x2, x2' = -y, x3' = x1, 0 = y^3 + y - (x1^3 + x1) on [0, π/2] with
+        # x1(0) = 0, x3(0) = -1, x1(π/2) = 1  =>  y = x1 = sin t, x2 = cos t, x3 = -cos t.
+        f_tp!(du, u, p, t) = (
+            du[1] = u[1]^3 + u[1] - (u[2]^3 + u[2]); du[2] = u[3]; du[3] = -u[1]; du[4] = u[2]; nothing
+        )
+        bca_tp!(res, ua, p) = (res[1] = ua[2]; res[2] = ua[4] + 1; nothing)
+        bcb_tp!(res, ub, p) = (res[1] = ub[2] - 1; nothing)
+        tp = TwoPointBVProblem(
+            BVPFunction(
+                f_tp!, (bca_tp!, bcb_tp!); mass_matrix = Diagonal([0.0, 1.0, 1.0, 1.0]),
+                twopoint = Val(true), bcresid_prototype = (zeros(2), zeros(1))
+            ),
+            [0.0, 0.0, 0.5, -0.5], (0.0, pi / 2); nlls = Val(false)
+        )
+        sol_tp = solve(tp, Ascher4(); kw...)
+        @test successful_retcode(sol_tp)
+        @test maximum(
+            norm(u - [sin(t), sin(t), cos(t), -cos(t)], Inf) for (u, t) in zip(sol_tp.u, sol_tp.t)
+        ) < 1.0e-8
     end
 end

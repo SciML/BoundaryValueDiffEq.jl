@@ -104,11 +104,16 @@ function __ascher_permuted_problem(prob::BVProblem, perm)
     )
     iip = isinplace(prob)
     mass_matrix = LinearAlgebra.Diagonal([ones(ndiff); zeros(n - ndiff)])
-    twopoint = Val(prob.problem_type isa TwoPointBVProblem)
+    twopoint = prob.problem_type isa TwoPointBVProblem
+    # A two-point `BVPFunction` wants the pair of endpoint prototypes, while the stored
+    # one is an `ArrayPartition`. When it is missing, infer it here from the user's
+    # problem: inferring it later would call the boundary functions on the reordered `u0`.
+    bcresid_prototype = twopoint ?
+        first(__get_bcresid_prototype(prob.problem_type, prob, prob.u0)) :
+        prob.f.bcresid_prototype
     fun = BVPFunction{iip}(
         __AscherPermutedRHS(prob.f, pv, pe, scale), prob.f.bc;
-        mass_matrix, twopoint, cost = prob.f.cost,
-        bcresid_prototype = prob.f.bcresid_prototype
+        mass_matrix, twopoint = Val(twopoint), cost = prob.f.cost, bcresid_prototype
     )
     nlls = __bvp_nlls(prob)
     return BVProblem{iip}(
