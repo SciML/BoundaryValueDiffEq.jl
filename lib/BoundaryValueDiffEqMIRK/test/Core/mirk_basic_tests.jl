@@ -858,4 +858,7 @@ end
     )
     @test SciMLBase.successful_retcode(sol)
     @test length(sol.t) > 5
+
+    exact(t) = [2log(cosh(0.5) / cosh(t - 0.5)), -2tanh(t - 0.5)]
+    @test maximum(t -> maximum(abs, sol(t) .- exact(t)), range(0.0, 1.0, length = 101)) < 5.0e-6
 end
