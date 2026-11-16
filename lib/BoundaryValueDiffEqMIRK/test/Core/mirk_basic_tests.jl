@@ -871,3 +871,26 @@ end
     @test sol.u[1][1:2] ≈ a1
     @test sol.u[end][1:2] ≈ a2
 end
+
+# https://github.com/SciML/BoundaryValueDiffEq.jl/issues/649
+@testset "GlobalErrorControl refines the mesh" begin
+    λ = 2 / cosh(0.5)^2
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -λ * exp(u[1])
+    end
+    function bc!(residual, u, p, t)
+        residual[1] = u(0.0)[1]
+        residual[2] = u(1.0)[1]
+    end
+    prob = BVProblem(f!, bc!, [0.0, 0.0], (0.0, 1.0))
+
+    sol = solve(
+        prob, MIRK4(); dt = 0.25, abstol = 1.0e-6, controller = GlobalErrorControl()
+    )
+    @test SciMLBase.successful_retcode(sol)
+    @test length(sol.t) > 5
+
+    exact(t) = [2log(cosh(0.5) / cosh(t - 0.5)), -2tanh(t - 0.5)]
+    @test maximum(t -> maximum(abs, sol(t) .- exact(t)), range(0.0, 1.0, length = 101)) < 5.0e-6
+end
