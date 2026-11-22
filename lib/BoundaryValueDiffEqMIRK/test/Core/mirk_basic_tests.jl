@@ -568,6 +568,24 @@ end
     end
 end
 
+@testset "Parameter tuning requires both endpoints in the ODESolution guess" begin
+    tspan = (0.0, 1.0)
+    f!(du, u, p, t) = (du[1] = p[1])
+    bca!(res, u, p) = (res[1] = u[1] - 1)
+    bcb!(res, u, p) = (res[1] = u[1] - 3)
+    p = [1.0]
+    ode = SciMLBase.ODEProblem(f!, [1.0], tspan, p)
+
+    for ts in ([0.1, 0.3, 0.5, 1.0], [0.0, 0.3, 0.5, 0.6])
+        guess = SciMLBase.build_solution(ode, nothing, ts, [[1 + t] for t in ts])
+        bvp = TwoPointBVProblem(
+            f!, (bca!, bcb!), guess, tspan, p;
+            bcresid_prototype = (zeros(1), zeros(1)), tune_parameters = true
+        )
+        @test_throws ArgumentError("The ODESolution initial guess must include both endpoints of `prob.tspan`.") solve(bvp, MIRK4())
+    end
+end
+
 @testset "Test unknown parameters estimation with SciMLStructures" begin
     using BoundaryValueDiffEqMIRK, SciMLStructures, OptimizationIpopt
 

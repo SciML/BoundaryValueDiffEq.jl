@@ -380,13 +380,16 @@ function __extract_problem_details(
         prob, u0::SciMLBase.ODESolution; dt = 0.0,
         check_positive_dt::Bool = false, tune_parameters::Bool = false
     )
-    # Problem passes in a initial guess function
-    _u0 = first(u0.u)
     _t = u0.t
-    if tune_parameters
+    _u0 = if tune_parameters
         prob.p isa SciMLBase.NullParameters &&
             throw(ArgumentError("`tune_parameters` is true but `prob.p` is not set."))
-        _u0 = vcat(_u0, __tunable_part(prob.p))
+        if isempty(_t) || (first(_t), last(_t)) != prob.tspan
+            throw(ArgumentError("The ODESolution initial guess must include both endpoints of `prob.tspan`."))
+        end
+        vcat(first(u0.u), __tunable_part(prob.p))
+    else
+        first(u0.u)
     end
     return Val(true), eltype(_u0), length(_u0), (length(_t) - 1), _u0
 end
