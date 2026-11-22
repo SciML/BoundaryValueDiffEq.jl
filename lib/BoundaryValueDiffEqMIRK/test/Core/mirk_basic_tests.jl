@@ -537,6 +537,55 @@ end
     @test sol.prob.p ≈ [17.09658] atol = 1.0e-4
 end
 
+@testset "Test unknown parameters estimation with ODESolution initial guess" begin
+    tspan = (0.0, pi)
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -(p[1] - 10 * cos(2 * t)) * u[1]
+    end
+    function bca!(res, u, p)
+        res[1] = u[2]
+        res[2] = u[1] - 1.0
+    end
+    function bcb!(res, u, p)
+        res[1] = u[2]
+    end
+    ts = collect(range(tspan...; length = 41))
+    guess = SciMLBase.build_solution(
+        SciMLBase.ODEProblem(f!, [1.0, 0.0], tspan, [15.0]), nothing, ts,
+        [[cos(4t), -4sin(4t)] for t in ts]
+    )
+    bvp = TwoPointBVProblem(
+        f!, (bca!, bcb!), guess, tspan, [15.0],
+        bcresid_prototype = (zeros(2), zeros(1)), tune_parameters = true
+    )
+
+    # The initial mesh is `guess.t`, so a `dt` that does not divide it must not matter.
+    @testset "solve kwargs: $kwargs" for kwargs in ((; dt = 0.05), (;))
+        sol = solve(bvp, MIRK4(); kwargs...)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.prob.p ≈ [17.09658] atol = 1.0e-4
+    end
+end
+
+@testset "Parameter tuning requires both endpoints in the ODESolution guess" begin
+    tspan = (0.0, 1.0)
+    f!(du, u, p, t) = (du[1] = p[1])
+    bca!(res, u, p) = (res[1] = u[1] - 1)
+    bcb!(res, u, p) = (res[1] = u[1] - 3)
+    p = [1.0]
+    ode = SciMLBase.ODEProblem(f!, [1.0], tspan, p)
+
+    for ts in ([0.1, 0.3, 0.5, 1.0], [0.0, 0.3, 0.5, 0.6])
+        guess = SciMLBase.build_solution(ode, nothing, ts, [[1 + t] for t in ts])
+        bvp = TwoPointBVProblem(
+            f!, (bca!, bcb!), guess, tspan, p;
+            bcresid_prototype = (zeros(1), zeros(1)), tune_parameters = true
+        )
+        @test_throws ArgumentError("The ODESolution initial guess must include both endpoints of `prob.tspan`.") solve(bvp, MIRK4())
+    end
+end
+
 @testset "Test unknown parameters estimation with SciMLStructures" begin
     using BoundaryValueDiffEqMIRK, SciMLStructures, OptimizationIpopt
 
