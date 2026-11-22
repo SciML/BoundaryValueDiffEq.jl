@@ -1,62 +1,73 @@
 # [BoundaryValueDiffEqFIRK](@id firk)
 
-Fully Implicit Runge Kutta(FIRK) Methods. To be able to access the solvers in BoundaryValueDiffEqFIRK, you must first install them use the Julia package manager:
+Fully Implicit Runge–Kutta (FIRK) methods for first-order boundary value problems.
+Install and load the solver subpackage with:
 
 ```julia
 using Pkg
 Pkg.add("BoundaryValueDiffEqFIRK")
-```
-
-`BoundaryValueDiffEqFIRK` reexports the BVP problem constructors and `solve` used by its
-documented solver workflow (see [Reexported API](@ref reexports)):
-
-```jldoctest
 using BoundaryValueDiffEqFIRK
-
-function f!(du, u, p, t)
-    du[1] = u[2]
-    du[2] = 0
-    return
-end
-
-function bc!(residual, u, p, t)
-    residual[1] = u(0.0)[1] - 1
-    residual[2] = u(1.0)[1]
-    return
-end
-
-prob = BVProblem(f!, bc!, [1.0, -1.0], (0.0, 1.0); nlls = Val(false))
-sol = solve(prob, RadauIIa5(); dt = 0.2, abstol = 1.0e-8)
-
-@assert isapprox(sol(0.0)[1], 1.0; atol = 1.0e-6)
-@assert isapprox(sol(1.0)[1], 0.0; atol = 1.0e-6)
-
-function bca!(residual, u, p)
-    residual[1] = u[1] - 1
-    return
-end
-
-function bcb!(residual, u, p)
-    residual[1] = u[1]
-    return
-end
-
-two_point_prob = TwoPointBVProblem(
-    f!, (bca!, bcb!), [1.0, -1.0], (0.0, 1.0);
-    bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
-)
-two_point_sol = solve(two_point_prob, RadauIIa5(); dt = 0.2, abstol = 1.0e-8)
-
-@assert isapprox(two_point_sol(0.0)[1], 1.0; atol = 1.0e-6)
-@assert isapprox(two_point_sol(1.0)[1], 0.0; atol = 1.0e-6)
-# output
 ```
 
-## Nested nonlinear solving in FIRK methods
+## Solver API
 
-When working with large boundary value problems, especially those involving stiff systems, computational efficiency and solver robustness become critical concerns. To improve the efficiency of FIRK methods on large BVPs, we can use nested nonlinear solving to obtain the implicit FIRK step instead of solving them as part of the global residual. In BoundaryValueDiffEq.jl, we can set `nested_nlsolve` as `true` to enable FIRK methods to compute the implicit FIRK steps using nested nonlinear solving(default option in FIRK methods is `nested_nlsolve=false`).
+```julia
+RadauIIa3(;
+    nlsolve = nothing, optimize = nothing, jac_alg = BVPJacobianAlgorithm(),
+    platform = CPU(), nested_nlsolve = false, nested_nlsolve_kwargs = (;),
+    defect_threshold = 0.1, max_num_subintervals = 3000
+)
+solve(prob::BVProblem, alg; dt, kwargs...)
+solve(prob::TwoPointBVProblem, alg; dt, kwargs...)
+```
 
-Moreover, the nested nonlinear problem solver can be finely tuned to meet specific accuracy requirements by providing detailed keyword arguments through the `nested_nlsolve_kwargs` option in any FIRK solver, for example, `RadauIIa5(; nested_nlsolve = true, nested_nlsolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))`, where `nested_nlsolve_kwargs` can be any common keyword arguments in NonlinearSolve.jl, see [Common Solver Options in NonlinearSolve.jl](https://docs.sciml.ai/NonlinearSolve/stable/basics/solve/).
+All Radau and Lobatto constructors accept the keywords shown for `RadauIIa3`.
+
+| Keyword | Meaning |
+|:--|:--|
+| `nlsolve` | Nonlinear solver; `nothing` selects the package default |
+| `optimize` | Optional optimization solver; load its package before use |
+| `jac_alg` | BVP Jacobian configuration, which takes precedence over the nonlinear solver's autodiff setting |
+| `platform` | KernelAbstractions backend; defaults to `CPU()` |
+| `nested_nlsolve` | Solve implicit stages locally instead of including them in the global residual; defaults to `false` |
+| `nested_nlsolve_kwargs` | Options for the nested nonlinear solve |
+| `defect_threshold` | Threshold used by defect control |
+| `max_num_subintervals` | Maximum number of mesh subintervals |
+
+Pass mesh and tolerance options to `solve`, for example
+`solve(prob, RadauIIa3(); dt = 0.05, abstol = 1.0e-8)`. Mesh adaptivity is enabled
+by default for methods that support it; use `adaptive = false` for a fixed mesh.
+See [Common Solver Options](@ref solver_options),
+[Error Control Adaptivity](@ref error_control), and [Reexported API](@ref reexports).
+
+### Nested nonlinear solving
+
+Set `nested_nlsolve = true` to solve the implicit Runge–Kutta stages in local
+nonlinear systems. The default, `nested_nlsolve = false`, includes those stages
+in the global collocation residual.
+
+Configure the nested solve with `nested_nlsolve_kwargs`, for example,
+`RadauIIa5(; nested_nlsolve = true, nested_nlsolve_kwargs = (; abstol = 1e-6, reltol = 1e-6))`.
+The CPU nested solver accepts
+[NonlinearSolve options](https://docs.sciml.ai/NonlinearSolve/stable/basics/solve/).
+On the resident device path, stages use batched Newton iterations with backtracking
+and pivoted local LU; only `abstol`, `reltol` and `maxiters` are supported, and stage
+sensitivities are computed by implicit differentiation.
+
+## GPU execution
+
+A device initial guess such as a `CuArray` selects a resident solve and supplies
+the backend. Both expanded (`nested_nlsolve = false`) and nested formulations are
+supported. A CPU initial guess with `platform = CUDA.CUDABackend()` selects hybrid
+collocation with a CPU nonlinear solve. Load CUDA and CUDSS for the resident
+sparse direct-solve workflow, and use GPU-compatible RHS and boundary functions.
+
+Resident Jacobians support `AutoForwardDiff` and forward/central `AutoFiniteDiff`,
+optionally wrapped in `AutoSparse`. Square and least-squares systems are supported;
+optimization solvers and optimization constraints are not. `RadauIIa1`,
+`LobattoIIIb2` and `LobattoIIIc2` require `adaptive = false` or `NoErrorControl()`.
+Problems with algebraic variables also require a fixed mesh. See
+[Solving Boundary Value Problems on GPUs](@ref gpu) for complete examples.
 
 ## Full List of Methods
 
@@ -118,4 +129,51 @@ LobattoIIIc2
 LobattoIIIc3
 LobattoIIIc4
 LobattoIIIc5
+```
+
+### Example
+
+`BoundaryValueDiffEqFIRK` reexports the BVP problem constructors and `solve` used by its
+documented solver workflow (see [Reexported API](@ref reexports)):
+
+```jldoctest
+using BoundaryValueDiffEqFIRK
+
+function f!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = 0
+    return
+end
+
+function bc!(residual, u, p, t)
+    residual[1] = u(0.0)[1] - 1
+    residual[2] = u(1.0)[1]
+    return
+end
+
+prob = BVProblem(f!, bc!, [1.0, -1.0], (0.0, 1.0); nlls = Val(false))
+sol = solve(prob, RadauIIa5(); dt = 0.2, abstol = 1.0e-8)
+
+@assert isapprox(sol(0.0)[1], 1.0; atol = 1.0e-6)
+@assert isapprox(sol(1.0)[1], 0.0; atol = 1.0e-6)
+
+function bca!(residual, u, p)
+    residual[1] = u[1] - 1
+    return
+end
+
+function bcb!(residual, u, p)
+    residual[1] = u[1]
+    return
+end
+
+two_point_prob = TwoPointBVProblem(
+    f!, (bca!, bcb!), [1.0, -1.0], (0.0, 1.0);
+    bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
+)
+two_point_sol = solve(two_point_prob, RadauIIa5(); dt = 0.2, abstol = 1.0e-8)
+
+@assert isapprox(two_point_sol(0.0)[1], 1.0; atol = 1.0e-6)
+@assert isapprox(two_point_sol(1.0)[1], 0.0; atol = 1.0e-6)
+# output
 ```

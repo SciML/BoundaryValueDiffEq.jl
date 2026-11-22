@@ -32,7 +32,12 @@ for order in (2, 3, 4, 5, 6)
                 `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
-            equations. Defaults to `CPU()`.
+            equations. Defaults to `CPU()`. A device initial guess, such as a
+            `CuArray`, selects a GPU-resident solve.
+            Both the RHS and boundary conditions must be GPU-compatible.
+            A CPU initial guess with `platform = CUDABackend()` selects hybrid
+            collocation, with the remaining solve on the CPU. Both GPU modes support
+            `AutoForwardDiff()` and `AutoFiniteDiff()`.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 
@@ -95,7 +100,15 @@ for order in (6)
                 `AutoSparse(AutoFiniteDiff())`. For `bc_diffmode`, defaults to `AutoForwardDiff` if
                 possible else `AutoFiniteDiff`.
           - `platform`: KernelAbstractions backend used to evaluate the collocation
-            equations. Defaults to `CPU()`.
+            equations. Defaults to `CPU()`. A device initial guess, such as a
+            `CuArray`, selects a GPU-resident solve and supplies its backend: states,
+            residuals, Jacobians, nonlinear iterates, and solution values stay on the
+            GPU. Both the RHS and boundary conditions must be GPU-compatible.
+            A CPU initial guess with `platform = CUDABackend()` selects hybrid
+            collocation, with the remaining solve on the CPU. Both GPU modes support
+            `AutoForwardDiff()` and `AutoFiniteDiff()`. CUDA resident Jacobians use
+            sparse CSR storage and column coloring of the collocation band and
+            boundary rows; other resident backends currently use dense storage.
           - `defect_threshold`: Threshold for defect control.
           - `max_num_subintervals`: Number of maximal subintervals, default as 3000.
 

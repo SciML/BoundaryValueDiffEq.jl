@@ -74,6 +74,15 @@ using Test
     @test SciMLBase.successful_retcode(sol6.retcode)
 
     bvp1 = BVProblem(TC!, bc_po!, zero(first(sol.u)), tspan)
-    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1.0e-15)
+    # Eliminating the gates with g = k = 0 reduces the equilibrium to a scalar root.
+    # Its nearest Float64 state leaves a voltage residual of 3.34e-15 in high
+    # precision. Half a voltage ulp times the slope magnitude of the reduced
+    # residual is about 1.4e-14. Allow 1e-12 for rounding in the staged residual.
+    equilibrium = [-39.33774160696819, 0.39757858844816535, 1.4153073465314142e-5]
+    sol6 = solve(bvp1, MIRK6(); dt = 0.1, abstol = 1.0e-12)
     @test SciMLBase.successful_retcode(sol6.retcode)
+    @test maximum(maximum(abs, u .- equilibrium) for u in sol6.u) < 1.0e-11
+    residual = zeros(3)
+    bc_po!(residual, sol6, nothing, sol6.t)
+    @test maximum(abs, residual) < 1.0e-12
 end

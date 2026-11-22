@@ -3,7 +3,9 @@ module BoundaryValueDiffEqAscher
 using ADTypes: ADTypes, AutoSparse
 using AlmostBlockDiagonals: AlmostBlockDiagonals, IntermediateAlmostBlockDiagonal
 
-using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore,
+using BoundaryValueDiffEqCore: BoundaryValueDiffEqCore, __reshape_buffer,
+    __default_sparse_linsolve, __concrete_device_solve_algorithm,
+    __device_sparse_matrix, __device_sparse_supported,
     AbstractBoundaryValueDiffEqAlgorithm,
     AbstractBoundaryValueDiffEqCache, BVPJacobianAlgorithm,
     DEFAULT_VERBOSE, GlobalErrorControl, _process_verbose_param,
@@ -20,7 +22,7 @@ using ConcreteStructs: @concrete
 using DifferentiationInterface: DifferentiationInterface, Constant
 using FastClosures: @closure
 using ForwardDiff: ForwardDiff
-using KernelAbstractions: Backend, CPU, @index, @kernel, synchronize
+using KernelAbstractions: KernelAbstractions, Backend, CPU, @index, @kernel, synchronize
 using LinearAlgebra: LinearAlgebra, I, norm, rank
 using RecursiveArrayTools: DiffEqArray
 using SciMLBase: SciMLBase, BVProblem, ReturnCode, StandardBVProblem,
@@ -42,7 +44,7 @@ using BoundaryValueDiffEqCore: BVPVerbosity, DefectControl, GaussNewton, HOError
 using SciMLBase: BVPFunction, init, remake, solve!, successful_retcode
 
 using Setfield: @set!
-using SparseArrays: SparseMatrixCSC, sparse, nzrange, nonzeros
+using SparseArrays: SparseArrays, SparseMatrixCSC, sparse, nzrange, nonzeros
 
 const DI = DifferentiationInterface
 

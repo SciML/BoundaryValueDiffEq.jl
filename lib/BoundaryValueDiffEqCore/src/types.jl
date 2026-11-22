@@ -262,3 +262,39 @@ Return `DiffCacheNeeded()` or `NoDiffCacheNeeded()` for an AD backend or
     return __needs_diffcache(jac_alg) ? DiffCacheNeeded() : NoDiffCacheNeeded()
 end
 @inline __cache_trait(_) = NoDiffCacheNeeded()
+
+"""
+    SparseJacobianCache(groups, boundary_fallback, pattern, product)
+
+Color groups, host sparsity and reusable product storage for a collocation Jacobian.
+"""
+@concrete struct SparseJacobianCache
+    groups
+    boundary_fallback::Bool
+    pattern
+    product
+end
+
+"""
+    BVPTunableRHS(f, nparameters)
+
+Wrap an in-place RHS whose tunable parameters are appended to the state with zero derivatives.
+"""
+struct BVPTunableRHS{F}
+    f::F
+    nparameters::Int
+end
+
+@inline function (rhs::BVPTunableRHS)(du, u, p, t)
+    first_parameter = length(u) - rhs.nparameters + 1
+    rhs.f(du, u, view(u, first_parameter:length(u)), t)
+    @inbounds for j in first_parameter:length(u)
+        du[j] = zero(eltype(du))
+    end
+    return nothing
+end
+
+struct DeviceReshapedArray{T, N, A <: AbstractVector{T}} <: AbstractArray{T, N}
+    data::A
+    dims::NTuple{N, Int}
+end

@@ -27,7 +27,7 @@ makedocs(;
     modules = [
         BoundaryValueDiffEqCore, BoundaryValueDiffEqMIRK, BoundaryValueDiffEqFIRK,
         BoundaryValueDiffEqMIRKN, BoundaryValueDiffEqShooting, BoundaryValueDiffEqAscher,
-        BoundaryValueDiffEq,
+        BoundaryValueDiffEq, SimpleBoundaryValueDiffEq,
     ],
     clean = true,
     doctest = true,

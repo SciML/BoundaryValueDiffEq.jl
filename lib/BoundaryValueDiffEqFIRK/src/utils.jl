@@ -75,3 +75,18 @@ end
     tune_parameters && return repeat(vcat(avg_u0, __tunable_part(prob.p)), 1, stage)
     return repeat(avg_u0, 1, stage)
 end
+
+# Evaluation of user RHS and boundary functions, usable inside device kernels.
+
+# Copy array parameters with KernelAbstractions; isbits values need no conversion.
+@inline __firk_mass_derivative(mass::LinearAlgebra.UniformScaling, derivative, row) = mass.λ * derivative[row]
+@inline __firk_mass_stage(mass::LinearAlgebra.UniformScaling, stages, row, stage) = mass.λ * stages[row, stage]
+@inline __firk_mass_stage(mass::AbstractMatrix, stages, row, stage) = __mass_stage_entry(mass, stages, row, stage)
+@inline function __firk_mass_derivative(mass::AbstractMatrix, derivative, row)
+    row > size(mass, 1) && return derivative[row]
+    value = zero(eltype(derivative))
+    @inbounds for column in axes(mass, 2)
+        value += mass[row, column] * derivative[column]
+    end
+    return value
+end

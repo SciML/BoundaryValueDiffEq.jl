@@ -8,6 +8,20 @@ run_tests(;
         @time @safetestset "Ascher DAE Benchmarks" include("Core/dae_tests.jl")
         return @time @safetestset "Ascher Sparse Collocation" include("Core/performance_tests.jl")
     end,
+    groups = Dict(
+        "DeviceKernels" => function ()
+            return @time @safetestset "Ascher device formulation" begin
+                include("GPU/device_tests.jl")
+                test_ascher_cpu()
+            end
+        end,
+        "GPU" => (;
+            env = joinpath(@__DIR__, "GPU"),
+            body = function ()
+                return @time @safetestset "Ascher CUDA" include("GPU/cuda_tests.jl")
+            end,
+        ),
+    ),
     qa = (;
         env = joinpath(@__DIR__, "qa"),
         body = function ()
@@ -16,5 +30,5 @@ run_tests(;
             return @time @safetestset "Quality Assurance" include("qa/qa.jl")
         end,
     ),
-    all = ["Core", "QA"],
+    all = ["Core", "DeviceKernels", "QA"],
 )

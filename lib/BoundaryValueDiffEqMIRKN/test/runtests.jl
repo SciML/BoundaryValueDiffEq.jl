@@ -6,6 +6,11 @@ run_tests(;
     core = function ()
         return @time @safetestset "MIRKN Basic Tests" include("Core/mirkn_basic_tests.jl")
     end,
+    groups = Dict(
+        "DeviceKernels" => function ()
+            return @time @safetestset "MIRKN Packed Kernels and Sparse AD" include("GPU/device_kernel_tests.jl")
+        end,
+    ),
     qa = (;
         env = joinpath(@__DIR__, "qa"),
         body = function ()
@@ -14,5 +19,5 @@ run_tests(;
             return @time @safetestset "Quality Assurance" include("qa/qa.jl")
         end,
     ),
-    all = ["Core", "QA"],
+    all = ["Core", "DeviceKernels", "QA"],
 )
