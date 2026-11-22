@@ -10,11 +10,10 @@ run_tests(;
     end,
     groups = Dict(
         "DeviceKernels" => function ()
-            @time @safetestset "Ascher flat buffer resizing" begin
-                include("GPU/resizing_tests.jl")
-                test_ascher_flat_buffers(identity, CPU())
+            return @time @safetestset "Ascher device formulation" begin
+                include("GPU/device_tests.jl")
+                test_ascher_cpu()
             end
-            return @time @safetestset "Ascher device formulation" include("GPU/device_tests.jl")
         end,
         "GPU" => (;
             env = joinpath(@__DIR__, "GPU"),

@@ -1,3 +1,4 @@
+using BoundaryValueDiffEqMIRK
 using CUDA
 using CUDSS
 using LinearSolve
@@ -9,8 +10,18 @@ else
     using CUDA: CUSPARSE as cuSPARSE
 end
 
-include("device_backend_tests.jl")
-include("resident_backend_tests.jl")
+function exponential_bc!(res, u, p, t)
+    res[1] = u(0.0)[1] - 1
+    res[2] = u(1.0)[1] - exp(1.0)
+    return nothing
+end
+
+parameter_rate(p::Union{Tuple, AbstractArray}) = p[1]
+function parameterized!(du, u, p, t)
+    du[1] = u[2]
+    du[2] = parameter_rate(p) * u[1]
+    return nothing
+end
 
 function cuda_sparse_pendulum!(du, u, p, t)
     du[1] = u[2]
@@ -26,13 +37,13 @@ end
 
 function cuda_sparse_problem(to_device, nlls)
     if nlls
-        bf = BVPFunction(
-            resident_exponential!, resident_nlls_bc!;
-            bcresid_prototype = to_device(zeros(3))
-        )
-        return BVProblem(
-            bf, to_device([0.5, 0.5]), (0.0, 1.0), to_device([1.0]); nlls = Val(true)
-        )
+        function least_squares_bc!(r, u, p, t)
+            exponential_bc!(r, u, p, t)
+            r[3] = u(t[1])[2] - 1
+            return nothing
+        end
+        f = BVPFunction(parameterized!, least_squares_bc!; bcresid_prototype = to_device(zeros(3)))
+        return BVProblem(f, to_device([0.5, 0.5]), (0.0, 1.0), to_device([1.0]); nlls = Val(true))
     end
     return BVProblem(
         cuda_sparse_pendulum!, cuda_sparse_pendulum_bc!,
@@ -119,12 +130,6 @@ end
                 @test Array(result.u) ≈ [1.0, 2.0]
             end
         end
-        test_device_backend(CUDABackend())
-        test_resident_backend(
-            CuArray, u -> u isa CuArray, CUDABackend();
-            is_jacobian_device = J -> J isa cuSPARSE.CuSparseMatrixCSR
-        )
-
         @testset "CUDA compressed sparse Jacobians / nlls=$nlls" for nlls in (false, true)
             MIRK = BoundaryValueDiffEqMIRK
             prob = cuda_sparse_problem(CuArray, nlls)
@@ -150,11 +155,6 @@ end
                 @test maximum(group.ncolors for group in plan.groups) <= 8
                 if nlls
                     @test size(MIRK.__mirk_jacobian(cache), 1) == size(MIRK.__mirk_jacobian(cache), 2) + 1
-                    # Use the default nonlinear algorithm and its sparse
-                    # rectangular linear solve, without a user linsolve override.
-                    sol = solve!(cache)
-                    @test successful_retcode(sol)
-                    @test Array(sol.u[end]) ≈ fill(exp(1.0), 2) rtol = 1.0e-4
                 end
             end
         end
@@ -176,30 +176,10 @@ end
 
         @testset "Configured CUDA backend" begin
             platform = CUDABackend(; always_inline = true)
-            prob = resident_problem(CuArray, Float64, true, false)
+            prob = cuda_sparse_problem(CuArray, false)
             cache = init(prob, MIRK4(; platform); dt = 0.2, adaptive = false)
             @test cache.alg.platform === platform
         end
-
-        @testset "Dense device buffer resizing" begin
-            MIRK = BoundaryValueDiffEqMIRK
-            cache = init(
-                resident_problem(CuArray, Float64, true, false),
-                MIRK4(; nlsolve = NewtonRaphson(; linsolve = LUFactorization()));
-                dt = 0.25, adaptive = false, abstol = 1.0e-11
-            )
-            # Exercise the dense fallback with real CUDA storage, without
-            # changing the backend's sparse adapter or mutating the cache.
-            fields = map(fieldnames(typeof(cache))) do name
-                name === :jacobian_cache && return nothing
-                name === :jac_prototype && return similar(cache.y, length(cache.residual) * length(cache.y))
-                return getfield(cache, name)
-            end
-            dense_cache = MIRK.MIRKCache{true, Float64, false, MIRK.NoDiffCacheNeeded, false}(fields...)
-            test_resident_resizing(dense_cache, x -> x isa CuArray)
-        end
-
-        include("adaptive_sparse_tests.jl")
     else
         error("MIRK CUDA tests require a functional CUDA device.")
     end

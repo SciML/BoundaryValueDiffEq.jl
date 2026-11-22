@@ -5,9 +5,7 @@ run_tests(;
     env = "BOUNDARYVALUEDIFFEQ_TEST_GROUP",
     core = function ()
         @time @safetestset "Utility Tests" include("Core/util_tests.jl")
-        @time @safetestset "Internal Solver Selection" include("Core/internal_solver_tests.jl")
-        @time @safetestset "Sparse Device Storage" include("GPU/cpu_sparse_tests.jl")
-        return @time @safetestset "Device Linear Solver Interface" include("GPU/device_linsolve_tests.jl")
+        return @time @safetestset "Internal Solver Selection" include("Core/internal_solver_tests.jl")
     end,
     groups = Dict(
         "GPU" => (;

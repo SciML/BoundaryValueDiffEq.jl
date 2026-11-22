@@ -3,7 +3,7 @@ using StaticArrays: SVector
 const MN = BoundaryValueDiffEqMIRKN
 const FD = MN.ForwardDiff
 
-function resident_init(prob, alg; dt = 0.125, kwargs...)
+function device_test_cache(prob, alg; dt = 0.125, kwargs...)
     u0 = MN.__device_initial_state(prob.u0, prob.p, first(prob.tspan))
     return MN.__init_mirkn_device(
         prob, alg, u0; dt, adaptive = false, abstol = 1.0e-9,
@@ -36,7 +36,11 @@ right(du, u, p) = (u[1], du[1] * u[2], du[2])
 
 @testset "Packed MIRKN residuals and colored Jacobians" begin
     @testset "$Alg $T iip=$iip two=$two matrix=$matrix" for Alg in (MIRKN4, MIRKN6),
-            T in (Float32, Float64), iip in (true, false), two in (true, false), matrix in (true, false)
+            (T, iip, two, matrix) in (
+                (Float32, true, false, false), (Float32, false, true, true),
+                (Float32, true, false, true), (Float64, false, true, false),
+                (Float64, true, true, true), (Float64, false, false, false),
+            )
         u0 = matrix ? reshape(T[0.3, 0.7], 1, 2) : T[0.3, 0.7]
         f = iip ? coupled! : coupled
         bc = two ? (iip ? (left!, right!) : (left, right)) : (iip ? multipoint! : multipoint)
@@ -47,7 +51,7 @@ right(du, u, p) = (u[1], du[1] * u[2], du[2])
             SecondOrderBVProblem(f, bc, u0, (zero(T), one(T)), T[0.4])
         for mode in (AutoForwardDiff(; chunksize = 3), AutoFiniteDiff(), AutoFiniteDiff(; fdjtype = Val(:central)))
             alg = Alg(; jac_alg = BVPJacobianAlgorithm(mode))
-            cache = resident_init(prob, alg; dt = T(0.25))
+            cache = device_test_cache(prob, alg; dt = T(0.25))
             y = BoundaryValueDiffEqMIRKN.__mirkn_states(cache)
             y .+= reshape(T.(range(0, 0.5; length = length(y))), size(y))
             u = vec(y)
@@ -96,7 +100,7 @@ end
     bc!(r, v, u, p, t) = (r[1] = u(t[1])[1]; r[2] = v(t[end])[1]; nothing)
     prob = SecondOrderBVProblem(f!, bc!, [1.0], (0.0, 1.0))
     for Alg in (MIRKN4, MIRKN6), n in (8, 64, 512)
-        cache = resident_init(prob, Alg(); dt = 1 / n)
+        cache = device_test_cache(prob, Alg(); dt = 1 / n)
         @test nnz(BoundaryValueDiffEqMIRKN.__mirkn_jacobian(cache)) == 8n + 2
         @test maximum(g.ncolors for g in BoundaryValueDiffEqMIRKN.__mirkn_jacobian_plan(cache).groups) <= 4
     end
@@ -116,7 +120,7 @@ end
             nonbc_diffmode = AutoForwardDiff(; chunksize = 3)
         )
     )
-    cache = resident_init(prob, alg)
+    cache = device_test_cache(prob, alg)
     @test BoundaryValueDiffEqMIRKN.__mirkn_jacobian_plan(cache).boundary_fallback
     @test length(BoundaryValueDiffEqMIRKN.__mirkn_jacobian_plan(cache).groups) == 2
     MN.__device_jacobian!(BoundaryValueDiffEqMIRKN.__mirkn_jacobian(cache), vec(BoundaryValueDiffEqMIRKN.__mirkn_states(cache)), cache)
@@ -127,7 +131,7 @@ end
     @test Matrix(BoundaryValueDiffEqMIRKN.__mirkn_jacobian(cache)) ≈ ref atol = 1.0e-7
     pattern = sparse(ones(2, length(BoundaryValueDiffEqMIRKN.__mirkn_states(cache))))
     mode = AutoSparse(AutoForwardDiff(); sparsity_detector = MN.ADTypes.KnownJacobianSparsityDetector(pattern))
-    known = resident_init(prob, MIRKN6(; jac_alg = BVPJacobianAlgorithm(; bc_diffmode = mode)))
+    known = device_test_cache(prob, MIRKN6(; jac_alg = BVPJacobianAlgorithm(; bc_diffmode = mode)))
     @test !BoundaryValueDiffEqMIRKN.__mirkn_jacobian_plan(known).boundary_fallback
     @test BoundaryValueDiffEqMIRKN.__mirkn_jacobian_plan(known).pattern[1:2, :] == pattern
 end

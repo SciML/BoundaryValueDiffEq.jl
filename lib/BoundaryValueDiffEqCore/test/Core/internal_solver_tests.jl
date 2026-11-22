@@ -1,11 +1,11 @@
 using BoundaryValueDiffEqCore
 using BoundaryValueDiffEqCore: AbstractBoundaryValueDiffEqCache, SparseJacobianCache,
     __concrete_device_solve_algorithm, __concrete_solve_algorithm, __concrete_kwargs,
-    __default_linsolve, __default_sparse_linsolve, __internal_solve, __needs_sparse_damping
+    __default_linsolve, __default_sparse_linsolve, __device_sparse_linsolve, __internal_solve,
+    __needs_sparse_damping
 using KernelAbstractions: CPU
 using LinearSolve: KrylovJL_GMRES, KrylovJL_LSMR, LUFactorization, UMFPACKFactorization
-using NonlinearSolveBase: NonlinearSolveBase, NonlinearSolvePolyAlgorithm, NonlinearVerbosity
-using OptimizationBase: OptimizationVerbosity
+using NonlinearSolveBase: NonlinearSolveBase, NonlinearSolvePolyAlgorithm
 using SparseArrays: sparse
 using Test
 
@@ -18,7 +18,9 @@ end
     @test __default_linsolve(zeros(2)) === nothing
     # A non-Array storage token exercises the backend fallback without a GPU.
     @test __default_linsolve(nothing) == KrylovJL_GMRES()
-    @test __default_sparse_linsolve(sparse([2.0 1.0; 1.0 3.0])) isa UMFPACKFactorization
+    A = sparse([2.0 1.0; 1.0 3.0])
+    @test __default_sparse_linsolve(A) isa UMFPACKFactorization
+    @test __device_sparse_linsolve(A) === nothing
     @test __default_sparse_linsolve(sparse(Float32[2 1; 1 3])) == KrylovJL_GMRES()
 end
 
@@ -48,37 +50,40 @@ end
         end
     end
 
-    explicit = NewtonRaphson(; linsolve = LUFactorization())
+    chosen = LUFactorization()
+    explicit = NewtonRaphson(; linsolve = chosen)
     optimizer = :explicit_optimizer
-    for prob in (square, rectangular)
-        @test __concrete_device_solve_algorithm(prob, explicit, nothing) === explicit
-        @test __concrete_device_solve_algorithm(prob, nothing, optimizer) === optimizer
-        @test_throws ErrorException __concrete_device_solve_algorithm(prob, explicit, optimizer)
-        for platform in (CPU(), :device), plan in (nothing, SparseJacobianCache((), false, nothing, nothing))
-            cache = InternalSolverCache((; nlsolve = explicit, optimize = nothing, platform), Ref(plan))
-            @test __concrete_solve_algorithm(prob, cache) === explicit
-            cache = InternalSolverCache((; nlsolve = nothing, optimize = optimizer, platform), Ref(plan))
-            @test __concrete_solve_algorithm(prob, cache) === optimizer
+    sparse_plan = SparseJacobianCache((), false, nothing, nothing)
+    @test __concrete_device_solve_algorithm(square, explicit, nothing) === explicit
+    @test __concrete_device_solve_algorithm(square, nothing, optimizer) === optimizer
+    @test_throws ErrorException __concrete_device_solve_algorithm(square, explicit, optimizer)
+    algorithm = __concrete_device_solve_algorithm(square, nothing, nothing; linsolve = chosen)
+    @test algorithm.descent.linsolve === chosen
 
-            cache = InternalSolverCache((; nlsolve = nothing, optimize = nothing, platform), Ref(plan))
+    for prob in (square, rectangular)
+        for (nlsolve, optimize) in ((explicit, nothing), (nothing, optimizer))
+            cache = InternalSolverCache((; nlsolve, optimize, platform = :device), Ref(sparse_plan))
+            @test __concrete_solve_algorithm(prob, cache) === something(nlsolve, optimize)
+        end
+
+        default = (; nlsolve = nothing, optimize = nothing)
+        expected_cpu_members = prob === square ? 3 : 5
+        for (platform, plan, members) in (
+                (CPU(), nothing, expected_cpu_members),
+                (CPU(), sparse_plan, expected_cpu_members),
+                (:device, sparse_plan, 2),
+            )
+            cache = InternalSolverCache((; default..., platform), Ref(plan))
             algorithm = __concrete_solve_algorithm(prob, cache)
             @test algorithm isa NonlinearSolvePolyAlgorithm
-            if plan !== nothing && platform === :device
-                @test length(algorithm.algs) == 2
-                @test all(a -> !__needs_sparse_damping(a, prob.u0), algorithm.algs)
-            elseif prob === square
-                @test length(algorithm.algs) == 3
-            else
-                @test length(algorithm.algs) == 5
-                if plan !== nothing
-                    @test first(algorithm.algs).descent.linsolve == KrylovJL_LSMR()
-                end
+            @test length(algorithm.algs) == members
+            if platform === :device
+                @test !__needs_sparse_damping(algorithm, prob.u0)
+            elseif prob === rectangular && plan !== nothing
+                @test first(algorithm.algs).descent.linsolve == KrylovJL_LSMR()
             end
         end
     end
-    chosen = LUFactorization()
-    algorithm = __concrete_device_solve_algorithm(square, nothing, nothing; linsolve = chosen)
-    @test algorithm.descent.linsolve === chosen
 
     complex_prob = NonlinearProblem((u, p) -> u .- 1, ComplexF64[0])
     @test length(__concrete_solve_algorithm(complex_prob, nothing).algs) == 1
@@ -92,17 +97,10 @@ end
 
 @testset "Internal solver keyword precedence" begin
     verbose = BVPVerbosity()
-    for nonlinear in (nothing, NewtonRaphson())
-        kwargs = __concrete_kwargs(nonlinear, nothing, (; maxiters = 7), (;), verbose)
-        @test kwargs.maxiters == 7
-        @test kwargs.verbose isa NonlinearVerbosity
-        explicit = (; maxiters = 9, verbose = false)
-        @test __concrete_kwargs(nonlinear, nothing, explicit, (;), verbose) == explicit
-        @test __concrete_kwargs(nonlinear, nothing, explicit, (;)) == explicit
-    end
-    kwargs = __concrete_kwargs(nothing, :optimizer, (; maxiters = 1), (; maxiters = 8), verbose)
-    @test kwargs.maxiters == 8
-    @test kwargs.verbose isa OptimizationVerbosity
-    explicit = (; maxiters = 4, verbose = false)
-    @test __concrete_kwargs(nothing, :optimizer, (;), explicit, verbose) == explicit
+    nonlinear = (; maxiters = 7)
+    explicit = (; maxiters = 9, verbose = false)
+    @test __concrete_kwargs(nothing, nothing, nonlinear, (;), verbose).maxiters == 7
+    @test __concrete_kwargs(nothing, nothing, explicit, (;)) == explicit
+    @test __concrete_kwargs(NewtonRaphson(), nothing, explicit, (;), verbose) == explicit
+    @test __concrete_kwargs(nothing, :optimizer, nonlinear, explicit, verbose) == explicit
 end

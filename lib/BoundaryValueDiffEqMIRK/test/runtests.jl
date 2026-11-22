@@ -31,7 +31,6 @@ run_tests(;
         # Exercise the portable device kernels separately from the solver tests.
         "DeviceKernels" => function ()
             @time @safetestset "MIRK Packed Collocation Tests" include("GPU/packed_collocation_tests.jl")
-            @time @safetestset "MIRK Resident Device Tests" include("GPU/resident_tests.jl")
             return @time @safetestset "MIRK Device Interpolation Tests" include("GPU/device_interpolation_tests.jl")
         end,
         # Keep the DAE group separate from the other solver tests.

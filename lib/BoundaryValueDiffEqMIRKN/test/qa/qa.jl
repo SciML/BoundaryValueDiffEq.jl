@@ -13,7 +13,6 @@ run_qa(
         all_explicit_imports_are_public = (;
             ignore = (:StandardSecondOrderBVProblem, :pickchunksize),
         ),
-
     ),
     reexports_allow = MIRKN_REEXPORTS,
 )

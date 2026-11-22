@@ -23,7 +23,6 @@ versions = ["lts", "1", "pre"]
 versions = ["lts", "1", "pre"]
 
 # Portable GPU kernels, sparse differentiation and interpolation on the CPU.
-# Includes JLArrays storage and scalar-indexing checks without requiring CUDA.
 # Run separately from the solver tests.
 [DeviceKernels]
 versions = ["lts", "1", "pre"]

@@ -9,15 +9,11 @@ run_qa(
     BoundaryValueDiffEqShooting;
     ei_kwargs = (;
         all_explicit_imports_are_public = (;
-            # The DiffEqGPU extension constructs nested duals for time derivatives.
-            # ForwardDiff documents these names but does not mark them public.
+            # ForwardDiff's nested dual construction uses non-public names.
             ignore = (:overloaded_input_type, :pickchunksize, :Dual, :Partials, :value, :partials),
         ),
-        # Device AD seeds/extracts ForwardDiff's documented
-        # Dual/Partials representation directly; those names are not marked public.
         all_qualified_accesses_are_public = (;
-            # The optional extension calls and specializes its parent package
-            # internals; these hooks are not part of the user-facing API.
+            # The extension specializes its parent package's internal hooks.
             ignore = (
                 :Dual, :Partials, :Tag, :partials,
                 :__shooting_host, :__shooting_integrate!, :__shooting_odecache,

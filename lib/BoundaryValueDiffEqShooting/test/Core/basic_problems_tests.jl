@@ -27,8 +27,7 @@ import SciMLBase
 
     tspan = (0.0, 100.0)
     u0 = [0.0, 1.0]
-    # Loose ODE tolerances can stall the shooting residual above the nonlinear
-    # tolerance. Use the same integration accuracy for every problem formulation.
+    # Match the inner ODE tolerance to the requested BVP tolerance for OOP solves.
     ode_tolerances = (; abstol = 1.0e-8, reltol = 1.0e-8)
     u_exact(t) = [sin(t), cos(t)] / sin(last(tspan))
     solution_error(sol) = maximum(
@@ -55,7 +54,7 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp1, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = ode_tolerances, maxiters = 10000
+            odesolve_kwargs = (; abstol = 1.0e-8, reltol = 1.0e-8), maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)
@@ -172,7 +171,7 @@ import SciMLBase
     for (i, solver) in enumerate(SOLVERS)
         sol = solve(
             bvp3, solver; abstol = 1.0e-8, reltol = 1.0e-8,
-            odesolve_kwargs = ode_tolerances, maxiters = 10000
+            odesolve_kwargs = (; abstol = 1.0e-10, reltol = 1.0e-10), maxiters = 10000
         )
 
         @test SciMLBase.successful_retcode(sol)

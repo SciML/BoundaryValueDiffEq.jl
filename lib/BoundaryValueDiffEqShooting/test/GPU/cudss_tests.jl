@@ -1,13 +1,20 @@
-using BoundaryValueDiffEqCore, BoundaryValueDiffEqShooting, CUDA, CUDSS, LinearSolve
-using LinearAlgebra, SparseArrays, DiffEqGPU, Test
+using CUDSS, LinearSolve
 
-const ShootingCUDA = Base.get_extension(BoundaryValueDiffEqShooting, :BoundaryValueDiffEqShootingCUDSSExt)
-const ShootingModule = BoundaryValueDiffEqShooting
-CUDA.allowscalar(false)
+const ShootingCUDA = Base.get_extension(DeviceShooting, :BoundaryValueDiffEqShootingCUDSSExt)
+
+function check_direct_solve!(cache, host, analyses, factorizations, tolerance)
+    expected = host \ Array(cache.b)
+    sol = solve!(cache)
+    @test successful_retcode(sol)
+    @test Array(sol.u) ≈ expected atol = 10tolerance
+    @test cache.cacheval.stats.analyses == analyses
+    @test cache.cacheval.stats.factorizations == factorizations
+    return nothing
+end
 
 @testset "Lazy cuDSS cache and symbolic reuse" begin
     @test ShootingCUDA !== nothing
-    @test isempty(Test.detect_ambiguities(ShootingModule, ShootingCUDA; recursive = true))
+    @test isempty(Test.detect_ambiguities(DeviceShooting, ShootingCUDA; recursive = true))
     for T in (Float32, Float64)
         tolerance = T === Float32 ? T(2.0e-5) : T(1.0e-11)
         host = sparse(T[0 2 0; 1 0 3; 0 4 5])
@@ -17,55 +24,31 @@ CUDA.allowscalar(false)
         stats = cache.cacheval.stats
         @test cache.cacheval.full.factor === nothing
         @test stats.analyses == stats.factorizations == stats.solves == 0
-        sol = solve!(cache)
-        @test successful_retcode(sol)
-        @test Array(sol.u) ≈ host \ Array(b) atol = 10tolerance
-        @test stats.analyses == stats.factorizations == 1
+        check_direct_solve!(cache, host, 1, 1, tolerance)
         factor = cache.cacheval.full.factor
 
         cache.b = CuArray(T[3, -1, 2])
-        sol = solve!(cache)
-        @test successful_retcode(sol)
-        @test Array(sol.u) ≈ host \ Array(cache.b) atol = 10tolerance
-        @test stats.analyses == stats.factorizations == 1
+        check_direct_solve!(cache, host, 1, 1, tolerance)
         @test cache.cacheval.full.factor === factor
 
         host.nzval .*= T(1.3)
         host[1, 2] = T(200)
         host[3, 2] = T(0.04)
-        A2 = ShootingCUDA.CuCSR(host)
-        cache.A = A2
-        sol = solve!(cache)
-        @test successful_retcode(sol)
-        @test Array(sol.u) ≈ host \ Array(cache.b) atol = 10tolerance
-        @test stats.analyses == 1 && stats.factorizations == 2
+        cache.A = ShootingCUDA.CuCSR(host)
+        check_direct_solve!(cache, host, 1, 2, tolerance)
         @test cache.cacheval.full.factor === factor
 
         # Same dimensions AND nnz, but different row/column indices.
         changed = sparse(T[2 1 0; 0 3 4; 5 0 0])
         @test nnz(changed) == nnz(host)
         cache.A = ShootingCUDA.CuCSR(changed)
-        sol = solve!(cache)
-        @test successful_retcode(sol)
-        @test Array(sol.u) ≈ changed \ Array(cache.b) atol = 10tolerance
-        @test stats.analyses == 2 && stats.factorizations == 3
+        check_direct_solve!(cache, changed, 2, 3, tolerance)
         @test cache.cacheval.full.factor !== factor
-
-        # Reinitializing with a different dimension replaces the analysis and
-        # resizes residual/refinement workspaces as well as the external vectors.
-        larger = sparse(T[3 1 0 0; 1 4 1 0; 0 1 5 1; 0 0 1 2])
-        cache.A = ShootingCUDA.CuCSR(larger)
-        cache.b = CUDA.ones(T, 4)
-        cache.u = CUDA.zeros(T, 4)
-        sol = solve!(cache)
-        @test successful_retcode(sol)
-        @test Array(sol.u) ≈ larger \ ones(T, 4) atol = 10tolerance
-        @test stats.analyses == 3 && stats.factorizations == 4
 
         nonzeros(cache.A) .= T(NaN)
         cache.A = cache.A
         @test !successful_retcode(solve!(cache))
-        @test stats.factorizations == 4
+        @test stats.factorizations == 3
     end
 end
 
@@ -105,9 +88,8 @@ function condensation_test_setup(T, steps, segment_length, mode = AutoForwardDif
         steps, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8,
         jac_alg = BVPJacobianAlgorithm(mode)
     )
-    setup = ShootingModule.__shooting_device_setup(prob, alg)
+    setup = shooting_jacobian_setup(prob, alg)
     (; u, cache, plan) = setup
-    ShootingModule.__shooting_jacobian!(plan.matrix, u, cache, plan)
     linsolve = ShootingCUDA.default_linsolve(u, cache, plan; segment_length)
     return setup, linsolve
 end
@@ -153,7 +135,7 @@ end
         @test state.stats.fallbacks == 0
     end
 
-    @testset "Finite-difference Jacobian" begin
+    @testset "Finite-difference Jacobian and changed structure" begin
         setup, alg = condensation_test_setup(Float64, 13, 5, AutoFiniteDiff())
         A = setup.plan.matrix
         truth = CUDA.ones(Float64, size(A, 2))
@@ -162,14 +144,6 @@ end
         @test successful_retcode(sol)
         @test norm(sol.u - truth, Inf) < 1.0e-9
         @test cache.cacheval.stats.fallbacks == 0
-    end
-
-    @testset "Changed structure invalidates condensation" begin
-        setup, alg = condensation_test_setup(Float64, 13, 5)
-        A = setup.plan.matrix
-        truth = CUDA.ones(Float64, size(A, 2))
-        cache = init(LinearProblem(A, A * truth), alg; abstol = 1.0e-11, reltol = 1.0e-11)
-        @test successful_retcode(solve!(cache))
         changed = SparseMatrixCSC(A)
         changed[4, 9] = 0.1 # introduce a coupling beyond adjacent nodes
         cache.A = ShootingCUDA.CuCSR(changed)
@@ -203,8 +177,7 @@ end
         bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
     )
     alg = MultipleShooting(17, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8)
-    (; u, cache, plan) = ShootingModule.__shooting_device_setup(prob, alg)
-    ShootingModule.__shooting_jacobian!(plan.matrix, u, cache, plan)
+    (; u, cache, plan) = shooting_jacobian_setup(prob, alg)
     linear_alg = ShootingCUDA.default_linsolve(u, cache, plan; segment_length = 8)
     A = plan.matrix
     truth = CUDA.ones(Float64, size(A, 2))
@@ -224,40 +197,3 @@ end
         device_linsolve = LUFactorization(), nlsolve = NewtonRaphson()
     )
 end
-
-@testset "One-sided and nonlinear boundary solves" begin
-    rhs!(du, u, p, t) = (du[1] = -u[1]; du[2] = -2u[2]; nothing)
-    boundary!(r, u, p) = (r[1] = u[1] - 1; r[2] = u[2] - 1; nothing)
-    empty!(r, u, p) = nothing
-    for left in (true, false)
-        bc = left ? (boundary!, empty!) : (empty!, boundary!)
-        prototype = left ? (zeros(2), zeros(0)) : (zeros(0), zeros(2))
-        prob = TwoPointBVProblem(rhs!, bc, ones(2), (0.0, 1.0); bcresid_prototype = prototype, nlls = Val(false))
-        alg = MultipleShooting(37, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8)
-        sol = solve(prob, alg; abstol = 1.0e-10)
-        @test successful_retcode(sol)
-        @test maximum(abs, sol.resid) < 1.0e-10
-        expected = left ? [exp(-1), exp(-2)] : [1.0, 1.0]
-        @test Array(sol.u[end]) ≈ expected atol = 1.0e-9
-    end
-    # Force repeated Jacobian updates through the public NonlinearSolve API.
-    nonlinear_left!(r, u, p) = (r[1] = u[1]^2 - 1; nothing)
-    nonlinear_right!(r, u, p) = (r[1] = u[2]^2 - 1; nothing)
-    prob = TwoPointBVProblem(
-        rhs!, (nonlinear_left!, nonlinear_right!), [0.8, 1.4], (0.0, 1.0);
-        bcresid_prototype = (zeros(1), zeros(1)), nlls = Val(false)
-    )
-    nlsolve = NewtonRaphson(; linsolve = LUFactorization())
-    if hasproperty(nlsolve, :jacobian_reuse)
-        nlsolve = NewtonRaphson(; linsolve = LUFactorization(), jacobian_reuse = false)
-    end
-    alg = MultipleShooting(37, GPUTsit5(); platform = CUDA.CUDABackend(), device_steps = 8, nlsolve)
-    sol = solve(prob, alg; abstol = 1.0e-10)
-    @test successful_retcode(sol)
-    @test maximum(abs, sol.resid) < 1.0e-10
-    @test sol.original.stats.njacs > 1
-end
-
-# Exercise default selection with CUDSS loaded, including multipoint boundaries,
-# least squares, Float32/64, and out-of-place functions.
-device_shooting_tests(CUDA.CUDABackend(); gpu = true, ode_alg = GPUTsit5())

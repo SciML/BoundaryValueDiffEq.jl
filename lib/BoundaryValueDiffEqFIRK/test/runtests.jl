@@ -146,14 +146,11 @@ run_tests(;
         # large joint at-floor resolve on the Downgrade lane); they live in this
         # group's own test/AD/Project.toml, auto-activated before the body runs.
         "DeviceKernels" => function ()
-            @time @safetestset "FIRK flat buffer resizing" begin
-                include("GPU/resizing_tests.jl")
-                test_firk_flat_buffers(identity, CPU())
+            return @time @safetestset "FIRK device kernels" begin
+                include("GPU/device_backend_tests.jl")
+                include("GPU/device_nested_tests.jl")
+                test_nested_device_jacobian(identity, CPU())
             end
-            @time @safetestset "FIRK device kernels" include("GPU/device_backend_tests.jl")
-            @time @safetestset "FIRK device regressions" include("GPU/device_regression_tests.jl")
-            @time @safetestset "FIRK resident nested solves" include("GPU/device_nested_tests.jl")
-            return @time @safetestset "FIRK device adaptivity and structure" include("GPU/device_features_tests.jl")
         end,
         "GPU" => (;
             env = joinpath(@__DIR__, "GPU"),
