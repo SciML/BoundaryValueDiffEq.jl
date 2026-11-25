@@ -456,3 +456,106 @@ end
         @test abs(first(bc(sol, 20.0, sol.t))) < 1.0e-8
     end
 end
+
+@testset "Ascher algebraic stage guesses" begin
+    bc!(res, u, p, t) = (res[1] = u(0.0)[1]; nothing)
+    function singular!(du, u, p, t)
+        iszero(u[2]) && error("The algebraic state is zero")
+        du[1] = u[2]
+        du[2] = 1 / u[2] - 1
+        return nothing
+    end
+    function two_roots!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = (u[2] + 1) * (u[2] - 2)
+        return nothing
+    end
+    mass_matrix = [1.0 0.0; 0.0 0.0]
+    singular = BVPFunction(singular!, bc!; mass_matrix)
+    two_roots = BVPFunction(two_roots!, bc!; mass_matrix)
+    for adaptive in (false, true)
+        for guess in ([0.0, 0.8], (p, t) -> [t, 0.8], [[t, 0.8] for t in 0.0:0.5:1.0])
+            @testset "Singular DAE, $(typeof(guess)), adaptive = $adaptive" begin
+                prob = BVProblem(singular, guess, (0.0, 1.0))
+                sol = solve(prob, Ascher4(); dt = 0.25, adaptive, abstol = 1.0e-8)
+                @test successful_retcode(sol)
+                @test all(sol(t) ≈ [t, 1.0] for t in (0.0, 0.37, 1.0))
+            end
+        end
+        for (guess, root) in ((1.8, 2.0), (-0.8, -1.0))
+            @testset "Root $root, adaptive = $adaptive" begin
+                prob = BVProblem(two_roots, [0.0, guess], (0.0, 1.0))
+                sol = solve(prob, Ascher4(); dt = 0.25, adaptive, abstol = 1.0e-8)
+                @test successful_retcode(sol)
+                @test all(sol(t) ≈ [root * t, root] for t in (0.0, 0.37, 1.0))
+            end
+        end
+    end
+end
+
+@testset "Ascher differential stage guesses, adaptive = $adaptive" for adaptive in (false, true)
+    function f!(du, u, p, t)
+        u[1] > t || error("The differential state must exceed time")
+        du[1] = 1
+        return nothing
+    end
+    bc!(res, u, p, t) = (res[1] = u(0.0)[1] - 1; nothing)
+    prob = BVProblem(f!, bc!, (p, t) -> [t + 0.01], (0.0, 1.0))
+    sol = solve(prob, Ascher4(); dt = 0.25, adaptive, abstol = 1.0e-8)
+    @test successful_retcode(sol)
+    @test all(sol(t) ≈ [1 + t] for t in (0.0, 0.37, 1.0))
+end
+
+@testset "Ascher halved mesh transfer, origin = $origin" for origin in (0.0, 1.0e8)
+    f!(du, u, p, t) = (du .= 0; nothing)
+    bc!(res, u, p, t) = (res[1] = u(first(t))[1]; nothing)
+    fun = BVPFunction(f!, bc!; mass_matrix = [1.0 0.0; 0.0 0.0])
+    prob = BVProblem(fun, [0.0, 0.0], (origin, origin + 4))
+    cache = init(prob, Ascher4(); dt = 1)
+    for i in eachindex(cache.dmz)
+        cache.z[i + 1][1] = cache.z[i][1] + i
+        for stage in cache.dmz[i]
+            stage .= i
+        end
+    end
+
+    z, y, stages = BoundaryValueDiffEqAscher.__sample_on_halved_mesh(cache)
+    BoundaryValueDiffEqAscher.halve_mesh!(cache)
+    @test cache.mesh == origin .+ (0.0:0.5:4.0)
+    @test only.(z) ≈ [0.0, 0.5, 1.0, 2.0, 3.0, 4.5, 6.0, 8.0, 10.0] atol = 1.0e-13 rtol = 0
+    @test only.(y) ≈ [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 4.0] atol = 1.0e-13 rtol = 0
+    for (i, interval) in enumerate(stages), stage in interval
+        @test stage ≈ fill(cld(i, 2), 2) atol = 1.0e-13 rtol = 0
+    end
+end
+
+@testset "Ascher sampled guess wrappers" begin
+    using RecursiveArrayTools: DiffEqArray, VectorOfArray
+
+    function f!(du, u, p, t)
+        size(u) == size(du) == (1,) || error("Expected one state component")
+        du[1] = 1
+        return nothing
+    end
+    function bc!(res, u, p, t)
+        ua = u(first(t))
+        size(ua) == (1,) || error("Expected one boundary state component")
+        res[1] = ua[1] - 1
+        return nothing
+    end
+    times = [0.0, 0.12, 0.41, 0.84, 1.0]
+    vector_guess = VectorOfArray([[0.8 + t] for t in 0.0:0.25:1.0])
+    timed_guess = DiffEqArray([[0.8 + t] for t in times], times)
+    for (guess, dt) in ((vector_guess, 0.25), (timed_guess, 0.1)), adaptive in (false, true)
+        @testset "$(typeof(guess)), adaptive = $adaptive" begin
+            prob = BVProblem(f!, bc!, guess, (0.0, 1.0))
+            sol = solve(prob, Ascher4(); dt, adaptive, abstol = 1.0e-8)
+            @test successful_retcode(sol)
+            @test all(size(u) == (1,) && u ≈ [1 + t] for (u, t) in zip(sol.u, sol.t))
+            @test sol(0.37) ≈ [1.37]
+            if guess === timed_guess && !adaptive
+                @test sol.t == times
+            end
+        end
+    end
+end

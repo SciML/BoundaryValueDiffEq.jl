@@ -10,6 +10,7 @@
     mesh_dt
     ncomp
     ny
+    state_shape
     p
     alg
     pt
@@ -50,7 +51,7 @@ function SciMLBase.__init(
     )
     verbose_spec = _process_verbose_param(verbose)
     (; tspan, p) = prob
-    _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
+    _, T, ncy, _, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
     ny = prob.f.mass_matrix isa LinearAlgebra.UniformScaling ? 0 : ncy - rank(prob.f.mass_matrix)
     ncomp = ncy - ny
@@ -60,8 +61,9 @@ function SciMLBase.__init(
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     # initialize collocation points, constants, mesh
-    n = Int(cld(t₁ - t₀, dt))
-    mesh = __extract_mesh(prob.u0, t₀, t₁, n)
+    # An integer argument to __extract_mesh denotes an interval count.
+    mesh = __extract_mesh(prob.u0, t₀, t₁, dt isa Int ? dt // 1 : dt)
+    n = length(mesh) - 1
     mesh_dt = diff(mesh)
 
     TU = constructAscher(alg, T)
@@ -69,10 +71,15 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    u0_mesh = __ascher_guess_on_mesh(prob.u0, mesh, p)
-    lz = [Vector{T}(u[1:ncomp]) for u in u0_mesh]
-    ly = [Vector{T}(u[(ncomp + 1):ncy]) for u in u0_mesh]
-    dmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
+    guess = __ascher_guess_evaluator(prob.u0, mesh, p)
+    lz = [similar(zval) for _ in mesh]
+    ly = [similar(yval) for _ in mesh]
+    for i in eachindex(mesh)
+        u = guess(mesh[i])
+        @views lz[i] .= u[1:ncomp]
+        @views ly[i] .= u[(ncomp + 1):ncy]
+    end
+    dmz = __ascher_initial_stages(guess, mesh, mesh_dt, lz, ncomp, ncy, TU)
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
@@ -136,12 +143,36 @@ function SciMLBase.__init(
         nothing
     end
     cache = AscherCache{iip, T}(
-        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
+        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, size(u0), p,
         alg, prob.problem_type, f_prototype, bcresid_prototype, collocation_cache,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
     return cache
+end
+
+function __ascher_initial_stages(guess, mesh, mesh_dt, z, ncomp, ncy, TU)
+    (; rho, acol) = TU
+    T = eltype(acol)
+    k = length(rho)
+    projection = LinearAlgebra.lu(T.(rho) .* transpose(acol))
+    differential = Matrix{T}(undef, k, ncomp)
+    stages = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in eachindex(mesh_dt)]
+    for i in eachindex(mesh_dt)
+        h = mesh_dt[i]
+        for j in 1:k
+            u = guess(mesh[i] + h * rho[j])
+            for c in 1:ncomp
+                differential[j, c] = (u[c] - z[i][c]) / h
+            end
+            @views stages[i][j][(ncomp + 1):end] .= u[(ncomp + 1):end]
+        end
+        LinearAlgebra.ldiv!(projection, differential)
+        for j in 1:k
+            @views stages[i][j][1:ncomp] .= differential[j, :]
+        end
+    end
+    return stages
 end
 
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
@@ -232,32 +263,46 @@ end
     __sample_on_halved_mesh(cache)
 
 Sample the current piecewise-polynomial iterate at the nodes and collocation points of
-the halved mesh, returning `(z, y, dmz)` laid out for that mesh. Seeding the
-error-estimation solve with these values starts it from the coarse solution itself,
-including the algebraic components that `approx` reconstructs from `dmz`.
+the halved mesh, returning `(z, y, dmz)` laid out for the error-estimation solve.
 """
 function __sample_on_halved_mesh(cache::AscherCache{iip, T}) where {iip, T}
-    (; mesh, mesh_dt, ncomp, ny, k, TU) = cache
-    (; rho) = TU
-    n = length(mesh) - 1
-    fine_mesh = Vector{eltype(mesh)}(undef, 2n + 1)
-    for i in 1:n
-        fine_mesh[2i - 1] = mesh[i]
-        fine_mesh[2i] = mesh[i] + mesh_dt[i] / 2
+    (; mesh_dt, ncomp, ny, k, TU) = cache
+    (; rho, coef) = TU
+    n = length(mesh_dt)
+    z = [Vector{T}(undef, ncomp) for _ in 1:(2n + 1)]
+    y = [Vector{T}(undef, ny) for _ in eachindex(z)]
+    a = Vector{T}(undef, k)
+    dm = similar(a)
+    for l in eachindex(z)
+        node = cld(l, 2)
+        i = min(node, n)
+        s = iseven(l) ? T(0.5) : T(node > n)
+        rkbas!(s, coef, k, a, dm)
+        coarse_stages = cache.dmz[i]
+        __ascher_weighted_stages!(y[l], coarse_stages, dm, (ncomp + 1):(ncomp + ny))
+        if isodd(l)
+            copyto!(z[l], cache.z[node])
+        else
+            __ascher_weighted_stages!(z[l], coarse_stages, a, 1:ncomp)
+            @. z[l] = cache.z[i] + mesh_dt[i] / 2 * z[l]
+        end
     end
-    fine_mesh[end] = mesh[end]
-    z = [Vector{T}(undef, ncomp) for _ in fine_mesh]
-    y = [Vector{T}(undef, ny) for _ in fine_mesh]
-    for (l, x) in enumerate(fine_mesh)
-        approx(cache, x, z[l], y[l])
-    end
-    dmz = [[zeros(T, ncomp + ny) for _ in 1:k] for _ in 1:(2n)]
-    zval = Vector{T}(undef, ncomp)
-    for l in 1:(2n), j in 1:k
-        x = fine_mesh[l] + (fine_mesh[l + 1] - fine_mesh[l]) * rho[j]
-        @views approx(cache, x, zval, dmz[l][j][(ncomp + 1):end], dmz[l][j][1:ncomp])
+
+    dmz = [[Vector{T}(undef, ncomp + ny) for _ in 1:k] for _ in 1:(2n)]
+    for l in eachindex(dmz), j in 1:k
+        i = cld(l, 2)
+        s = (iseven(l) + rho[j]) / 2
+        rkbas!(s, coef, k, a, dm)
+        __ascher_weighted_stages!(dmz[l][j], cache.dmz[i], dm, 1:(ncomp + ny))
     end
     return z, y, dmz
+end
+
+function __ascher_weighted_stages!(value, stages, weights, components)
+    for (i, c) in enumerate(components)
+        value[i] = sum(weights[j] * stages[j][c] for j in eachindex(stages))
+    end
+    return nothing
 end
 
 # expand cache to compute the errors
@@ -422,7 +467,7 @@ function __ascher_interpolation(cache)
     metadata = (;
         mesh = copy(cache.mesh), mesh_dt = copy(cache.mesh_dt),
         ncomp = cache.ncomp, ny = cache.ny, k = cache.k, TU = cache.TU,
-        prob = cache.prob,
+        state_shape = cache.state_shape,
     )
     z = reduce(hcat, cache.z)
     stages = reshape(

@@ -11,35 +11,30 @@ function build_almost_block_diagonals(nleft::Integer, ncomp::Integer, mesh, ::Ty
     return g
 end
 
-# Source times for a discrete initial guess: its own time points when it carries them,
-# otherwise uniformly spaced on the mesh span.
-function __ascher_guess_times(u0, us, mesh)
-    hasproperty(u0, :t) && return u0.t
-    return range(first(mesh), last(mesh); length = length(us))
-end
-
 function __ascher_linear_interp_state(us, ts, t)
-    t <= first(ts) && return copy(vec(first(us)))
-    t >= last(ts) && return copy(vec(last(us)))
-    j = clamp(searchsortedlast(ts, t), 1, length(ts) - 1)
+    j = searchsortedlast(ts, t)
+    j == 0 && return vec(first(us))
+    (j == length(ts) || t == ts[j]) && return vec(us[j])
     θ = (t - ts[j]) / (ts[j + 1] - ts[j])
-    return (1 - θ) .* vec(us[j]) .+ θ .* vec(us[j + 1])
+    left, right = vec(us[j]), vec(us[j + 1])
+    return left .+ θ .* (right .- left)
 end
 
 """
-    __ascher_guess_on_mesh(u0, mesh, p)
+    __ascher_guess_evaluator(u0, mesh, p)
 
-Return the initial guess as one state vector per point of `mesh`. A discrete guess whose
-length differs from `length(mesh)` is linearly interpolated onto `mesh`, since Ascher
-builds its mesh from `dt` rather than from the guess.
+Return a function that samples the initial state at mesh nodes and collocation points.
+Ascher uses the time points of a timestamped guess as its mesh. Untimed discrete
+samples are uniformly spaced over the mesh span, and discrete values between
+samples are linearly interpolated. A single state supplies a constant guess.
 """
-function __ascher_guess_on_mesh(u0, mesh, p)
-    us = __initial_guess_on_mesh(u0, mesh, p).u
-    length(us) == 1 && return [copy(vec(only(us))) for _ in mesh]
-    length(us) == length(mesh) && return [copy(vec(u)) for u in us]
-    t_src = __ascher_guess_times(u0, us, mesh)
-    return [__ascher_linear_interp_state(us, t_src, t) for t in mesh]
+function __ascher_guess_evaluator(u0, mesh, p)
+    us = __initial_guess_on_mesh(u0, (first(mesh),), p).u
+    length(us) == 1 && return _ -> vec(only(us))
+    ts = hasproperty(u0, :t) ? mesh : range(first(mesh), last(mesh); length = length(us))
+    return t -> __ascher_linear_interp_state(us, ts, t)
 end
+__ascher_guess_evaluator(f::Function, mesh, p) = t -> vec(__initial_guess(f, p, t))
 
 # Custom pivot LU factorization and substitution for simple usage and
 # customized array types
