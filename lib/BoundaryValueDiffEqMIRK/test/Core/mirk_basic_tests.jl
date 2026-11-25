@@ -1,6 +1,7 @@
 using BoundaryValueDiffEqMIRK
 using ADTypes: AutoFiniteDiff, AutoSparse
 using BoundaryValueDiffEqCore: BVPJacobianAlgorithm, DefectControl, GlobalErrorControl,
+    __split_kwargs,
     HybridErrorControl, SequentialErrorControl
 using RecursiveArrayTools: DiffEqArray, VectorOfArray
 import SciMLBase
@@ -761,6 +762,29 @@ end
     @test SciMLBase.successful_retcode(sol)
     @test sol.u[1][1:2] ≈ a1 atol = 1.0e-8
     @test sol.u[end][1:2] ≈ a2 atol = 1.0e-8
+end
+
+@testset "Initial guess after mesh redistribution is the previous interpolant" begin
+    function f!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = -exp(u[1])
+    end
+    function bc!(res, u, p, t)
+        res[1] = u(0.0)[1]
+        res[2] = u(1.0)[1]
+    end
+    prob = BVProblem(f!, bc!, [0.0, 0.0], (0.0, 1.0))
+    @testset "MIRK$order" for order in (2, 3, 4, 5, 6)
+        alg = mirk_solver(Val(order))
+        sol_coarse = solve(prob, alg; dt = 0.25, abstol = 1.0e-10, adaptive = false)
+        cache = init(prob, alg; dt = 0.25, abstol = 1.0e-10)
+        (_, _, controller, _), _ = __split_kwargs(; cache.kwargs...)
+        BoundaryValueDiffEqMIRK.__perform_mirk_iteration(cache, 1.0e-10, true, controller)
+        @test length(cache.mesh) != length(sol_coarse.t)
+        for (i, t) in enumerate(cache.mesh)
+            @test cache.y₀.u[i] ≈ sol_coarse(t) atol = 1.0e-12
+        end
+    end
 end
 
 # https://github.com/SciML/BoundaryValueDiffEq.jl/issues/500
