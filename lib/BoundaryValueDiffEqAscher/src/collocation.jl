@@ -6,14 +6,14 @@ function __ascher_global_loss!(res, x, p, cache)
 end
 
 function __ascher_collocation_loss!(res, x, p, cache)
-    (; mesh, mesh_dt, ncomp, ny, k, TU) = cache
+    (; mesh, mesh_dt, ncomp, ny, k, TU, state_shape) = cache
     sol = __ascher_global_solution(cache, x)
     ncy = ncomp + ny
     offset = 0
     fval = similar(x, ncy)
     uval = similar(x, ncy)
-    shape = cache.prob.u0 isa AbstractArray{<:Number} ? size(cache.prob.u0) : (ncy,)
-    u = reshape(uval, shape)
+    du = reshape(fval, state_shape)
+    u = reshape(uval, state_shape)
     for i in 1:(length(mesh) - 1)
         for j in 1:k
             t = mesh[i] + mesh_dt[i] * TU.rho[j]
@@ -28,7 +28,7 @@ function __ascher_collocation_loss!(res, x, p, cache)
                 uval[c] = sol.stages[c, j, i]
             end
             if isinplace(cache.prob)
-                cache.prob.f(reshape(fval, size(u)), u, p, t)
+                cache.prob.f(du, u, p, t)
             else
                 fval .= vec(cache.prob.f(u, p, t))
             end
@@ -661,8 +661,7 @@ function (sol::AscherBoundarySolution)(t)
         end
         u[c] = c <= ncomp ? sol.z[c, i] + (t - mesh[i]) * value : value
     end
-    shape = sol.cache.prob.u0 isa AbstractArray{<:Number} ? size(sol.cache.prob.u0) : (ncomp + ny,)
-    return reshape(u, shape)
+    return reshape(u, sol.cache.state_shape)
 end
 Base.getindex(sol::AscherBoundarySolution, i::Int) = sol(sol.cache.mesh[i])
 Base.length(sol::AscherBoundarySolution) = length(sol.cache.mesh)

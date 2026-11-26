@@ -96,6 +96,8 @@ function redistribute!(
     return mesh_dt
 end
 
+__ascher_mesh_midpoint(mesh, i) = convert(eltype(mesh), (mesh[i] + mesh[i + 1]) / 2.0)
+
 function halve_mesh!(cache::AscherCache)
     (; mesh, mesh_dt, valstr) = cache
     n = length(mesh) - 1
@@ -117,7 +119,7 @@ function halve_mesh!(cache::AscherCache)
     mesh[1] = old_mesh[1]
 
     for i in 1:n
-        mesh[2i] = (old_mesh[i] + old_mesh[i + 1]) / 2.0
+        mesh[2i] = __ascher_mesh_midpoint(old_mesh, i)
         mesh[2i + 1] = old_mesh[i + 1]
     end
     return mesh_dt[1:end] = diff(mesh)[1:end]

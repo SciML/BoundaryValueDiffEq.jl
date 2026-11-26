@@ -248,6 +248,101 @@ end
     @test tpsol.errors[:final] < 1.0e-4
 end
 
+# Callbacks singular at zero: every residual and Jacobian evaluation, including the
+# error-estimation solve on the halved mesh, must start from the supplied guess.
+@testset "Ascher callbacks never see the zero state (#621), adaptive = $adaptive" for adaptive in (false, true)
+    function f_nonzero!(du, u, p, t)
+        any(iszero, u) && error("f! was evaluated at a zero component")
+        du[1] = 1 / u[1] - 1
+        du[2] = 1 / u[2] - 1
+        return nothing
+    end
+    function bc_nonzero!(res, u, p, t)
+        ua, ub = u(0.0), u(1.0)
+        (iszero(ua[1]) || iszero(ub[2])) && error("bc! was evaluated at a zero component")
+        res[1] = 1 / ua[1] - 1
+        res[2] = 1 / ub[2] - 1
+        return nothing
+    end
+    fun = BVPFunction(f_nonzero!, bc_nonzero!; mass_matrix = Float64[1 0; 0 1])
+    prob = BVProblem(fun, [1.0, 1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(); dt = 0.1, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test all(u -> u ≈ [1.0, 1.0], sol.u)
+
+    function f621!(du, u, p, t)
+        iszero(u[1]) && error("f! was evaluated at u[1] = 0")
+        du[1] = 1 / u[1] - 1
+        return nothing
+    end
+    function bc621!(res, u, p, t)
+        ub = u(1.0)
+        iszero(ub[1]) && error("bc! was evaluated at u[1] = 0")
+        res[1] = 1 / ub[1] - 1
+        return nothing
+    end
+    fun = BVPFunction(f621!, bc621!; mass_matrix = ones(1, 1))
+    prob = BVProblem(fun, [1.0], (0.0, 1.0))
+    sol = solve(prob, Ascher4(); dt = 0.01, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test all(u -> u ≈ [1.0], sol.u)
+end
+
+@testset "Ascher one-state problem with a left boundary condition, adaptive = $adaptive" for adaptive in (false, true)
+    fun = BVPFunction(
+        (du, u, p, t) -> (du[1] = -u[1]), (res, u, p, t) -> (res[1] = u(0.0)[1] - 1);
+        mass_matrix = ones(1, 1)
+    )
+    prob = BVProblem(fun, [0.5], (0.0, 1.0))
+    sol = solve(prob, Ascher4(); dt = 0.1, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test maximum(abs(sol.u[i][1] - exp(-sol.t[i])) for i in eachindex(sol.t)) < 1.0e-4
+end
+
+@testset "Ascher vector-of-arrays guess of length $L, adaptive = $adaptive" for L in (5, 11, 37), adaptive in (false, true)
+    function f3!(du, u, p, t)
+        du[1] = -u[3]
+        du[2] = -u[3]
+        du[3] = u[2] - sin(t - 1)
+        return nothing
+    end
+    function bc3!(res, u, p, t)
+        res[1] = u(1.0)[1]
+        res[2] = u(1.0)[2]
+        return nothing
+    end
+    f3_analytic(t) = [sin(t - 1), sin(t - 1), -cos(t - 1)]
+    guess = [f3_analytic(t) for t in range(0.0, 1.0; length = L)]
+    fun = ODEFunction(f3!; mass_matrix = [1 0 0; 0 1 0; 0 0 0])
+    prob = BVProblem(fun, bc3!, guess, (0.0, 1.0))
+    sol = solve(prob, Ascher4(); dt = 0.01, adaptive)
+    @test SciMLBase.successful_retcode(sol)
+    @test length(sol.t) == 101
+    @test maximum(
+        maximum(abs, sol.u[i] .- f3_analytic(sol.t[i])) for i in eachindex(sol.t)
+    ) < 1.0e-4
+end
+
+@testset "Ascher singleton guesses" begin
+    using RecursiveArrayTools: VectorOfArray
+    f!(du, u, p, t) = (du[1] = 0; du[2] = u[1]; nothing)
+    function bc!(res, u, p, t)
+        res[1] = u(0.0)[1] - 1
+        res[2] = u(1.0)[2] - 1
+        return nothing
+    end
+    for alg in (Ascher1(), Ascher2(), Ascher3(), Ascher4(), Ascher5(), Ascher6(), Ascher7()),
+            guess in ([[1.0, 0.0]], VectorOfArray([[1.0, 0.0]])),
+            adaptive in (false, true)
+        @testset "$(typeof(alg)), $(typeof(guess)), adaptive = $adaptive" begin
+            prob = BVProblem(f!, bc!, guess, (0.0, 1.0))
+            sol = solve(prob, alg; dt = 0.1, adaptive)
+            @test successful_retcode(sol)
+            @test all(u ≈ [1.0, t] for (u, t) in zip(sol.u, sol.t))
+        end
+    end
+end
+
 # JET tests have been moved to the separate QA test group (test/qa/)
 
 @testset "Two-point boundary allocation" begin
@@ -359,5 +454,160 @@ end
         @test maximum(abs(sol(t)[1] - exp(-20t)) for t in range(0, 1; length = 21)) < 1.0e-6
         @test maximum(abs(u[1] - exp(-20t)) for (u, t) in zip(sol.u, sol.t)) < 1.0e-6
         @test abs(first(bc(sol, 20.0, sol.t))) < 1.0e-8
+    end
+end
+
+@testset "Ascher algebraic stage guesses" begin
+    bc!(res, u, p, t) = (res[1] = u(0.0)[1]; nothing)
+    function singular!(du, u, p, t)
+        iszero(u[2]) && error("The algebraic state is zero")
+        du[1] = u[2]
+        du[2] = 1 / u[2] - 1
+        return nothing
+    end
+    function two_roots!(du, u, p, t)
+        du[1] = u[2]
+        du[2] = (u[2] + 1) * (u[2] - 2)
+        return nothing
+    end
+    mass_matrix = [1.0 0.0; 0.0 0.0]
+    singular = BVPFunction(singular!, bc!; mass_matrix)
+    two_roots = BVPFunction(two_roots!, bc!; mass_matrix)
+    for adaptive in (false, true)
+        for guess in ([0.0, 0.8], (p, t) -> [t, 0.8], [[t, 0.8] for t in 0.0:0.5:1.0])
+            @testset "Singular DAE, $(typeof(guess)), adaptive = $adaptive" begin
+                prob = BVProblem(singular, guess, (0.0, 1.0))
+                sol = solve(prob, Ascher4(); dt = 0.25, adaptive, abstol = 1.0e-8)
+                @test successful_retcode(sol)
+                @test all(sol(t) ≈ [t, 1.0] for t in (0.0, 0.37, 1.0))
+            end
+        end
+        for (guess, root) in ((1.8, 2.0), (-0.8, -1.0))
+            @testset "Root $root, adaptive = $adaptive" begin
+                prob = BVProblem(two_roots, [0.0, guess], (0.0, 1.0))
+                sol = solve(prob, Ascher4(); dt = 0.25, adaptive, abstol = 1.0e-8)
+                @test successful_retcode(sol)
+                @test all(sol(t) ≈ [root * t, root] for t in (0.0, 0.37, 1.0))
+            end
+        end
+    end
+end
+
+@testset "Ascher differential stage guesses, adaptive = $adaptive" for adaptive in (false, true)
+    function f!(du, u, p, t)
+        u[1] > t || error("The differential state must exceed time")
+        du[1] = 1
+        return nothing
+    end
+    bc!(res, u, p, t) = (res[1] = u(0.0)[1] - 1; nothing)
+    prob = BVProblem(f!, bc!, (p, t) -> [t + 0.01], (0.0, 1.0))
+    sol = solve(prob, Ascher4(); dt = 0.25, adaptive, abstol = 1.0e-8)
+    @test successful_retcode(sol)
+    @test all(sol(t) ≈ [1 + t] for t in (0.0, 0.37, 1.0))
+end
+
+@testset "Ascher halved mesh transfer, origin = $origin" for origin in (0.0, 1.0e8)
+    f!(du, u, p, t) = (du .= 0; nothing)
+    bc!(res, u, p, t) = (res[1] = u(first(t))[1]; nothing)
+    fun = BVPFunction(f!, bc!; mass_matrix = [1.0 0.0; 0.0 0.0])
+    prob = BVProblem(fun, [0.0, 0.0], (origin, origin + 4))
+    cache = init(prob, Ascher4(); dt = 1)
+    for i in eachindex(cache.dmz)
+        cache.z[i + 1][1] = cache.z[i][1] + i
+        for stage in cache.dmz[i]
+            stage .= i
+        end
+    end
+
+    z, y, stages = BoundaryValueDiffEqAscher.__sample_on_halved_mesh(cache)
+    BoundaryValueDiffEqAscher.halve_mesh!(cache)
+    @test cache.mesh == origin .+ (0.0:0.5:4.0)
+    @test only.(z) ≈ [0.0, 0.5, 1.0, 2.0, 3.0, 4.5, 6.0, 8.0, 10.0] atol = 1.0e-13 rtol = 0
+    @test only.(y) ≈ [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 4.0] atol = 1.0e-13 rtol = 0
+    for (i, interval) in enumerate(stages), stage in interval
+        @test stage ≈ fill(cld(i, 2), 2) atol = 1.0e-13 rtol = 0
+    end
+end
+
+@testset "Ascher halved mesh transfer with a rounded midpoint" begin
+    f!(du, u, p, t) = (du .= 0; nothing)
+    bc!(res, u, p, t) = (res[1] = u(first(t))[1]; nothing)
+    fun = BVPFunction(f!, bc!; mass_matrix = [1.0 0.0; 0.0 0.0])
+    origin, width = 1.0e16, 6.0
+    prob = BVProblem(fun, [0.0, 0.0], (origin, origin + width))
+    cache = init(prob, Ascher4(); dt = width)
+    stage_values(s) = [1 + 2s, 3 - s]
+    cache.z[end][1] = 2width
+    rho = cache.TU.rho
+    for (stage, r) in zip(only(cache.dmz), rho)
+        stage .= stage_values(r)
+    end
+
+    z, y, stages = BoundaryValueDiffEqAscher.__sample_on_halved_mesh(cache)
+    BoundaryValueDiffEqAscher.halve_mesh!(cache)
+    @test cache.mesh_dt == [4.0, 2.0]
+    s_mid = (cache.mesh[2] - origin) / width
+    @test only(z[2]) ≈ width * (s_mid + s_mid^2) atol = 1.0e-13 rtol = 0
+    @test only(y[2]) ≈ 3 - s_mid atol = 1.0e-13 rtol = 0
+    for (i, interval) in enumerate(stages), (stage, r) in zip(interval, rho)
+        s = ((cache.mesh[i] - origin) + cache.mesh_dt[i] * r) / width
+        @test stage ≈ stage_values(s) atol = 1.0e-13 rtol = 0
+    end
+end
+
+@testset "Ascher sampled guess wrappers" begin
+    using RecursiveArrayTools: DiffEqArray, VectorOfArray
+
+    function f!(du, u, p, t)
+        size(u) == size(du) == (1,) || error("Expected one state component")
+        du[1] = 1
+        return nothing
+    end
+    function bc!(res, u, p, t)
+        ua = u(first(t))
+        size(ua) == (1,) || error("Expected one boundary state component")
+        res[1] = ua[1] - 1
+        return nothing
+    end
+    times = [0.0, 0.12, 0.41, 0.84, 1.0]
+    vector_guess = VectorOfArray([[0.8 + t] for t in 0.0:0.25:1.0])
+    timed_guess = DiffEqArray([[0.8 + t] for t in times], times)
+    for (guess, dt) in ((vector_guess, 0.25), (timed_guess, 0.1)), adaptive in (false, true)
+        @testset "$(typeof(guess)), adaptive = $adaptive" begin
+            prob = BVProblem(f!, bc!, guess, (0.0, 1.0))
+            sol = solve(prob, Ascher4(); dt, adaptive, abstol = 1.0e-8)
+            @test successful_retcode(sol)
+            @test all(size(u) == (1,) && u ≈ [1 + t] for (u, t) in zip(sol.u, sol.t))
+            @test sol(0.37) ≈ [1.37]
+            if guess === timed_guess && !adaptive
+                @test sol.t == times
+            end
+        end
+    end
+
+    @testset "Matrix states on a nonuniform mesh" begin
+        initial = [1.0 2.0; 3.0 4.0]
+        velocity = [1.0 -1.0; 2.0 -2.0]
+        exact(t) = initial .+ t .* velocity
+        function matrix_f!(du::AbstractMatrix, u::AbstractMatrix, p, t)
+            du .= velocity
+            return nothing
+        end
+        function matrix_bc!(res, u, p, t)
+            ua = u(first(t))
+            size(ua) == (2, 2) || error("Expected a 2×2 boundary state")
+            res .= vec(ua .- initial)
+            return nothing
+        end
+        matrix_times = [0.0, 0.13, 0.77, 1.0]
+        guess = DiffEqArray([exact(t) .- 0.2 for t in matrix_times], matrix_times)
+        prob = BVProblem(matrix_f!, matrix_bc!, guess, (0.0, 1.0))
+        sol = solve(prob, Ascher4(); dt = 0.1, adaptive = false, abstol = 1.0e-8)
+        @test successful_retcode(sol)
+        @test sol.t == matrix_times
+        for (i, t) in enumerate(sol.t)
+            @test size(sol.u[i]) == (2, 2) && sol.u[i] ≈ exact(t)
+            @test size(sol(t)) == (2, 2) && sol(t) ≈ exact(t)
+        end
     end
 end

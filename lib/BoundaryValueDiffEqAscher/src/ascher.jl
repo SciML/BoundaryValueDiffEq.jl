@@ -10,6 +10,7 @@
     mesh_dt
     ncomp
     ny
+    state_shape
     p
     alg
     pt
@@ -50,7 +51,7 @@ function SciMLBase.__init(
     )
     verbose_spec = _process_verbose_param(verbose)
     (; tspan, p) = prob
-    _, T, ncy, n, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
+    _, T, ncy, _, u0 = __extract_problem_details(prob; dt, check_positive_dt = true)
     t₀, t₁ = tspan
     ny = prob.f.mass_matrix isa LinearAlgebra.UniformScaling ? 0 : ncy - rank(prob.f.mass_matrix)
     ncomp = ncy - ny
@@ -60,8 +61,9 @@ function SciMLBase.__init(
     @set! alg.jac_alg = concrete_jacobian_algorithm(alg.jac_alg, prob, alg)
 
     # initialize collocation points, constants, mesh
-    n = Int(cld(t₁ - t₀, dt))
-    mesh = __extract_mesh(prob.u0, t₀, t₁, n)
+    # An integer argument to __extract_mesh denotes an interval count.
+    mesh = __extract_mesh(prob.u0, t₀, t₁, dt isa Int ? dt // 1 : dt)
+    n = length(mesh) - 1
     mesh_dt = diff(mesh)
 
     TU = constructAscher(alg, T)
@@ -69,16 +71,15 @@ function SciMLBase.__init(
     zval = Vector{T}(undef, ncomp)
     yval = Vector{T}(undef, ny)
     collocation_cache = [__ascher_collocation_scratch(T, ncomp, ny) for _ in 1:n]
-    lz = [similar(zval) for _ in 1:(n + 1)]
-    fill!.(lz, T(0))
-    ly = [similar(yval) for _ in 1:(n + 1)]
-    fill!.(ly, T(0))
-    if u0 isa AbstractArray{<:Number}
-        for zi in lz
-            zi .= vec(u0)[1:ncomp]
-        end
+    guess = __ascher_guess_evaluator(prob.u0, mesh, p)
+    lz = [similar(zval) for _ in mesh]
+    ly = [similar(yval) for _ in mesh]
+    for i in eachindex(mesh)
+        u = guess(mesh[i])
+        @views lz[i] .= u[1:ncomp]
+        @views ly[i] .= u[(ncomp + 1):ncy]
     end
-    dmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
+    dmz = __ascher_initial_stages(guess, mesh, mesh_dt, lz, ncomp, ncy, TU)
     dmv = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
     delz = [similar(zval) for _ in 1:(n + 1)]
     deldmz = [[zeros(T, ncy) for _ in 1:k] for _ in 1:n]
@@ -142,12 +143,36 @@ function SciMLBase.__init(
         nothing
     end
     cache = AscherCache{iip, T}(
-        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, p,
+        prob, f, jac, bc, bcjac, k, copy(mesh), mesh, mesh_dt, ncomp, ny, size(u0), p,
         alg, prob.problem_type, f_prototype, bcresid_prototype, collocation_cache,
         err, g, w, v, lz, ly, dmz, delz, deldmz, dqdmz, dmv, pvtg, pvtw, TU, valst,
         nlsolve_kwargs, optimize_kwargs, (; abstol, dt, adaptive, controller, kwargs...), verbose_spec
     )
     return cache
+end
+
+function __ascher_initial_stages(guess, mesh, mesh_dt, z, ncomp, ncy, TU)
+    (; rho, acol) = TU
+    T = eltype(acol)
+    k = length(rho)
+    projection = LinearAlgebra.lu(T.(rho) .* transpose(acol))
+    differential = Matrix{T}(undef, k, ncomp)
+    stages = [[Vector{T}(undef, ncy) for _ in 1:k] for _ in eachindex(mesh_dt)]
+    for i in eachindex(mesh_dt)
+        h = mesh_dt[i]
+        for j in 1:k
+            u = guess(mesh[i] + h * rho[j])
+            for c in 1:ncomp
+                differential[j, c] = (u[c] - z[i][c]) / h
+            end
+            @views stages[i][j][(ncomp + 1):end] .= u[(ncomp + 1):end]
+        end
+        LinearAlgebra.ldiv!(projection, differential)
+        for j in 1:k
+            @views stages[i][j][1:ncomp] .= differential[j, :]
+        end
+    end
+    return stages
 end
 
 function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
@@ -163,7 +188,7 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
             z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive)
         end
     end
-    u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
+    u = [reshape(vcat(zᵢ, yᵢ), cache.state_shape) for (zᵢ, yᵢ) in zip(z, y)]
 
     return SciMLBase.build_solution(
         cache.prob, cache.alg, cache.original_mesh, u;
@@ -204,8 +229,12 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     # we construct a double mesh and solve the problem on halved mesh again to obtain the error estimation
     # since we got the previous convergence on the initial mesh, we utilize this as the initial guess for our next nonlinear solving
     if info == ReturnCode.Success
+        z_fine, y_fine, dmz_fine = __sample_on_halved_mesh(cache)
         halve_mesh!(cache)
         __expand_cache_for_error!(cache)
+        copyto!(cache.z, z_fine)
+        copyto!(cache.y, y_fine)
+        copyto!(cache.dmz, dmz_fine)
 
         _nlprob = __construct_nlproblem(cache)
         nlsol = solve(_nlprob, solve_alg; kwargs...)
@@ -228,6 +257,59 @@ function __perform_ascher_iteration(cache::AscherCache{iip, T}, abstol, adaptive
     end
 
     return z, y, info, error_norm
+end
+
+"""
+    __sample_on_halved_mesh(cache)
+
+Sample the current piecewise-polynomial iterate at the nodes and collocation points of
+the halved mesh, returning `(z, y, dmz)` laid out for the error-estimation solve.
+"""
+function __sample_on_halved_mesh(cache::AscherCache{iip, T}) where {iip, T}
+    (; mesh, mesh_dt, ncomp, ny, k, TU) = cache
+    (; rho, coef) = TU
+    n = length(mesh_dt)
+    z = [Vector{T}(undef, ncomp) for _ in 1:(2n + 1)]
+    y = [Vector{T}(undef, ny) for _ in eachindex(z)]
+    dmz = [[Vector{T}(undef, ncomp + ny) for _ in 1:k] for _ in 1:(2n)]
+    a = Vector{T}(undef, k)
+    dm = similar(a)
+    algebraic = (ncomp + 1):(ncomp + ny)
+    components = 1:(ncomp + ny)
+    for i in eachindex(mesh_dt)
+        l = 2i - 1
+        midpoint = __ascher_mesh_midpoint(mesh, i)
+        left_width = midpoint - mesh[i]
+        s_mid = left_width / mesh_dt[i]
+        right_scale = (mesh[i + 1] - midpoint) / mesh_dt[i]
+        coarse_stages = cache.dmz[i]
+
+        copyto!(z[l], cache.z[i])
+        rkbas!(zero(T), coef, k, a, dm)
+        __ascher_weighted_stages!(y[l], coarse_stages, dm, algebraic)
+        rkbas!(s_mid, coef, k, a, dm)
+        __ascher_weighted_stages!(y[l + 1], coarse_stages, dm, algebraic)
+        __ascher_weighted_stages!(z[l + 1], coarse_stages, a, 1:ncomp)
+        @. z[l + 1] = cache.z[i] + left_width * z[l + 1]
+
+        for j in 1:k
+            rkbas!(s_mid * rho[j], coef, k, a, dm)
+            __ascher_weighted_stages!(dmz[l][j], coarse_stages, dm, components)
+            rkbas!(s_mid + right_scale * rho[j], coef, k, a, dm)
+            __ascher_weighted_stages!(dmz[l + 1][j], coarse_stages, dm, components)
+        end
+    end
+    copyto!(z[end], cache.z[end])
+    rkbas!(one(T), coef, k, a, dm)
+    __ascher_weighted_stages!(y[end], cache.dmz[end], dm, algebraic)
+    return z, y, dmz
+end
+
+function __ascher_weighted_stages!(value, stages, weights, components)
+    for (i, c) in enumerate(components)
+        value[i] = sum(weights[j] * stages[j][c] for j in eachindex(stages))
+    end
+    return nothing
 end
 
 # expand cache to compute the errors
@@ -392,7 +474,7 @@ function __ascher_interpolation(cache)
     metadata = (;
         mesh = copy(cache.mesh), mesh_dt = copy(cache.mesh_dt),
         ncomp = cache.ncomp, ny = cache.ny, k = cache.k, TU = cache.TU,
-        prob = cache.prob,
+        state_shape = cache.state_shape,
     )
     z = reduce(hcat, cache.z)
     stages = reshape(
