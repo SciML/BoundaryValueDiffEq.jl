@@ -529,6 +529,32 @@ end
     end
 end
 
+@testset "Ascher halved mesh transfer with a rounded midpoint" begin
+    f!(du, u, p, t) = (du .= 0; nothing)
+    bc!(res, u, p, t) = (res[1] = u(first(t))[1]; nothing)
+    fun = BVPFunction(f!, bc!; mass_matrix = [1.0 0.0; 0.0 0.0])
+    origin, width = 1.0e16, 6.0
+    prob = BVProblem(fun, [0.0, 0.0], (origin, origin + width))
+    cache = init(prob, Ascher4(); dt = width)
+    stage_values(s) = [1 + 2s, 3 - s]
+    cache.z[end][1] = 2width
+    rho = cache.TU.rho
+    for (stage, r) in zip(only(cache.dmz), rho)
+        stage .= stage_values(r)
+    end
+
+    z, y, stages = BoundaryValueDiffEqAscher.__sample_on_halved_mesh(cache)
+    BoundaryValueDiffEqAscher.halve_mesh!(cache)
+    @test cache.mesh_dt == [4.0, 2.0]
+    s_mid = (cache.mesh[2] - origin) / width
+    @test only(z[2]) ≈ width * (s_mid + s_mid^2) atol = 1.0e-13 rtol = 0
+    @test only(y[2]) ≈ 3 - s_mid atol = 1.0e-13 rtol = 0
+    for (i, interval) in enumerate(stages), (stage, r) in zip(interval, rho)
+        s = ((cache.mesh[i] - origin) + cache.mesh_dt[i] * r) / width
+        @test stage ≈ stage_values(s) atol = 1.0e-13 rtol = 0
+    end
+end
+
 @testset "Ascher sampled guess wrappers" begin
     using RecursiveArrayTools: DiffEqArray, VectorOfArray
 
@@ -556,6 +582,32 @@ end
             if guess === timed_guess && !adaptive
                 @test sol.t == times
             end
+        end
+    end
+
+    @testset "Matrix states on a nonuniform mesh" begin
+        initial = [1.0 2.0; 3.0 4.0]
+        velocity = [1.0 -1.0; 2.0 -2.0]
+        exact(t) = initial .+ t .* velocity
+        function matrix_f!(du::AbstractMatrix, u::AbstractMatrix, p, t)
+            du .= velocity
+            return nothing
+        end
+        function matrix_bc!(res, u, p, t)
+            ua = u(first(t))
+            size(ua) == (2, 2) || error("Expected a 2×2 boundary state")
+            res .= vec(ua .- initial)
+            return nothing
+        end
+        matrix_times = [0.0, 0.13, 0.77, 1.0]
+        guess = DiffEqArray([exact(t) .- 0.2 for t in matrix_times], matrix_times)
+        prob = BVProblem(matrix_f!, matrix_bc!, guess, (0.0, 1.0))
+        sol = solve(prob, Ascher4(); dt = 0.1, adaptive = false, abstol = 1.0e-8)
+        @test successful_retcode(sol)
+        @test sol.t == matrix_times
+        for (i, t) in enumerate(sol.t)
+            @test size(sol.u[i]) == (2, 2) && sol.u[i] ≈ exact(t)
+            @test size(sol(t)) == (2, 2) && sol(t) ≈ exact(t)
         end
     end
 end

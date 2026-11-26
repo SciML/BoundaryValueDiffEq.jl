@@ -188,7 +188,7 @@ function SciMLBase.solve!(cache::AscherCache{iip, T}) where {iip, T}
             z, y, info, error_norm = __perform_ascher_iteration(cache, abstol, adaptive)
         end
     end
-    u = [vcat(zᵢ, yᵢ) for (zᵢ, yᵢ) in zip(z, y)]
+    u = [reshape(vcat(zᵢ, yᵢ), cache.state_shape) for (zᵢ, yᵢ) in zip(z, y)]
 
     return SciMLBase.build_solution(
         cache.prob, cache.alg, cache.original_mesh, u;
@@ -266,35 +266,42 @@ Sample the current piecewise-polynomial iterate at the nodes and collocation poi
 the halved mesh, returning `(z, y, dmz)` laid out for the error-estimation solve.
 """
 function __sample_on_halved_mesh(cache::AscherCache{iip, T}) where {iip, T}
-    (; mesh_dt, ncomp, ny, k, TU) = cache
+    (; mesh, mesh_dt, ncomp, ny, k, TU) = cache
     (; rho, coef) = TU
     n = length(mesh_dt)
     z = [Vector{T}(undef, ncomp) for _ in 1:(2n + 1)]
     y = [Vector{T}(undef, ny) for _ in eachindex(z)]
+    dmz = [[Vector{T}(undef, ncomp + ny) for _ in 1:k] for _ in 1:(2n)]
     a = Vector{T}(undef, k)
     dm = similar(a)
-    for l in eachindex(z)
-        node = cld(l, 2)
-        i = min(node, n)
-        s = iseven(l) ? T(0.5) : T(node > n)
-        rkbas!(s, coef, k, a, dm)
+    algebraic = (ncomp + 1):(ncomp + ny)
+    components = 1:(ncomp + ny)
+    for i in eachindex(mesh_dt)
+        l = 2i - 1
+        midpoint = __ascher_mesh_midpoint(mesh, i)
+        left_width = midpoint - mesh[i]
+        s_mid = left_width / mesh_dt[i]
+        right_scale = (mesh[i + 1] - midpoint) / mesh_dt[i]
         coarse_stages = cache.dmz[i]
-        __ascher_weighted_stages!(y[l], coarse_stages, dm, (ncomp + 1):(ncomp + ny))
-        if isodd(l)
-            copyto!(z[l], cache.z[node])
-        else
-            __ascher_weighted_stages!(z[l], coarse_stages, a, 1:ncomp)
-            @. z[l] = cache.z[i] + mesh_dt[i] / 2 * z[l]
+
+        copyto!(z[l], cache.z[i])
+        rkbas!(zero(T), coef, k, a, dm)
+        __ascher_weighted_stages!(y[l], coarse_stages, dm, algebraic)
+        rkbas!(s_mid, coef, k, a, dm)
+        __ascher_weighted_stages!(y[l + 1], coarse_stages, dm, algebraic)
+        __ascher_weighted_stages!(z[l + 1], coarse_stages, a, 1:ncomp)
+        @. z[l + 1] = cache.z[i] + left_width * z[l + 1]
+
+        for j in 1:k
+            rkbas!(s_mid * rho[j], coef, k, a, dm)
+            __ascher_weighted_stages!(dmz[l][j], coarse_stages, dm, components)
+            rkbas!(s_mid + right_scale * rho[j], coef, k, a, dm)
+            __ascher_weighted_stages!(dmz[l + 1][j], coarse_stages, dm, components)
         end
     end
-
-    dmz = [[Vector{T}(undef, ncomp + ny) for _ in 1:k] for _ in 1:(2n)]
-    for l in eachindex(dmz), j in 1:k
-        i = cld(l, 2)
-        s = (iseven(l) + rho[j]) / 2
-        rkbas!(s, coef, k, a, dm)
-        __ascher_weighted_stages!(dmz[l][j], cache.dmz[i], dm, 1:(ncomp + ny))
-    end
+    copyto!(z[end], cache.z[end])
+    rkbas!(one(T), coef, k, a, dm)
+    __ascher_weighted_stages!(y[end], cache.dmz[end], dm, algebraic)
     return z, y, dmz
 end
 
